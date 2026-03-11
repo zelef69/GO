@@ -975,41 +975,189 @@ const String goPlayNormalizeAfterPiPExitScript = '''
 
 const String goPlayNextVideoScript = '''
 (function() {
+  function boolValue(value) {
+    if (value === true) {
+      return true;
+    }
+    if (typeof value === 'number') {
+      return value !== 0;
+    }
+    if (typeof value === 'string') {
+      var normalized = value.toLowerCase().trim();
+      return normalized === 'true' || normalized === '1';
+    }
+    return false;
+  }
+
+  function hasDisabledState(node) {
+    if (!node) {
+      return true;
+    }
+    if (boolValue(node.disabled)) {
+      return true;
+    }
+    if (node.getAttribute && node.getAttribute('disabled') !== null) {
+      return true;
+    }
+    var ariaDisabled = '';
+    try {
+      ariaDisabled = String(node.getAttribute('aria-disabled') || '').toLowerCase();
+    } catch (_) {
+      ariaDisabled = '';
+    }
+    return ariaDisabled === 'true';
+  }
+
+  function clickNode(node) {
+    if (!node || hasDisabledState(node)) {
+      return false;
+    }
+    try {
+      node.click();
+      return true;
+    } catch (_) {}
+    try {
+      var eventObj = new MouseEvent('click', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+      });
+      node.dispatchEvent(eventObj);
+      return true;
+    } catch (_) {}
+    return false;
+  }
+
+  function readUrlContext() {
+    var listId = '';
+    var currentVideoId = '';
+    var hasListContext = false;
+    try {
+      var url = new URL(window.location.href);
+      listId = String(url.searchParams.get('list') || '').trim();
+      hasListContext = listId.length > 0;
+      currentVideoId = String(url.searchParams.get('v') || '').trim();
+      if (!currentVideoId && url.pathname.indexOf('/shorts/') === 0) {
+        var segments = url.pathname.split('/');
+        if (segments.length >= 3) {
+          currentVideoId = String(segments[2] || '').trim();
+        }
+      }
+    } catch (_) {}
+    return {
+      listId: listId,
+      currentVideoId: currentVideoId,
+      hasListContext: hasListContext
+    };
+  }
+
+  function result(ok, strategy, context, nextUrl) {
+    return {
+      ok: ok === true,
+      strategy: String(strategy || ''),
+      listId: String((context && context.listId) || ''),
+      currentVideoId: String((context && context.currentVideoId) || ''),
+      hasListContext: !!(context && context.hasListContext),
+      nextUrl: String(nextUrl || '')
+    };
+  }
+
+  var context = readUrlContext();
+
+  // 1) Prefer explicit next-button click (same behavior as manual tap).
+  var nextButtonSelectors = [
+    'button.ytp-next-button',
+    '.ytp-next-button',
+    'button[aria-keyshortcuts="SHIFT+n"]',
+    '#movie_player .ytp-next-button',
+    'button[aria-label*="Next"]',
+    'button[aria-label*="next"]',
+    'button[aria-label*="\\u0e16\\u0e31\\u0e14\\u0e44\\u0e1b"]',
+    '[role="button"][aria-label*="Next"]',
+    '[role="button"][aria-label*="next"]',
+    '[role="button"][aria-label*="\\u0e16\\u0e31\\u0e14\\u0e44\\u0e1b"]',
+    'ytm-player-control-button[button-id="next"] button',
+    'ytm-player-control-button[button-id="next"]'
+  ];
+  for (var selectorIndex = 0; selectorIndex < nextButtonSelectors.length; selectorIndex += 1) {
+    var selector = nextButtonSelectors[selectorIndex];
+    var button = document.querySelector(selector);
+    if (!button) {
+      continue;
+    }
+    if (clickNode(button)) {
+      return result(true, 'click:' + selector, context, '');
+    }
+  }
+
+  // 2) If currently in mix/playlist, click the next link inside same list.
+  if (context.hasListContext) {
+    var playlistSelectors = [
+      'ytm-compact-video-renderer a[href*="/watch"]',
+      'ytm-playlist-panel-video-renderer a[href*="/watch"]',
+      'a.compact-media-item-image[href*="/watch"]',
+      'a.media-item-thumbnail-container[href*="/watch"]',
+      'a[href*="/watch?"][href*="list="]'
+    ];
+    for (var listSelectorIndex = 0; listSelectorIndex < playlistSelectors.length; listSelectorIndex += 1) {
+      var listSelector = playlistSelectors[listSelectorIndex];
+      var links = document.querySelectorAll(listSelector);
+      for (var linkIndex = 0; linkIndex < links.length; linkIndex += 1) {
+        var link = links[linkIndex];
+        if (!link || hasDisabledState(link)) {
+          continue;
+        }
+        var href = '';
+        try {
+          href = String(link.getAttribute('href') || '').trim();
+        } catch (_) {
+          href = '';
+        }
+        if (!href || href.indexOf('/watch') < 0) {
+          continue;
+        }
+        if (context.listId) {
+          var encodedListId = encodeURIComponent(context.listId);
+          if (href.indexOf('list=' + context.listId) < 0 &&
+              href.indexOf('list=' + encodedListId) < 0) {
+            continue;
+          }
+        }
+        if (context.currentVideoId) {
+          var encodedVideoId = encodeURIComponent(context.currentVideoId);
+          var sameVideoByQuery =
+              href.indexOf('v=' + context.currentVideoId) >= 0 ||
+              href.indexOf('v=' + encodedVideoId) >= 0;
+          var sameVideoByPath =
+              href.indexOf('/shorts/' + context.currentVideoId) >= 0;
+          if (sameVideoByQuery || sameVideoByPath) {
+            continue;
+          }
+        }
+        if (clickNode(link)) {
+          return result(true, 'playlist_link:' + listSelector, context, href);
+        }
+      }
+    }
+  }
+
+  // 3) Fallback to player API.
   var player = document.getElementById('movie_player');
   if (player && typeof player.nextVideo === 'function') {
     try {
       player.nextVideo();
-      return true;
+      return result(true, 'player.nextVideo', context, '');
     } catch (_) {}
   }
 
-  var selectors = [
-    'button.ytp-next-button',
-    '.ytp-next-button',
-    'button[aria-keyshortcuts="SHIFT+n"]',
-    '#movie_player .ytp-next-button'
-  ];
-  for (var i = 0; i < selectors.length; i++) {
-    var button = document.querySelector(selectors[i]);
-    if (!button) {
-      continue;
-    }
-    var isDisabled = button.disabled === true ||
-      button.getAttribute('disabled') !== null ||
-      button.getAttribute('aria-disabled') === 'true';
-    if (!isDisabled) {
-      button.click();
-      return true;
-    }
-  }
-
+  // 4) Last fallback.
   if (typeof window.nextVideo === 'function') {
     try {
       window.nextVideo();
-      return true;
+      return result(true, 'window.nextVideo', context, '');
     } catch (_) {}
   }
-  return false;
+  return result(false, 'none', context, '');
 })();
 ''';
 

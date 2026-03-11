@@ -91,6 +91,11 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   static const Duration _youtubeClickFallbackSettle = Duration(
     milliseconds: 90,
   );
+  static const Duration _autoNextDelay = Duration(milliseconds: 280);
+  static const Duration _autoNextStateSettle = Duration(milliseconds: 100);
+  static const Duration _autoNextRetryDelay = Duration(milliseconds: 700);
+  static const Duration _autoNextDuplicateWindow = Duration(seconds: 6);
+  static const Duration _autoNextEndedDedupWindow = Duration(seconds: 4);
   static const List<Duration> _pipExitCompactCheckDelays = <Duration>[
     Duration(milliseconds: 120),
     Duration(milliseconds: 350),
@@ -105,6 +110,18 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   int _playbackDebugLogCount = 0;
   int _youtubePlayPauseClickToken = 0;
   int _pipExitNormalizationToken = 0;
+  int _autoNextToken = 0;
+  bool _autoNextPending = false;
+  bool _autoNextTransitioning = false;
+  String? _autoNextArmedVideoId;
+  String? _autoNextArmedListId;
+  String? _lastAutoNextVideoId;
+  DateTime? _lastAutoNextTriggeredAt;
+  String? _lastEndedAutoNextVideoId;
+  DateTime? _lastEndedAutoNextAt;
+  String? _lastEndedAutoNextSource;
+  String _lastObservedVideoId = '';
+  String _lastObservedListId = '';
   String? _lastPlaybackTickSignature;
   Uri _currentMainFrameUri = AppConfig.homeUri;
 
@@ -146,6 +163,8 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _cancelPendingAutoNext(reason: 'dispose');
+    _setAutoNextTransitioning(false, reason: 'dispose');
     _resetPiPRecoveryState();
     WidgetsBinding.instance.removeObserver(this);
     _settingsController.removeListener(_onSettingsChanged);
@@ -237,6 +256,11 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       return;
     }
     _currentMainFrameUri = uri;
+    final observedVideoId = _videoIdFromUri(uri);
+    if (observedVideoId.isNotEmpty) {
+      _lastObservedVideoId = observedVideoId;
+    }
+    _lastObservedListId = _listIdFromUri(uri);
   }
 
   void _markMainFrameNavigation(Uri? uri, {required bool resetRetryBudget}) {
@@ -648,10 +672,414 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     );
   }
 
+  String _videoIdFromDebugPayload(Map<String, dynamic> payload) {
+    final directVideoId = (payload['videoId'] ?? '').toString().trim();
+    if (directVideoId.isNotEmpty) {
+      return directVideoId;
+    }
+
+    final rawUrl = (payload['url'] ?? '').toString().trim();
+    final parsedUrl = Uri.tryParse(rawUrl);
+    if (parsedUrl == null) {
+      return '';
+    }
+    final queryVideoId = (parsedUrl.queryParameters['v'] ?? '').trim();
+    if (queryVideoId.isNotEmpty) {
+      return queryVideoId;
+    }
+    final segments = parsedUrl.pathSegments;
+    final shortsIndex = segments.indexOf('shorts');
+    if (shortsIndex >= 0 && segments.length > shortsIndex + 1) {
+      return segments[shortsIndex + 1].trim();
+    }
+    return '';
+  }
+
+  bool _isShortsUrlFromDebugPayload(Map<String, dynamic> payload) {
+    final rawUrl = (payload['url'] ?? '').toString().trim();
+    final parsedUrl = Uri.tryParse(rawUrl);
+    if (parsedUrl == null) {
+      return false;
+    }
+    return parsedUrl.path.toLowerCase().startsWith('/shorts/');
+  }
+
+  String _listIdFromDebugPayload(Map<String, dynamic> payload) {
+    final rawUrl = (payload['url'] ?? '').toString().trim();
+    final parsedUrl = Uri.tryParse(rawUrl);
+    if (parsedUrl == null) {
+      return '';
+    }
+    return (parsedUrl.queryParameters['list'] ?? '').trim();
+  }
+
+  bool _hasListContextFromDebugPayload(Map<String, dynamic> payload) {
+    return _listIdFromDebugPayload(payload).isNotEmpty;
+  }
+
+  String _videoIdFromUri(Uri? uri) {
+    if (uri == null) {
+      return '';
+    }
+    final queryVideoId = (uri.queryParameters['v'] ?? '').trim();
+    if (queryVideoId.isNotEmpty) {
+      return queryVideoId;
+    }
+    final segments = uri.pathSegments;
+    final shortsIndex = segments.indexOf('shorts');
+    if (shortsIndex >= 0 && segments.length > shortsIndex + 1) {
+      return segments[shortsIndex + 1].trim();
+    }
+    return '';
+  }
+
+  String _listIdFromUri(Uri? uri) {
+    if (uri == null) {
+      return '';
+    }
+    return (uri.queryParameters['list'] ?? '').trim();
+  }
+
+  String _currentKnownVideoId() {
+    if (_lastObservedVideoId.isNotEmpty) {
+      return _lastObservedVideoId;
+    }
+    return _videoIdFromUri(_currentMainFrameUri);
+  }
+
+  String _currentKnownListId() {
+    if (_lastObservedListId.isNotEmpty) {
+      return _lastObservedListId;
+    }
+    return _listIdFromUri(_currentMainFrameUri);
+  }
+
+  void _cancelPendingAutoNext({required String reason}) {
+    if (!_autoNextPending) {
+      return;
+    }
+    final armedVideoId = _autoNextArmedVideoId ?? '';
+    final armedListId = _autoNextArmedListId ?? '';
+    _autoNextToken += 1;
+    _autoNextPending = false;
+    _autoNextArmedVideoId = null;
+    _autoNextArmedListId = null;
+    _logPiPEvent(
+      'autoNext cancel reason=$reason videoId=$armedVideoId listId=$armedListId',
+    );
+    _setAutoNextTransitioning(false, reason: 'cancel_$reason');
+  }
+
+  void _setAutoNextTransitioning(bool transitioning, {required String reason}) {
+    if (_autoNextTransitioning == transitioning) {
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _autoNextTransitioning = transitioning;
+      });
+    } else {
+      _autoNextTransitioning = transitioning;
+    }
+    _logPiPEvent('autoNext transition=$transitioning reason=$reason');
+  }
+
+  bool _isDuplicateEndedAutoNext({
+    required String videoId,
+    required String source,
+  }) {
+    if (videoId.isEmpty) {
+      return false;
+    }
+    final lastVideoId = (_lastEndedAutoNextVideoId ?? '').trim();
+    final lastAt = _lastEndedAutoNextAt;
+    if (lastVideoId.isEmpty || lastAt == null) {
+      return false;
+    }
+    final withinWindow =
+        DateTime.now().difference(lastAt) < _autoNextEndedDedupWindow;
+    if (!withinWindow) {
+      return false;
+    }
+    if (lastVideoId != videoId) {
+      return false;
+    }
+    _logPiPEvent(
+      'autoNext dedup skip source=$source videoId=$videoId lastSource=${_lastEndedAutoNextSource ?? ''}',
+    );
+    return true;
+  }
+
+  void _markEndedAutoNext({required String videoId, required String source}) {
+    if (videoId.isEmpty) {
+      return;
+    }
+    _lastEndedAutoNextVideoId = videoId;
+    _lastEndedAutoNextAt = DateTime.now();
+    _lastEndedAutoNextSource = source;
+    _logPiPEvent('autoNext dedup mark source=$source videoId=$videoId');
+  }
+
+  void _scheduleAutoNextFromEnded(Map<String, dynamic> payload) {
+    final adShowing = payload['adShowing'] == true;
+    final adInterrupting = payload['adInterrupting'] == true;
+    if (adShowing || adInterrupting) {
+      _logPiPEvent(
+        'autoNext skip reason=ad_state adShowing=$adShowing adInterrupting=$adInterrupting',
+      );
+      return;
+    }
+
+    if (_isShortsUrlFromDebugPayload(payload)) {
+      _logPiPEvent('autoNext skip reason=shorts_url');
+      return;
+    }
+
+    final videoId = _videoIdFromDebugPayload(payload);
+    final listId = _listIdFromDebugPayload(payload);
+    final hasListContext = _hasListContextFromDebugPayload(payload);
+    if (_isDuplicateEndedAutoNext(videoId: videoId, source: 'dart_ended')) {
+      return;
+    }
+    _markEndedAutoNext(videoId: videoId, source: 'dart_ended');
+    final now = DateTime.now();
+    final lastTriggeredAt = _lastAutoNextTriggeredAt;
+    if (videoId.isNotEmpty &&
+        _lastAutoNextVideoId == videoId &&
+        lastTriggeredAt != null &&
+        now.difference(lastTriggeredAt) < _autoNextDuplicateWindow) {
+      _logPiPEvent(
+        'autoNext skip reason=duplicate videoId=$videoId windowMs=${_autoNextDuplicateWindow.inMilliseconds}',
+      );
+      return;
+    }
+
+    final token = ++_autoNextToken;
+    _autoNextPending = true;
+    _autoNextArmedVideoId = videoId.isEmpty ? null : videoId;
+    _autoNextArmedListId = listId.isEmpty ? null : listId;
+    _setAutoNextTransitioning(true, reason: 'armed');
+    _logPiPEvent(
+      'autoNext armed token=$token videoId=$videoId listId=$listId hasList=$hasListContext delayMs=${_autoNextDelay.inMilliseconds} hasNext=$_hasNext inPiP=$_isInPiPMode',
+    );
+    unawaited(
+      _runAutoNextTimer(token: token, videoId: videoId, listId: listId),
+    );
+  }
+
+  Future<void> _runAutoNextTimer({
+    required int token,
+    required String videoId,
+    required String listId,
+  }) async {
+    await Future<void>.delayed(_autoNextDelay);
+    if (!mounted || token != _autoNextToken) {
+      return;
+    }
+
+    await _publishVideoStateNow(force: true);
+    await Future<void>.delayed(_autoNextStateSettle);
+    if (!mounted || token != _autoNextToken) {
+      return;
+    }
+
+    final currentVideoIdBeforeAttempt = _currentKnownVideoId();
+    if (videoId.isNotEmpty &&
+        currentVideoIdBeforeAttempt.isNotEmpty &&
+        currentVideoIdBeforeAttempt != videoId) {
+      _autoNextPending = false;
+      _autoNextArmedVideoId = null;
+      _autoNextArmedListId = null;
+      _setAutoNextTransitioning(false, reason: 'already_transitioned');
+      _logPiPEvent(
+        'autoNext skip reason=already_transitioned token=$token endedVideoId=$videoId currentVideoId=$currentVideoIdBeforeAttempt',
+      );
+      return;
+    }
+    if (_videoPlaying) {
+      final isSameVideoReplay =
+          videoId.isNotEmpty &&
+          currentVideoIdBeforeAttempt.isNotEmpty &&
+          currentVideoIdBeforeAttempt == videoId;
+      if (!isSameVideoReplay) {
+        _autoNextPending = false;
+        _autoNextArmedVideoId = null;
+        _autoNextArmedListId = null;
+        _setAutoNextTransitioning(false, reason: 'already_playing_new_video');
+        _logPiPEvent(
+          'autoNext skip reason=already_playing_new_video token=$token endedVideoId=$videoId currentVideoId=$currentVideoIdBeforeAttempt',
+        );
+        return;
+      }
+      _logPiPEvent(
+        'autoNext replay_detected token=$token endedVideoId=$videoId -> continue next attempt',
+      );
+    }
+
+    final triggeredPrimary = await _attemptNextWithVerification(
+      token: token,
+      reason: 'auto_next_primary',
+      endedVideoId: videoId,
+      endedListId: listId,
+    );
+    if (!mounted || token != _autoNextToken) {
+      return;
+    }
+
+    var triggered = triggeredPrimary;
+    if (!triggered) {
+      await Future<void>.delayed(_autoNextRetryDelay);
+      if (!mounted || token != _autoNextToken) {
+        return;
+      }
+      await _publishVideoStateNow(force: true);
+      await Future<void>.delayed(_autoNextStateSettle);
+      if (!mounted || token != _autoNextToken) {
+        return;
+      }
+      triggered = await _attemptNextWithVerification(
+        token: token,
+        reason: 'auto_next_retry',
+        endedVideoId: videoId,
+        endedListId: listId,
+      );
+    }
+    if (!mounted || token != _autoNextToken) {
+      return;
+    }
+
+    _autoNextPending = false;
+    _autoNextArmedVideoId = null;
+    _autoNextArmedListId = null;
+    if (!triggered) {
+      _setAutoNextTransitioning(false, reason: 'trigger_failed');
+      _logPiPEvent(
+        'autoNext trigger_failed token=$token videoId=$videoId listId=$listId hasNext=$_hasNext',
+      );
+      return;
+    }
+
+    _lastAutoNextVideoId = videoId.isEmpty ? null : videoId;
+    _lastAutoNextTriggeredAt = DateTime.now();
+    _logPiPEvent(
+      'autoNext triggered token=$token fromVideoId=$videoId toVideoId=${_currentKnownVideoId()} listId=$listId',
+    );
+
+    await Future<void>.delayed(_autoNextStateSettle);
+    if (!mounted || token != _autoNextToken) {
+      return;
+    }
+    await _publishVideoStateNow(force: true);
+    _setAutoNextTransitioning(false, reason: 'triggered_confirmed');
+  }
+
+  Future<bool> _attemptNextWithVerification({
+    required int token,
+    required String reason,
+    required String endedVideoId,
+    required String endedListId,
+  }) async {
+    final actionIssued = await _nextVideoFromWebView(reason: reason);
+    if (!mounted || token != _autoNextToken) {
+      return false;
+    }
+    if (!actionIssued) {
+      return false;
+    }
+    if (endedVideoId.isEmpty) {
+      return true;
+    }
+    return _waitForVideoTransitionAfterNext(
+      token: token,
+      previousVideoId: endedVideoId,
+      previousListId: endedListId,
+    );
+  }
+
+  Future<bool> _waitForVideoTransitionAfterNext({
+    required int token,
+    required String previousVideoId,
+    required String previousListId,
+  }) async {
+    const Duration timeout = Duration(milliseconds: 2200);
+    const Duration step = Duration(milliseconds: 220);
+    final startedAt = DateTime.now();
+    while (DateTime.now().difference(startedAt) < timeout) {
+      if (!mounted || token != _autoNextToken) {
+        return false;
+      }
+      await Future<void>.delayed(step);
+      if (!mounted || token != _autoNextToken) {
+        return false;
+      }
+      await _publishVideoStateNow(force: true);
+      await Future<void>.delayed(_autoNextStateSettle);
+      if (!mounted || token != _autoNextToken) {
+        return false;
+      }
+      final currentVideoId = _currentKnownVideoId();
+      if (currentVideoId.isEmpty) {
+        continue;
+      }
+      if (currentVideoId != previousVideoId) {
+        final currentListId = _currentKnownListId();
+        _setAutoNextTransitioning(false, reason: 'transition_confirmed');
+        _logPiPEvent(
+          'autoNext transition previousVideoId=$previousVideoId currentVideoId=$currentVideoId previousListId=$previousListId currentListId=$currentListId',
+        );
+        return true;
+      }
+    }
+    _logPiPEvent(
+      'autoNext transition_timeout previousVideoId=$previousVideoId currentVideoId=${_currentKnownVideoId()} previousListId=$previousListId currentListId=${_currentKnownListId()}',
+    );
+    _setAutoNextTransitioning(false, reason: 'transition_timeout');
+    return false;
+  }
+
+  bool _shouldCancelAutoNextOnPlaying(Map<String, dynamic> payload) {
+    if (!_autoNextPending) {
+      return false;
+    }
+    final armedVideoId = (_autoNextArmedVideoId ?? '').trim();
+    if (armedVideoId.isEmpty) {
+      return false;
+    }
+    final playingVideoId = _videoIdFromDebugPayload(payload);
+    if (playingVideoId.isEmpty) {
+      return false;
+    }
+    return playingVideoId != armedVideoId;
+  }
+
+  bool _shouldCancelAutoNextOnVideoStatePlaying() {
+    if (!_autoNextPending) {
+      return false;
+    }
+    final armedVideoId = (_autoNextArmedVideoId ?? '').trim();
+    if (armedVideoId.isEmpty) {
+      return false;
+    }
+    final currentVideoId = _currentKnownVideoId();
+    if (currentVideoId.isEmpty) {
+      return false;
+    }
+    return currentVideoId != armedVideoId;
+  }
+
   void _handlePlaybackDebugPayload(Map<String, dynamic> payload) {
     _logPlaybackDebugPayload(payload);
 
     final eventName = (payload['event'] ?? '').toString().trim();
+    final observedVideoId = _videoIdFromDebugPayload(payload);
+    final observedListId = _listIdFromDebugPayload(payload);
+    final observedUrl = (payload['url'] ?? '').toString().trim();
+    if (observedVideoId.isNotEmpty) {
+      _lastObservedVideoId = observedVideoId;
+    }
+    if (Uri.tryParse(observedUrl) != null) {
+      _lastObservedListId = observedListId;
+    }
     final pageVisibility = (payload['pageVisibility'] ?? '')
         .toString()
         .trim()
@@ -661,6 +1089,40 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
         'jsVisibility event=$eventName page=$pageVisibility inPiP=$_isInPiPMode inForeground=$_isAppInForeground playing=$_videoPlaying',
       );
     }
+    if (eventName.startsWith('auto-next:bg-')) {
+      final eventVideoId = observedVideoId.isNotEmpty
+          ? observedVideoId
+          : _currentKnownVideoId();
+      _logPiPEvent(
+        'bgAutoNext event=$eventName videoId=$eventVideoId inForeground=$_isAppInForeground guard=$_backgroundPlaybackGuardEnabled',
+      );
+      if (eventName.startsWith('auto-next:bg-triggered')) {
+        _markEndedAutoNext(videoId: eventVideoId, source: 'js_bg_triggered');
+        _cancelPendingAutoNext(reason: 'js_bg_triggered');
+        _setAutoNextTransitioning(false, reason: 'js_bg_triggered');
+      }
+    }
+    if (eventName == 'video:ended') {
+      final endedVideoId = observedVideoId.isNotEmpty
+          ? observedVideoId
+          : _currentKnownVideoId();
+      if (!_isAppInForeground) {
+        _logPiPEvent(
+          'ended_received_bg videoId=$endedVideoId bg_guard_active=$_backgroundPlaybackGuardEnabled',
+        );
+      } else {
+        _logPiPEvent('ended_received_fg videoId=$endedVideoId');
+      }
+      _scheduleAutoNextFromEnded(payload);
+    } else if (eventName == 'yt:navigate-start' ||
+        eventName == 'video:loadstart') {
+      _cancelPendingAutoNext(reason: 'event_$eventName');
+    } else if (eventName == 'video:playing') {
+      if (_shouldCancelAutoNextOnPlaying(payload)) {
+        _cancelPendingAutoNext(reason: 'event_$eventName');
+      }
+    }
+
     if (eventName != 'ui:ytp-play-button:click') {
       return;
     }
@@ -794,6 +1256,9 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       }
     } else if (isPlaying) {
       _pauseRequestedByUserInPiP = false;
+      if (_shouldCancelAutoNextOnVideoStatePlaying()) {
+        _cancelPendingAutoNext(reason: 'video_state_playing');
+      }
     }
     unawaited(_syncBackgroundPlaybackGuard(reason: 'video_state_changed'));
   }
@@ -839,8 +1304,10 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     final shouldEnable =
         _settingsController.backgroundPlaybackEnabled &&
         !_isAppInForeground &&
-        !_isInPiPMode &&
-        (_videoPlaying || _pipState.isPlaying);
+        !_isInPiPMode;
+    _logPiPEvent(
+      'backgroundGuard sync reason=$reason shouldEnable=$shouldEnable inForeground=$_isAppInForeground inPiP=$_isInPiPMode playing=$_videoPlaying pipPlaying=${_pipState.isPlaying}',
+    );
     await _setBackgroundPlaybackGuardEnabled(shouldEnable, reason: reason);
   }
 
@@ -1324,15 +1791,32 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     return _asBool(result);
   }
 
-  Future<bool> _nextVideoFromWebView() async {
+  Future<bool> _nextVideoFromWebView({required String reason}) async {
     final controller = _webViewController;
     if (controller == null) {
       return false;
     }
-    final result = await controller.evaluateJavascript(
+    final rawResult = await controller.evaluateJavascript(
       source: goPlayNextVideoScript,
     );
-    return _asBool(result);
+    final parsedResult = _asStringDynamicMap(rawResult);
+    if (parsedResult.isNotEmpty) {
+      final ok = _asBool(parsedResult['ok']);
+      final strategy = (parsedResult['strategy'] ?? '').toString().trim();
+      final listId = (parsedResult['listId'] ?? '').toString().trim();
+      final currentVideoId = (parsedResult['currentVideoId'] ?? '')
+          .toString()
+          .trim();
+      final nextUrl = (parsedResult['nextUrl'] ?? '').toString().trim();
+      _logPiPEvent(
+        'nextVideo reason=$reason ok=$ok strategy=$strategy listId=$listId videoId=$currentVideoId nextUrl=$nextUrl',
+      );
+      return ok;
+    }
+
+    final ok = _asBool(rawResult);
+    _logPiPEvent('nextVideo reason=$reason ok=$ok strategy=legacy_bool');
+    return ok;
   }
 
   Future<int> _readBufferedAheadMsFromWebView() async {
@@ -1457,6 +1941,9 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
         _logPiPEvent(
           'action received action=$action inPiP=$_isInPiPMode localPlaying=$_videoPlaying',
         );
+        if (action.isNotEmpty) {
+          _cancelPendingAutoNext(reason: 'pip_action_$action');
+        }
         if (action == 'togglePlayPause') {
           final wasPlaying = _videoPlaying;
           final toggled = await _togglePlayPauseFromWebView();
@@ -1482,7 +1969,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
           await _pauseVideoInWebView();
         } else if (action == 'next') {
           _pauseRequestedByUserInPiP = false;
-          await _nextVideoFromWebView();
+          await _nextVideoFromWebView(reason: 'pip_next_action');
         }
         await Future<void>.delayed(const Duration(milliseconds: 80));
         await _publishVideoStateNow(force: true);
@@ -1693,327 +2180,365 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
               Expanded(
                 child: _errorMessage != null
                     ? BrowserErrorView(message: _errorMessage!, onRetry: _retry)
-                    : InAppWebView(
-                        initialUrlRequest: URLRequest(
-                          url: WebUri(AppConfig.homeUri.toString()),
-                        ),
-                        initialUserScripts: _buildInitialUserScripts(),
-                        initialSettings: InAppWebViewSettings(
-                          javaScriptEnabled: true,
-                          domStorageEnabled: true,
-                          databaseEnabled: true,
-                          cacheEnabled: true,
-                          mediaPlaybackRequiresUserGesture: false,
-                          allowsInlineMediaPlayback: true,
-                          allowBackgroundAudioPlaying: true,
-                          javaScriptCanOpenWindowsAutomatically: false,
-                          supportZoom: false,
-                          useShouldOverrideUrlLoading: true,
-                          useShouldInterceptRequest: true,
-                          useShouldInterceptAjaxRequest: true,
-                          useShouldInterceptFetchRequest: true,
-                          safeBrowsingEnabled: true,
-                          thirdPartyCookiesEnabled: true,
-                          allowFileAccessFromFileURLs: false,
-                          allowUniversalAccessFromFileURLs: false,
-                        ),
-                        onWebViewCreated: (controller) {
-                          _webViewController = controller;
-                          controller.addJavaScriptHandler(
-                            handlerName: 'go_playVideoState',
-                            callback: (arguments) {
-                              if (arguments.isEmpty ||
-                                  arguments.first is! Map) {
-                                return null;
-                              }
-                              final payload = Map<String, dynamic>.from(
-                                arguments.first as Map,
-                              );
-                              final videoWidth = _toPositiveInt(
-                                payload['videoWidth'],
-                              );
-                              final videoHeight = _toPositiveInt(
-                                payload['videoHeight'],
-                              );
-                              final videoRectLeft = _toPositiveInt(
-                                payload['videoRectLeft'],
-                              );
-                              final videoRectTop = _toPositiveInt(
-                                payload['videoRectTop'],
-                              );
-                              final videoRectRight = _toPositiveInt(
-                                payload['videoRectRight'],
-                              );
-                              final videoRectBottom = _toPositiveInt(
-                                payload['videoRectBottom'],
-                              );
-                              final durationMs = _toPositiveInt(
-                                payload['durationMs'],
-                              );
-                              final positionMs = _toPositiveInt(
-                                payload['positionMs'],
-                              );
-                              final title = (payload['title'] ?? '')
-                                  .toString()
-                                  .trim();
-                              final author = (payload['author'] ?? '')
-                                  .toString()
-                                  .trim();
-                              _updateVideoState(
-                                isPlaying: payload['isPlaying'] == true,
-                                isFullscreen: payload['isFullscreen'] == true,
-                                videoWidth: videoWidth,
-                                videoHeight: videoHeight,
-                                videoRectLeft: videoRectLeft,
-                                videoRectTop: videoRectTop,
-                                videoRectRight: videoRectRight,
-                                videoRectBottom: videoRectBottom,
-                                title: title,
-                                author: author,
-                                durationMs: durationMs,
-                                positionMs: positionMs,
-                                hasNext: payload['hasNext'] == true,
-                              );
-                              final eventName = (payload['event'] ?? '')
-                                  .toString()
-                                  .trim();
-                              final pageVisibility =
-                                  (payload['pageVisibility'] ?? '')
+                    : Stack(
+                        children: <Widget>[
+                          InAppWebView(
+                            initialUrlRequest: URLRequest(
+                              url: WebUri(AppConfig.homeUri.toString()),
+                            ),
+                            initialUserScripts: _buildInitialUserScripts(),
+                            initialSettings: InAppWebViewSettings(
+                              javaScriptEnabled: true,
+                              domStorageEnabled: true,
+                              databaseEnabled: true,
+                              cacheEnabled: true,
+                              mediaPlaybackRequiresUserGesture: false,
+                              allowsInlineMediaPlayback: true,
+                              allowBackgroundAudioPlaying: true,
+                              javaScriptCanOpenWindowsAutomatically: false,
+                              supportZoom: false,
+                              useShouldOverrideUrlLoading: true,
+                              useShouldInterceptRequest: true,
+                              useShouldInterceptAjaxRequest: true,
+                              useShouldInterceptFetchRequest: true,
+                              safeBrowsingEnabled: true,
+                              thirdPartyCookiesEnabled: true,
+                              allowFileAccessFromFileURLs: false,
+                              allowUniversalAccessFromFileURLs: false,
+                            ),
+                            onWebViewCreated: (controller) {
+                              _webViewController = controller;
+                              controller.addJavaScriptHandler(
+                                handlerName: 'go_playVideoState',
+                                callback: (arguments) {
+                                  if (arguments.isEmpty ||
+                                      arguments.first is! Map) {
+                                    return null;
+                                  }
+                                  final payload = Map<String, dynamic>.from(
+                                    arguments.first as Map,
+                                  );
+                                  final videoWidth = _toPositiveInt(
+                                    payload['videoWidth'],
+                                  );
+                                  final videoHeight = _toPositiveInt(
+                                    payload['videoHeight'],
+                                  );
+                                  final videoRectLeft = _toPositiveInt(
+                                    payload['videoRectLeft'],
+                                  );
+                                  final videoRectTop = _toPositiveInt(
+                                    payload['videoRectTop'],
+                                  );
+                                  final videoRectRight = _toPositiveInt(
+                                    payload['videoRectRight'],
+                                  );
+                                  final videoRectBottom = _toPositiveInt(
+                                    payload['videoRectBottom'],
+                                  );
+                                  final durationMs = _toPositiveInt(
+                                    payload['durationMs'],
+                                  );
+                                  final positionMs = _toPositiveInt(
+                                    payload['positionMs'],
+                                  );
+                                  final title = (payload['title'] ?? '')
                                       .toString()
                                       .trim();
-                              if (!_isInPiPMode &&
-                                  pageVisibility == 'visible' &&
-                                  eventName == 'doc:visibilitychange') {
-                                unawaited(
-                                  _checkAndRepairStalePiPLayout(
-                                    reason: 'doc_visibility_visible',
-                                    force: true,
-                                  ),
-                                );
-                              }
-                              return null;
-                            },
-                          );
-                          controller.addJavaScriptHandler(
-                            handlerName: 'go_playPlaybackDebug',
-                            callback: (arguments) {
-                              if (arguments.isEmpty ||
-                                  arguments.first is! Map) {
-                                return null;
-                              }
-                              final payload = Map<String, dynamic>.from(
-                                arguments.first as Map,
+                                  final author = (payload['author'] ?? '')
+                                      .toString()
+                                      .trim();
+                                  _updateVideoState(
+                                    isPlaying: payload['isPlaying'] == true,
+                                    isFullscreen:
+                                        payload['isFullscreen'] == true,
+                                    videoWidth: videoWidth,
+                                    videoHeight: videoHeight,
+                                    videoRectLeft: videoRectLeft,
+                                    videoRectTop: videoRectTop,
+                                    videoRectRight: videoRectRight,
+                                    videoRectBottom: videoRectBottom,
+                                    title: title,
+                                    author: author,
+                                    durationMs: durationMs,
+                                    positionMs: positionMs,
+                                    hasNext: payload['hasNext'] == true,
+                                  );
+                                  final eventName = (payload['event'] ?? '')
+                                      .toString()
+                                      .trim();
+                                  final pageVisibility =
+                                      (payload['pageVisibility'] ?? '')
+                                          .toString()
+                                          .trim();
+                                  if (!_isInPiPMode &&
+                                      pageVisibility == 'visible' &&
+                                      eventName == 'doc:visibilitychange') {
+                                    unawaited(
+                                      _checkAndRepairStalePiPLayout(
+                                        reason: 'doc_visibility_visible',
+                                        force: true,
+                                      ),
+                                    );
+                                  }
+                                  return null;
+                                },
                               );
-                              _handlePlaybackDebugPayload(payload);
-                              return null;
+                              controller.addJavaScriptHandler(
+                                handlerName: 'go_playPlaybackDebug',
+                                callback: (arguments) {
+                                  if (arguments.isEmpty ||
+                                      arguments.first is! Map) {
+                                    return null;
+                                  }
+                                  final payload = Map<String, dynamic>.from(
+                                    arguments.first as Map,
+                                  );
+                                  _handlePlaybackDebugPayload(payload);
+                                  return null;
+                                },
+                              );
+                              unawaited(_injectVideoStateScript());
+                              unawaited(_syncAdblockScript());
+                              unawaited(_updateCanGoBack());
                             },
-                          );
-                          unawaited(_injectVideoStateScript());
-                          unawaited(_syncAdblockScript());
-                          unawaited(_updateCanGoBack());
-                        },
-                        shouldOverrideUrlLoading: (_, navigationAction) async {
-                          if (navigationAction.isForMainFrame == false) {
-                            return NavigationActionPolicy.ALLOW;
-                          }
-                          final uri = _toUri(navigationAction.request.url);
-                          final result = _navigationInterceptor.evaluate(uri);
-                          if (result.isAllowed) {
-                            _rememberMainFrameUri(uri);
-                            return NavigationActionPolicy.ALLOW;
-                          }
-                          _showBlockedNavigation(uri, result.reason);
-                          return NavigationActionPolicy.CANCEL;
-                        },
-                        shouldInterceptRequest: (controller, request) async {
-                          final uri = _toUri(request.url);
-                          if (uri == null) {
-                            return null;
-                          }
+                            shouldOverrideUrlLoading:
+                                (_, navigationAction) async {
+                                  if (navigationAction.isForMainFrame ==
+                                      false) {
+                                    return NavigationActionPolicy.ALLOW;
+                                  }
+                                  final uri = _toUri(
+                                    navigationAction.request.url,
+                                  );
+                                  final result = _navigationInterceptor
+                                      .evaluate(uri);
+                                  if (result.isAllowed) {
+                                    _rememberMainFrameUri(uri);
+                                    return NavigationActionPolicy.ALLOW;
+                                  }
+                                  _showBlockedNavigation(uri, result.reason);
+                                  return NavigationActionPolicy.CANCEL;
+                                },
+                            shouldInterceptRequest:
+                                (controller, request) async {
+                                  final uri = _toUri(request.url);
+                                  if (uri == null) {
+                                    return null;
+                                  }
 
-                          if (!_domainPolicyService.isRequestAllowed(uri)) {
-                            return _blockedResponse('Blocked by domain policy');
-                          }
+                                  if (!_domainPolicyService.isRequestAllowed(
+                                    uri,
+                                  )) {
+                                    return _blockedResponse(
+                                      'Blocked by domain policy',
+                                    );
+                                  }
 
-                          if (uri.scheme.toLowerCase() != 'https') {
-                            return null;
-                          }
+                                  if (uri.scheme.toLowerCase() != 'https') {
+                                    return null;
+                                  }
 
-                          final sourceUriFromHeader = _sourceUriFromRequest(
-                            request,
-                          );
-                          final resourceType = _resourceTypeFromRequest(
-                            request,
-                            uri,
-                          );
+                                  final sourceUriFromHeader =
+                                      _sourceUriFromRequest(request);
+                                  final resourceType = _resourceTypeFromRequest(
+                                    request,
+                                    uri,
+                                  );
 
-                          final shouldBlock =
-                              await _shouldBlockByPolicyAndAdblock(
-                                controller,
+                                  final shouldBlock =
+                                      await _shouldBlockByPolicyAndAdblock(
+                                        controller,
+                                        uri,
+                                        resourceType: resourceType,
+                                        sourceUri: sourceUriFromHeader,
+                                      );
+                                  if (shouldBlock) {
+                                    return _blockedResponse(
+                                      'Blocked by adblock',
+                                    );
+                                  }
+
+                                  return null;
+                                },
+                            shouldInterceptAjaxRequest: _interceptAjaxRequest,
+                            shouldInterceptFetchRequest: _interceptFetchRequest,
+                            onCreateWindow:
+                                (controller, createWindowAction) async {
+                                  final uri = _toUri(
+                                    createWindowAction.request.url,
+                                  );
+                                  final result = _navigationInterceptor
+                                      .evaluate(uri);
+                                  if (!result.isAllowed) {
+                                    _showBlockedNavigation(uri, result.reason);
+                                    return false;
+                                  }
+
+                                  if (uri != null) {
+                                    await controller.loadUrl(
+                                      urlRequest: URLRequest(
+                                        url: WebUri(uri.toString()),
+                                      ),
+                                    );
+                                  }
+                                  return false;
+                                },
+                            onLoadStart: (controller, uri) {
+                              _cancelPendingAutoNext(reason: 'load_start');
+                              _logNavigationEvent('loadStart', _toUri(uri));
+                              _rememberMainFrameUri(_toUri(uri));
+                              _markMainFrameNavigation(
                                 uri,
-                                resourceType: resourceType,
-                                sourceUri: sourceUriFromHeader,
+                                resetRetryBudget: false,
                               );
-                          if (shouldBlock) {
-                            return _blockedResponse('Blocked by adblock');
-                          }
-
-                          return null;
-                        },
-                        shouldInterceptAjaxRequest: _interceptAjaxRequest,
-                        shouldInterceptFetchRequest: _interceptFetchRequest,
-                        onCreateWindow: (controller, createWindowAction) async {
-                          final uri = _toUri(createWindowAction.request.url);
-                          final result = _navigationInterceptor.evaluate(uri);
-                          if (!result.isAllowed) {
-                            _showBlockedNavigation(uri, result.reason);
-                            return false;
-                          }
-
-                          if (uri != null) {
-                            await controller.loadUrl(
-                              urlRequest: URLRequest(
-                                url: WebUri(uri.toString()),
-                              ),
-                            );
-                          }
-                          return false;
-                        },
-                        onLoadStart: (controller, uri) {
-                          _logNavigationEvent('loadStart', _toUri(uri));
-                          _rememberMainFrameUri(_toUri(uri));
-                          _markMainFrameNavigation(
-                            uri,
-                            resetRetryBudget: false,
-                          );
-                          setState(() {
-                            _isLoading = true;
-                            _errorMessage = null;
-                          });
-                          unawaited(_syncAdblockScript());
-                        },
-                        onLoadStop: (controller, uri) async {
-                          if (!mounted) {
-                            return;
-                          }
-                          _logNavigationEvent('loadStop', _toUri(uri));
-                          _rememberMainFrameUri(_toUri(uri));
-                          setState(() {
-                            _isLoading = false;
-                            _progress = 100;
-                          });
-                          await _restoreForPiPExitIfNeeded(
-                            reason: 'load_stop_exit_fallback',
-                          );
-                          await _injectVideoStateScript();
-                          await _syncAdblockScript();
-                          await _syncBackgroundPlaybackGuard(
-                            reason: 'load_stop',
-                          );
-                          await _checkAndRepairStalePiPLayout(
-                            reason: 'load_stop',
-                          );
-                          await _updateCanGoBack();
-                        },
-                        onUpdateVisitedHistory: (controller, uri, isReload) {
-                          _rememberMainFrameUri(_toUri(uri));
-                          unawaited(_injectVideoStateScript());
-                          unawaited(_syncAdblockScript());
-                          unawaited(_updateCanGoBack());
-                        },
-                        onProgressChanged: (controller, progress) {
-                          if (!mounted) {
-                            return;
-                          }
-                          setState(() {
-                            _progress = progress;
-                            _isLoading = progress < 100;
-                          });
-                        },
-                        onEnterFullscreen: (controller) {
-                          _updateVideoState(
-                            isPlaying: _videoPlaying,
-                            isFullscreen: true,
-                            videoWidth: _videoWidth,
-                            videoHeight: _videoHeight,
-                            videoRectLeft: _videoRectLeft,
-                            videoRectTop: _videoRectTop,
-                            videoRectRight: _videoRectRight,
-                            videoRectBottom: _videoRectBottom,
-                            title: _mediaTitle,
-                            author: _mediaAuthor,
-                            durationMs: _durationMs,
-                            positionMs: _positionMs,
-                            hasNext: _hasNext,
-                          );
-                        },
-                        onExitFullscreen: (controller) {
-                          _updateVideoState(
-                            isPlaying: _videoPlaying,
-                            isFullscreen: false,
-                            videoWidth: _videoWidth,
-                            videoHeight: _videoHeight,
-                            videoRectLeft: _videoRectLeft,
-                            videoRectTop: _videoRectTop,
-                            videoRectRight: _videoRectRight,
-                            videoRectBottom: _videoRectBottom,
-                            title: _mediaTitle,
-                            author: _mediaAuthor,
-                            durationMs: _durationMs,
-                            positionMs: _positionMs,
-                            hasNext: _hasNext,
-                          );
-                        },
-                        onReceivedError: (controller, request, error) {
-                          if (request.isForMainFrame != true) {
-                            return;
-                          }
-                          if (!mounted) {
-                            return;
-                          }
-                          final failedUri = _toUri(request.url);
-                          _logNavigationEvent(
-                            'receivedError(${error.type.toValue()})',
-                            failedUri,
-                          );
-                          _markMainFrameNavigation(
-                            failedUri,
-                            resetRetryBudget: false,
-                          );
-                          if (_isDnsResolveError(error) &&
-                              _dnsAutoRetryAttempt < _maxDnsAutoRetryAttempts) {
-                            unawaited(_autoRetryAfterDnsError(failedUri));
-                            return;
-                          }
-                          setState(() {
-                            _isLoading = false;
-                            _errorMessage = error.description;
-                          });
-                        },
-                        onReceivedHttpError: (controller, request, response) {
-                          if (request.isForMainFrame != true) {
-                            return;
-                          }
-                          if (!mounted) {
-                            return;
-                          }
-                          _logNavigationEvent(
-                            'receivedHttpError(${response.statusCode})',
-                            _toUri(request.url),
-                          );
-                          setState(() {
-                            _isLoading = false;
-                            _errorMessage =
-                                'HTTP ${response.statusCode}: ${response.reasonPhrase ?? 'Unknown'}';
-                          });
-                        },
-                        onPermissionRequest:
-                            (controller, permissionRequest) async {
-                              return PermissionResponse(
-                                resources: permissionRequest.resources,
-                                action: PermissionResponseAction.GRANT,
+                              setState(() {
+                                _isLoading = true;
+                                _errorMessage = null;
+                              });
+                              unawaited(_syncAdblockScript());
+                            },
+                            onLoadStop: (controller, uri) async {
+                              if (!mounted) {
+                                return;
+                              }
+                              _logNavigationEvent('loadStop', _toUri(uri));
+                              _rememberMainFrameUri(_toUri(uri));
+                              setState(() {
+                                _isLoading = false;
+                                _progress = 100;
+                              });
+                              await _restoreForPiPExitIfNeeded(
+                                reason: 'load_stop_exit_fallback',
+                              );
+                              await _injectVideoStateScript();
+                              await _syncAdblockScript();
+                              await _syncBackgroundPlaybackGuard(
+                                reason: 'load_stop',
+                              );
+                              await _checkAndRepairStalePiPLayout(
+                                reason: 'load_stop',
+                              );
+                              await _updateCanGoBack();
+                            },
+                            onUpdateVisitedHistory:
+                                (controller, uri, isReload) {
+                                  _rememberMainFrameUri(_toUri(uri));
+                                  unawaited(_injectVideoStateScript());
+                                  unawaited(_syncAdblockScript());
+                                  unawaited(_updateCanGoBack());
+                                },
+                            onProgressChanged: (controller, progress) {
+                              if (!mounted) {
+                                return;
+                              }
+                              setState(() {
+                                _progress = progress;
+                                _isLoading = progress < 100;
+                              });
+                            },
+                            onEnterFullscreen: (controller) {
+                              _updateVideoState(
+                                isPlaying: _videoPlaying,
+                                isFullscreen: true,
+                                videoWidth: _videoWidth,
+                                videoHeight: _videoHeight,
+                                videoRectLeft: _videoRectLeft,
+                                videoRectTop: _videoRectTop,
+                                videoRectRight: _videoRectRight,
+                                videoRectBottom: _videoRectBottom,
+                                title: _mediaTitle,
+                                author: _mediaAuthor,
+                                durationMs: _durationMs,
+                                positionMs: _positionMs,
+                                hasNext: _hasNext,
                               );
                             },
+                            onExitFullscreen: (controller) {
+                              _updateVideoState(
+                                isPlaying: _videoPlaying,
+                                isFullscreen: false,
+                                videoWidth: _videoWidth,
+                                videoHeight: _videoHeight,
+                                videoRectLeft: _videoRectLeft,
+                                videoRectTop: _videoRectTop,
+                                videoRectRight: _videoRectRight,
+                                videoRectBottom: _videoRectBottom,
+                                title: _mediaTitle,
+                                author: _mediaAuthor,
+                                durationMs: _durationMs,
+                                positionMs: _positionMs,
+                                hasNext: _hasNext,
+                              );
+                            },
+                            onReceivedError: (controller, request, error) {
+                              if (request.isForMainFrame != true) {
+                                return;
+                              }
+                              if (!mounted) {
+                                return;
+                              }
+                              final failedUri = _toUri(request.url);
+                              _logNavigationEvent(
+                                'receivedError(${error.type.toValue()})',
+                                failedUri,
+                              );
+                              _markMainFrameNavigation(
+                                failedUri,
+                                resetRetryBudget: false,
+                              );
+                              if (_isDnsResolveError(error) &&
+                                  _dnsAutoRetryAttempt <
+                                      _maxDnsAutoRetryAttempts) {
+                                unawaited(_autoRetryAfterDnsError(failedUri));
+                                return;
+                              }
+                              setState(() {
+                                _isLoading = false;
+                                _errorMessage = error.description;
+                              });
+                            },
+                            onReceivedHttpError: (controller, request, response) {
+                              if (request.isForMainFrame != true) {
+                                return;
+                              }
+                              if (!mounted) {
+                                return;
+                              }
+                              _logNavigationEvent(
+                                'receivedHttpError(${response.statusCode})',
+                                _toUri(request.url),
+                              );
+                              setState(() {
+                                _isLoading = false;
+                                _errorMessage =
+                                    'HTTP ${response.statusCode}: ${response.reasonPhrase ?? 'Unknown'}';
+                              });
+                            },
+                            onPermissionRequest:
+                                (controller, permissionRequest) async {
+                                  return PermissionResponse(
+                                    resources: permissionRequest.resources,
+                                    action: PermissionResponseAction.GRANT,
+                                  );
+                                },
+                          ),
+                          if (_autoNextTransitioning && !_isInPiPMode)
+                            Positioned.fill(
+                              child: ColoredBox(
+                                color: Colors.black,
+                                child: Center(
+                                  child: SizedBox.square(
+                                    dimension: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
               ),
             ],
