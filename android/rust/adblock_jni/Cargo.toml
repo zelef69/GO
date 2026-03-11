@@ -1,0 +1,12 @@
+[package]
+name = "go_play_adblock_jni"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "go_play_adblock_jni"
+crate-type = ["cdylib"]
+
+[dependencies]
+adblock = { version = "0.12.1", default-features = false, features = ["embedded-domain-resolver", "full-regex-handling"] }
+jni = "0.21.1"
