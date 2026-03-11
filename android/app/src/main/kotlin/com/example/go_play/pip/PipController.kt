@@ -33,18 +33,13 @@ class PipController(
         private const val METHOD_ENTER_PIP = "enterPiPIfEligible"
         private const val METHOD_IS_PIP_SUPPORTED = "isPiPSupported"
         private const val METHOD_IS_IN_PIP_MODE = "isInPiPMode"
+        private const val METHOD_SET_BACKGROUND_PLAYBACK_ENABLED = "setBackgroundPlaybackEnabled"
+        private const val METHOD_SET_APP_IN_FOREGROUND = "setAppInForeground"
 
         private const val DEFAULT_PIP_WIDTH = 16
         private const val DEFAULT_PIP_HEIGHT = 9
-        private const val MIN_PIP_RATIO = 1.0 / 2.39
-        private const val MAX_PIP_RATIO = 2.39
         private const val MEDIA_SESSION_MIN_UPDATE_MS = 500L
         private const val PIP_PARAMS_MIN_UPDATE_MS = 250L
-
-        private const val ACTION_PIP_PLAY_PAUSE = "com.example.go_play.ACTION_PIP_PLAY_PAUSE"
-        private const val ACTION_PIP_PLAY = "com.example.go_play.ACTION_PIP_PLAY"
-        private const val ACTION_PIP_PAUSE = "com.example.go_play.ACTION_PIP_PAUSE"
-        private const val ACTION_PIP_NEXT = "com.example.go_play.ACTION_PIP_NEXT"
 
         private const val FLUTTER_METHOD_PIP_ACTION = "onPiPAction"
         private const val FLUTTER_METHOD_PIP_MODE_CHANGED = "onPiPModeChanged"
@@ -54,6 +49,8 @@ class PipController(
     private val methodChannel = MethodChannel(messenger, CHANNEL_NAME)
 
     private var pipEnabled: Boolean = true
+    private var backgroundPlaybackEnabled: Boolean = true
+    private var appInForeground: Boolean = true
     private var isInPiPMode: Boolean = false
 
     private var videoPlaying: Boolean = false
@@ -88,10 +85,14 @@ class PipController(
     private val pipActionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: android.content.Context?, intent: Intent?) {
             when (intent?.action) {
-                ACTION_PIP_PLAY_PAUSE -> onSystemAction("togglePlayPause", source = "pip_action")
-                ACTION_PIP_PLAY -> onSystemAction("play", source = "pip_action")
-                ACTION_PIP_PAUSE -> onSystemAction("pause", source = "pip_action")
-                ACTION_PIP_NEXT -> onSystemAction("next", source = "pip_action")
+                PlaybackForegroundService.ACTION_PLAY_PAUSE ->
+                    onSystemAction("togglePlayPause", source = "pip_action")
+                PlaybackForegroundService.ACTION_PLAY ->
+                    onSystemAction("play", source = "pip_action")
+                PlaybackForegroundService.ACTION_PAUSE ->
+                    onSystemAction("pause", source = "pip_action")
+                PlaybackForegroundService.ACTION_NEXT ->
+                    onSystemAction("next", source = "pip_action")
             }
         }
     }
@@ -102,11 +103,23 @@ class PipController(
 
     fun onStart() {
         registerPiPActionReceiverIfNeeded()
+        onAppForegroundChanged(true)
+    }
+
+    fun onAppForegroundChanged(inForeground: Boolean) {
+        appInForeground = inForeground
+        Log.d(
+            TAG,
+            "onAppForegroundChanged inForeground=$inForeground playing=$videoPlaying inPiP=$isInPiPMode bgEnabled=$backgroundPlaybackEnabled",
+        )
+        refreshMediaSessionState(force = true)
+        syncForegroundPlaybackService(force = true, reason = "appForegroundChanged:$inForeground")
     }
 
     fun onDestroy() {
         unregisterPiPActionReceiverIfNeeded()
         mediaSessionController.release()
+        stopForegroundPlaybackService()
         methodChannel.setMethodCallHandler(null)
     }
 
@@ -116,6 +129,7 @@ class PipController(
             lockedSourceRectHint = null
         }
         refreshMediaSessionState(force = true)
+        syncForegroundPlaybackService(force = true, reason = "pipModeChanged:$inPiP")
         notifyFlutterMethod(
             FLUTTER_METHOD_PIP_MODE_CHANGED,
             mapOf("isInPiPMode" to inPiP),
@@ -127,6 +141,22 @@ class PipController(
             METHOD_SET_PIP_ENABLED -> {
                 pipEnabled = call.argument<Boolean>("enabled") ?: true
                 updatePictureInPictureParamsIfSupported(force = false)
+                syncForegroundPlaybackService(force = true, reason = "setPiPEnabled")
+                result.success(null)
+            }
+            METHOD_SET_BACKGROUND_PLAYBACK_ENABLED -> {
+                backgroundPlaybackEnabled = call.argument<Boolean>("enabled") ?: true
+                Log.d(TAG, "setBackgroundPlaybackEnabled enabled=$backgroundPlaybackEnabled")
+                refreshMediaSessionState(force = true)
+                syncForegroundPlaybackService(
+                    force = true,
+                    reason = "setBackgroundPlaybackEnabled:$backgroundPlaybackEnabled",
+                )
+                result.success(null)
+            }
+            METHOD_SET_APP_IN_FOREGROUND -> {
+                val inForeground = call.argument<Boolean>("inForeground") ?: true
+                onAppForegroundChanged(inForeground)
                 result.success(null)
             }
             METHOD_SET_VIDEO_STATE -> {
@@ -189,6 +219,7 @@ class PipController(
         }
 
         refreshMediaSessionState(force = false)
+        syncForegroundPlaybackService(force = false, reason = "setVideoState")
     }
 
     private fun onSystemAction(action: String, source: String) {
@@ -224,6 +255,7 @@ class PipController(
             updatePictureInPictureParamsIfSupported(force = true)
         }
         refreshMediaSessionState(force = true)
+        syncForegroundPlaybackService(force = true, reason = "systemAction:$action")
 
         val shouldNotifyFlutter =
             when (source) {
@@ -252,7 +284,7 @@ class PipController(
                 durationMs = durationMs,
                 positionMs = positionMs,
                 hasNext = hasNext,
-                active = videoPlaying || isInPiPMode,
+                active = videoPlaying || isInPiPMode || (backgroundPlaybackEnabled && !appInForeground),
             )
 
         val previous = lastMediaSessionState
@@ -275,6 +307,56 @@ class PipController(
         mediaSessionController.update(nextState)
         lastMediaSessionState = nextState
         lastMediaSessionUpdateElapsed = now
+    }
+
+    private fun shouldRunForegroundPlaybackService(state: MediaSessionState): Boolean {
+        if (!backgroundPlaybackEnabled) {
+            return false
+        }
+        if (!state.active) {
+            return false
+        }
+        if (state.isPlaying) {
+            // Keep service warm while media is actively playing to avoid
+            // lock-screen/background transition races on some OEM WebView builds.
+            return true
+        }
+        return !appInForeground || isInPiPMode
+    }
+
+    private fun syncForegroundPlaybackService(force: Boolean, reason: String) {
+        val state =
+            lastMediaSessionState
+                ?: MediaSessionState(
+                    isPlaying = videoPlaying,
+                    title = title,
+                    author = author,
+                    durationMs = durationMs,
+                    positionMs = positionMs,
+                    hasNext = hasNext,
+                    active = videoPlaying || isInPiPMode || (backgroundPlaybackEnabled && !appInForeground),
+                )
+        val shouldRun = shouldRunForegroundPlaybackService(state)
+        Log.d(
+            TAG,
+            "syncForegroundPlaybackService reason=$reason force=$force shouldRun=$shouldRun inForeground=$appInForeground inPiP=$isInPiPMode playing=${state.isPlaying} active=${state.active} bgEnabled=$backgroundPlaybackEnabled",
+        )
+        if (!shouldRun) {
+            stopForegroundPlaybackService()
+            return
+        }
+        val intent = PlaybackForegroundService.createUpdateIntent(activity, state)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            activity.startForegroundService(intent)
+        } else {
+            activity.startService(intent)
+        }
+    }
+
+    private fun stopForegroundPlaybackService() {
+        runCatching {
+            activity.stopService(Intent(activity, PlaybackForegroundService::class.java))
+        }
     }
 
     private fun enterPiPIfEligible(): Boolean {
@@ -304,10 +386,10 @@ class PipController(
             return
         }
         val filter = IntentFilter().apply {
-            addAction(ACTION_PIP_PLAY_PAUSE)
-            addAction(ACTION_PIP_PLAY)
-            addAction(ACTION_PIP_PAUSE)
-            addAction(ACTION_PIP_NEXT)
+            addAction(PlaybackForegroundService.ACTION_PLAY_PAUSE)
+            addAction(PlaybackForegroundService.ACTION_PLAY)
+            addAction(PlaybackForegroundService.ACTION_PAUSE)
+            addAction(PlaybackForegroundService.ACTION_NEXT)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             activity.registerReceiver(pipActionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -434,13 +516,8 @@ class PipController(
     }
 
     private fun pipAspectRatio(): Rational {
-        val width = if (videoWidth > 0) videoWidth else DEFAULT_PIP_WIDTH
-        val height = if (videoHeight > 0) videoHeight else DEFAULT_PIP_HEIGHT
-        val ratio = width.toDouble() / height.toDouble()
-        val clampedRatio = ratio.coerceIn(MIN_PIP_RATIO, MAX_PIP_RATIO)
-        val denominator = 1000
-        val numerator = (clampedRatio * denominator).toInt().coerceAtLeast(1)
-        return Rational(numerator, denominator)
+        // Keep PiP aspect ratio stable across videos to avoid OEM-dependent size jumps.
+        return Rational(DEFAULT_PIP_WIDTH, DEFAULT_PIP_HEIGHT)
     }
 
     private fun createPiPAction(
@@ -478,7 +555,7 @@ class PipController(
                         android.R.drawable.ic_media_play
                     },
                 title = if (videoPlaying) "Pause" else "Play",
-                action = ACTION_PIP_PLAY_PAUSE,
+                action = PlaybackForegroundService.ACTION_PLAY_PAUSE,
                 requestCode = 2000,
             )
 
@@ -486,7 +563,7 @@ class PipController(
             createPiPAction(
                 iconRes = android.R.drawable.ic_media_next,
                 title = "Next",
-                action = ACTION_PIP_NEXT,
+                action = PlaybackForegroundService.ACTION_NEXT,
                 requestCode = 2002,
                 enabled = true,
             )

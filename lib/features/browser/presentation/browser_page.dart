@@ -17,6 +17,7 @@ import '../../pip/pip_controller.dart';
 import '../../pip/pip_video_state.dart';
 import '../../settings/settings_controller.dart';
 import 'adblock_script.dart';
+import 'background_playback_script.dart';
 import 'pip_dom_script.dart';
 import 'video_state_script.dart';
 import 'widgets/browser_controls.dart';
@@ -63,12 +64,16 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   bool _pipRecoveryInProgress = false;
   int _pipRecoveryBudget = 0;
   bool _pauseRequestedByUserInPiP = false;
+  bool _awaitingPiPExitRestore = false;
+  bool _pipExitRestoreHandled = false;
   DateTime? _pipTransitionDeadline;
   int _pipPlayCommandCount = 0;
   DateTime? _lastPublishVideoStateAt;
   DateTime? _lastPiPLayoutHealthCheckAt;
   bool _isPublishingVideoState = false;
   bool _pipLayoutRepairInProgress = false;
+  bool _isAppInForeground = true;
+  bool _backgroundPlaybackGuardEnabled = false;
   static const Duration _pipTransitionWindow = Duration(milliseconds: 1500);
   static const Duration _videoStatePublishThrottle = Duration(
     milliseconds: 350,
@@ -80,12 +85,26 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   static const Duration _slowPolicyCheckThreshold = Duration(milliseconds: 25);
   static const int _maxPolicyPerfLogs = 120;
   static const int _maxPlaybackDebugLogs = 500;
+  static const Duration _youtubeClickFallbackDelay = Duration(
+    milliseconds: 260,
+  );
+  static const Duration _youtubeClickFallbackSettle = Duration(
+    milliseconds: 90,
+  );
+  static const List<Duration> _pipExitCompactCheckDelays = <Duration>[
+    Duration(milliseconds: 120),
+    Duration(milliseconds: 350),
+    Duration(milliseconds: 700),
+  ];
+  static const double _pipCompactWidthRatioThreshold = 0.70;
   PiPVideoState _pipState = PiPVideoState.empty();
   String? _errorMessage;
   String? _activeMainFrameRequestKey;
   int _dnsAutoRetryAttempt = 0;
   int _policyPerfLogCount = 0;
   int _playbackDebugLogCount = 0;
+  int _youtubePlayPauseClickToken = 0;
+  int _pipExitNormalizationToken = 0;
   String? _lastPlaybackTickSignature;
   Uri _currentMainFrameUri = AppConfig.homeUri;
 
@@ -105,8 +124,23 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final inForeground = state == AppLifecycleState.resumed;
+    _isAppInForeground = inForeground;
+    _logPiPEvent(
+      'lifecycle state=$state inForeground=$inForeground inPiP=$_isInPiPMode playing=$_videoPlaying bgEnabled=${_settingsController.backgroundPlaybackEnabled} guard=$_backgroundPlaybackGuardEnabled',
+    );
+    unawaited(_pipController.setAppInForeground(inForeground));
     if (state == AppLifecycleState.resumed) {
+      unawaited(
+        _setBackgroundPlaybackGuardEnabled(false, reason: 'lifecycle_resumed'),
+      );
       unawaited(_handleAppResumedLifecycle());
+      return;
+    }
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(_syncBackgroundPlaybackGuard(reason: 'lifecycle_$state'));
     }
   }
 
@@ -115,6 +149,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     _resetPiPRecoveryState();
     WidgetsBinding.instance.removeObserver(this);
     _settingsController.removeListener(_onSettingsChanged);
+    unawaited(_pipController.setAppInForeground(false));
     _pipController.setMethodCallHandler(null);
     unawaited(_adblockService.dispose());
     super.dispose();
@@ -125,7 +160,11 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       _adblockService.setEnabled(_settingsController.adblockEnabled);
       await Future.wait<void>(<Future<void>>[
         _adblockService.initialize(),
-        _pipController.initialize(pipEnabled: _settingsController.pipEnabled),
+        _pipController.initialize(
+          pipEnabled: _settingsController.pipEnabled,
+          backgroundPlaybackEnabled:
+              _settingsController.backgroundPlaybackEnabled,
+        ),
       ]);
     } catch (_) {
       _errorMessage = 'Initialization failed. Please restart the app.';
@@ -141,7 +180,13 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   void _onSettingsChanged() {
     _adblockService.setEnabled(_settingsController.adblockEnabled);
     unawaited(_pipController.setPiPEnabled(_settingsController.pipEnabled));
+    unawaited(
+      _pipController.setBackgroundPlaybackEnabled(
+        _settingsController.backgroundPlaybackEnabled,
+      ),
+    );
     unawaited(_syncAdblockScript());
+    unawaited(_syncBackgroundPlaybackGuard(reason: 'settings_changed'));
   }
 
   Uri? _toUri(WebUri? webUri) {
@@ -508,6 +553,20 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     return 0;
   }
 
+  double _toPositiveDouble(dynamic value) {
+    if (value is num) {
+      final asDouble = value.toDouble();
+      return asDouble > 0 ? asDouble : 0;
+    }
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      if (parsed != null && parsed > 0) {
+        return parsed;
+      }
+    }
+    return 0;
+  }
+
   Map<String, dynamic> _asStringDynamicMap(dynamic value) {
     dynamic current = value;
     for (var depth = 0; depth < 2; depth += 1) {
@@ -589,6 +648,82 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     );
   }
 
+  void _handlePlaybackDebugPayload(Map<String, dynamic> payload) {
+    _logPlaybackDebugPayload(payload);
+
+    final eventName = (payload['event'] ?? '').toString().trim();
+    final pageVisibility = (payload['pageVisibility'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (eventName == 'doc:visibilitychange') {
+      _logPiPEvent(
+        'jsVisibility event=$eventName page=$pageVisibility inPiP=$_isInPiPMode inForeground=$_isAppInForeground playing=$_videoPlaying',
+      );
+    }
+    if (eventName != 'ui:ytp-play-button:click') {
+      return;
+    }
+
+    _logPiPEvent(
+      'ytPlayPauseClick page=$pageVisibility inPiP=$_isInPiPMode localPlaying=$_videoPlaying',
+    );
+    if (_isInPiPMode || pageVisibility != 'visible') {
+      return;
+    }
+
+    final wasPlaying = _videoPlaying;
+    final expectedPlaying = !wasPlaying;
+    final token = ++_youtubePlayPauseClickToken;
+    unawaited(
+      _runYouTubePlayPauseFallback(
+        token: token,
+        wasPlaying: wasPlaying,
+        expectedPlaying: expectedPlaying,
+      ),
+    );
+  }
+
+  Future<void> _runYouTubePlayPauseFallback({
+    required int token,
+    required bool wasPlaying,
+    required bool expectedPlaying,
+  }) async {
+    await Future<void>.delayed(_youtubeClickFallbackDelay);
+    if (!mounted || _isInPiPMode || token != _youtubePlayPauseClickToken) {
+      return;
+    }
+
+    await _publishVideoStateNow(force: true);
+    await Future<void>.delayed(_youtubeClickFallbackSettle);
+    if (!mounted || _isInPiPMode || token != _youtubePlayPauseClickToken) {
+      return;
+    }
+
+    if (_videoPlaying == expectedPlaying || _videoPlaying != wasPlaying) {
+      _logPiPEvent(
+        'ytPlayPauseClick accepted token=$token before=$wasPlaying now=$_videoPlaying expected=$expectedPlaying',
+      );
+      return;
+    }
+
+    final action = expectedPlaying ? 'play' : 'pause';
+    if (expectedPlaying) {
+      await _forcePlayVideoInWebView();
+    } else {
+      await _pauseVideoInWebView();
+    }
+
+    await Future<void>.delayed(_youtubeClickFallbackSettle);
+    if (!mounted || token != _youtubePlayPauseClickToken) {
+      return;
+    }
+    await _publishVideoStateNow(force: true);
+    _logPiPEvent(
+      'ytPlayPauseFallback forced=$action token=$token final=$_videoPlaying',
+    );
+  }
+
   void _updateVideoState({
     required bool isPlaying,
     required bool isFullscreen,
@@ -660,6 +795,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     } else if (isPlaying) {
       _pauseRequestedByUserInPiP = false;
     }
+    unawaited(_syncBackgroundPlaybackGuard(reason: 'video_state_changed'));
   }
 
   Future<void> _injectVideoStateScript() async {
@@ -671,6 +807,41 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       await controller.evaluateJavascript(source: goPlayVideoStateScript);
       await controller.evaluateJavascript(source: goPlayPlaybackDebugScript);
     } catch (_) {}
+  }
+
+  Future<void> _setBackgroundPlaybackGuardEnabled(
+    bool enabled, {
+    required String reason,
+  }) async {
+    final controller = _webViewController;
+    if (controller == null) {
+      _backgroundPlaybackGuardEnabled = false;
+      return;
+    }
+    if (_backgroundPlaybackGuardEnabled == enabled) {
+      return;
+    }
+
+    final script = enabled
+        ? goPlayEnableBackgroundPlaybackScript
+        : goPlayDisableBackgroundPlaybackScript;
+    try {
+      final rawResult = await controller.evaluateJavascript(source: script);
+      final result = _asStringDynamicMap(rawResult);
+      _backgroundPlaybackGuardEnabled = enabled;
+      _logPiPEvent(
+        'backgroundGuard enabled=$enabled reason=$reason result=$result',
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _syncBackgroundPlaybackGuard({required String reason}) async {
+    final shouldEnable =
+        _settingsController.backgroundPlaybackEnabled &&
+        !_isAppInForeground &&
+        !_isInPiPMode &&
+        (_videoPlaying || _pipState.isPlaying);
+    await _setBackgroundPlaybackGuardEnabled(shouldEnable, reason: reason);
   }
 
   Future<void> _publishVideoStateNow({bool force = false}) async {
@@ -690,7 +861,9 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     }
     _isPublishingVideoState = true;
     try {
-      await controller.evaluateJavascript(source: goPlayPublishVideoStateScript);
+      await controller.evaluateJavascript(
+        source: goPlayPublishVideoStateScript,
+      );
     } finally {
       _lastPublishVideoStateAt = DateTime.now();
       _isPublishingVideoState = false;
@@ -733,19 +906,205 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _restoreAfterPiPIfNeeded({bool aggressive = false}) async {
+  Future<bool> _restoreForPiPExitIfNeeded({required String reason}) async {
     if (_isInPiPMode) {
-      return;
+      return false;
     }
-    await _restoreWebViewAfterPiP(
-      aggressive: aggressive,
-      reason: 'restore_if_needed',
-    );
+    if (!_awaitingPiPExitRestore || _pipExitRestoreHandled) {
+      return false;
+    }
+    await _restoreWebViewAfterPiP(aggressive: false, reason: reason);
+    _pipExitRestoreHandled = true;
+    _awaitingPiPExitRestore = false;
     if (mounted && _isPreparingPiPLayout) {
       setState(() {
         _isPreparingPiPLayout = false;
       });
     }
+    await _runPiPExitCompactGuard(reason: reason);
+    return true;
+  }
+
+  Future<Map<String, dynamic>> _readVideoLayoutStateFromWebView() async {
+    final controller = _webViewController;
+    if (controller == null) {
+      return const <String, dynamic>{};
+    }
+    try {
+      final rawState = await controller.evaluateJavascript(
+        source: goPlayReadVideoLayoutStateScript,
+      );
+      return _asStringDynamicMap(rawState);
+    } catch (_) {
+      return const <String, dynamic>{};
+    }
+  }
+
+  bool _isCompactVideoLayout(Map<String, dynamic> state) {
+    if (state.isEmpty) {
+      return false;
+    }
+    if (state['compact'] == true) {
+      return true;
+    }
+    final viewportWidth = _toPositiveDouble(state['viewportWidth']);
+    final videoCssWidth = _toPositiveDouble(state['videoCssWidth']);
+    if (viewportWidth <= 0 || videoCssWidth <= 0) {
+      return false;
+    }
+    final ratio = videoCssWidth / viewportWidth;
+    return ratio < _pipCompactWidthRatioThreshold;
+  }
+
+  Future<Map<String, dynamic>> _runPostRestoreNormalizationSequence({
+    required String reason,
+  }) async {
+    final controller = _webViewController;
+    if (controller == null) {
+      return const <String, dynamic>{};
+    }
+    try {
+      final rawResult = await controller.evaluateJavascript(
+        source: goPlayNormalizeAfterPiPExitScript,
+      );
+      final result = _asStringDynamicMap(rawResult);
+      final beforeCompact = result['beforeCompact'] == true;
+      final afterCompact = result['afterCompact'] == true;
+      final hasMiniAfter = result['hasMiniAfter'] == true;
+      final viewportWidth = _toPositiveDouble(result['viewportWidth']);
+      final afterCssWidth = _toPositiveDouble(result['afterCssWidth']);
+      final ratioLabel = viewportWidth > 0
+          ? (afterCssWidth / viewportWidth).toStringAsFixed(3)
+          : 'n/a';
+      final expandClicked = result['expandClicked'] == true;
+      final expandSelector = (result['expandSelector'] ?? '').toString();
+      _logPiPEvent(
+        'normalize reason=$reason beforeCompact=$beforeCompact afterCompact=$afterCompact miniAfter=$hasMiniAfter ratio=$ratioLabel css=${afterCssWidth.round()} viewport=${viewportWidth.round()} expandClicked=$expandClicked expandSelector=$expandSelector',
+      );
+      return result;
+    } catch (_) {
+      return const <String, dynamic>{};
+    }
+  }
+
+  Future<bool> _softReloadWatchPageAfterPiPExit({
+    required String reason,
+  }) async {
+    final controller = _webViewController;
+    if (controller == null) {
+      return false;
+    }
+    final currentUri = _currentMainFrameUri;
+    final host = currentUri.host.toLowerCase();
+    final isYouTubeHost =
+        host == 'youtube.com' ||
+        host == 'm.youtube.com' ||
+        host.endsWith('.youtube.com');
+    if (!isYouTubeHost) {
+      return false;
+    }
+    if (!currentUri.path.toLowerCase().contains('/watch')) {
+      return false;
+    }
+    final videoId = (currentUri.queryParameters['v'] ?? '').trim();
+    if (videoId.isEmpty) {
+      return false;
+    }
+
+    final queryParameters = Map<String, String>.from(
+      currentUri.queryParameters,
+    );
+    final resumePositionMs = _positionMs > 0
+        ? _positionMs
+        : _pipState.positionMs;
+    if (resumePositionMs > 0) {
+      final resumeSeconds = (resumePositionMs / 1000).floor();
+      if (resumeSeconds > 0) {
+        queryParameters['t'] = '${resumeSeconds}s';
+      }
+    }
+    final reloadUri = currentUri.replace(queryParameters: queryParameters);
+    final resumeLabel = queryParameters['t'] ?? '';
+    _logPiPEvent(
+      'exitCompactFallback reason=$reason uri=${reloadUri.host}${reloadUri.path}?v=$videoId&t=$resumeLabel',
+    );
+    try {
+      await controller.loadUrl(
+        urlRequest: URLRequest(url: WebUri(reloadUri.toString())),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _runPiPExitCompactGuard({required String reason}) async {
+    if (_isInPiPMode) {
+      return;
+    }
+    final token = ++_pipExitNormalizationToken;
+    var stillCompactAfterNormalize = false;
+    for (var index = 0; index < _pipExitCompactCheckDelays.length; index += 1) {
+      final delay = _pipExitCompactCheckDelays[index];
+      await Future<void>.delayed(delay);
+      if (!mounted || _isInPiPMode || token != _pipExitNormalizationToken) {
+        return;
+      }
+
+      final layoutState = await _readVideoLayoutStateFromWebView();
+      if (!mounted || _isInPiPMode || token != _pipExitNormalizationToken) {
+        return;
+      }
+      final hasMiniPlayer = layoutState['hasMiniPlayer'] == true;
+      final pageVisibility = (layoutState['pageVisibility'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      if (pageVisibility != 'visible') {
+        _logPiPEvent(
+          'compactCheck reason=$reason step=${index + 1}/${_pipExitCompactCheckDelays.length} skipped page=$pageVisibility',
+        );
+        stillCompactAfterNormalize = false;
+        continue;
+      }
+      final compactBeforeNormalize =
+          _isCompactVideoLayout(layoutState) || hasMiniPlayer;
+      final viewportWidth = _toPositiveDouble(layoutState['viewportWidth']);
+      final videoCssWidth = _toPositiveDouble(layoutState['videoCssWidth']);
+      final ratioLabel = viewportWidth > 0
+          ? (videoCssWidth / viewportWidth).toStringAsFixed(3)
+          : 'n/a';
+      _logPiPEvent(
+        'compactCheck reason=$reason step=${index + 1}/${_pipExitCompactCheckDelays.length} compact=$compactBeforeNormalize mini=$hasMiniPlayer ratio=$ratioLabel css=${videoCssWidth.round()} viewport=${viewportWidth.round()}',
+      );
+
+      if (!compactBeforeNormalize) {
+        stillCompactAfterNormalize = false;
+        break;
+      }
+
+      final normalizationResult = await _runPostRestoreNormalizationSequence(
+        reason: '$reason:step${index + 1}',
+      );
+      if (!mounted || _isInPiPMode || token != _pipExitNormalizationToken) {
+        return;
+      }
+      final compactAfterNormalize = normalizationResult['afterCompact'] == true;
+      final hasMiniAfter = normalizationResult['hasMiniAfter'] == true;
+      stillCompactAfterNormalize = compactAfterNormalize || hasMiniAfter;
+      if (!stillCompactAfterNormalize) {
+        break;
+      }
+    }
+
+    if (!mounted || _isInPiPMode || token != _pipExitNormalizationToken) {
+      return;
+    }
+    if (!stillCompactAfterNormalize) {
+      return;
+    }
+    final reloaded = await _softReloadWatchPageAfterPiPExit(reason: reason);
+    _logPiPEvent('compactFallbackReload reason=$reason reloaded=$reloaded');
   }
 
   bool _isPiPLayoutStale(Map<String, dynamic> state) {
@@ -835,13 +1194,18 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       }
       _pauseRequestedByUserInPiP = false;
       _resetPiPRecoveryState();
-      await _restoreAfterPiPIfNeeded(aggressive: true);
-      await _checkAndRepairStalePiPLayout(reason: 'app_resumed', force: true);
+      final restored = await _restoreForPiPExitIfNeeded(
+        reason: 'app_resumed_exit_fallback',
+      );
+      if (!restored) {
+        await _checkAndRepairStalePiPLayout(reason: 'app_resumed', force: true);
+        await _runPiPExitCompactGuard(reason: 'app_resumed_no_restore');
+      }
     } catch (_) {
       if (!_isInPiPMode) {
         _pauseRequestedByUserInPiP = false;
         _resetPiPRecoveryState();
-        await _restoreAfterPiPIfNeeded(aggressive: true);
+        await _restoreForPiPExitIfNeeded(reason: 'app_resumed_error_fallback');
       }
     }
   }
@@ -1132,6 +1496,8 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
             ? Map<String, dynamic>.from(rawArgs)
             : const <String, dynamic>{};
         final isInPiPMode = args['isInPiPMode'] == true;
+        _youtubePlayPauseClickToken += 1;
+        _pipExitNormalizationToken += 1;
         _logPiPEvent('mode changed isInPiPMode=$isInPiPMode');
         _pipController.setPiPMode(isInPiPMode);
         if (mounted) {
@@ -1141,6 +1507,8 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
           });
         }
         if (isInPiPMode) {
+          _awaitingPiPExitRestore = true;
+          _pipExitRestoreHandled = false;
           _pauseRequestedByUserInPiP = false;
           _armPiPRecoveryBudget();
           await _ensurePlaybackAfterPiPEntry();
@@ -1148,15 +1516,19 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
         } else {
           _pauseRequestedByUserInPiP = false;
           _resetPiPRecoveryState();
-          await _restoreWebViewAfterPiP(
-            aggressive: true,
+          final restored = await _restoreForPiPExitIfNeeded(
             reason: 'mode_changed_exit',
           );
-          await _checkAndRepairStalePiPLayout(
-            reason: 'native_mode_changed_exit',
-            force: true,
-          );
+          if (!restored) {
+            await _checkAndRepairStalePiPLayout(
+              reason: 'native_mode_changed_exit',
+            );
+            await _runPiPExitCompactGuard(
+              reason: 'native_mode_changed_exit_no_restore',
+            );
+          }
         }
+        await _syncBackgroundPlaybackGuard(reason: 'pip_mode_changed');
         await _publishVideoStateNow(force: true);
         return null;
       default:
@@ -1333,6 +1705,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                           cacheEnabled: true,
                           mediaPlaybackRequiresUserGesture: false,
                           allowsInlineMediaPlayback: true,
+                          allowBackgroundAudioPlaying: true,
                           javaScriptCanOpenWindowsAutomatically: false,
                           supportZoom: false,
                           useShouldOverrideUrlLoading: true,
@@ -1431,7 +1804,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                               final payload = Map<String, dynamic>.from(
                                 arguments.first as Map,
                               );
-                              _logPlaybackDebugPayload(payload);
+                              _handlePlaybackDebugPayload(payload);
                               return null;
                             },
                           );
@@ -1517,7 +1890,6 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                             _isLoading = true;
                             _errorMessage = null;
                           });
-                          unawaited(_restoreAfterPiPIfNeeded());
                           unawaited(_syncAdblockScript());
                         },
                         onLoadStop: (controller, uri) async {
@@ -1530,9 +1902,14 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                             _isLoading = false;
                             _progress = 100;
                           });
-                          await _restoreAfterPiPIfNeeded();
+                          await _restoreForPiPExitIfNeeded(
+                            reason: 'load_stop_exit_fallback',
+                          );
                           await _injectVideoStateScript();
                           await _syncAdblockScript();
+                          await _syncBackgroundPlaybackGuard(
+                            reason: 'load_stop',
+                          );
                           await _checkAndRepairStalePiPLayout(
                             reason: 'load_stop',
                           );
@@ -1540,7 +1917,6 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                         },
                         onUpdateVisitedHistory: (controller, uri, isReload) {
                           _rememberMainFrameUri(_toUri(uri));
-                          unawaited(_restoreAfterPiPIfNeeded());
                           unawaited(_injectVideoStateScript());
                           unawaited(_syncAdblockScript());
                           unawaited(_updateCanGoBack());

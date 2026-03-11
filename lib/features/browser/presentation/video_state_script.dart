@@ -335,6 +335,63 @@ const String goPlayPlaybackDebugScript = '''
     publish('yt:navigate-finish');
   }, true);
 
+  function resolvePlayPauseControl(target) {
+    if (!target || typeof target.closest !== 'function') {
+      return null;
+    }
+
+    var selectors = [
+      'button.ytp-play-button',
+      '.ytp-play-button',
+      '[data-tooltip-target-id="ytp-play-button"]',
+      'button[aria-keyshortcuts="k"]',
+      '[role="button"][aria-keyshortcuts="k"]',
+      'button.player-control-play-pause-icon',
+      '.player-control-play-pause-icon',
+      '.ytp-large-play-button'
+    ];
+
+    for (var i = 0; i < selectors.length; i += 1) {
+      var match = target.closest(selectors[i]);
+      if (match) {
+        return match;
+      }
+    }
+
+    var candidate = target.closest('button, [role="button"]');
+    if (!candidate) {
+      return null;
+    }
+
+    var className = String(candidate.className || '').toLowerCase();
+    if (className.indexOf('ytp-play-button') >= 0 ||
+        className.indexOf('play-pause') >= 0 ||
+        className.indexOf('player-control-play-pause') >= 0) {
+      return candidate;
+    }
+
+    var tooltipTarget = String(candidate.getAttribute('data-tooltip-target-id') || '').toLowerCase();
+    if (tooltipTarget === 'ytp-play-button') {
+      return candidate;
+    }
+
+    var keyShortcuts = String(candidate.getAttribute('aria-keyshortcuts') || '').toLowerCase();
+    if (keyShortcuts === 'k') {
+      return candidate;
+    }
+
+    return null;
+  }
+
+  document.addEventListener('click', function(event) {
+    var target = event && event.target;
+    var playButton = resolvePlayPauseControl(target);
+    if (!playButton) {
+      return;
+    }
+    publish('ui:ytp-play-button:click');
+  }, true);
+
   setInterval(function() {
     hookVideoEvents();
     publish('tick');

@@ -14,6 +14,20 @@ class PiPChannel {
     );
   }
 
+  Future<void> setBackgroundPlaybackEnabled(bool enabled) async {
+    await _channelClient.invokeMethod<void>(
+      ChannelConstants.methodSetBackgroundPlaybackEnabled,
+      <String, dynamic>{'enabled': enabled},
+    );
+  }
+
+  Future<void> setAppInForeground(bool inForeground) async {
+    await _channelClient.invokeMethod<void>(
+      ChannelConstants.methodSetAppInForeground,
+      <String, dynamic>{'inForeground': inForeground},
+    );
+  }
+
   Future<void> setVideoState({
     required bool isPlaying,
     required bool isFullscreen,

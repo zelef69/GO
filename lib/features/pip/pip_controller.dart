@@ -15,15 +15,28 @@ class PiPController {
   PiPVideoState get state => _state;
   bool get isInPiPMode => _isInPiPMode;
 
-  Future<void> initialize({required bool pipEnabled}) async {
+  Future<void> initialize({
+    required bool pipEnabled,
+    required bool backgroundPlaybackEnabled,
+  }) async {
     _pipEnabled = pipEnabled;
     await _channel.setPiPEnabled(pipEnabled);
+    await _channel.setBackgroundPlaybackEnabled(backgroundPlaybackEnabled);
+    await _channel.setAppInForeground(true);
     await _sendStateToNative();
   }
 
   Future<void> setPiPEnabled(bool enabled) async {
     _pipEnabled = enabled;
     await _channel.setPiPEnabled(enabled);
+  }
+
+  Future<void> setBackgroundPlaybackEnabled(bool enabled) async {
+    await _channel.setBackgroundPlaybackEnabled(enabled);
+  }
+
+  Future<void> setAppInForeground(bool inForeground) async {
+    await _channel.setAppInForeground(inForeground);
   }
 
   void setMethodCallHandler(

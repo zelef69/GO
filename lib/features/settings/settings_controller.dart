@@ -4,14 +4,18 @@ class SettingsController extends ChangeNotifier {
   SettingsController({
     bool adblockEnabled = true,
     bool pipEnabled = true,
-  })  : _adblockEnabled = adblockEnabled,
-        _pipEnabled = pipEnabled;
+    bool backgroundPlaybackEnabled = true,
+  }) : _adblockEnabled = adblockEnabled,
+       _pipEnabled = pipEnabled,
+       _backgroundPlaybackEnabled = backgroundPlaybackEnabled;
 
   bool _adblockEnabled;
   bool _pipEnabled;
+  bool _backgroundPlaybackEnabled;
 
   bool get adblockEnabled => _adblockEnabled;
   bool get pipEnabled => _pipEnabled;
+  bool get backgroundPlaybackEnabled => _backgroundPlaybackEnabled;
 
   void setAdblockEnabled(bool enabled) {
     if (_adblockEnabled == enabled) {
@@ -26,6 +30,14 @@ class SettingsController extends ChangeNotifier {
       return;
     }
     _pipEnabled = enabled;
+    notifyListeners();
+  }
+
+  void setBackgroundPlaybackEnabled(bool enabled) {
+    if (_backgroundPlaybackEnabled == enabled) {
+      return;
+    }
+    _backgroundPlaybackEnabled = enabled;
     notifyListeners();
   }
 }

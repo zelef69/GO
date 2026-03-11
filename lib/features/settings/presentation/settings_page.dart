@@ -59,7 +59,9 @@ class _SettingsPageState extends State<SettingsPage> {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Adblock'),
-                subtitle: const Text('Enable Brave-style request filtering layer'),
+                subtitle: const Text(
+                  'Enable Brave-style request filtering layer',
+                ),
                 value: widget.settingsController.adblockEnabled,
                 onChanged: widget.settingsController.setAdblockEnabled,
               ),
@@ -71,6 +73,16 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 value: widget.settingsController.pipEnabled,
                 onChanged: widget.settingsController.setPiPEnabled,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Background Playback'),
+                subtitle: const Text(
+                  'Keep playing with lock-screen and notification controls',
+                ),
+                value: widget.settingsController.backgroundPlaybackEnabled,
+                onChanged:
+                    widget.settingsController.setBackgroundPlaybackEnabled,
               ),
               const SizedBox(height: 20),
               FilledButton.icon(

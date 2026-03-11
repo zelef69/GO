@@ -5,6 +5,9 @@ class ChannelConstants {
   static const String adblock = 'go_play/adblock';
 
   static const String methodSetPiPEnabled = 'setPiPEnabled';
+  static const String methodSetBackgroundPlaybackEnabled =
+      'setBackgroundPlaybackEnabled';
+  static const String methodSetAppInForeground = 'setAppInForeground';
   static const String methodSetVideoState = 'setVideoState';
   static const String methodEnterPiPIfEligible = 'enterPiPIfEligible';
   static const String methodIsPiPSupported = 'isPiPSupported';
