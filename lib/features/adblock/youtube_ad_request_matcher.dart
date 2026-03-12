@@ -3,6 +3,11 @@ import '../../shared/utils/host_matcher.dart';
 class YouTubeAdRequestMatcher {
   const YouTubeAdRequestMatcher._();
 
+  // Blocking googlevideo ad-marked playback requests can cause a temporary
+  // black-screen deadlock before the main stream starts. Keep this disabled
+  // and let DOM recovery skip/fast-forward ads instead.
+  static const bool _blockGoogleVideoPlaybackAdQueries = false;
+
   static const List<String> knownAdHostPatterns = <String>[
     'doubleclick.net',
     '*.doubleclick.net',
@@ -18,10 +23,13 @@ class YouTubeAdRequestMatcher {
   ];
 
   static const List<String> _youtubeAdPathTokens = <String>[
+    // Keep noisy first-party telemetry endpoints fail-open to reduce
+    // CORS retry storms and startup latency on YouTube watch pages.
+    // NOTE: Avoid broad /pagead/ blocking here, especially /pagead/interaction,
+    // because it can trigger retry loops and delay content playback.
     '/api/stats/ads',
     '/api/stats/ad',
     '/api/stats/atr',
-    '/pagead/',
     '/get_midroll_info',
     '/ptracking',
     '/ad_break',
@@ -87,10 +95,11 @@ class YouTubeAdRequestMatcher {
       }
     }
 
-    if (HostMatcher.matches(host, <String>[
-      'googlevideo.com',
-      '*.googlevideo.com',
-    ])) {
+    if (_blockGoogleVideoPlaybackAdQueries &&
+        HostMatcher.matches(host, <String>[
+          'googlevideo.com',
+          '*.googlevideo.com',
+        ])) {
       final isVideoPlaybackPath = path.contains('/videoplayback');
       if (isVideoPlaybackPath &&
           _containsAnyQueryKeyInRawQuery(uri.query, _googleVideoAdQueryKeys)) {

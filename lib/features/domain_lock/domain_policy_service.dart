@@ -6,16 +6,21 @@ class DomainPolicyService {
   DomainPolicyService({
     URLValidator? urlValidator,
     List<String>? navigationAllowedHosts,
+    List<String>? navigationAuthAllowedHosts,
     List<String>? requestAllowedHostPatterns,
   }) : urlValidator = urlValidator ?? const URLValidator(),
        _navigationAllowedHosts =
            navigationAllowedHosts ?? DomainConstants.navigationAllowedHosts,
+       _navigationAuthAllowedHosts =
+           navigationAuthAllowedHosts ??
+           DomainConstants.navigationAuthAllowedHosts,
        _requestAllowedHostPatterns =
            requestAllowedHostPatterns ??
            DomainConstants.requestAllowedHostPatterns;
 
   final URLValidator urlValidator;
   final List<String> _navigationAllowedHosts;
+  final List<String> _navigationAuthAllowedHosts;
   final List<String> _requestAllowedHostPatterns;
   static const List<String> _requestDeniedAdHostPatterns = <String>[
     'doubleclick.net',
@@ -35,9 +40,14 @@ class DomainPolicyService {
     return HostMatcher.matches(host, _navigationAllowedHosts);
   }
 
+  bool isNavigationAuthHostAllowed(String host) {
+    return HostMatcher.matches(host, _navigationAuthAllowedHosts);
+  }
+
   bool isNavigationAllowed(Uri uri) {
     return urlValidator.isNavigationSchemeAllowed(uri) &&
-        isNavigationHostAllowed(uri.host);
+        (isNavigationHostAllowed(uri.host) ||
+            isNavigationAuthHostAllowed(uri.host));
   }
 
   bool isRequestAllowed(Uri uri) {

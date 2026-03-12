@@ -5,84 +5,135 @@ class BrowserControls extends StatelessWidget {
     required this.canGoBack,
     required this.isLoading,
     required this.isVideoPlaying,
+    required this.title,
+    required this.featuresEnabled,
     required this.pipEnabled,
     required this.onEnterPiP,
     required this.onBack,
     required this.onRefresh,
-    required this.onSettings,
+    required this.onAccount,
     super.key,
   });
 
   final bool canGoBack;
   final bool isLoading;
   final bool isVideoPlaying;
+  final String title;
+  final bool featuresEnabled;
   final bool pipEnabled;
   final VoidCallback onEnterPiP;
   final VoidCallback onBack;
   final VoidCallback onRefresh;
-  final VoidCallback onSettings;
+  final VoidCallback onAccount;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isPremium = title == 'PREMIUM';
+
     return Material(
-      color: Theme.of(context).colorScheme.surface,
-      child: SafeArea(
-        bottom: false,
-        child: Row(
+      color: Colors.white,
+      child: SizedBox(
+        height: 42,
+        child: Stack(
+          alignment: Alignment.center,
           children: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: canGoBack ? onBack : null,
-              tooltip: 'Back',
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: onRefresh,
-              tooltip: 'Refresh',
-            ),
-            const SizedBox(width: 4),
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 132),
               child: Text(
-                'YouTube',
-                style: Theme.of(context).textTheme.titleMedium,
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: isPremium
+                      ? const Color(0xFFE62117)
+                      : const Color(0xFF111111),
+                  fontWeight: FontWeight.w700,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (isLoading)
-              const Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: SizedBox.square(
-                  dimension: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+            Positioned.fill(
+              child: Row(
+                children: <Widget>[
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: featuresEnabled && canGoBack ? onBack : null,
+                    tooltip: 'Back',
+                    color: const Color(0xFFE62117),
+                    constraints: const BoxConstraints.tightFor(
+                      width: 38,
+                      height: 38,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: featuresEnabled ? onRefresh : null,
+                    tooltip: 'Refresh',
+                    color: const Color(0xFFE62117),
+                    constraints: const BoxConstraints.tightFor(
+                      width: 38,
+                      height: 38,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const Spacer(),
+                  if (isLoading)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: SizedBox.square(
+                        dimension: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Icon(
+                      isVideoPlaying
+                          ? Icons.play_circle_fill
+                          : Icons.play_circle_outline,
+                      color: isVideoPlaying
+                          ? const Color(0xFFE62117)
+                          : colorScheme.outline,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 2),
+                    child: IconButton(
+                      icon: Icon(
+                        pipEnabled
+                            ? Icons.picture_in_picture_alt
+                            : Icons.picture_in_picture_alt_outlined,
+                      ),
+                      onPressed: featuresEnabled && pipEnabled
+                          ? onEnterPiP
+                          : null,
+                      tooltip: 'PiP',
+                      color: const Color(0xFFE62117),
+                      constraints: const BoxConstraints.tightFor(
+                        width: 38,
+                        height: 38,
+                      ),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.account_circle_outlined),
+                    onPressed: onAccount,
+                    tooltip: 'Account',
+                    color: const Color(0xFFE62117),
+                    constraints: const BoxConstraints.tightFor(
+                      width: 38,
+                      height: 38,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
               ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Icon(
-                isVideoPlaying
-                    ? Icons.play_circle_fill
-                    : Icons.play_circle_outline,
-                color: isVideoPlaying
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.outline,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: IconButton(
-                icon: Icon(
-                  pipEnabled
-                      ? Icons.picture_in_picture_alt
-                      : Icons.picture_in_picture_alt_outlined,
-                ),
-                onPressed: pipEnabled ? onEnterPiP : null,
-                tooltip: 'PiP',
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: onSettings,
-              tooltip: 'Settings',
             ),
           ],
         ),

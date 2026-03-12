@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "777514708716",
+    "project_id": "go-play-720c1",
+    "storage_bucket": "go-play-720c1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:777514708716:android:5055108496405e627c7fc9",
+        "android_client_info": {
+          "package_name": "com.example.go_play"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "777514708716-s56b12j1tqc2g2sv9vf458lj02beaekp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.go_play",
+            "certificate_hash": "8229b49a09509b511d5d82f0f246d7ebbdaaeccd"
+          }
+        },
+        {
+          "client_id": "777514708716-rfrg1kdgoif473lt91duogfnbhn1ihja.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_a-_0x_bevdX6Vj6e-d9yZxSBXeAKQaU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "777514708716-rfrg1kdgoif473lt91duogfnbhn1ihja.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

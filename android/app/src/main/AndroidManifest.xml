@@ -12,6 +12,10 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false">
+        <!-- Static sentinel checked by SecurityBridge as anti-repackaging friction. -->
+        <meta-data
+            android:name="go_play.security.manifest_sentinel"
+            android:value="go_play_release_v1" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

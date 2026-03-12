@@ -52,20 +52,11 @@ fn should_block(url: &str, source_url: &str, resource_type: &str) -> bool {
     with_engine(|engine| engine.check_network_request(&request).matched).unwrap_or(false)
 }
 
-#[no_mangle]
-pub extern "system" fn Java_com_example_go_play_RustAdblockBridge_nativeIsAvailable(
-    _env: JNIEnv,
-    _object: JObject,
-) -> jboolean {
+fn native_is_available_impl() -> jboolean {
     JNI_TRUE
 }
 
-#[no_mangle]
-pub extern "system" fn Java_com_example_go_play_RustAdblockBridge_nativeInitializeEngine(
-    mut env: JNIEnv,
-    _object: JObject,
-    filter_text: JString,
-) -> jboolean {
+fn native_initialize_engine_impl(mut env: JNIEnv, filter_text: JString) -> jboolean {
     let result = panic::catch_unwind(move || {
         let text: String = match env.get_string(&filter_text) {
             Ok(value) => value.into(),
@@ -78,10 +69,8 @@ pub extern "system" fn Java_com_example_go_play_RustAdblockBridge_nativeInitiali
     to_bool(result)
 }
 
-#[no_mangle]
-pub extern "system" fn Java_com_example_go_play_RustAdblockBridge_nativeShouldBlockRequest(
+fn native_should_block_request_impl(
     mut env: JNIEnv,
-    _object: JObject,
     request_url: JString,
     source_url: JString,
     resource_type: JString,
@@ -107,12 +96,80 @@ pub extern "system" fn Java_com_example_go_play_RustAdblockBridge_nativeShouldBl
     to_bool(result)
 }
 
+fn native_dispose_engine_impl() {
+    if let Ok(mut guard) = engine_slot().lock() {
+        *guard = None;
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_go_1play_RustAdblockBridge_nativeIsAvailable(
+    _env: JNIEnv,
+    _object: JObject,
+) -> jboolean {
+    native_is_available_impl()
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_go_play_RustAdblockBridge_nativeIsAvailable(
+    _env: JNIEnv,
+    _object: JObject,
+) -> jboolean {
+    native_is_available_impl()
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_go_1play_RustAdblockBridge_nativeInitializeEngine(
+    env: JNIEnv,
+    _object: JObject,
+    filter_text: JString,
+) -> jboolean {
+    native_initialize_engine_impl(env, filter_text)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_go_play_RustAdblockBridge_nativeInitializeEngine(
+    env: JNIEnv,
+    _object: JObject,
+    filter_text: JString,
+) -> jboolean {
+    native_initialize_engine_impl(env, filter_text)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_go_1play_RustAdblockBridge_nativeShouldBlockRequest(
+    env: JNIEnv,
+    _object: JObject,
+    request_url: JString,
+    source_url: JString,
+    resource_type: JString,
+) -> jboolean {
+    native_should_block_request_impl(env, request_url, source_url, resource_type)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_go_play_RustAdblockBridge_nativeShouldBlockRequest(
+    env: JNIEnv,
+    _object: JObject,
+    request_url: JString,
+    source_url: JString,
+    resource_type: JString,
+) -> jboolean {
+    native_should_block_request_impl(env, request_url, source_url, resource_type)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_go_1play_RustAdblockBridge_nativeDisposeEngine(
+    _env: JNIEnv,
+    _object: JObject,
+) {
+    native_dispose_engine_impl();
+}
+
 #[no_mangle]
 pub extern "system" fn Java_com_example_go_play_RustAdblockBridge_nativeDisposeEngine(
     _env: JNIEnv,
     _object: JObject,
 ) {
-    if let Ok(mut guard) = engine_slot().lock() {
-        *guard = None;
-    }
+    native_dispose_engine_impl();
 }

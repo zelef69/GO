@@ -8,6 +8,15 @@ class DomainConstants {
     'youtu.be',
   ];
 
+  // Keep navigation strict but allow only hosts required for
+  // in-app Google/YouTube authentication hand-off.
+  static const List<String> navigationAuthAllowedHosts = <String>[
+    'accounts.google.com',
+    'accounts.youtube.com',
+    'consent.youtube.com',
+    'myaccount.google.com',
+  ];
+
   static const List<String> requestAllowedHostPatterns = <String>[
     'youtube.com',
     '*.youtube.com',

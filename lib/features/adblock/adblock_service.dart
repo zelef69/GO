@@ -1,84 +1,128 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../domain_lock/domain_policy_service.dart';
 import 'adblock_engine_bridge.dart';
-import 'filter_list_loader.dart';
-import 'models/adblock_rule.dart';
-import 'youtube_ad_request_matcher.dart';
+import 'core/adblock_config.dart';
+import 'core/adblock_debug_logger.dart';
+import 'core/adblock_manager.dart';
+import 'core/cosmetic_filter_injector.dart';
+import 'core/request_blocker.dart';
+import 'core/scriptlet_injector.dart';
+import 'core/webview_integration.dart';
 
 class AdblockService {
-  static const List<String> _googleVideoAdQueryHints = <String>[
-    'oad',
-    'adformat',
-    'ad_type',
-    'ad_preroll',
-    'dclk_video_ads',
-    'ad3_module',
-    'videoadid',
-    'adtag',
-    'ad_tag',
-    'ad_debug',
-    'adsid',
-    'ad_host_tier',
-    'ad_flags',
-  ];
-
   AdblockService({
-    required FilterListLoader filterListLoader,
+    required DomainPolicyService domainPolicyService,
     required AdblockEngineBridge nativeEngineBridge,
     required AdblockEngineBridge fallbackEngineBridge,
     required bool enabled,
-  }) : _filterListLoader = filterListLoader,
-       _nativeEngineBridge = nativeEngineBridge,
-       _fallbackEngineBridge = fallbackEngineBridge,
-       _enabled = enabled;
+  }) : _config = AdblockConfig.defaults(
+         enabled: enabled,
+         debugMode: kDebugMode,
+       ),
+       _logger = AdblockDebugLogger(enabled: kDebugMode),
+       _manager = AdblockManager(
+         domainPolicyService: domainPolicyService,
+         nativeEngineBridge: nativeEngineBridge,
+         fallbackEngineBridge: fallbackEngineBridge,
+         initialConfig: AdblockConfig.defaults(
+           enabled: enabled,
+           debugMode: kDebugMode,
+         ),
+       ),
+       _cosmeticFilterInjector = CosmeticFilterInjector(
+         logger: AdblockDebugLogger(enabled: kDebugMode),
+       ),
+       _scriptletInjector = ScriptletInjector(
+         logger: AdblockDebugLogger(enabled: kDebugMode),
+       ) {
+    _webViewIntegration = WebViewAdblockIntegration(
+      manager: _manager,
+      logger: _logger,
+      cosmeticFilterInjector: _cosmeticFilterInjector,
+      scriptletInjector: _scriptletInjector,
+      initialConfig: _config,
+    );
+  }
 
-  final FilterListLoader _filterListLoader;
-  final AdblockEngineBridge _nativeEngineBridge;
-  final AdblockEngineBridge _fallbackEngineBridge;
+  final AdblockDebugLogger _logger;
+  final AdblockManager _manager;
+  final CosmeticFilterInjector _cosmeticFilterInjector;
+  final ScriptletInjector _scriptletInjector;
+  late final WebViewAdblockIntegration _webViewIntegration;
 
-  bool _enabled;
+  AdblockConfig _config;
   bool _initialized = false;
-  late AdblockEngineBridge _activeEngine;
-  List<AdblockRule> _rules = const <AdblockRule>[];
-  bool _fallbackInitialized = false;
   int _debugBlockLogCount = 0;
+  static const int _maxDebugBlockLogs = 120;
 
-  bool get enabled => _enabled;
-  bool _usingNativeEngine = false;
-  bool get usingNativeEngine => _usingNativeEngine;
+  bool get enabled => _config.enabled;
+  bool get usingNativeEngine => _manager.usingNativeEngine;
 
   Future<void> initialize() async {
     if (_initialized) {
       return;
     }
-
-    _rules = await _filterListLoader.load();
-    await _fallbackEngineBridge.initialize(_rules);
-    _fallbackInitialized = true;
-
-    final isNativeAvailable = await _nativeEngineBridge.isAvailable();
-
-    if (isNativeAvailable) {
-      try {
-        await _nativeEngineBridge.initialize(_rules);
-        _activeEngine = _nativeEngineBridge;
-        _usingNativeEngine = true;
-        _initialized = true;
-        _log('Initialized native engine with ${_rules.length} rules');
-        return;
-      } catch (_) {
-        _usingNativeEngine = false;
-        _log('Native engine init failed, switching to fallback');
-      }
-    }
-
-    _activeEngine = _fallbackEngineBridge;
+    await _manager.initialize();
     _initialized = true;
-    _log('Initialized fallback engine with ${_rules.length} rules');
+    _logger.log(
+      'service initialized native=${_manager.usingNativeEngine} rules=${_manager.activeRuleCount} revision=${_manager.activeRevision}',
+    );
   }
 
   void setEnabled(bool enabled) {
-    _enabled = enabled;
+    if (_config.enabled == enabled) {
+      return;
+    }
+    _config = _config.copyWith(enabled: enabled);
+    _manager.setEnabled(enabled);
+    _webViewIntegration.updateConfig(_config);
+    _logger.log('service setEnabled=$enabled');
+  }
+
+  Future<void> attachWebView(InAppWebViewController controller) async {
+    await _webViewIntegration.attachWebView(controller);
+  }
+
+  void onMainFrameChanged(Uri? uri) {
+    _webViewIntegration.onMainFrameChanged(uri);
+  }
+
+  Future<void> onPageStarted(Uri? uri) async {
+    await _webViewIntegration.onPageStarted(uri);
+  }
+
+  Future<void> onPageFinished(Uri? uri) async {
+    await _webViewIntegration.onPageFinished(uri);
+  }
+
+  Future<void> syncRuntimeLayers({bool force = false}) async {
+    await _webViewIntegration.syncRuntimeLayers(force: force);
+  }
+
+  Future<AdblockDecision> evaluateRequest(
+    Uri uri, {
+    required String resourceType,
+    Uri? sourceUrl,
+    bool fromServiceWorker = false,
+  }) async {
+    if (!_config.enabled) {
+      return const AdblockDecision(blocked: false, reason: 'disabled');
+    }
+    final decision = await _webViewIntegration.evaluateRequest(
+      uri: uri,
+      resourceType: resourceType,
+      sourceUri: sourceUrl,
+      fromServiceWorker: fromServiceWorker,
+    );
+    if (decision.blocked && _debugBlockLogCount < _maxDebugBlockLogs) {
+      _debugBlockLogCount += 1;
+      _logger.log(
+        'blocked host=${uri.host} path=${uri.path} type=$resourceType reason=${decision.reason} cache=${decision.fromCache}',
+      );
+    }
+    return decision;
   }
 
   Future<bool> shouldBlockRequest(
@@ -86,138 +130,21 @@ class AdblockService {
     required String resourceType,
     Uri? sourceUrl,
   }) async {
-    if (!_enabled || uri == null) {
+    if (uri == null) {
       return false;
     }
-
-    // Fast-path most media chunks before matcher/engine work.
-    // Keep ad-like query hints in the slow path for correctness.
-    if (_isPrimaryPlaybackMediaRequest(uri, resourceType: resourceType) &&
-        !_hasGoogleVideoAdQueryHint(uri)) {
-      return false;
-    }
-
-    // Keep a conservative heuristic layer even when native engine is active.
-    // Keep this available even before async engine init completes.
-    final blockedByMatcher = YouTubeAdRequestMatcher.matches(uri);
-    if (blockedByMatcher) {
-      _logBlocked('matcher', uri);
-      return true;
-    }
-
-    if (!_initialized) {
-      return false;
-    }
-
-    final blockedByActive = await _safeShouldBlock(
-      _activeEngine,
+    final decision = await evaluateRequest(
       uri,
       resourceType: resourceType,
       sourceUrl: sourceUrl,
     );
-    if (blockedByActive) {
-      _logBlocked(
-        _usingNativeEngine ? 'native-engine' : 'fallback-engine',
-        uri,
-      );
-      return true;
-    }
-
-    return false;
-  }
-
-  bool _isPrimaryPlaybackMediaRequest(Uri uri, {required String resourceType}) {
-    final normalizedType = resourceType.toLowerCase();
-    if (normalizedType == 'document' || normalizedType == 'subdocument') {
-      return false;
-    }
-
-    final host = uri.host.toLowerCase();
-    final path = uri.path.toLowerCase();
-    final isGoogleVideoHost =
-        host == 'googlevideo.com' || host.endsWith('.googlevideo.com');
-    if (!isGoogleVideoHost) {
-      return false;
-    }
-    if (!path.contains('/videoplayback')) {
-      return false;
-    }
-    return normalizedType == 'media' ||
-        normalizedType == 'xmlhttprequest' ||
-        normalizedType == 'other';
-  }
-
-  bool _hasGoogleVideoAdQueryHint(Uri uri) {
-    final query = uri.query.toLowerCase();
-    if (query.isEmpty) {
-      return false;
-    }
-    final normalizedQuery = '&$query&';
-    for (final key in _googleVideoAdQueryHints) {
-      if (normalizedQuery.contains('&$key=') ||
-          normalizedQuery.contains('&$key&')) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  Future<bool> _safeShouldBlock(
-    AdblockEngineBridge engine,
-    Uri uri, {
-    required String resourceType,
-    Uri? sourceUrl,
-  }) async {
-    try {
-      return await engine.shouldBlock(
-        uri,
-        resourceType: resourceType,
-        sourceUrl: sourceUrl,
-      );
-    } catch (_) {
-      _log('Engine shouldBlock failed for ${uri.host}${uri.path}');
-      return false;
-    }
-  }
-
-  Future<void> _safeDispose(AdblockEngineBridge engine) async {
-    try {
-      await engine.dispose();
-    } catch (_) {}
-  }
-
-  void _log(String message) {
-    if (!kDebugMode) {
-      return;
-    }
-    debugPrint('[GO_PLAY-Adblock] $message');
-  }
-
-  void _logBlocked(String source, Uri uri) {
-    if (!kDebugMode || _debugBlockLogCount >= 40) {
-      return;
-    }
-    _debugBlockLogCount += 1;
-    debugPrint('[GO_PLAY-Adblock] Blocked by $source -> ${uri.host}${uri.path}');
+    return decision.blocked;
   }
 
   Future<void> dispose() async {
-    if (!_initialized) {
-      return;
-    }
-
-    if (_usingNativeEngine) {
-      await _safeDispose(_nativeEngineBridge);
-    }
-    if (_fallbackInitialized) {
-      await _safeDispose(_fallbackEngineBridge);
-    }
-
+    await _webViewIntegration.dispose();
+    await _manager.dispose();
     _initialized = false;
-    _fallbackInitialized = false;
-    _usingNativeEngine = false;
-    _rules = const <AdblockRule>[];
-    _activeEngine = _fallbackEngineBridge;
     _debugBlockLogCount = 0;
   }
 }

@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function hasAuthEmail() {
+      return isSignedIn() &&
+        request.auth.token.email is string &&
+        request.auth.token.email.size() > 0;
+    }
+
+    function authEmailLower() {
+      return hasAuthEmail()
+        ? request.auth.token.email.lower()
+        : '';
+    }
+
+    function isSubscriptionOwnerByPath(emailLower) {
+      return hasAuthEmail() && authEmailLower() == emailLower;
+    }
+
+    function isSubscriptionOwnerByUid() {
+      return isSignedIn() &&
+        resource != null &&
+        resource.data.uid == request.auth.uid;
+    }
+
+    // Existing rules (unchanged)
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Existing rules (unchanged)
+    match /users/{userId}/backups/{backupId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+    }
+
+    // Subscription source-of-truth for Flutter app login/package checks.
+    match /subscriptions/{emailLower} {
+      allow get: if isSubscriptionOwnerByUid() || isSubscriptionOwnerByPath(emailLower);
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+        request.resource.data.emailLower == emailLower &&
+        request.resource.data.uid == request.auth.uid;
+
+      allow update: if (isSubscriptionOwnerByUid() || isSubscriptionOwnerByPath(emailLower)) &&
+        request.resource.data.emailLower == resource.data.emailLower &&
+        request.resource.data.uid == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    // Added for app login sessions.
+    match /userSessions/{sessionId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.sessionId == sessionId &&
+        request.resource.data.status == 'active';
+
+      allow get, list: if isSignedIn() && resource.data.uid == request.auth.uid;
+
+      allow update: if isSignedIn() &&
+        resource.data.uid == request.auth.uid &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.sessionId == resource.data.sessionId;
+
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

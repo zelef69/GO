@@ -1,10 +1,6 @@
 import 'domain_policy_service.dart';
 
-enum NavigationBlockReason {
-  invalidUrl,
-  unsafeScheme,
-  disallowedHost,
-}
+enum NavigationBlockReason { invalidUrl, unsafeScheme, disallowedHost }
 
 class NavigationCheckResult {
   const NavigationCheckResult._({
@@ -12,11 +8,10 @@ class NavigationCheckResult {
     required this.reason,
   });
 
-  const NavigationCheckResult.allowed()
-      : this._(isAllowed: true, reason: null);
+  const NavigationCheckResult.allowed() : this._(isAllowed: true, reason: null);
 
   const NavigationCheckResult.blocked(NavigationBlockReason reason)
-      : this._(isAllowed: false, reason: reason);
+    : this._(isAllowed: false, reason: reason);
 
   final bool isAllowed;
   final NavigationBlockReason? reason;
@@ -24,7 +19,7 @@ class NavigationCheckResult {
 
 class NavigationInterceptor {
   NavigationInterceptor({required DomainPolicyService domainPolicyService})
-      : _domainPolicyService = domainPolicyService;
+    : _domainPolicyService = domainPolicyService;
 
   final DomainPolicyService _domainPolicyService;
 
@@ -41,7 +36,7 @@ class NavigationInterceptor {
       );
     }
 
-    if (!_domainPolicyService.isNavigationHostAllowed(uri.host)) {
+    if (!_domainPolicyService.isNavigationAllowed(uri)) {
       return const NavigationCheckResult.blocked(
         NavigationBlockReason.disallowedHost,
       );

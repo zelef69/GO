@@ -1,0 +1,29 @@
+{
+  "dependencies": {
+    "csv-parser": "^3.2.0",
+    "firebase-admin": "^13.7.0"
+  },
+  "name": "go3",
+  "version": "1.0.0",
+  "description": "Single-purpose Android browser focused on YouTube, with strict domain policy, minimal controls, Android PiP support, and Brave adblock-rust integration (JNI).",
+  "main": "import_subscriptions.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zelef69/GO_PLAY.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/zelef69/GO_PLAY/issues"
+  },
+  "homepage": "https://github.com/zelef69/GO_PLAY#readme"
+}

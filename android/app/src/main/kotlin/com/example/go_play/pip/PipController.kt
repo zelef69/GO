@@ -229,49 +229,23 @@ class PipController(
             Log.d(TAG, "Ignoring media_session action in PiP: $action")
             return
         }
+        // Do not optimistically mutate playback state here.
+        // Keep native UI tied to the confirmed state from Flutter/WebView.
+        Log.d(TAG, "onSystemAction source=$source action=$action playing=$videoPlaying")
 
-        val previousPlaying = videoPlaying
-        when (action) {
-            "togglePlayPause" -> {
-                videoPlaying = !videoPlaying
-            }
-            "play" -> {
-                if (!videoPlaying) {
-                    videoPlaying = true
-                }
-            }
-            "pause" -> {
-                if (videoPlaying) {
-                    videoPlaying = false
-                }
-            }
-            "next" -> {
-                // Keep state as-is.
-            }
-        }
-        val stateChanged = previousPlaying != videoPlaying
-        Log.d(TAG, "onSystemAction source=$source action=$action stateChanged=$stateChanged playing=$videoPlaying")
-        if (stateChanged || action == "next") {
+        if (action == "next") {
             updatePictureInPictureParamsIfSupported(force = true)
         }
         refreshMediaSessionState(force = true)
         syncForegroundPlaybackService(force = true, reason = "systemAction:$action")
 
         val shouldNotifyFlutter =
-            when (source) {
-                "pip_action" -> true
-                else ->
-                    when (action) {
-                        "next" -> true
-                        "play", "pause" -> stateChanged
-                        "togglePlayPause" -> stateChanged
-                        else -> true
-                    }
+            when (action) {
+                "togglePlayPause", "play", "pause", "next" -> true
+                else -> source == "pip_action"
             }
         if (shouldNotifyFlutter) {
             notifyFlutterMethod(FLUTTER_METHOD_PIP_ACTION, mapOf("action" to action))
-        } else {
-            Log.d(TAG, "Skipping Flutter dispatch for no-op action=$action source=$source")
         }
     }
 

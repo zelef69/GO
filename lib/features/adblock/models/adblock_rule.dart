@@ -100,4 +100,24 @@ class AdblockRule {
       'pattern': pattern,
     };
   }
+
+  static AdblockRule? fromJson(Map<String, dynamic> json) {
+    final rawRule = json['rawRule']?.toString();
+    final pattern = json['pattern']?.toString();
+    final typeName = json['type']?.toString();
+    if (rawRule == null || pattern == null || typeName == null) {
+      return null;
+    }
+
+    final type = switch (typeName) {
+      'domainSuffix' => AdblockRuleType.domainSuffix,
+      'substring' => AdblockRuleType.substring,
+      _ => null,
+    };
+    if (type == null) {
+      return null;
+    }
+
+    return AdblockRule(rawRule: rawRule, type: type, pattern: pattern);
+  }
 }

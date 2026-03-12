@@ -99,7 +99,6 @@ class PlaybackForegroundService : Service() {
             ACTION_NEXT,
             -> {
                 Log.d(TAG, "transportAction action=${intent.action}")
-                applyOptimisticAction(intent.action ?: "")
                 dispatchActionToController(intent.action ?: "")
                 startOrUpdateForeground()
             }
@@ -140,20 +139,6 @@ class PlaybackForegroundService : Service() {
             }
         Log.d(TAG, "dispatchActionToController action=$action")
         sendBroadcast(forwardIntent)
-    }
-
-    private fun applyOptimisticAction(action: String) {
-        currentState =
-            when (action) {
-                ACTION_PLAY -> currentState.copy(isPlaying = true, active = true)
-                ACTION_PAUSE -> currentState.copy(isPlaying = false, active = true)
-                ACTION_PLAY_PAUSE ->
-                    currentState.copy(
-                        isPlaying = !currentState.isPlaying,
-                        active = true,
-                    )
-                else -> currentState.copy(active = true)
-            }
     }
 
     private fun stateFromIntent(

@@ -68,10 +68,9 @@ const String goPlayEnableAdblockScript = '''
   ];
 
   var youtubeAdPathTokens = [
-    '/api/stats/ads',
-    '/api/stats/ad',
-    '/api/stats/atr',
-    '/pagead/',
+    // Keep high-churn first-party telemetry fail-open in JS hooks too.
+    // Avoid broad /pagead/ blocking because /pagead/interaction retries can
+    // hold the player in an ad-recovery loop and delay real playback.
     '/get_midroll_info',
     '/ptracking',
     '/ad_break',
@@ -120,12 +119,17 @@ const String goPlayEnableAdblockScript = '''
     'button[title*="next"]'
   ];
 
-  var adStuckNoProgressThresholdMs = 4500;
-  var forceAdRecoveryCooldownMs = 1000;
-  var adSeekForwardCooldownMs = 900;
+  // Tune for faster ad recovery to reduce black-screen stall before content starts.
+  var adStuckNoProgressThresholdMs = 650;
+  var adMaxVisibleThresholdMs = 4500;
+  var forceAdRecoveryCooldownMs = 250;
+  var adSeekForwardCooldownMs = 320;
   var adSeekMinReadyState = 2;
-  var adHardRecoveryThresholdMs = 18000;
-  var adStuckRecoveryMaxAttempts = 6;
+  var adHardRecoveryThresholdMs = 2200;
+  var adStuckRecoveryMaxAttempts = 2;
+  var enableHardReloadRecovery = false;
+  var enableNetworkHooks = false;
+  var blockGoogleVideoPlaybackAdQueries = false;
   var adHardReloadCooldownMs = 45000;
   var hardReloadBudgetStorageKey = 'go_play_ad_hard_reload_budget';
 
@@ -188,7 +192,12 @@ const String goPlayEnableAdblockScript = '''
 
     var isGoogleVideoHost = host === 'googlevideo.com' || host.endsWith('.googlevideo.com');
     var isVideoPlaybackPath = path.indexOf('/videoplayback') !== -1;
-    if (isGoogleVideoHost && isVideoPlaybackPath && hasGoogleVideoAdQuery(urlObj)) {
+    if (
+      blockGoogleVideoPlaybackAdQueries &&
+      isGoogleVideoHost &&
+      isVideoPlaybackPath &&
+      hasGoogleVideoAdQuery(urlObj)
+    ) {
       return true;
     }
 
@@ -375,6 +384,14 @@ const String goPlayEnableAdblockScript = '''
     return Math.max(now - lastProgressAt, 0);
   }
 
+  function adVisibleDurationMs() {
+    var visibleSince = window.__go_playAdVisibleSinceMs || 0;
+    if (!visibleSince) {
+      return 0;
+    }
+    return Math.max(Date.now() - visibleSince, 0);
+  }
+
   function maybeFastForwardAd(video, nowMs) {
     if (!video) {
       return false;
@@ -414,8 +431,45 @@ const String goPlayEnableAdblockScript = '''
     return window.__go_playAdStuckRecoverCount;
   }
 
-  function hardRecoverFromAdDeadlock() {
+  function tryPlayerAdBypass(video, nowMs) {
+    var now = typeof nowMs === 'number' ? nowMs : Date.now();
+    var player = document.querySelector('#movie_player');
+    if (player) {
+      try {
+        if (typeof player.skipAd === 'function') {
+          player.skipAd();
+          return true;
+        }
+      } catch (_) {}
+      try {
+        if (
+          typeof player.getDuration === 'function' &&
+          typeof player.seekTo === 'function'
+        ) {
+          var duration = player.getDuration();
+          if (typeof duration === 'number' && isFinite(duration) && duration > 0.25) {
+            player.seekTo(Math.max(duration - 0.05, 0), true);
+            window.__go_playAdLastSeekAtMs = now;
+            return true;
+          }
+        }
+      } catch (_) {}
+    }
+    return maybeFastForwardAd(video, now);
+  }
+
+  function hardRecoverFromAdDeadlock(video) {
+    clickButtons(adSkipButtonSelectors);
+    clickButtons(adOverlayCloseSelectors);
+    var bypassed = tryPlayerAdBypass(video);
     clickButtons(adNextSelectors);
+    if (bypassed) {
+      return;
+    }
+
+    if (!enableHardReloadRecovery) {
+      return;
+    }
 
     var now = Date.now();
     var lastHardReloadAt = window.__go_playAdLastHardReloadAtMs || 0;
@@ -456,14 +510,14 @@ const String goPlayEnableAdblockScript = '''
 
     if (!video) {
       if (noProgressMs >= adHardRecoveryThresholdMs || recoveryCount >= adStuckRecoveryMaxAttempts) {
-        hardRecoverFromAdDeadlock();
+        hardRecoverFromAdDeadlock(null);
       }
       return;
     }
 
     rememberAndMuteVideo(video);
 
-    var didSeek = maybeFastForwardAd(video, now);
+    var didSeek = tryPlayerAdBypass(video, now);
 
     if (!didSeek && video.seekable && video.seekable.length > 0) {
       try {
@@ -485,14 +539,14 @@ const String goPlayEnableAdblockScript = '''
       } catch (_) {}
     }
 
-    if (typeof video.playbackRate === 'number' && isFinite(video.playbackRate) && video.playbackRate < 4) {
+    if (typeof video.playbackRate === 'number' && isFinite(video.playbackRate) && video.playbackRate < 2) {
       try {
-        video.playbackRate = 8;
+        video.playbackRate = 2;
       } catch (_) {}
     }
 
     if (noProgressMs >= adHardRecoveryThresholdMs || recoveryCount >= adStuckRecoveryMaxAttempts) {
-      hardRecoverFromAdDeadlock();
+      hardRecoverFromAdDeadlock(video);
     }
   }
 
@@ -519,27 +573,50 @@ const String goPlayEnableAdblockScript = '''
       var noProgressMs = adNoProgressDurationMs(video);
       if (video) {
         rememberAndMuteVideo(video);
-        maybeFastForwardAd(video);
+        tryPlayerAdBypass(video);
       }
 
       clickButtons(adSkipButtonSelectors);
 
       clickButtons(adOverlayCloseSelectors);
 
+      // If ad playback is paused/stalled at readyState 0-1, recover immediately
+      // instead of waiting for no-progress threshold to expire.
+      if (
+        video &&
+        typeof video.readyState === 'number' &&
+        video.readyState <= 1
+      ) {
+        forceRecoverFromStuckAd(
+          video,
+          Math.max(noProgressMs, adStuckNoProgressThresholdMs),
+        );
+        return;
+      }
+
       if (noProgressMs >= adStuckNoProgressThresholdMs) {
+        forceRecoverFromStuckAd(video, noProgressMs);
+        return;
+      }
+
+      // Some ads keep progressing just enough to avoid no-progress detection
+      // while still trapping playback. Bound total ad-visible time to recover.
+      if (adVisibleDurationMs() >= adMaxVisibleThresholdMs) {
         forceRecoverFromStuckAd(video, noProgressMs);
       }
     } catch (_) {}
   }
 
   window.__go_playAdblockInstalled = true;
-  installNetworkHooks();
+  if (enableNetworkHooks) {
+    installNetworkHooks();
+  }
   ensureStyle();
 
   if (window.__go_playAdblockTicker) {
     clearInterval(window.__go_playAdblockTicker);
   }
-  window.__go_playAdblockTicker = setInterval(skipVideoAds, 220);
+  window.__go_playAdblockTicker = setInterval(skipVideoAds, 80);
 
   if (window.__go_playAdblockObserver) {
     window.__go_playAdblockObserver.disconnect();
@@ -552,7 +629,7 @@ const String goPlayEnableAdblockScript = '''
     setTimeout(function() {
       window.__go_playAdMutationScheduled = false;
       skipVideoAds();
-    }, 120);
+    }, 25);
   });
   window.__go_playAdblockObserver.observe(document.documentElement, {
     childList: true,
