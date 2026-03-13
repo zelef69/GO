@@ -147,6 +147,16 @@ android {
     }
 }
 
+configurations.configureEach {
+    exclude(group = "com.google.android.play", module = "core-common")
+}
+
+dependencies {
+    // Required by Flutter deferred component bridge classes during R8
+    // minification (splitinstall + play core task APIs).
+    implementation("com.google.android.play:core:1.10.3")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)

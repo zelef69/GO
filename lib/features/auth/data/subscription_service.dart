@@ -1,159 +1,57 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../app/config/auth_config.dart';
 import '../domain/models/subscription_record.dart';
 
 class SubscriptionService {
-  SubscriptionService({
-    FirebaseFirestore? firestore,
-    Duration initialSubscriptionDuration =
-        AuthConfig.initialSubscriptionDuration,
-  }) : _firestore = firestore ?? FirebaseFirestore.instance,
-       _initialSubscriptionDuration = initialSubscriptionDuration;
+  SubscriptionService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
-  final Duration _initialSubscriptionDuration;
 
-  CollectionReference<Map<String, dynamic>> get _subscriptions =>
-      _firestore.collection(AuthConfig.subscriptionsCollectionPath);
+  CollectionReference<Map<String, dynamic>> get _users =>
+      _firestore.collection(AuthConfig.usersCollectionPath);
 
   Future<SubscriptionRecord> ensureSubscription({required User user}) async {
-    final normalizedEmail = _normalizedEmail(user);
-    if (normalizedEmail == null) {
-      throw FirebaseAuthException(
-        code: 'missing-email',
-        message: 'Google account does not contain a usable email.',
-      );
+    final current = await getCurrentSubscription(user: user);
+    if (current != null) {
+      return current;
     }
-
-    final docRef = _subscriptions.doc(normalizedEmail);
     try {
-      final current = await docRef.get();
-      if (current.exists) {
-        final data = current.data();
-        if (data == null) {
-          throw StateError('Subscription exists but has no data.');
-        }
-        final syncPatch = _buildExistingSyncPatch(
-          user: user,
-          normalizedEmail: normalizedEmail,
-          data: data,
-        );
-        if (syncPatch.isNotEmpty) {
-          await docRef.set(syncPatch, SetOptions(merge: true));
-          _log(
-            'subscription synced email=$normalizedEmail fields=${syncPatch.keys.join(",")}',
-          );
-        }
-
-        final latest = await docRef.get();
-        final latestData = latest.data() ?? data;
-        final subscription = _subscriptionFromDoc(latest.id, latestData);
-        _log(
-          'subscription found email=$normalizedEmail uid=${subscription.uid} expiry=${subscription.expiryDate.toIso8601String()} status=${subscription.status}',
-        );
-        return subscription;
-      }
-
-      return _createInitialSubscription(
-        docRef: docRef,
-        user: user,
-        normalizedEmail: normalizedEmail,
-      );
-    } on FirebaseException catch (error) {
-      _log(
-        'ensureSubscription firebase_error code=${error.code} message=${error.message ?? "-"} path=subscriptions/$normalizedEmail',
-      );
-      rethrow;
+      await _bootstrapUserDocument(user: user);
+    } catch (_) {
+      // Fall through to read/fallback response so login can continue.
     }
-  }
-
-  Future<SubscriptionRecord> _createInitialSubscription({
-    required DocumentReference<Map<String, dynamic>> docRef,
-    required User user,
-    required String normalizedEmail,
-  }) async {
-    final initialExpiry = _buildInitialExpiryDateUtc();
-    final email = (user.email ?? normalizedEmail).trim();
-    await docRef.set(<String, dynamic>{
-      'email': email,
-      'emailLower': normalizedEmail,
-      'uid': user.uid,
-      'expiryDate': Timestamp.fromDate(initialExpiry),
-      'expiryDateText': _formatYyyyMmDd(initialExpiry),
-      'status': 'active',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'updatedBy': 'login_init',
-      'source': 'login_init',
-    }, SetOptions(merge: true));
-
-    final created = await docRef.get();
-    final createdData = created.data();
-    if (createdData == null) {
-      throw StateError('Created subscription has no data.');
+    final afterBootstrap = await getCurrentSubscription(user: user);
+    if (afterBootstrap != null) {
+      return afterBootstrap;
     }
-    final createdSubscription = _subscriptionFromDoc(created.id, createdData);
-    _log(
-      'subscription created email=$normalizedEmail uid=${user.uid} expiry=${createdSubscription.expiryDate.toIso8601String()}',
+    final now = DateTime.now().toUtc();
+    return SubscriptionRecord(
+      id: user.uid,
+      email: (user.email ?? '').trim(),
+      emailLower: (user.email ?? '').trim().toLowerCase(),
+      uid: user.uid,
+      expiryDate: now,
+      expiryDateText: _formatYyyyMmDd(now),
+      status: 'expired',
+      plan: 'default',
+      startAt: now,
+      maxDevices: AuthConfig.defaultMaxDevices,
+      extraDays: 0,
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+      updatedBy: 'client_bootstrap_fallback',
+      source: 'users/${user.uid}',
     );
-    return createdSubscription;
-  }
-
-  Map<String, dynamic> _buildExistingSyncPatch({
-    required User user,
-    required String normalizedEmail,
-    required Map<String, dynamic> data,
-  }) {
-    final patch = <String, dynamic>{};
-    final currentUid = (data['uid'] ?? '').toString().trim();
-    if (currentUid.isEmpty || currentUid != user.uid) {
-      patch['uid'] = user.uid;
-    }
-
-    final authEmail = (user.email ?? normalizedEmail).trim();
-    final currentEmail = (data['email'] ?? '').toString().trim();
-    if (currentEmail.isEmpty) {
-      patch['email'] = authEmail;
-    }
-
-    final currentEmailLower = (data['emailLower'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
-    if (currentEmailLower.isEmpty || currentEmailLower != normalizedEmail) {
-      patch['emailLower'] = normalizedEmail;
-    }
-
-    final expiryDate = _toDateTime(data['expiryDate']);
-    final expiryDateText = (data['expiryDateText'] ?? '').toString().trim();
-    if (expiryDate != null && expiryDateText.isEmpty) {
-      patch['expiryDateText'] = _formatYyyyMmDd(expiryDate);
-    }
-
-    final status = (data['status'] ?? '').toString().trim();
-    if (status.isEmpty) {
-      patch['status'] = 'active';
-    }
-
-    if (patch.isNotEmpty) {
-      patch['updatedAt'] = FieldValue.serverTimestamp();
-      patch['updatedBy'] = 'login_sync';
-      patch['source'] = 'login_sync';
-    }
-    return patch;
   }
 
   Future<SubscriptionRecord?> getCurrentSubscription({
     required User user,
   }) async {
-    final normalizedEmail = _normalizedEmail(user);
-    if (normalizedEmail == null) {
-      return null;
-    }
-    final doc = await _subscriptions.doc(normalizedEmail).get();
+    final doc = await _users.doc(user.uid).get();
     if (!doc.exists) {
       return null;
     }
@@ -161,7 +59,7 @@ class SubscriptionService {
     if (data == null) {
       return null;
     }
-    return _subscriptionFromDoc(doc.id, data);
+    return _subscriptionFromUserDoc(doc.id, user, data);
   }
 
   Future<DateTime?> getExpiryDate({required User user}) async {
@@ -181,24 +79,74 @@ class SubscriptionService {
     return subscription.isActive;
   }
 
-  DateTime _buildInitialExpiryDateUtc() {
-    return DateTime.now().toUtc().add(_initialSubscriptionDuration);
+  SubscriptionRecord _subscriptionFromUserDoc(
+    String uid,
+    User user,
+    Map<String, dynamic> data,
+  ) {
+    final subscription = _asMap(data['subscription']);
+    final createdAt = _toDateTime(data['createdAt']) ?? DateTime.now().toUtc();
+    final startAt = _toDateTime(subscription['startAt']) ?? createdAt;
+    final expireAt = _toDateTime(subscription['expireAt']) ?? createdAt;
+    final status = _normalizeStatus(
+      (subscription['status'] ?? 'active').toString(),
+      expireAt,
+    );
+    final email = _normalizedEmailFromDoc(data['email'], user.email);
+    return SubscriptionRecord(
+      id: uid,
+      email: email,
+      emailLower: email.toLowerCase(),
+      uid: uid,
+      expiryDate: expireAt,
+      expiryDateText: _formatYyyyMmDd(expireAt),
+      status: status,
+      plan: (subscription['plan'] ?? '').toString().trim(),
+      startAt: startAt,
+      maxDevices: _toInt(subscription['maxDevices']),
+      extraDays: _toInt(subscription['extraDays']),
+      version: _toInt(subscription['version']),
+      createdAt: createdAt,
+      updatedAt: _toDateTime(subscription['updatedAt'] ?? data['updatedAt']),
+      updatedBy: (subscription['updatedBy'] ?? '').toString().trim(),
+      source: 'users/$uid',
+    );
   }
 
-  String _formatYyyyMmDd(DateTime dateTime) {
-    final local = dateTime.toLocal();
-    final yyyy = local.year.toString().padLeft(4, '0');
-    final mm = local.month.toString().padLeft(2, '0');
-    final dd = local.day.toString().padLeft(2, '0');
-    return '$yyyy-$mm-$dd';
+  Future<void> _bootstrapUserDocument({required User user}) async {
+    final docRef = _users.doc(user.uid);
+    final now = DateTime.now().toUtc();
+    await docRef.set(<String, dynamic>{
+      'email': (user.email ?? '').trim(),
+      'displayName': (user.displayName ?? '').trim(),
+      'photoURL': (user.photoURL ?? '').trim(),
+      'subscription': <String, dynamic>{
+        'plan': 'default',
+        'status': 'active',
+        'startAt': Timestamp.fromDate(now),
+        'expireAt': Timestamp.fromDate(now),
+        'maxDevices': AuthConfig.defaultMaxDevices,
+        'extraDays': 0,
+        'version': 1,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'updatedBy': 'client_bootstrap',
+      },
+      'stats': <String, dynamic>{
+        'activeDeviceCount': 0,
+      },
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
-  String? _normalizedEmail(User user) {
-    final email = (user.email ?? '').trim().toLowerCase();
-    if (email.isEmpty) {
-      return null;
+  Map<String, dynamic> _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
     }
-    return email;
+    if (value is Map) {
+      return value.map((key, dynamic v) => MapEntry(key.toString(), v));
+    }
+    return const <String, dynamic>{};
   }
 
   DateTime? _toDateTime(dynamic value) {
@@ -208,39 +156,49 @@ class SubscriptionService {
     if (value is DateTime) {
       return value.toUtc();
     }
+    if (value is String) {
+      return DateTime.tryParse(value)?.toUtc();
+    }
     return null;
   }
 
-  SubscriptionRecord _subscriptionFromDoc(
-    String id,
-    Map<String, dynamic> data,
-  ) {
-    final expiryDate = _toDateTime(data['expiryDate']);
-    if (expiryDate == null) {
-      throw StateError('Subscription document missing expiryDate.');
+  int? _toInt(dynamic value) {
+    if (value is num) {
+      return value.toInt();
     }
-
-    final rawStatus = (data['status'] ?? '').toString().trim();
-    final normalizedStatus = rawStatus.isEmpty ? 'active' : rawStatus;
-    return SubscriptionRecord(
-      id: id,
-      email: (data['email'] ?? '').toString().trim(),
-      emailLower: (data['emailLower'] ?? '').toString().trim().toLowerCase(),
-      uid: (data['uid'] ?? '').toString().trim(),
-      expiryDate: expiryDate,
-      expiryDateText: (data['expiryDateText'] ?? '').toString().trim(),
-      status: normalizedStatus,
-      createdAt: _toDateTime(data['createdAt']),
-      updatedAt: _toDateTime(data['updatedAt']),
-      updatedBy: (data['updatedBy'] ?? '').toString().trim(),
-      source: (data['source'] ?? '').toString().trim(),
-    );
+    if (value is String) {
+      return int.tryParse(value.trim());
+    }
+    return null;
   }
 
-  void _log(String message) {
-    if (!kDebugMode) {
-      return;
+  String _normalizeStatus(String status, DateTime expireAt) {
+    final normalized = status.trim().toLowerCase();
+    if (normalized == 'blocked') {
+      return 'blocked';
     }
-    debugPrint('[GO_PLAY-Subscription] $message');
+    if (!expireAt.toUtc().isAfter(DateTime.now().toUtc())) {
+      return 'expired';
+    }
+    if (normalized == 'expired') {
+      return 'expired';
+    }
+    return 'active';
+  }
+
+  String _normalizedEmailFromDoc(dynamic docEmail, String? authEmail) {
+    final fromDoc = (docEmail ?? '').toString().trim();
+    if (fromDoc.isNotEmpty) {
+      return fromDoc;
+    }
+    return (authEmail ?? '').trim();
+  }
+
+  String _formatYyyyMmDd(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final yyyy = local.year.toString().padLeft(4, '0');
+    final mm = local.month.toString().padLeft(2, '0');
+    final dd = local.day.toString().padLeft(2, '0');
+    return '$yyyy-$mm-$dd';
   }
 }

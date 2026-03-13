@@ -3,6 +3,7 @@ package com.example.go_play
 import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
+import org.json.JSONArray
 
 object RustAdblockBridge {
     private const val TAG = "GO_PLAY-AdblockNative"
@@ -23,11 +24,41 @@ object RustAdblockBridge {
 
     private external fun nativeIsAvailable(): Boolean
     private external fun nativeInitializeEngine(filterText: String): Boolean
+    private external fun nativeInitializeEngineV2(
+        filterText: String,
+        resourcesJson: String,
+        enabledTagsJson: String,
+    ): Boolean
+    private external fun nativeInitializeEngineV3(
+        filterText: String,
+        resourcesJson: String,
+        enabledTagsJson: String,
+        catalogSourcesJson: String,
+        serializedEngineBase64: String,
+    ): Boolean
     private external fun nativeShouldBlockRequest(
         requestUrl: String,
         sourceUrl: String,
         resourceType: String,
     ): Boolean
+    private external fun nativeEvaluateRequest(
+        requestUrl: String,
+        sourceUrl: String,
+        resourceType: String,
+    ): String?
+    private external fun nativeGetCosmeticResources(pageUrl: String): String?
+    private external fun nativeGetHiddenClassIdSelectors(
+        pageUrl: String,
+        classesJson: String,
+        idsJson: String,
+        exceptionsJson: String,
+    ): String?
+    private external fun nativeGetCspDirectives(
+        requestUrl: String,
+        sourceUrl: String,
+        resourceType: String,
+    ): String?
+    private external fun nativeSerializeEngine(): String?
     private external fun nativeDisposeEngine()
 
     fun isAvailable(): Boolean {
@@ -46,22 +77,103 @@ object RustAdblockBridge {
         return available
     }
 
-    fun initializeEngine(filterText: String): Boolean {
+    fun initializeEngine(
+        filterText: String,
+        resourcesJson: String = "",
+        catalogSourcesJson: String = "[]",
+        serializedEngineBase64: String = "",
+        enabledTags: List<String> = emptyList(),
+    ): Boolean {
         if (!libraryLoaded) {
             log("initializeEngine result=false reason=library_not_loaded")
             return false
         }
         val lineCount = if (filterText.isEmpty()) 0 else filterText.count { it == '\n' } + 1
-        log("initializeEngine start chars=${filterText.length} lines=$lineCount")
+        val resourcesChars = resourcesJson.length
+        val sourceChars = catalogSourcesJson.length
+        val snapshotChars = serializedEngineBase64.length
+        log(
+            "initializeEngine start chars=${filterText.length} lines=$lineCount resourcesChars=$resourcesChars sourceChars=$sourceChars snapshotChars=$snapshotChars tags=${enabledTags.size}",
+        )
         val startedAt = SystemClock.elapsedRealtime()
         val initialized =
-            runCatching { nativeInitializeEngine(filterText) }
+            runCatching {
+                if (resourcesJson.isBlank() &&
+                    enabledTags.isEmpty() &&
+                    catalogSourcesJson.isBlank() &&
+                    serializedEngineBase64.isBlank()
+                ) {
+                    nativeInitializeEngine(filterText)
+                } else if (catalogSourcesJson.isNotBlank() ||
+                    serializedEngineBase64.isNotBlank()
+                ) {
+                    nativeInitializeEngineV3(
+                        filterText,
+                        resourcesJson,
+                        JSONArray(enabledTags).toString(),
+                        catalogSourcesJson,
+                        serializedEngineBase64,
+                    )
+                } else {
+                    nativeInitializeEngineV2(
+                        filterText,
+                        resourcesJson,
+                        JSONArray(enabledTags).toString(),
+                    )
+                }
+            }
                 .onFailure { error ->
                     log("initializeEngine failed error=${error.javaClass.simpleName}")
                 }.getOrDefault(false)
         val elapsedMs = SystemClock.elapsedRealtime() - startedAt
         log("initializeEngine result=$initialized elapsedMs=$elapsedMs")
         return initialized
+    }
+
+    fun getCosmeticResources(pageUrl: String): String {
+        if (!libraryLoaded) {
+            return ""
+        }
+        return runCatching { nativeGetCosmeticResources(pageUrl).orEmpty() }.getOrDefault("")
+    }
+
+    fun getHiddenClassIdSelectors(
+        pageUrl: String,
+        classesJson: String,
+        idsJson: String,
+        exceptionsJson: String,
+    ): String {
+        if (!libraryLoaded) {
+            return ""
+        }
+        return runCatching {
+            nativeGetHiddenClassIdSelectors(
+                pageUrl,
+                classesJson,
+                idsJson,
+                exceptionsJson,
+            ).orEmpty()
+        }.getOrDefault("")
+    }
+
+    fun getCspDirectives(
+        requestUrl: String,
+        sourceUrl: String,
+        resourceType: String,
+    ): String {
+        if (!libraryLoaded) {
+            return ""
+        }
+        return runCatching {
+            nativeGetCspDirectives(requestUrl, sourceUrl, resourceType).orEmpty()
+        }.getOrDefault("")
+    }
+
+    fun serializeEngine(): String {
+        if (!libraryLoaded) {
+            return ""
+        }
+        return runCatching { nativeSerializeEngine().orEmpty() }.getOrDefault("")
     }
 
     fun shouldBlockRequest(
@@ -91,6 +203,19 @@ object RustAdblockBridge {
             )
         }
         return blocked
+    }
+
+    fun evaluateRequest(
+        requestUrl: String,
+        sourceUrl: String,
+        resourceType: String,
+    ): String {
+        if (!libraryLoaded) {
+            return ""
+        }
+        return runCatching {
+            nativeEvaluateRequest(requestUrl, sourceUrl, resourceType).orEmpty()
+        }.getOrDefault("")
     }
 
     fun disposeEngine() {

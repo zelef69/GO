@@ -72,20 +72,86 @@ class MainActivity : FlutterActivity() {
                     }
                     "initializeEngine" -> {
                         val rules = call.argument<List<Map<String, Any?>>>("rules") ?: emptyList()
+                        val filterTextFromBridge = call.argument<String>("filterText").orEmpty()
                         val filterText =
-                            rules
-                                .mapNotNull { it["rawRule"] as? String }
-                                .joinToString(separator = "\n")
+                            if (filterTextFromBridge.isNotBlank()) {
+                                filterTextFromBridge
+                            } else {
+                                rules
+                                    .mapNotNull { it["rawRule"] as? String }
+                                    .joinToString(separator = "\n")
+                            }
+                        val resourcesJson = call.argument<String>("resourcesJson").orEmpty()
+                        val catalogSourcesJson =
+                            call.argument<String>("catalogSourcesJson").orEmpty()
+                        val serializedEngineBase64 =
+                            call.argument<String>("serializedEngineBase64").orEmpty()
+                        val enabledTags = call.argument<List<String>>("enabledTags") ?: emptyList()
                         logAdblock(
-                            "method=initializeEngine start ruleObjects=${rules.size} ruleChars=${filterText.length}",
+                            "method=initializeEngine start ruleObjects=${rules.size} ruleChars=${filterText.length} resourcesChars=${resourcesJson.length} sourceChars=${catalogSourcesJson.length} snapshotChars=${serializedEngineBase64.length} tags=${enabledTags.size}",
                         )
                         val startedAt = SystemClock.elapsedRealtime()
-                        val initialized = rustAdblockBridge.initializeEngine(filterText)
+                        val initialized =
+                            rustAdblockBridge.initializeEngine(
+                                filterText = filterText,
+                                resourcesJson = resourcesJson,
+                                catalogSourcesJson = catalogSourcesJson,
+                                serializedEngineBase64 = serializedEngineBase64,
+                                enabledTags = enabledTags,
+                            )
                         val elapsedMs = SystemClock.elapsedRealtime() - startedAt
                         logAdblock(
                             "method=initializeEngine done initialized=$initialized elapsedMs=$elapsedMs",
                         )
                         result.success(initialized)
+                    }
+                    "getCosmeticResources" -> {
+                        val requestUrl = call.argument<String>("url").orEmpty()
+                        if (requestUrl.isBlank()) {
+                            result.success("")
+                            return@setMethodCallHandler
+                        }
+                        val payload = rustAdblockBridge.getCosmeticResources(requestUrl)
+                        result.success(payload)
+                    }
+                    "getHiddenClassIdSelectors" -> {
+                        val requestUrl = call.argument<String>("url").orEmpty()
+                        if (requestUrl.isBlank()) {
+                            result.success("[]")
+                            return@setMethodCallHandler
+                        }
+                        val classes = call.argument<List<String>>("classes") ?: emptyList()
+                        val ids = call.argument<List<String>>("ids") ?: emptyList()
+                        val exceptions =
+                            call.argument<List<String>>("exceptions") ?: emptyList()
+                        val payload =
+                            rustAdblockBridge.getHiddenClassIdSelectors(
+                                pageUrl = requestUrl,
+                                classesJson = org.json.JSONArray(classes).toString(),
+                                idsJson = org.json.JSONArray(ids).toString(),
+                                exceptionsJson = org.json.JSONArray(exceptions).toString(),
+                            )
+                        result.success(payload)
+                    }
+                    "getCspDirectives" -> {
+                        val requestUrl = call.argument<String>("url").orEmpty()
+                        val sourceUrl = call.argument<String>("sourceUrl").orEmpty()
+                        val resourceType = call.argument<String>("resourceType") ?: "document"
+                        if (requestUrl.isBlank()) {
+                            result.success("")
+                            return@setMethodCallHandler
+                        }
+                        val payload =
+                            rustAdblockBridge.getCspDirectives(
+                                requestUrl = requestUrl,
+                                sourceUrl = sourceUrl,
+                                resourceType = resourceType,
+                            )
+                        result.success(payload)
+                    }
+                    "serializeEngine" -> {
+                        val payload = rustAdblockBridge.serializeEngine()
+                        result.success(payload)
                     }
                     "shouldBlockRequest" -> {
                         val requestUrl = call.argument<String>("url")
@@ -113,6 +179,22 @@ class MainActivity : FlutterActivity() {
                                 "method=shouldBlockRequest done blocked=$blocked type=$resourceType url=$requestLabel source=$sourceLabel elapsedMs=$elapsedMs",
                             )
                         }
+                    }
+                    "evaluateRequestDetailed" -> {
+                        val requestUrl = call.argument<String>("url")
+                        val sourceUrl = call.argument<String>("sourceUrl").orEmpty()
+                        val resourceType = call.argument<String>("resourceType") ?: "other"
+                        if (requestUrl.isNullOrBlank()) {
+                            result.success("")
+                            return@setMethodCallHandler
+                        }
+                        val payload =
+                            rustAdblockBridge.evaluateRequest(
+                                requestUrl = requestUrl,
+                                sourceUrl = sourceUrl,
+                                resourceType = resourceType,
+                            )
+                        result.success(payload)
                     }
                     "disposeEngine" -> {
                         logAdblock("method=disposeEngine start")

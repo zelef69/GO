@@ -2,6 +2,7 @@ import 'dart:collection';
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../adblock_engine_bridge.dart';
 import 'adblock_config.dart';
 import 'adblock_debug_logger.dart';
 
@@ -12,7 +13,10 @@ class ScriptletInjector {
 
   final AdblockDebugLogger _logger;
   final LinkedHashSet<String> _injectedPageSignatures = LinkedHashSet<String>();
-  AdblockConfig _config = AdblockConfig.defaults(enabled: true, debugMode: false);
+  AdblockConfig _config = AdblockConfig.defaults(
+    enabled: true,
+    debugMode: false,
+  );
 
   void setConfig(AdblockConfig config) {
     _config = config;
@@ -24,6 +28,7 @@ class ScriptletInjector {
   Future<void> injectIfNeeded(
     InAppWebViewController controller, {
     required Uri? pageUri,
+    AdblockCosmeticResources? nativeResources,
     bool force = false,
   }) async {
     await _setRuntimeEnabledFlag(
@@ -34,13 +39,15 @@ class ScriptletInjector {
       return;
     }
 
-    final scriptlet = _scriptletFor(pageUri);
+    final scriptlet = _scriptletFor(pageUri, nativeResources: nativeResources);
     if (scriptlet == null) {
       return;
     }
 
     final signature = _pageSignature(pageUri);
-    if (!force && signature != null && _injectedPageSignatures.contains(signature)) {
+    if (!force &&
+        signature != null &&
+        _injectedPageSignatures.contains(signature)) {
       return;
     }
 
@@ -50,7 +57,9 @@ class ScriptletInjector {
         _rememberSignature(signature);
       }
     } catch (_) {
-      _logger.log('scriptlet injector failed host=${pageUri?.host ?? "unknown"}');
+      _logger.log(
+        'scriptlet injector failed host=${pageUri?.host ?? "unknown"}',
+      );
     }
   }
 
@@ -65,12 +74,23 @@ class ScriptletInjector {
     } catch (_) {}
   }
 
-  String? _scriptletFor(Uri? pageUri) {
+  String? _scriptletFor(
+    Uri? pageUri, {
+    AdblockCosmeticResources? nativeResources,
+  }) {
+    final injectedScript = nativeResources?.injectedScript.trim() ?? '';
+    final chunks = <String>[];
+    if (injectedScript.isNotEmpty) {
+      chunks.add(injectedScript);
+    }
     final host = pageUri?.host.toLowerCase() ?? '';
     if (host == 'youtube.com' || host.endsWith('.youtube.com')) {
-      return _youtubeRecoveryScriptlet;
+      chunks.add(_youtubeRecoveryScriptlet);
     }
-    return null;
+    if (chunks.isEmpty) {
+      return null;
+    }
+    return chunks.join('\n');
   }
 
   String? _pageSignature(Uri? pageUri) {

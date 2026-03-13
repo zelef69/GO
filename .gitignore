@@ -12,6 +12,8 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+tmp_request_blocker_snapshot.txt
+NUL
 
 # IntelliJ related
 *.iml
@@ -33,6 +35,8 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+node_modules/
+functions/lib/
 
 # Symbolication related
 app.*.symbols

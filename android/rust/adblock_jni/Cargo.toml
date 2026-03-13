@@ -9,4 +9,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 adblock = { version = "0.12.1", default-features = false, features = ["embedded-domain-resolver", "full-regex-handling"] }
+base64 = "0.22"
 jni = "0.21.1"
+serde_json = "1.0"

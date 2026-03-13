@@ -110,6 +110,14 @@ const String goPlayEnableAdblockScript = '''
     '.ytp-ad-overlay-container button[aria-label*="close"]'
   ];
 
+  var adBadgeSelectors = [
+    '.ytp-ad-text',
+    '.ytp-ad-simple-ad-badge',
+    '.ytp-ad-preview-text',
+    '.ytm-ad-player-overlay',
+    '.ytp-ad-message'
+  ];
+
   var adNextSelectors = [
     '.ytp-next-button',
     '.ytp-next-button.ytp-button',
@@ -119,14 +127,18 @@ const String goPlayEnableAdblockScript = '''
     'button[title*="next"]'
   ];
 
-  // Tune for faster ad recovery to reduce black-screen stall before content starts.
-  var adStuckNoProgressThresholdMs = 650;
-  var adMaxVisibleThresholdMs = 4500;
-  var forceAdRecoveryCooldownMs = 250;
-  var adSeekForwardCooldownMs = 320;
+  // Keep recovery responsive but less aggressive to reduce short white flashes
+  // caused by repeated seek/recovery loops during startup.
+  var adStuckNoProgressThresholdMs = 1100;
+  var adMaxVisibleThresholdMs = 6000;
+  var forceAdRecoveryCooldownMs = 420;
+  var adSeekForwardCooldownMs = 650;
   var adSeekMinReadyState = 2;
-  var adHardRecoveryThresholdMs = 2200;
-  var adStuckRecoveryMaxAttempts = 2;
+  var adHardRecoveryThresholdMs = 3200;
+  var adStuckRecoveryMaxAttempts = 3;
+  var adLowReadyStateGraceMs = 900;
+  var adTickerIntervalMs = 380;
+  var adMutationDebounceMs = 140;
   var enableHardReloadRecovery = false;
   var enableNetworkHooks = false;
   var blockGoogleVideoPlaybackAdQueries = false;
@@ -289,16 +301,88 @@ const String goPlayEnableAdblockScript = '''
     document.documentElement.appendChild(style);
   }
 
-  function isAdShowing() {
-    var player = document.querySelector('.html5-video-player, #movie_player');
-    if (player && player.classList && player.classList.contains('ad-showing')) {
-      return true;
+  function isElementVisible(node) {
+    if (!node || typeof node.getBoundingClientRect !== 'function') {
+      return false;
     }
+    var style = null;
+    try {
+      style = window.getComputedStyle(node);
+    } catch (_) {}
+    if (
+      style &&
+      (style.display === 'none' ||
+          style.visibility === 'hidden' ||
+          Number(style.opacity || 1) <= 0)
+    ) {
+      return false;
+    }
+    var rect = node.getBoundingClientRect();
+    return Number(rect.width || 0) > 0 && Number(rect.height || 0) > 0;
+  }
 
-    return !!document.querySelector(
-      '.ytp-ad-player-overlay, .ytp-ad-text, .ytp-ad-simple-ad-badge, ' +
-      '.ytp-ad-preview-text, .ytm-ad-player-overlay'
+  function hasVisibleSelector(selectors) {
+    for (var i = 0; i < selectors.length; i++) {
+      var nodes = document.querySelectorAll(selectors[i]);
+      for (var index = 0; index < nodes.length; index++) {
+        if (isElementVisible(nodes[index])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function hasVisibleAdBadgeSignal() {
+    var adTextTokens = ['ad', 'ads', 'advertisement', 'sponsored', 'โฆษณา', 'โปรโมต'];
+    for (var i = 0; i < adBadgeSelectors.length; i++) {
+      var nodes = document.querySelectorAll(adBadgeSelectors[i]);
+      for (var index = 0; index < nodes.length; index++) {
+        var node = nodes[index];
+        if (!isElementVisible(node)) {
+          continue;
+        }
+        var text = String(node.textContent || node.getAttribute('aria-label') || '')
+            .trim()
+            .toLowerCase();
+        if (!text) {
+          continue;
+        }
+        for (var tokenIndex = 0; tokenIndex < adTextTokens.length; tokenIndex++) {
+          if (text.indexOf(adTextTokens[tokenIndex]) >= 0) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  function getAdSignalState() {
+    var player = document.querySelector('.html5-video-player, #movie_player');
+    var classSignal = !!(
+      player &&
+      player.classList &&
+      (player.classList.contains('ad-showing') ||
+          player.classList.contains('ad-interrupting'))
     );
+    var skipVisible = hasVisibleSelector(adSkipButtonSelectors);
+    var closeVisible = hasVisibleSelector(adOverlayCloseSelectors);
+    var badgeVisible = hasVisibleAdBadgeSignal();
+    var active = classSignal || skipVisible || badgeVisible;
+    var strong = classSignal || skipVisible;
+
+    return {
+      active: active,
+      strong: strong,
+      classSignal: classSignal,
+      skipVisible: skipVisible,
+      closeVisible: closeVisible
+    };
+  }
+
+  function isAdShowing() {
+    return getAdSignalState().active === true;
   }
 
   function rememberAndMuteVideo(video) {
@@ -564,7 +648,8 @@ const String goPlayEnableAdblockScript = '''
   function skipVideoAds() {
     try {
       var video = document.querySelector('video');
-      if (!isAdShowing()) {
+      var adSignalState = getAdSignalState();
+      if (!adSignalState.active) {
         restoreVideoAudio(video);
         resetAdStuckState();
         return;
@@ -573,19 +658,32 @@ const String goPlayEnableAdblockScript = '''
       var noProgressMs = adNoProgressDurationMs(video);
       if (video) {
         rememberAndMuteVideo(video);
-        tryPlayerAdBypass(video);
+        if (adSignalState.strong) {
+          tryPlayerAdBypass(video);
+        }
       }
 
-      clickButtons(adSkipButtonSelectors);
+      if (adSignalState.skipVisible) {
+        clickButtons(adSkipButtonSelectors);
+      }
 
-      clickButtons(adOverlayCloseSelectors);
+      if (adSignalState.closeVisible) {
+        clickButtons(adOverlayCloseSelectors);
+      }
 
-      // If ad playback is paused/stalled at readyState 0-1, recover immediately
-      // instead of waiting for no-progress threshold to expire.
+      // Weak signals can appear transiently on normal videos.
+      // Avoid aggressive seek/recovery unless we have a strong ad confirmation.
+      if (!adSignalState.strong) {
+        return;
+      }
+
+      // If ad playback is paused/stalled at readyState 0-1, recover only after
+      // a short grace window to avoid overreacting during normal startup.
       if (
         video &&
         typeof video.readyState === 'number' &&
-        video.readyState <= 1
+        video.readyState <= 1 &&
+        noProgressMs >= adLowReadyStateGraceMs
       ) {
         forceRecoverFromStuckAd(
           video,
@@ -616,11 +714,15 @@ const String goPlayEnableAdblockScript = '''
   if (window.__go_playAdblockTicker) {
     clearInterval(window.__go_playAdblockTicker);
   }
-  window.__go_playAdblockTicker = setInterval(skipVideoAds, 80);
+  window.__go_playAdblockTicker = setInterval(skipVideoAds, adTickerIntervalMs);
 
   if (window.__go_playAdblockObserver) {
     window.__go_playAdblockObserver.disconnect();
   }
+  var observerTarget =
+      document.getElementById('movie_player') ||
+      document.body ||
+      document.documentElement;
   window.__go_playAdblockObserver = new MutationObserver(function() {
     if (window.__go_playAdMutationScheduled === true) {
       return;
@@ -629,11 +731,13 @@ const String goPlayEnableAdblockScript = '''
     setTimeout(function() {
       window.__go_playAdMutationScheduled = false;
       skipVideoAds();
-    }, 25);
+    }, adMutationDebounceMs);
   });
-  window.__go_playAdblockObserver.observe(document.documentElement, {
+  window.__go_playAdblockObserver.observe(observerTarget, {
     childList: true,
-    subtree: true
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class']
   });
 
   skipVideoAds();

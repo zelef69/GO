@@ -27,3 +27,8 @@
 ||googlevideo.com/videoplayback?*ad3_module=*
 ||googlevideo.com/videoplayback?*videoadid=*
 ||googlevideo.com/videoplayback?*adtag=*
+||googlevideo.com/videoplayback?*adpod=*
+||googlevideo.com/videoplayback?*ad_break_id=*
+||googlevideo.com/videoplayback?*adplacement=*
+||googlevideo.com/videoplayback?*ad_campaign=*
+||googlevideo.com/videoplayback?*adslot=*

@@ -1,231 +1,305 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../app/config/auth_config.dart';
 import '../domain/auth_exceptions.dart';
-import '../domain/models/auth_session.dart';
+import '../domain/models/device_identity.dart';
+import '../domain/models/device_session_result.dart';
 
 class AuthSessionService {
-  AuthSessionService({
-    FirebaseFirestore? firestore,
-    int maxSessionsPerEmail = AuthConfig.maxSessionsPerEmail,
-    Duration sessionTtl = AuthConfig.sessionTtl,
-  }) : _firestore = firestore ?? FirebaseFirestore.instance,
-       _maxSessionsPerEmail = maxSessionsPerEmail,
-       _sessionTtl = sessionTtl;
+  AuthSessionService({FirebaseFunctions? functions})
+    : _functions =
+          functions ??
+          FirebaseFunctions.instanceFor(region: AuthConfig.functionsRegion);
 
-  final FirebaseFirestore _firestore;
-  final int _maxSessionsPerEmail;
-  final Duration _sessionTtl;
+  final FirebaseFunctions _functions;
+  static const Duration _callTimeout = Duration(seconds: 20);
+  bool _functionsUnavailable = false;
 
-  CollectionReference<Map<String, dynamic>> get _sessions =>
-      _firestore.collection(AuthConfig.sessionsCollectionPath);
-
-  Future<AuthSession> ensureActiveSession({
+  Future<DeviceSessionRegistrationResult> registerDeviceSession({
     required User user,
+    required DeviceIdentity deviceIdentity,
     String? existingSessionId,
   }) async {
-    final normalizedEmail = _normalizedEmail(user);
+    if (_functionsUnavailable) {
+      return _fallbackRegister(
+        deviceIdentity: deviceIdentity,
+        existingSessionId: existingSessionId,
+      );
+    }
+    final callable = _functions.httpsCallable(AuthConfig.registerDeviceSessionFn);
+    final payload = <String, dynamic>{
+      'sessionId': existingSessionId ?? '',
+      'deviceId': deviceIdentity.deviceId,
+      'deviceName': deviceIdentity.deviceName,
+      'platform': deviceIdentity.platform,
+      'model': deviceIdentity.model,
+      'appVersion': deviceIdentity.appVersion,
+    };
     _log(
-      'ensureActiveSession uid=${user.uid} email=${user.email ?? "-"} hasExistingSession=${(existingSessionId ?? "").trim().isNotEmpty}',
+      'registerDeviceSession uid=${user.uid} deviceId=${deviceIdentity.deviceId}',
     );
-    if (normalizedEmail == null) {
-      throw FirebaseAuthException(
-        code: 'missing-email',
-        message: 'Google account does not contain a usable email.',
-      );
-    }
-
-    if (existingSessionId != null && existingSessionId.trim().isNotEmpty) {
-      final existing = await _validateExistingSession(
-        sessionId: existingSessionId.trim(),
-        user: user,
-        normalizedEmail: normalizedEmail,
-      );
-      if (existing != null) {
-        _log('ensureActiveSession reuse existing session=${existing.id}');
-        return existing;
+    try {
+      final result = await callable.call(payload).timeout(_callTimeout);
+      final data = _asMap(result.data);
+      final sessionId = (data['sessionId'] ?? '').toString().trim();
+      if (sessionId.isEmpty) {
+        throw SessionFunctionException(
+          code: 'INVALID_RESPONSE',
+          message: 'registerDeviceSession returned empty sessionId.',
+          details: data,
+        );
       }
-      _log('ensureActiveSession existing session not found in Firestore');
+      return DeviceSessionRegistrationResult(
+        sessionId: sessionId,
+        expireAt: _toDateTime(data['expireAt']),
+        maxDevices: _toIntOrNull(data['maxDevices']),
+        version: _toIntOrNull(data['version']),
+      );
+    } on FirebaseFunctionsException catch (error) {
+      if (_isFunctionNotFound(error)) {
+        _functionsUnavailable = true;
+        _log(
+          'registerDeviceSession fallback enabled (function not found) code=${error.code}',
+        );
+        return _fallbackRegister(
+          deviceIdentity: deviceIdentity,
+          existingSessionId: existingSessionId,
+        );
+      }
+      _throwMappedException(error);
     }
-
-    _log('ensureActiveSession creating new session');
-    return _createSession(user: user, normalizedEmail: normalizedEmail);
   }
 
-  Future<void> revokeSession(String sessionId) async {
-    final normalizedSessionId = sessionId.trim();
-    if (normalizedSessionId.isEmpty) {
+  Future<SessionValidationResult> validateDeviceSession({
+    required User user,
+    required String sessionId,
+    required String deviceId,
+  }) async {
+    if (_functionsUnavailable) {
+      return SessionValidationResult(
+        code: SessionValidationCode.ok,
+        sessionId: sessionId,
+      );
+    }
+    final callable = _functions.httpsCallable(AuthConfig.validateDeviceSessionFn);
+    final payload = <String, dynamic>{
+      'sessionId': sessionId,
+      'deviceId': deviceId,
+    };
+    _log('validateDeviceSession uid=${user.uid} sessionId=$sessionId');
+    try {
+      final result = await callable.call(payload).timeout(_callTimeout);
+      final data = _asMap(result.data);
+      final code = _validationCodeFromServer(data['resultCode']);
+      return SessionValidationResult(
+        code: code,
+        expireAt: _toDateTime(data['expireAt']),
+        sessionId: (data['sessionId'] ?? '').toString().trim().isEmpty
+            ? sessionId
+            : (data['sessionId'] ?? '').toString().trim(),
+        version: _toIntOrNull(data['version']),
+      );
+    } on FirebaseFunctionsException catch (error) {
+      if (_isFunctionNotFound(error)) {
+        _functionsUnavailable = true;
+        _log(
+          'validateDeviceSession fallback enabled (function not found) code=${error.code}',
+        );
+        return SessionValidationResult(
+          code: SessionValidationCode.ok,
+          sessionId: sessionId,
+        );
+      }
+      _throwMappedException(error);
+    }
+  }
+
+  Future<void> heartbeatDeviceSession({
+    required User user,
+    required String sessionId,
+    required DeviceIdentity deviceIdentity,
+  }) async {
+    if (_functionsUnavailable) {
       return;
     }
-    _log('revokeSession session=$normalizedSessionId');
-    await _sessions.doc(normalizedSessionId).set(<String, dynamic>{
-      'status': 'revoked',
-      'revokedAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    final callable = _functions.httpsCallable(AuthConfig.heartbeatDeviceSessionFn);
+    final payload = <String, dynamic>{
+      'sessionId': sessionId,
+      'deviceId': deviceIdentity.deviceId,
+      'platform': deviceIdentity.platform,
+      'model': deviceIdentity.model,
+      'appVersion': deviceIdentity.appVersion,
+    };
+    _log('heartbeatDeviceSession uid=${user.uid} sessionId=$sessionId');
+    try {
+      await callable.call(payload).timeout(_callTimeout);
+    } on FirebaseFunctionsException catch (error) {
+      if (_isFunctionNotFound(error)) {
+        _functionsUnavailable = true;
+        _log(
+          'heartbeatDeviceSession fallback enabled (function not found) code=${error.code}',
+        );
+        return;
+      }
+      _throwMappedException(error);
+    }
   }
 
-  Future<AuthSession?> _validateExistingSession({
+  Future<void> logoutDeviceSession({
+    required User user,
     required String sessionId,
-    required User user,
-    required String normalizedEmail,
+    required String deviceId,
   }) async {
-    final doc = await _sessions.doc(sessionId).get();
-    if (!doc.exists) {
-      _log('_validateExistingSession not found session=$sessionId');
-      return null;
+    if (_functionsUnavailable) {
+      return;
     }
-    final data = doc.data();
-    if (data == null) {
-      return null;
+    final callable = _functions.httpsCallable(AuthConfig.logoutDeviceSessionFn);
+    final payload = <String, dynamic>{
+      'sessionId': sessionId,
+      'deviceId': deviceId,
+    };
+    _log('logoutDeviceSession uid=${user.uid} sessionId=$sessionId');
+    try {
+      await callable.call(payload).timeout(_callTimeout);
+    } on FirebaseFunctionsException catch (error) {
+      if (_isFunctionNotFound(error)) {
+        _functionsUnavailable = true;
+        _log(
+          'logoutDeviceSession fallback enabled (function not found) code=${error.code}',
+        );
+        return;
+      }
+      final appCode = _readAppCode(error);
+      if (appCode == 'SESSION_NOT_FOUND') {
+        return;
+      }
+      _throwMappedException(error);
     }
-
-    final uid = (data['uid'] ?? '').toString().trim();
-    final email = (data['email'] ?? '').toString().trim().toLowerCase();
-    final status = (data['status'] ?? '').toString().trim().toLowerCase();
-    final expiresAt = _toDateTime(data['expiresAt']);
-
-    if (uid != user.uid || email != normalizedEmail || status != 'active') {
-      _log(
-        '_validateExistingSession invalid session=$sessionId uid=$uid email=$email status=$status expectedUid=${user.uid} expectedEmail=$normalizedEmail',
-      );
-      throw SessionInvalidException();
-    }
-    if (expiresAt == null || !expiresAt.isAfter(DateTime.now().toUtc())) {
-      _log('_validateExistingSession expired session=$sessionId');
-      await _sessions.doc(sessionId).set(<String, dynamic>{
-        'status': 'expired',
-        'revokedAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      throw SessionExpiredException();
-    }
-
-    await _sessions.doc(sessionId).set(<String, dynamic>{
-      'lastSeenAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    _log('_validateExistingSession success session=$sessionId');
-    return _sessionFromDoc(doc.id, data);
   }
 
-  Future<AuthSession> _createSession({
-    required User user,
-    required String normalizedEmail,
-  }) async {
-    final activeCount = await _activeSessionCountForEmail(
-      normalizedEmail: normalizedEmail,
-      uid: user.uid,
+  DeviceSessionRegistrationResult _fallbackRegister({
+    required DeviceIdentity deviceIdentity,
+    String? existingSessionId,
+  }) {
+    final resolvedSessionId = (existingSessionId ?? '').trim().isNotEmpty
+        ? existingSessionId!.trim()
+        : 'local_${DateTime.now().millisecondsSinceEpoch}_${deviceIdentity.deviceId.hashCode.abs()}';
+    return DeviceSessionRegistrationResult(
+      sessionId: resolvedSessionId,
+      expireAt: null,
+      maxDevices: AuthConfig.defaultMaxDevices,
+      version: 1,
     );
-    _log(
-      '_createSession email=$normalizedEmail uid=${user.uid} activeCount=$activeCount max=$_maxSessionsPerEmail',
-    );
-    if (activeCount >= _maxSessionsPerEmail) {
-      throw SessionLimitExceededException(limit: _maxSessionsPerEmail);
-    }
-
-    final expiresAt = DateTime.now().toUtc().add(_sessionTtl);
-    final docRef = _sessions.doc();
-    await docRef.set(<String, dynamic>{
-      'sessionId': docRef.id,
-      'uid': user.uid,
-      'email': normalizedEmail,
-      'status': 'active',
-      'createdAt': FieldValue.serverTimestamp(),
-      'lastSeenAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'revokedAt': null,
-      'expiresAt': Timestamp.fromDate(expiresAt),
-      'platform': _platformLabel(),
-      // TODO(security-backend): Move final trust/premium authorization to
-      // server-side verification using signed trust context from
-      // ServerTrustService + backend nonce validation.
-      'trustState': 'server_validation_required',
-    });
-    final created = await docRef.get();
-    final createdData = created.data();
-    if (createdData == null) {
-      throw StateError('Created session has no data.');
-    }
-    _log('_createSession success session=${created.id}');
-    return _sessionFromDoc(created.id, createdData);
   }
 
-  Future<int> _activeSessionCountForEmail({
-    required String normalizedEmail,
-    required String uid,
-  }) async {
-    final now = Timestamp.fromDate(DateTime.now().toUtc());
-    final snapshot = await _sessions
-        .where('email', isEqualTo: normalizedEmail)
-        .where('uid', isEqualTo: uid)
-        .where('status', isEqualTo: 'active')
-        .where('expiresAt', isGreaterThan: now)
-        .get();
-    return snapshot.size;
+  bool _isFunctionNotFound(FirebaseFunctionsException error) {
+    final normalizedCode = error.code.toLowerCase();
+    if (normalizedCode == 'not-found' || normalizedCode == 'unimplemented') {
+      return true;
+    }
+    final message = (error.message ?? '').toLowerCase();
+    return message.contains('not_found') || message.contains('not found');
   }
 
-  String? _normalizedEmail(User user) {
-    final email = (user.email ?? '').trim().toLowerCase();
-    if (email.isEmpty) {
-      return null;
+  Map<String, dynamic> _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
     }
-    return email;
+    if (value is Map) {
+      return value.map((key, v) => MapEntry(key.toString(), v));
+    }
+    return const <String, dynamic>{};
   }
 
-  String _platformLabel() {
-    if (kIsWeb) {
-      return 'web';
+  SessionValidationCode _validationCodeFromServer(dynamic rawCode) {
+    final normalized = rawCode?.toString().trim().toUpperCase() ?? '';
+    return switch (normalized) {
+      'OK' => SessionValidationCode.ok,
+      'EXPIRED' => SessionValidationCode.expired,
+      'BLOCKED' => SessionValidationCode.blocked,
+      'DEVICE_REVOKED' => SessionValidationCode.deviceRevoked,
+      'VERSION_MISMATCH' => SessionValidationCode.versionMismatch,
+      'SESSION_NOT_FOUND' => SessionValidationCode.sessionNotFound,
+      _ => SessionValidationCode.sessionNotFound,
+    };
+  }
+
+  Never _throwMappedException(FirebaseFunctionsException error) {
+    final appCode = _readAppCode(error);
+    switch (appCode) {
+      case 'DEVICE_LIMIT_EXCEEDED':
+        throw SessionLimitExceededException(limit: _readLimit(error));
+      case 'EXPIRED':
+        throw SessionExpiredException();
+      case 'BLOCKED':
+        throw SessionBlockedException();
+      case 'SESSION_NOT_FOUND':
+      case 'DEVICE_REVOKED':
+      case 'VERSION_MISMATCH':
+        throw SessionInvalidException();
+      default:
+        throw SessionFunctionException(
+          code: appCode.isEmpty ? error.code : appCode,
+          message: error.message ?? 'Cloud function call failed.',
+          details: error.details,
+        );
     }
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        return 'android';
-      case TargetPlatform.iOS:
-        return 'ios';
-      case TargetPlatform.macOS:
-        return 'macos';
-      case TargetPlatform.windows:
-        return 'windows';
-      case TargetPlatform.linux:
-        return 'linux';
-      case TargetPlatform.fuchsia:
-        return 'fuchsia';
+  }
+
+  String _readAppCode(FirebaseFunctionsException error) {
+    final details = error.details;
+    if (details is Map) {
+      final dynamic raw = details['code'];
+      if (raw != null) {
+        final code = raw.toString().trim().toUpperCase();
+        if (code.isNotEmpty) {
+          return code;
+        }
+      }
     }
+    return '';
+  }
+
+  int _readLimit(FirebaseFunctionsException error) {
+    final details = error.details;
+    if (details is Map) {
+      final dynamic maxDevices = details['maxDevices'];
+      if (maxDevices is num) {
+        return maxDevices.toInt();
+      }
+      if (maxDevices is String) {
+        final parsed = int.tryParse(maxDevices);
+        if (parsed != null && parsed > 0) {
+          return parsed;
+        }
+      }
+    }
+    return AuthConfig.defaultMaxDevices;
   }
 
   DateTime? _toDateTime(dynamic value) {
-    if (value is Timestamp) {
-      return value.toDate().toUtc();
-    }
-    if (value is DateTime) {
-      return value.toUtc();
+    if (value is String && value.trim().isNotEmpty) {
+      return DateTime.tryParse(value)?.toUtc();
     }
     return null;
   }
 
-  AuthSession _sessionFromDoc(String id, Map<String, dynamic> data) {
-    final expiresAt = _toDateTime(data['expiresAt']);
-    if (expiresAt == null) {
-      throw StateError('Session document missing expiresAt.');
+  int? _toIntOrNull(dynamic value) {
+    if (value is num) {
+      return value.toInt();
     }
-    return AuthSession(
-      id: id,
-      uid: (data['uid'] ?? '').toString().trim(),
-      email: (data['email'] ?? '').toString().trim(),
-      createdAt: _toDateTime(data['createdAt']),
-      lastSeenAt: _toDateTime(data['lastSeenAt']),
-      expiresAt: expiresAt,
-      status: (data['status'] ?? '').toString().trim(),
-    );
+    if (value is String) {
+      return int.tryParse(value.trim());
+    }
+    return null;
   }
 
   void _log(String message) {
     if (!kDebugMode) {
       return;
     }
-    debugPrint('[GO_PLAY-AuthSession] $message');
+    debugPrint('[GO_PLAY-SessionFn] $message');
   }
 }

@@ -512,7 +512,10 @@ const String goPlayPlaybackDebugScript = '''
     var video = document.querySelector('video');
     var player = document.getElementById('movie_player');
     var spinner = document.querySelector('.ytp-spinner');
-    var adOverlay = document.querySelector('.ytp-ad-module, .ytp-ad-player-overlay');
+    var adOverlay = document.querySelector(
+      '.ytp-ad-module, .ytp-ad-player-overlay, .ytp-ad-text, ' +
+      '.ytp-ad-simple-ad-badge, .ytp-ad-preview-text, .ytm-ad-player-overlay'
+    );
     var rect = video ? video.getBoundingClientRect() : null;
     var title = '';
     var author = '';
@@ -844,6 +847,9 @@ const String goPlayPlaybackDebugScript = '''
   }
 
   var mutationScheduled = false;
+  var mutationDebounceMs = 420;
+  var minMutationPublishIntervalMs = 900;
+  var lastMutationPublishAtMs = 0;
   function scheduleMutationPublish() {
     if (mutationScheduled) {
       return;
@@ -852,8 +858,13 @@ const String goPlayPlaybackDebugScript = '''
     setTimeout(function() {
       mutationScheduled = false;
       hookVideoEvents();
+      var now = Date.now();
+      if (now - lastMutationPublishAtMs < minMutationPublishIntervalMs) {
+        return;
+      }
+      lastMutationPublishAtMs = now;
       publish('dom:mutation');
-    }, 250);
+    }, mutationDebounceMs);
   }
 
   hookVideoEvents();
@@ -943,7 +954,7 @@ const String goPlayPlaybackDebugScript = '''
   setInterval(function() {
     hookVideoEvents();
     publish('tick');
-  }, 1500);
+  }, 2200);
 
   publish('installed');
 })();

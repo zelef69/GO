@@ -1,7 +1,15 @@
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
+
 import '../../features/adblock/adblock_engine_bridge.dart';
 import '../../features/adblock/adblock_service.dart';
+import '../../features/adblock/crowd/signature/signature_matcher.dart';
+import '../../features/adblock/crowd/storage/learned_signature_db.dart';
+import '../../features/adblock/crowd/storage/learned_signature_repository.dart';
+import '../../features/adblock/crowd/sync/crowd_sync_service.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../features/auth/data/auth_session_service.dart';
+import '../../features/auth/data/device_id_service.dart';
 import '../../features/auth/data/firebase_auth_service.dart';
 import '../../features/auth/data/local_session_store.dart';
 import '../../features/auth/data/subscription_service.dart';
@@ -28,6 +36,7 @@ class AppDependencies {
     required this.firebaseAuthService,
     required this.subscriptionService,
     required this.authSessionService,
+    required this.deviceIdService,
     required this.localSessionStore,
     required this.authController,
     required this.securityService,
@@ -46,6 +55,7 @@ class AppDependencies {
   final FirebaseAuthService firebaseAuthService;
   final SubscriptionService subscriptionService;
   final AuthSessionService authSessionService;
+  final DeviceIdService deviceIdService;
   final LocalSessionStore localSessionStore;
   final AuthController authController;
   final SecurityService securityService;
@@ -59,11 +69,22 @@ class AppDependencies {
     final navigationInterceptor = NavigationInterceptor(
       domainPolicyService: domainPolicyService,
     );
+    final learnedSignatureRepository = LearnedSignatureRepository(
+      database: LearnedSignatureDb(),
+      matcher: const SignatureMatcher(),
+    );
+    final crowdSyncService = CrowdSyncService(
+      functions: FirebaseFunctions.instance,
+      repository: learnedSignatureRepository,
+      debugMode: kDebugMode,
+    );
     final adblockService = AdblockService(
       domainPolicyService: domainPolicyService,
       nativeEngineBridge: NativeAdblockEngineBridge(),
       fallbackEngineBridge: DartAdblockEngineBridge(),
       enabled: settingsController.adblockEnabled,
+      learnedSignatureRepository: learnedSignatureRepository,
+      crowdSyncService: crowdSyncService,
     );
     final pipChannel = PiPChannel();
     final pipController = PiPController(channel: pipChannel);
@@ -71,6 +92,7 @@ class AppDependencies {
     final firebaseAuthService = FirebaseAuthService();
     final subscriptionService = SubscriptionService();
     final authSessionService = AuthSessionService();
+    final deviceIdService = DeviceIdService();
     final localSessionStore = LocalSessionStore();
     final securityService = SecurityService.instance;
     final nativeSecretsService = NativeSecretsService();
@@ -85,6 +107,7 @@ class AppDependencies {
       firebaseAuthService: firebaseAuthService,
       subscriptionService: subscriptionService,
       authSessionService: authSessionService,
+      deviceIdService: deviceIdService,
       localSessionStore: localSessionStore,
       browserSessionService: sessionService,
     );
@@ -99,6 +122,7 @@ class AppDependencies {
       firebaseAuthService: firebaseAuthService,
       subscriptionService: subscriptionService,
       authSessionService: authSessionService,
+      deviceIdService: deviceIdService,
       localSessionStore: localSessionStore,
       authController: authController,
       securityService: securityService,

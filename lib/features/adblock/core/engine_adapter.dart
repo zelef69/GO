@@ -23,6 +23,8 @@ class EngineAdapter implements AdblockEngineBridge {
   bool get initialized => _initialized;
   bool get usingNativeEngine => _usingNativeEngine;
 
+  Future<bool> isNativeEngineAvailable() => _nativeEngineBridge.isAvailable();
+
   @override
   Future<bool> isAvailable() async {
     final nativeAvailable = await _nativeEngineBridge.isAvailable();
@@ -33,30 +35,55 @@ class EngineAdapter implements AdblockEngineBridge {
   }
 
   @override
-  Future<void> initialize(List<AdblockRule> rules) async {
+  Future<void> initialize(
+    List<AdblockRule> rules, {
+    String? rawFilterText,
+    String? resourcesJson,
+    String? catalogSourcesJson,
+    String? serializedEngineBase64,
+    List<String> enabledTags = const <String>[],
+  }) async {
     if (_initialized) {
       return;
-    }
-
-    try {
-      await _fallbackEngineBridge.initialize(rules);
-      _fallbackInitialized = true;
-    } catch (_) {
-      _logger.log('engine adapter fallback init failed');
     }
 
     final isNativeAvailable = await _nativeEngineBridge.isAvailable();
     if (isNativeAvailable) {
       try {
-        await _nativeEngineBridge.initialize(rules);
+        await _nativeEngineBridge.initialize(
+          rules,
+          rawFilterText: rawFilterText,
+          resourcesJson: resourcesJson,
+          catalogSourcesJson: catalogSourcesJson,
+          serializedEngineBase64: serializedEngineBase64,
+          enabledTags: enabledTags,
+        );
         _activeEngine = _nativeEngineBridge;
         _usingNativeEngine = true;
         _initialized = true;
         _logger.log('engine adapter selected native');
         return;
       } catch (_) {
-        _logger.log('engine adapter native init failed, using fallback');
+        _logger.log('engine adapter native init failed');
       }
+    }
+
+    if (rules.isEmpty) {
+      throw StateError('Fallback engine requires compiled rules');
+    }
+
+    try {
+      await _fallbackEngineBridge.initialize(
+        rules,
+        rawFilterText: rawFilterText,
+        resourcesJson: resourcesJson,
+        catalogSourcesJson: catalogSourcesJson,
+        serializedEngineBase64: serializedEngineBase64,
+        enabledTags: enabledTags,
+      );
+      _fallbackInitialized = true;
+    } catch (_) {
+      _logger.log('engine adapter fallback init failed');
     }
 
     if (_fallbackInitialized) {
@@ -84,6 +111,76 @@ class EngineAdapter implements AdblockEngineBridge {
       resourceType: resourceType,
       sourceUrl: sourceUrl,
     );
+  }
+
+  @override
+  Future<AdblockEngineRequestResult> evaluateRequestDetailed(
+    Uri uri, {
+    required String resourceType,
+    Uri? sourceUrl,
+  }) async {
+    if (!_initialized) {
+      return AdblockEngineRequestResult.allow();
+    }
+    return _activeEngine.evaluateRequestDetailed(
+      uri,
+      resourceType: resourceType,
+      sourceUrl: sourceUrl,
+    );
+  }
+
+  @override
+  Future<AdblockCosmeticResources?> getCosmeticResources(Uri pageUri) async {
+    if (!_initialized) {
+      return null;
+    }
+    try {
+      return await _activeEngine.getCosmeticResources(pageUri);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<List<String>> getHiddenClassIdSelectors(
+    Uri pageUri, {
+    required List<String> classes,
+    required List<String> ids,
+    Set<String> exceptions = const <String>{},
+  }) async {
+    if (!_initialized) {
+      return const <String>[];
+    }
+    return _activeEngine.getHiddenClassIdSelectors(
+      pageUri,
+      classes: classes,
+      ids: ids,
+      exceptions: exceptions,
+    );
+  }
+
+  @override
+  Future<String?> getCspDirectives(
+    Uri uri, {
+    required String resourceType,
+    Uri? sourceUrl,
+  }) async {
+    if (!_initialized) {
+      return null;
+    }
+    return _activeEngine.getCspDirectives(
+      uri,
+      resourceType: resourceType,
+      sourceUrl: sourceUrl,
+    );
+  }
+
+  @override
+  Future<String?> serializeEngine() async {
+    if (!_initialized) {
+      return null;
+    }
+    return _activeEngine.serializeEngine();
   }
 
   @override

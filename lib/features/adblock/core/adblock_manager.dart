@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../domain_lock/domain_policy_service.dart';
 import '../adblock_engine_bridge.dart';
+import '../crowd/storage/learned_signature_repository.dart';
 import '../models/adblock_rule.dart';
 import 'adblock_config.dart';
 import 'adblock_debug_logger.dart';
@@ -21,6 +22,7 @@ class AdblockManager {
     required AdblockEngineBridge nativeEngineBridge,
     required AdblockEngineBridge fallbackEngineBridge,
     required AdblockConfig initialConfig,
+    LearnedSignatureRepository? learnedSignatureRepository,
   }) {
     final logger = AdblockDebugLogger(enabled: initialConfig.debugMode);
     final metrics = AdblockMetricsCollector();
@@ -33,6 +35,7 @@ class AdblockManager {
       domainPolicyService: domainPolicyService,
       logger: logger,
       metrics: metrics,
+      learnedSignatureRepository: learnedSignatureRepository,
     )..setConfig(initialConfig);
     return AdblockManager._(
       filterListRepository: FilterListRepository(),
@@ -42,6 +45,7 @@ class AdblockManager {
       engineAdapter: engineAdapter,
       requestBlocker: requestBlocker,
       initialConfig: initialConfig,
+      learnedSignatureRepository: learnedSignatureRepository,
     );
   }
 
@@ -53,13 +57,15 @@ class AdblockManager {
     required EngineAdapter engineAdapter,
     required RequestBlocker requestBlocker,
     required AdblockConfig initialConfig,
+    required LearnedSignatureRepository? learnedSignatureRepository,
   }) : _filterListRepository = filterListRepository,
        _filterCompiler = filterCompiler,
        _logger = logger,
        _metrics = metrics,
        _engineAdapter = engineAdapter,
        _requestBlocker = requestBlocker,
-       _config = initialConfig;
+       _config = initialConfig,
+       _learnedSignatureRepository = learnedSignatureRepository;
 
   final FilterListRepository _filterListRepository;
   final FilterCompiler _filterCompiler;
@@ -67,9 +73,12 @@ class AdblockManager {
   final AdblockMetricsCollector _metrics;
   final EngineAdapter _engineAdapter;
   final RequestBlocker _requestBlocker;
+  final LearnedSignatureRepository? _learnedSignatureRepository;
 
   static const String _cacheDirName = 'adblock';
   static const String _compiledRulesFileName = 'compiled_rules_cache.json';
+  static const String _nativeEngineSnapshotFileName =
+      'native_engine_snapshot_cache.json';
 
   AdblockConfig _config;
   Future<void>? _initializeFuture;
@@ -79,6 +88,7 @@ class AdblockManager {
   int _activeRuleCount = 0;
   List<String> _loadedSources = const <String>[];
   bool _usedCachedList = false;
+  bool _firstPartyHeuristicProfileLoaded = false;
 
   bool get initialized => _initialized;
   bool get enabled => _config.enabled;
@@ -112,11 +122,19 @@ class AdblockManager {
   }
 
   Future<void> _initializeInternal() async {
+    try {
+      await _learnedSignatureRepository?.initialize();
+    } catch (_) {}
     _requestBlocker.setConfig(_config);
 
     final listBundle = await _filterListRepository.loadLists(
       config: _config,
       logger: _logger,
+    );
+    _firstPartyHeuristicProfileLoaded =
+        listBundle.firstPartyHeuristicsProfileEnabled;
+    _requestBlocker.setFirstPartyHeuristicProfile(
+      _config.firstPartyHeuristicsEnabled && _firstPartyHeuristicProfileLoaded,
     );
     _loadedSources = listBundle.loadedSources;
     _usedCachedList = listBundle.usedCachedData;
@@ -130,6 +148,44 @@ class AdblockManager {
     }
 
     final revision = _filterCompiler.computeRevision(lines);
+    final nativeSnapshotBase64 = await _tryLoadNativeEngineSnapshot(
+      expectedRevision: revision,
+    );
+
+    try {
+      await _engineAdapter.initialize(
+        const <AdblockRule>[],
+        rawFilterText: listBundle.rawFilterText,
+        resourcesJson: listBundle.resourcesJson,
+        catalogSourcesJson: listBundle.catalogSourcesJson,
+        serializedEngineBase64: nativeSnapshotBase64,
+        enabledTags: listBundle.enabledTags,
+      );
+      String? serializedEngine;
+      try {
+        serializedEngine = await _engineAdapter.serializeEngine();
+      } catch (_) {
+        serializedEngine = null;
+      }
+      if (serializedEngine != null && serializedEngine.isNotEmpty) {
+        await _writeNativeEngineSnapshot(
+          revision: revision,
+          serializedEngineBase64: serializedEngine,
+        );
+      }
+      _requestBlocker.setEngine(_engineAdapter);
+      _requestBlocker.setConfig(_config);
+      _activeRevision = revision;
+      _activeRuleCount = lines.length;
+      _initialized = true;
+      _logger.log(
+        'manager initialized native rules=$_activeRuleCount revision=$revision firstPartyProfile=${listBundle.firstPartyHeuristicsProfileEnabled}',
+      );
+      return;
+    } catch (_) {
+      _logger.log('native init unavailable -> preparing fallback rules');
+    }
+
     List<AdblockRule>? compiledFromCache = await _tryLoadCompiledRulesCache(
       expectedRevision: revision,
     );
@@ -157,7 +213,14 @@ class AdblockManager {
     }
 
     try {
-      await _engineAdapter.initialize(compilationResult.rules);
+      await _engineAdapter.initialize(
+        compilationResult.rules,
+        rawFilterText: listBundle.rawFilterText,
+        resourcesJson: listBundle.resourcesJson,
+        catalogSourcesJson: listBundle.catalogSourcesJson,
+        serializedEngineBase64: nativeSnapshotBase64,
+        enabledTags: listBundle.enabledTags,
+      );
     } catch (_) {
       // Fail-safe: keep WebView loading normally when engine startup fails.
       _logger.log('engine initialization failed -> continue fail-open');
@@ -184,10 +247,13 @@ class AdblockManager {
       final revision = payload['revision']?.toString() ?? '';
       final parsedLines = (payload['parsedLines'] as int?) ?? lines.length;
       final ignoredLines = (payload['ignoredLines'] as int?) ?? 0;
-      final serializedRules = (payload['rules'] as List<dynamic>? ?? const <dynamic>[])
-          .cast<Map<dynamic, dynamic>>();
+      final serializedRules =
+          (payload['rules'] as List<dynamic>? ?? const <dynamic>[])
+              .cast<Map<dynamic, dynamic>>();
       final rules = serializedRules
-          .map((entry) => AdblockRule.fromJson(Map<String, dynamic>.from(entry)))
+          .map(
+            (entry) => AdblockRule.fromJson(Map<String, dynamic>.from(entry)),
+          )
           .whereType<AdblockRule>()
           .toList(growable: false);
       if (revision.isEmpty || rules.isEmpty) {
@@ -218,9 +284,61 @@ class AdblockManager {
     _metrics.onPageChanged(uri);
   }
 
+  void onPlaybackDebugSignal(Map<String, dynamic> payload, {Uri? pageUri}) {
+    _requestBlocker.onPlaybackDebugSignal(payload, pageUri: pageUri);
+  }
+
+  Future<AdblockCosmeticResources?> getCosmeticResources(Uri? pageUri) async {
+    if (pageUri == null || pageUri.host.isEmpty) {
+      return null;
+    }
+    if (_disposed || !_initialized) {
+      return null;
+    }
+    return _engineAdapter.getCosmeticResources(pageUri);
+  }
+
+  Future<List<String>> getHiddenClassIdSelectors(
+    Uri? pageUri, {
+    required List<String> classes,
+    required List<String> ids,
+    Set<String> exceptions = const <String>{},
+  }) async {
+    if (pageUri == null || pageUri.host.isEmpty) {
+      return const <String>[];
+    }
+    if (_disposed || !_initialized) {
+      return const <String>[];
+    }
+    return _engineAdapter.getHiddenClassIdSelectors(
+      pageUri,
+      classes: classes,
+      ids: ids,
+      exceptions: exceptions,
+    );
+  }
+
+  Future<String?> getCspDirectives(
+    Uri uri, {
+    required String resourceType,
+    Uri? sourceUrl,
+  }) async {
+    if (_disposed || !_initialized) {
+      return null;
+    }
+    return _engineAdapter.getCspDirectives(
+      uri,
+      resourceType: resourceType,
+      sourceUrl: sourceUrl,
+    );
+  }
+
   void updateConfig(AdblockConfig config, {bool reinitialize = false}) {
     _config = config;
     _logger.setEnabled(config.debugMode);
+    _requestBlocker.setFirstPartyHeuristicProfile(
+      _config.firstPartyHeuristicsEnabled && _firstPartyHeuristicProfileLoaded,
+    );
     _requestBlocker.setConfig(config);
     _requestBlocker.clearCache();
     if (reinitialize) {
@@ -240,6 +358,9 @@ class AdblockManager {
       return;
     }
     _disposed = true;
+    try {
+      await _learnedSignatureRepository?.dispose();
+    } catch (_) {}
     await _engineAdapter.dispose();
     _requestBlocker.clearCache();
     _initialized = false;
@@ -247,6 +368,7 @@ class AdblockManager {
     _activeRuleCount = 0;
     _loadedSources = const <String>[];
     _usedCachedList = false;
+    _firstPartyHeuristicProfileLoaded = false;
     _logger.reset();
     _metrics.reset();
   }
@@ -272,7 +394,9 @@ class AdblockManager {
           (decoded['rules'] as List<dynamic>? ?? const <dynamic>[])
               .cast<Map<dynamic, dynamic>>();
       final rules = serializedRules
-          .map((entry) => AdblockRule.fromJson(Map<String, dynamic>.from(entry)))
+          .map(
+            (entry) => AdblockRule.fromJson(Map<String, dynamic>.from(entry)),
+          )
           .whereType<AdblockRule>()
           .toList(growable: false);
       if (rules.isEmpty) {
@@ -299,6 +423,48 @@ class AdblockManager {
     } catch (_) {}
   }
 
+  Future<String?> _tryLoadNativeEngineSnapshot({
+    required String expectedRevision,
+  }) async {
+    final file = await _resolveNativeEngineSnapshotFile();
+    if (!file.existsSync()) {
+      return null;
+    }
+    try {
+      final raw = await file.readAsString();
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+      final revision = decoded['revision']?.toString() ?? '';
+      if (revision != expectedRevision) {
+        return null;
+      }
+      final payload = decoded['snapshot']?.toString() ?? '';
+      if (payload.isEmpty) {
+        return null;
+      }
+      return payload;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _writeNativeEngineSnapshot({
+    required String revision,
+    required String serializedEngineBase64,
+  }) async {
+    final file = await _resolveNativeEngineSnapshotFile();
+    final payload = <String, dynamic>{
+      'revision': revision,
+      'snapshot': serializedEngineBase64,
+      'updatedAtMs': DateTime.now().millisecondsSinceEpoch,
+    };
+    try {
+      await file.writeAsString(jsonEncode(payload), flush: true);
+    } catch (_) {}
+  }
+
   Future<File> _resolveCompiledRulesFile() async {
     final baseDirectory = await getApplicationSupportDirectory();
     final cacheDirectory = Directory(
@@ -309,6 +475,19 @@ class AdblockManager {
     }
     return File(
       '${cacheDirectory.path}${Platform.pathSeparator}$_compiledRulesFileName',
+    );
+  }
+
+  Future<File> _resolveNativeEngineSnapshotFile() async {
+    final baseDirectory = await getApplicationSupportDirectory();
+    final cacheDirectory = Directory(
+      '${baseDirectory.path}${Platform.pathSeparator}$_cacheDirName',
+    );
+    if (!cacheDirectory.existsSync()) {
+      await cacheDirectory.create(recursive: true);
+    }
+    return File(
+      '${cacheDirectory.path}${Platform.pathSeparator}$_nativeEngineSnapshotFileName',
     );
   }
 }

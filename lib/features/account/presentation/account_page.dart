@@ -155,7 +155,7 @@ class _AccountPageState extends State<AccountPage> {
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Expiry Date (Firebase)'),
+                title: const Text('Expiry Date (วันหมดอายุ)'),
                 subtitle: Text(_expiryDateLabel(packageStatus.expiresAtUtc)),
               ),
               const SizedBox(height: 16),

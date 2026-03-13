@@ -36,14 +36,11 @@ class _AuthGatePageState extends State<AuthGatePage> {
       animation: authController,
       builder: (context, _) {
         switch (authController.status) {
+          case AuthStatus.authenticated:
+            return BrowserPage(dependencies: widget.dependencies);
           case AuthStatus.initializing:
           case AuthStatus.checkingSession:
           case AuthStatus.authenticating:
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          case AuthStatus.authenticated:
-            return BrowserPage(dependencies: widget.dependencies);
           case AuthStatus.unauthenticated:
           case AuthStatus.blocked:
           case AuthStatus.error:

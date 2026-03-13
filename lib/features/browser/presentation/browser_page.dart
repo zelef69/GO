@@ -11,6 +11,7 @@ import '../../../app/config/app_config.dart';
 import '../../../app/config/app_dependencies.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../adblock/adblock_service.dart';
+import '../../adblock/core/request_blocker.dart';
 import '../../auth/auth_controller.dart';
 import '../../auth/domain/session_package_status.dart';
 import '../../domain_lock/domain_policy_service.dart';
@@ -52,6 +53,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
 
   bool _isInitializing = true;
   bool _isLoading = true;
+  bool _adblockRuntimeReady = false;
   int _progress = 0;
   bool _canGoBack = false;
   bool _videoPlaying = false;
@@ -98,6 +100,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   static const int _maxAdblockTraceLogs = 2200;
   static const int _maxAdblockJsLogs = 2200;
   static const bool _enableVerboseAdblockTrace = false;
+  static const bool _enableDocumentCspInjection = false;
   static const Duration _youtubeClickFallbackDelay = Duration(
     milliseconds: 260,
   );
@@ -110,6 +113,8 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   static const Duration _autoNextDuplicateWindow = Duration(seconds: 6);
   static const Duration _autoNextEndedDedupWindow = Duration(seconds: 4);
   static const Duration _scriptResyncThrottle = Duration(milliseconds: 650);
+  static const Duration _navigationLogThrottle = Duration(milliseconds: 420);
+  static const Duration _duplicateLoadStopWindow = Duration(milliseconds: 850);
   static const Duration _pipExitFallbackMinResumePosition = Duration(
     seconds: 30,
   );
@@ -148,7 +153,13 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   String? _lastPlaybackTickSignature;
   String? _lastVideoStateLogSignature;
   int _postAutoNextTitleRefreshToken = 0;
+  String _lastInjectedCspSignature = '';
   Uri _currentMainFrameUri = AppConfig.homeUri;
+  DateTime? _lastNavigationLogAt;
+  String _lastNavigationLogSignature = '';
+  DateTime? _lastLoadStopHandledAt;
+  String _lastLoadStopHandledKey = '';
+  DateTime? _lastAdblockScriptSyncAt;
 
   @override
   void initState() {
@@ -183,6 +194,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       unawaited(
         _setBackgroundPlaybackGuardEnabled(false, reason: 'lifecycle_resumed'),
       );
+      _adblockService.scheduleCrowdSync(reason: 'app_resumed');
       unawaited(_handleAppResumedLifecycle());
       return;
     }
@@ -212,19 +224,27 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   Future<void> _bootstrap() async {
     try {
       _adblockService.setEnabled(_settingsController.adblockEnabled);
-      await Future.wait<void>(<Future<void>>[
-        _adblockService.initialize(),
-        _pipController.initialize(
+      try {
+        await _adblockService.initialize();
+        _adblockService.scheduleCrowdSync(reason: 'browser_bootstrap');
+      } catch (error) {
+        _logAdblockTrace('bootstrap adblock initialize error=$error');
+      }
+      try {
+        await _pipController.initialize(
           pipEnabled: _settingsController.pipEnabled,
           backgroundPlaybackEnabled:
               _settingsController.backgroundPlaybackEnabled,
-        ),
-      ]);
-    } catch (_) {
-      _errorMessage = 'Initialization failed. Please restart the app.';
+        );
+      } catch (error) {
+        _logPiPEvent('bootstrap pip initialize error=$error');
+      }
+    } catch (error) {
+      _logPiPEvent('bootstrap unexpected error=$error');
     } finally {
       if (mounted) {
         setState(() {
+          _errorMessage = null;
           _isInitializing = false;
         });
       }
@@ -422,6 +442,24 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     return error.type.toValue() == WebResourceErrorType.HOST_LOOKUP.toValue();
   }
 
+  bool _shouldSkipDuplicateLoadStop(Uri? uri) {
+    final key = _mainFrameRequestKey(uri);
+    if (key == null || key.isEmpty) {
+      return false;
+    }
+    final now = DateTime.now();
+    final lastHandledAt = _lastLoadStopHandledAt;
+    final isDuplicate =
+        _lastLoadStopHandledKey == key &&
+        lastHandledAt != null &&
+        now.difference(lastHandledAt) < _duplicateLoadStopWindow;
+    if (!isDuplicate) {
+      _lastLoadStopHandledKey = key;
+      _lastLoadStopHandledAt = now;
+    }
+    return isDuplicate;
+  }
+
   Future<void> _autoRetryAfterDnsError(Uri? failedUri) async {
     final controller = _webViewController;
     if (controller == null) {
@@ -446,7 +484,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     );
   }
 
-  Future<bool> _shouldBlockByPolicyAndAdblock(
+  Future<AdblockDecision> _shouldBlockByPolicyAndAdblock(
     InAppWebViewController controller,
     Uri uri, {
     required String resourceType,
@@ -454,7 +492,11 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   }) async {
     final totalWatch = Stopwatch()..start();
     if (!_domainPolicyService.isRequestAllowed(uri)) {
-      return true;
+      return AdblockDecision(
+        blocked: true,
+        reason: 'domain_policy',
+        matchedRule: uri.host,
+      );
     }
 
     final normalizedType = resourceType.toLowerCase();
@@ -462,15 +504,18 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     // forbidden hosts, so adblock network matcher can skip these to avoid
     // accidental page breakage.
     if (normalizedType == 'document' || normalizedType == 'subdocument') {
-      return false;
+      return const AdblockDecision(
+        blocked: false,
+        reason: 'document_pass_through',
+      );
     }
 
     if (uri.scheme.toLowerCase() != 'https') {
-      return false;
+      return const AdblockDecision(blocked: false, reason: 'non_https');
     }
 
     if (_isSkippableNonAdPolicyRequest(uri, resourceType: resourceType)) {
-      return false;
+      return const AdblockDecision(blocked: false, reason: 'static_fast_path');
     }
 
     var sourceLookupDuration = Duration.zero;
@@ -491,10 +536,25 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     }
 
     final adblockWatch = Stopwatch()..start();
+    final signalKey = _adblockService.resolveRequestSignalKey(
+      uri,
+      sourceUrl: effectiveSource,
+    );
+    final adShowing = _adblockService.isAdSignalActiveForRequest(
+      uri,
+      sourceUrl: effectiveSource,
+    );
+    final playbackStalled = _adblockService.isPlaybackStalledForRequest(
+      uri,
+      sourceUrl: effectiveSource,
+    );
     final adblockDecision = await _adblockService.evaluateRequest(
       uri,
       resourceType: resourceType,
       sourceUrl: effectiveSource,
+      adShowing: adShowing,
+      playbackStalled: playbackStalled,
+      adSignalKey: signalKey,
     );
     final blocked = adblockDecision.blocked;
     adblockWatch.stop();
@@ -505,11 +565,64 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
         (blocked || totalWatch.elapsed >= _slowPolicyCheckThreshold)) {
       _policyPerfLogCount += 1;
       debugPrint(
-        '[GO_PLAY-Perf] policy uri=${uri.host}${uri.path} type=$resourceType blocked=$blocked reason=${adblockDecision.reason} totalMs=${totalWatch.elapsedMilliseconds} sourceMs=${sourceLookupDuration.inMilliseconds} adblockMs=${adblockWatch.elapsedMilliseconds} source=$sourceKind',
+        '[GO_PLAY-Perf] policy uri=${uri.host}${uri.path} type=$resourceType blocked=$blocked reason=${adblockDecision.reason} adSignal=$adShowing stalled=$playbackStalled signalKey=$signalKey totalMs=${totalWatch.elapsedMilliseconds} sourceMs=${sourceLookupDuration.inMilliseconds} adblockMs=${adblockWatch.elapsedMilliseconds} source=$sourceKind',
       );
     }
 
-    return blocked;
+    return adblockDecision;
+  }
+
+  Future<void> _applyDocumentCspIfNeeded(Uri? pageUri) async {
+    if (!_enableDocumentCspInjection) {
+      return;
+    }
+    final controller = _webViewController;
+    if (controller == null || pageUri == null || pageUri.host.isEmpty) {
+      return;
+    }
+    final directives = await _adblockService.getCspDirectives(
+      pageUri,
+      resourceType: 'document',
+      sourceUrl: pageUri,
+    );
+    final normalized = (directives ?? '').trim();
+    if (normalized.isEmpty) {
+      return;
+    }
+    final signature = '${pageUri.host}${pageUri.path}|$normalized';
+    if (signature == _lastInjectedCspSignature) {
+      return;
+    }
+    final escaped = normalized
+        .replaceAll('\\', '\\\\')
+        .replaceAll("'", "\\'")
+        .replaceAll('\n', ' ');
+    final script =
+        '''
+(function() {
+  try {
+    if (document.querySelector('meta[data-go-play-csp="1"]')) {
+      return;
+    }
+    var meta = document.createElement('meta');
+    meta.httpEquiv = 'Content-Security-Policy';
+    meta.content = '$escaped';
+    meta.setAttribute('data-go-play-csp', '1');
+    if (document.head) {
+      document.head.appendChild(meta);
+    } else {
+      document.documentElement.appendChild(meta);
+    }
+  } catch (_) {}
+})();
+''';
+    try {
+      await controller.evaluateJavascript(source: script);
+      _lastInjectedCspSignature = signature;
+      _logAdblockTrace(
+        'document csp injected host=${pageUri.host} directivesLen=${normalized.length}',
+      );
+    } catch (_) {}
   }
 
   Future<AjaxRequest?> _interceptAjaxRequest(
@@ -522,13 +635,34 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     }
 
     final sourceUri = _sourceUriFromHeaders(ajaxRequest.headers?.getHeaders());
-    final shouldBlock = await _shouldBlockByPolicyAndAdblock(
+    final decision = await _shouldBlockByPolicyAndAdblock(
       controller,
       uri,
       resourceType: 'xmlhttprequest',
       sourceUri: sourceUri,
     );
-    if (shouldBlock) {
+    final redirectDataUrl = (decision.redirectDataUrl ?? '').trim();
+    if (redirectDataUrl.isNotEmpty) {
+      ajaxRequest.url = WebUri(redirectDataUrl);
+      ajaxRequest.action = AjaxRequestAction.PROCEED;
+      _logAdblockTrace(
+        'ajax redirect-data reason=${decision.reason} from=${uri.host}${uri.path}',
+      );
+      return ajaxRequest;
+    }
+    final rewrittenUrl = (decision.rewrittenUrl ?? '').trim();
+    if (rewrittenUrl.isNotEmpty) {
+      final parsedRewritten = Uri.tryParse(rewrittenUrl);
+      if (parsedRewritten != null &&
+          parsedRewritten.scheme.isNotEmpty &&
+          parsedRewritten.host.isNotEmpty) {
+        ajaxRequest.url = WebUri(rewrittenUrl);
+        _logAdblockTrace(
+          'ajax rewrite reason=${decision.reason} from=${uri.host}${uri.path} to=${parsedRewritten.host}${parsedRewritten.path}',
+        );
+      }
+    }
+    if (decision.blocked) {
       ajaxRequest.action = AjaxRequestAction.ABORT;
     }
     return ajaxRequest;
@@ -544,13 +678,34 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     }
 
     final sourceUri = _sourceUriFromHeaders(fetchRequest.headers);
-    final shouldBlock = await _shouldBlockByPolicyAndAdblock(
+    final decision = await _shouldBlockByPolicyAndAdblock(
       controller,
       uri,
       resourceType: 'xmlhttprequest',
       sourceUri: sourceUri,
     );
-    if (shouldBlock) {
+    final redirectDataUrl = (decision.redirectDataUrl ?? '').trim();
+    if (redirectDataUrl.isNotEmpty) {
+      fetchRequest.url = WebUri(redirectDataUrl);
+      fetchRequest.action = FetchRequestAction.PROCEED;
+      _logAdblockTrace(
+        'fetch redirect-data reason=${decision.reason} from=${uri.host}${uri.path}',
+      );
+      return fetchRequest;
+    }
+    final rewrittenUrl = (decision.rewrittenUrl ?? '').trim();
+    if (rewrittenUrl.isNotEmpty) {
+      final parsedRewritten = Uri.tryParse(rewrittenUrl);
+      if (parsedRewritten != null &&
+          parsedRewritten.scheme.isNotEmpty &&
+          parsedRewritten.host.isNotEmpty) {
+        fetchRequest.url = WebUri(rewrittenUrl);
+        _logAdblockTrace(
+          'fetch rewrite reason=${decision.reason} from=${uri.host}${uri.path} to=${parsedRewritten.host}${parsedRewritten.path}',
+        );
+      }
+    }
+    if (decision.blocked) {
       fetchRequest.action = FetchRequestAction.ABORT;
     }
     return fetchRequest;
@@ -655,6 +810,16 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       return;
     }
     final label = uri == null ? 'unknown' : '${uri.host}${uri.path}';
+    final signature = '$event|$label';
+    final now = DateTime.now();
+    final lastAt = _lastNavigationLogAt;
+    if (signature == _lastNavigationLogSignature &&
+        lastAt != null &&
+        now.difference(lastAt) < _navigationLogThrottle) {
+      return;
+    }
+    _lastNavigationLogSignature = signature;
+    _lastNavigationLogAt = now;
     debugPrint('[GO_PLAY-Nav] $event url=$label');
   }
 
@@ -1363,6 +1528,10 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
 
   void _handlePlaybackDebugPayload(Map<String, dynamic> payload) {
     _logPlaybackDebugPayload(payload);
+    _adblockService.onPlaybackDebugSignal(
+      payload,
+      pageUri: _currentMainFrameUri,
+    );
 
     final eventName = (payload['event'] ?? '').toString().trim();
     final observedVideoId = _videoIdFromDebugPayload(payload);
@@ -2462,6 +2631,13 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       _logAdblockTrace('syncScript skip reason=no_controller force=$force');
       return;
     }
+    final now = DateTime.now();
+    final lastSyncedAt = _lastAdblockScriptSyncAt;
+    if (!force &&
+        lastSyncedAt != null &&
+        now.difference(lastSyncedAt) < _scriptResyncThrottle) {
+      return;
+    }
     _logAdblockTrace(
       'syncScript start force=$force enabled=${_settingsController.adblockEnabled}',
     );
@@ -2480,6 +2656,33 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       _logAdblockTrace(
         'syncScript error force=$force enabled=${_settingsController.adblockEnabled} error=$error',
       );
+    } finally {
+      _lastAdblockScriptSyncAt = DateTime.now();
+    }
+  }
+
+  Future<void> _prepareAdblockRuntime(InAppWebViewController controller) async {
+    _logAdblockTrace('runtimeSetup start');
+    try {
+      await _adblockService.attachWebView(controller);
+      _adblockService.onMainFrameChanged(_currentMainFrameUri);
+      await _syncAdblockScript(force: true);
+      if (!mounted || !identical(_webViewController, controller)) {
+        return;
+      }
+      setState(() {
+        _adblockRuntimeReady = true;
+      });
+      _logAdblockTrace('runtimeSetup done');
+    } catch (error) {
+      // Fail-open UI to avoid trapping users on a permanent loading overlay.
+      _logAdblockTrace('runtimeSetup error=$error');
+      if (!mounted || !identical(_webViewController, controller)) {
+        return;
+      }
+      setState(() {
+        _adblockRuntimeReady = true;
+      });
     }
   }
 
@@ -2672,6 +2875,72 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     );
   }
 
+  WebResourceResponse _redirectedResponse(
+    String dataUrl, {
+    Map<String, String>? requestHeaders,
+  }) {
+    final allowOrigin = _blockedResponseCorsOrigin(requestHeaders);
+    final allowMethods = _blockedResponseAllowMethods(requestHeaders);
+    final allowHeaders = _blockedResponseAllowHeaders(requestHeaders);
+    try {
+      final uri = Uri.parse(dataUrl);
+      final uriData = UriData.fromUri(uri);
+      final bytes = Uint8List.fromList(uriData.contentAsBytes());
+      final mimeType = uriData.mimeType.trim();
+      final charset = uriData.charset.trim();
+      _logAdblockTrace(
+        'respond redirected status=200 mime=${mimeType.isEmpty ? 'text/plain' : mimeType} bytes=${bytes.length}',
+      );
+      return WebResourceResponse(
+        statusCode: 200,
+        reasonPhrase: 'OK',
+        contentType: mimeType.isEmpty ? 'text/plain' : mimeType,
+        contentEncoding: charset.isEmpty ? 'utf-8' : charset,
+        data: bytes,
+        headers: <String, String>{
+          'Cache-Control': 'no-store',
+          'Vary': 'Origin',
+          'Access-Control-Allow-Origin': allowOrigin,
+          'Access-Control-Allow-Credentials': 'true',
+          'Access-Control-Allow-Methods': allowMethods,
+          'Access-Control-Allow-Headers': allowHeaders,
+        },
+      );
+    } catch (_) {
+      _logAdblockTrace('redirect payload decode failed -> fallback block');
+      return _blockedResponse(
+        'Redirect payload decode failed',
+        requestHeaders: requestHeaders,
+      );
+    }
+  }
+
+  WebResourceResponse _rewrittenUrlResponse(
+    String rewrittenUrl, {
+    Map<String, String>? requestHeaders,
+  }) {
+    final allowOrigin = _blockedResponseCorsOrigin(requestHeaders);
+    final allowMethods = _blockedResponseAllowMethods(requestHeaders);
+    final allowHeaders = _blockedResponseAllowHeaders(requestHeaders);
+    _logAdblockTrace('respond rewritten status=307 url=$rewrittenUrl');
+    return WebResourceResponse(
+      statusCode: 307,
+      reasonPhrase: 'Temporary Redirect',
+      contentType: 'text/plain',
+      contentEncoding: 'utf-8',
+      data: Uint8List(0),
+      headers: <String, String>{
+        'Location': rewrittenUrl,
+        'Cache-Control': 'no-store',
+        'Vary': 'Origin',
+        'Access-Control-Allow-Origin': allowOrigin,
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Methods': allowMethods,
+        'Access-Control-Allow-Headers': allowHeaders,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isInitializing) {
@@ -2722,7 +2991,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                   children: <Widget>[
                     Positioned.fill(
                       child: IgnorePointer(
-                        ignoring: !packageEnabled,
+                        ignoring: !packageEnabled || !_adblockRuntimeReady,
                         child: _errorMessage != null
                             ? BrowserErrorView(
                                 message: _errorMessage!,
@@ -2758,13 +3027,13 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                     ),
                                     onWebViewCreated: (controller) {
                                       _webViewController = controller;
+                                      if (_adblockRuntimeReady) {
+                                        setState(() {
+                                          _adblockRuntimeReady = false;
+                                        });
+                                      }
                                       unawaited(
-                                        _adblockService.attachWebView(
-                                          controller,
-                                        ),
-                                      );
-                                      _adblockService.onMainFrameChanged(
-                                        _currentMainFrameUri,
+                                        _prepareAdblockRuntime(controller),
                                       );
                                       controller.addJavaScriptHandler(
                                         handlerName: 'go_playVideoState',
@@ -2894,9 +3163,6 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                       unawaited(
                                         _injectVideoStateScript(force: true),
                                       );
-                                      unawaited(
-                                        _syncAdblockScript(force: true),
-                                      );
                                       unawaited(_updateCanGoBack());
                                     },
                                     shouldOverrideUrlLoading:
@@ -2956,19 +3222,40 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                             uri,
                                           );
 
-                                      final shouldBlock =
+                                      final adblockDecision =
                                           await _shouldBlockByPolicyAndAdblock(
                                             controller,
                                             uri,
                                             resourceType: resourceType,
                                             sourceUri: sourceUriFromHeader,
                                           );
-                                      if (shouldBlock) {
+                                      if ((adblockDecision.redirectDataUrl ??
+                                              '')
+                                          .isNotEmpty) {
                                         _logAdblockTrace(
-                                          'request intercept block reason=adblock uri=${uri.host}${uri.path} type=$resourceType',
+                                          'request intercept redirect reason=${adblockDecision.reason} uri=${uri.host}${uri.path} type=$resourceType',
+                                        );
+                                        return _redirectedResponse(
+                                          adblockDecision.redirectDataUrl!,
+                                          requestHeaders: request.headers,
+                                        );
+                                      }
+                                      if ((adblockDecision.rewrittenUrl ?? '')
+                                          .isNotEmpty) {
+                                        _logAdblockTrace(
+                                          'request intercept rewrite reason=${adblockDecision.reason} uri=${uri.host}${uri.path} type=$resourceType',
+                                        );
+                                        return _rewrittenUrlResponse(
+                                          adblockDecision.rewrittenUrl!,
+                                          requestHeaders: request.headers,
+                                        );
+                                      }
+                                      if (adblockDecision.blocked) {
+                                        _logAdblockTrace(
+                                          'request intercept block reason=${adblockDecision.reason} uri=${uri.host}${uri.path} type=$resourceType',
                                         );
                                         return _blockedResponse(
-                                          'Blocked by adblock',
+                                          'Blocked by adblock (${adblockDecision.reason})',
                                           requestHeaders: request.headers,
                                         );
                                       }
@@ -3010,7 +3297,6 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                         'loadStart',
                                         _toUri(uri),
                                       );
-                                      _rememberMainFrameUri(_toUri(uri));
                                       _markMainFrameNavigation(
                                         uri,
                                         resetRetryBudget: false,
@@ -3029,15 +3315,26 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                       if (!mounted) {
                                         return;
                                       }
+                                      final resolvedUri = _toUri(uri);
                                       _logNavigationEvent(
                                         'loadStop',
-                                        _toUri(uri),
+                                        resolvedUri,
                                       );
-                                      _rememberMainFrameUri(_toUri(uri));
+                                      _rememberMainFrameUri(resolvedUri);
                                       setState(() {
                                         _isLoading = false;
                                         _progress = 100;
                                       });
+                                      if (_shouldSkipDuplicateLoadStop(
+                                        resolvedUri,
+                                      )) {
+                                        _logNavigationEvent(
+                                          'loadStop(skip_duplicate)',
+                                          resolvedUri,
+                                        );
+                                        await _updateCanGoBack();
+                                        return;
+                                      }
                                       await _restoreForPiPExitIfNeeded(
                                         reason: 'load_stop_exit_fallback',
                                       );
@@ -3045,7 +3342,10 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                         force: true,
                                       );
                                       await _adblockService.onPageFinished(
-                                        _toUri(uri),
+                                        resolvedUri,
+                                      );
+                                      await _applyDocumentCspIfNeeded(
+                                        resolvedUri,
                                       );
                                       await _syncBackgroundPlaybackGuard(
                                         reason: 'load_stop',
@@ -3058,13 +3358,8 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                     onUpdateVisitedHistory:
                                         (controller, uri, isReload) {
                                           _rememberMainFrameUri(_toUri(uri));
-                                          _adblockService.onMainFrameChanged(
-                                            _toUri(uri),
-                                          );
                                           unawaited(_injectVideoStateScript());
-                                          unawaited(
-                                            _syncAdblockScript(force: true),
-                                          );
+                                          unawaited(_syncAdblockScript());
                                           unawaited(_updateCanGoBack());
                                         },
                                     onProgressChanged: (controller, progress) {
@@ -3237,6 +3532,22 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                     ),
                                   ],
                                 ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (packageEnabled && !_adblockRuntimeReady)
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.16),
+                          ),
+                          child: const Center(
+                            child: SizedBox.square(
+                              dimension: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
                               ),
                             ),
                           ),

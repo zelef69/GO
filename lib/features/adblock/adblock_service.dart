@@ -3,6 +3,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../domain_lock/domain_policy_service.dart';
 import 'adblock_engine_bridge.dart';
+import 'crowd/storage/learned_signature_repository.dart';
+import 'crowd/sync/crowd_sync_service.dart';
 import 'core/adblock_config.dart';
 import 'core/adblock_debug_logger.dart';
 import 'core/adblock_manager.dart';
@@ -17,10 +19,14 @@ class AdblockService {
     required AdblockEngineBridge nativeEngineBridge,
     required AdblockEngineBridge fallbackEngineBridge,
     required bool enabled,
+    LearnedSignatureRepository? learnedSignatureRepository,
+    CrowdSyncService? crowdSyncService,
   }) : _config = AdblockConfig.defaults(
          enabled: enabled,
          debugMode: kDebugMode,
        ),
+       _learnedSignatureRepository = learnedSignatureRepository,
+       _crowdSyncService = crowdSyncService,
        _logger = AdblockDebugLogger(enabled: kDebugMode),
        _manager = AdblockManager(
          domainPolicyService: domainPolicyService,
@@ -30,6 +36,7 @@ class AdblockService {
            enabled: enabled,
            debugMode: kDebugMode,
          ),
+         learnedSignatureRepository: learnedSignatureRepository,
        ),
        _cosmeticFilterInjector = CosmeticFilterInjector(
          logger: AdblockDebugLogger(enabled: kDebugMode),
@@ -44,8 +51,14 @@ class AdblockService {
       scriptletInjector: _scriptletInjector,
       initialConfig: _config,
     );
+    _crowdSyncService?.updateFlags(
+      crowdLearningEnabled: _config.crowdLearningEnabled,
+      crowdSyncEnabled: _config.crowdSyncEnabled,
+    );
   }
 
+  final LearnedSignatureRepository? _learnedSignatureRepository;
+  final CrowdSyncService? _crowdSyncService;
   final AdblockDebugLogger _logger;
   final AdblockManager _manager;
   final CosmeticFilterInjector _cosmeticFilterInjector;
@@ -64,7 +77,14 @@ class AdblockService {
     if (_initialized) {
       return;
     }
+    try {
+      await _learnedSignatureRepository?.initialize();
+    } catch (_) {}
     await _manager.initialize();
+    try {
+      await _crowdSyncService?.initialize();
+    } catch (_) {}
+    _crowdSyncService?.scheduleSync(reason: 'adblock_initialize');
     _initialized = true;
     _logger.log(
       'service initialized native=${_manager.usingNativeEngine} rules=${_manager.activeRuleCount} revision=${_manager.activeRevision}',
@@ -78,6 +98,10 @@ class AdblockService {
     _config = _config.copyWith(enabled: enabled);
     _manager.setEnabled(enabled);
     _webViewIntegration.updateConfig(_config);
+    _crowdSyncService?.updateFlags(
+      crowdLearningEnabled: _config.crowdLearningEnabled,
+      crowdSyncEnabled: _config.crowdSyncEnabled,
+    );
     _logger.log('service setEnabled=$enabled');
   }
 
@@ -101,11 +125,46 @@ class AdblockService {
     await _webViewIntegration.syncRuntimeLayers(force: force);
   }
 
+  Future<List<String>> getHiddenClassIdSelectors(
+    Uri pageUri, {
+    required List<String> classes,
+    required List<String> ids,
+    Set<String> exceptions = const <String>{},
+  }) async {
+    if (!_initialized) {
+      await initialize();
+    }
+    return _manager.getHiddenClassIdSelectors(
+      pageUri,
+      classes: classes,
+      ids: ids,
+      exceptions: exceptions,
+    );
+  }
+
+  Future<String?> getCspDirectives(
+    Uri uri, {
+    required String resourceType,
+    Uri? sourceUrl,
+  }) async {
+    if (!_initialized) {
+      await initialize();
+    }
+    return _manager.getCspDirectives(
+      uri,
+      resourceType: resourceType,
+      sourceUrl: sourceUrl,
+    );
+  }
+
   Future<AdblockDecision> evaluateRequest(
     Uri uri, {
     required String resourceType,
     Uri? sourceUrl,
     bool fromServiceWorker = false,
+    bool? adShowing,
+    bool? playbackStalled,
+    String? adSignalKey,
   }) async {
     if (!_config.enabled) {
       return const AdblockDecision(blocked: false, reason: 'disabled');
@@ -115,6 +174,9 @@ class AdblockService {
       resourceType: resourceType,
       sourceUri: sourceUrl,
       fromServiceWorker: fromServiceWorker,
+      adShowing: adShowing,
+      playbackStalled: playbackStalled,
+      adSignalKey: adSignalKey,
     );
     if (decision.blocked && _debugBlockLogCount < _maxDebugBlockLogs) {
       _debugBlockLogCount += 1;
@@ -129,6 +191,7 @@ class AdblockService {
     Uri? uri, {
     required String resourceType,
     Uri? sourceUrl,
+    bool adShowing = false,
   }) async {
     if (uri == null) {
       return false;
@@ -137,11 +200,55 @@ class AdblockService {
       uri,
       resourceType: resourceType,
       sourceUrl: sourceUrl,
+      adShowing: adShowing,
     );
     return decision.blocked;
   }
 
+  String resolveRequestSignalKey(Uri uri, {Uri? sourceUrl}) {
+    return _webViewIntegration.resolveRequestSignalKey(
+      uri,
+      sourceUri: sourceUrl,
+    );
+  }
+
+  bool isAdSignalActiveForRequest(Uri uri, {Uri? sourceUrl}) {
+    return _webViewIntegration.isAdSignalActiveForRequest(
+      uri,
+      sourceUri: sourceUrl,
+    );
+  }
+
+  bool isPlaybackStalledForRequest(Uri uri, {Uri? sourceUrl}) {
+    return _webViewIntegration.isPlaybackStalledForRequest(
+      uri,
+      sourceUri: sourceUrl,
+    );
+  }
+
+  void onPlaybackDebugSignal(Map<String, dynamic> payload, {Uri? pageUri}) {
+    _webViewIntegration.updatePlaybackDebugSignal(payload, pageUri: pageUri);
+  }
+
+  void scheduleCrowdSync({required String reason}) {
+    if (!_config.crowdLearningEnabled || !_config.crowdSyncEnabled) {
+      return;
+    }
+    _crowdSyncService?.scheduleSync(reason: reason);
+  }
+
+  Future<void> syncCrowdNow({
+    required String reason,
+    bool force = false,
+  }) async {
+    if (!_config.crowdLearningEnabled || !_config.crowdSyncEnabled) {
+      return;
+    }
+    await _crowdSyncService?.syncNow(reason: reason, force: force);
+  }
+
   Future<void> dispose() async {
+    await _crowdSyncService?.dispose();
     await _webViewIntegration.dispose();
     await _manager.dispose();
     _initialized = false;

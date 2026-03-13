@@ -9,70 +9,112 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    function hasAuthEmail() {
-      return isSignedIn() &&
-        request.auth.token.email is string &&
-        request.auth.token.email.size() > 0;
+    function ownerCanCreateProfileOnly() {
+      return request.resource.data.keys().hasOnly([
+        'email',
+        'displayName',
+        'photoURL',
+        'createdAt',
+        'updatedAt'
+      ]);
     }
 
-    function authEmailLower() {
-      return hasAuthEmail()
-        ? request.auth.token.email.lower()
-        : '';
+    function ownerCanCreateBootstrapUser() {
+      return request.resource.data.keys().hasOnly([
+        'email',
+        'displayName',
+        'photoURL',
+        'subscription',
+        'stats',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      request.resource.data.subscription is map &&
+      request.resource.data.subscription.keys().hasOnly([
+        'plan',
+        'status',
+        'startAt',
+        'expireAt',
+        'maxDevices',
+        'extraDays',
+        'version',
+        'updatedAt',
+        'updatedBy'
+      ]) &&
+      request.resource.data.subscription.plan is string &&
+      request.resource.data.subscription.status is string &&
+      request.resource.data.subscription.startAt is timestamp &&
+      request.resource.data.subscription.expireAt is timestamp &&
+      request.resource.data.subscription.maxDevices is int &&
+      request.resource.data.subscription.maxDevices > 0 &&
+      request.resource.data.subscription.maxDevices <= 10 &&
+      request.resource.data.subscription.extraDays is int &&
+      request.resource.data.subscription.extraDays >= 0 &&
+      request.resource.data.subscription.version is int &&
+      request.resource.data.subscription.version >= 1 &&
+      request.resource.data.subscription.updatedAt is timestamp &&
+      request.resource.data.subscription.updatedBy is string &&
+      request.resource.data.stats is map &&
+      request.resource.data.stats.keys().hasOnly(['activeDeviceCount']) &&
+      request.resource.data.stats.activeDeviceCount is int &&
+      request.resource.data.stats.activeDeviceCount >= 0;
     }
 
-    function isSubscriptionOwnerByPath(emailLower) {
-      return hasAuthEmail() && authEmailLower() == emailLower;
+    function ownerCanUpdateProfileOnly() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+        'email',
+        'displayName',
+        'photoURL',
+        'updatedAt'
+      ]);
     }
 
-    function isSubscriptionOwnerByUid() {
-      return isSignedIn() &&
-        resource != null &&
-        resource.data.uid == request.auth.uid;
-    }
-
-    // Existing rules (unchanged)
-    match /users/{userId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    // Existing rules (unchanged)
-    match /users/{userId}/backups/{backupId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
-    }
-
-    // Subscription source-of-truth for Flutter app login/package checks.
-    match /subscriptions/{emailLower} {
-      allow get: if isSubscriptionOwnerByUid() || isSubscriptionOwnerByPath(emailLower);
-      allow list: if false;
-
-      allow create: if isSignedIn() &&
-        request.resource.data.emailLower == emailLower &&
-        request.resource.data.uid == request.auth.uid;
-
-      allow update: if (isSubscriptionOwnerByUid() || isSubscriptionOwnerByPath(emailLower)) &&
-        request.resource.data.emailLower == resource.data.emailLower &&
-        request.resource.data.uid == request.auth.uid;
-
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) &&
+        (ownerCanCreateProfileOnly() || ownerCanCreateBootstrapUser());
+      allow update: if isOwner(uid) && ownerCanUpdateProfileOnly();
       allow delete: if false;
+
+      match /devices/{sessionId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /logs/{logId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
     }
 
-    // Added for app login sessions.
-    match /userSessions/{sessionId} {
-      allow create: if isSignedIn() &&
-        request.resource.data.uid == request.auth.uid &&
-        request.resource.data.sessionId == sessionId &&
-        request.resource.data.status == 'active';
+    match /crowd_meta/{docId} {
+      allow read: if isSignedIn() && docId == 'current';
+      allow write: if false;
+    }
 
-      allow get, list: if isSignedIn() && resource.data.uid == request.auth.uid;
+    match /ad_candidates/{sigHash} {
+      allow read: if false;
+      allow write: if false;
+    }
 
-      allow update: if isSignedIn() &&
-        resource.data.uid == request.auth.uid &&
-        request.resource.data.uid == resource.data.uid &&
-        request.resource.data.sessionId == resource.data.sessionId;
+    match /ad_signatures/{sigHash} {
+      allow read: if false;
+      allow write: if false;
+    }
 
-      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    match /ad_candidate_reports/{reportId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    match /crowd_snapshot_history/{snapshotId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    match /crowd_rate_limits/{uid} {
+      allow read: if false;
+      allow write: if false;
     }
   }
 }
