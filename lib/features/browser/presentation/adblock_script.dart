@@ -142,8 +142,89 @@ const String goPlayEnableAdblockScript = '''
   var enableHardReloadRecovery = false;
   var enableNetworkHooks = false;
   var blockGoogleVideoPlaybackAdQueries = false;
+  var networkHookSampleRate = 1.0;
+  var networkHookBucket = -1;
   var adHardReloadCooldownMs = 45000;
   var hardReloadBudgetStorageKey = 'go_play_ad_hard_reload_budget';
+  var adblockDebugSeq = 0;
+  var antiAdblockDetectThrottleMs = 3200;
+  var antiAdblockLastDetectAtMs = 0;
+
+  function emitAdblockDebug(eventName, extra) {
+    var bridge =
+      window.flutter_inappwebview &&
+      typeof window.flutter_inappwebview.callHandler === 'function'
+        ? window.flutter_inappwebview
+        : null;
+    if (!bridge) {
+      return;
+    }
+    adblockDebugSeq += 1;
+    var payload = {
+      seq: adblockDebugSeq,
+      event: eventName || '',
+      reason: extra && extra.reason ? String(extra.reason) : '',
+      host: window.location && window.location.host ? String(window.location.host) : '',
+      path: window.location && window.location.pathname ? String(window.location.pathname) : '',
+      blocked: extra && extra.blocked === true,
+      resourceType: extra && extra.resourceType ? String(extra.resourceType) : '',
+      cohort: networkHookBucket >= 0 ? String(networkHookBucket) : '',
+      pageVisibility: document && document.visibilityState ? String(document.visibilityState) : ''
+    };
+    try {
+      bridge.callHandler('go_playAdblockDebug', payload);
+    } catch (_) {}
+  }
+
+  function detectAntiAdblockSignals() {
+    var now = Date.now();
+    if (now - antiAdblockLastDetectAtMs < antiAdblockDetectThrottleMs) {
+      return;
+    }
+    var selectors = [
+      '[class*="adblock"]',
+      '[id*="adblock"]',
+      '[class*="anti-ad"]',
+      '[id*="anti-ad"]',
+      '[data-testid*="adblock"]'
+    ];
+    var textHints = [
+      'disable adblock',
+      'turn off adblock',
+      'ad blocker detected',
+      'adblock detected',
+      'whitelist',
+      'allow ads',
+      'ปิด adblock',
+      'ปิดแอดบล็อก'
+    ];
+    for (var i = 0; i < selectors.length; i++) {
+      var nodes = document.querySelectorAll(selectors[i]);
+      for (var n = 0; n < nodes.length; n++) {
+        var node = nodes[n];
+        if (!isElementVisible(node)) {
+          continue;
+        }
+        var text = String(node.textContent || node.getAttribute('aria-label') || '')
+          .trim()
+          .toLowerCase();
+        if (!text) {
+          continue;
+        }
+        for (var t = 0; t < textHints.length; t++) {
+          if (text.indexOf(textHints[t]) >= 0) {
+            antiAdblockLastDetectAtMs = now;
+            emitAdblockDebug('anti_adblock_detected', {
+              reason: textHints[t],
+              blocked: false,
+              resourceType: 'dom'
+            });
+            return;
+          }
+        }
+      }
+    }
+  }
 
   function parseUrl(rawUrl) {
     if (!rawUrl) {
@@ -172,12 +253,89 @@ const String goPlayEnableAdblockScript = '''
   }
 
   function hasGoogleVideoAdQuery(urlObj) {
+    var hardHits = 0;
     for (var i = 0; i < googleVideoAdQueryKeys.length; i++) {
       if (urlObj.searchParams.has(googleVideoAdQueryKeys[i])) {
-        return true;
+        hardHits += 1;
       }
     }
+    if (hardHits > 0) {
+      return true;
+    }
+
+    var strongSoftKeys = [
+      'ad_url',
+      'adurl',
+      'ad_break',
+      'ad_break_id',
+      'adpod',
+      'ad_pod',
+      'ad_campaign',
+      'ad_cid',
+      'ad_placement',
+      'adplacement',
+      'ad_source',
+      'adserver',
+      'ad_server'
+    ];
+    var softHits = 0;
+    for (var s = 0; s < strongSoftKeys.length; s++) {
+      if (urlObj.searchParams.has(strongSoftKeys[s])) {
+        softHits += 1;
+        if (softHits >= 2) {
+          return true;
+        }
+      }
+    }
+
+    var label = String(urlObj.searchParams.get('label') || '').toLowerCase();
+    if (label.indexOf('ad') >= 0 || label.indexOf('videoplaytime') >= 0) {
+      return true;
+    }
+    var ctier = String(urlObj.searchParams.get('ctier') || '').toLowerCase();
+    if (ctier.indexOf('a') === 0) {
+      return true;
+    }
     return false;
+  }
+
+  function isWatchSurfaceUrl(urlObj) {
+    if (!urlObj) {
+      return false;
+    }
+    var host = (urlObj.hostname || '').toLowerCase();
+    if (!(host === 'youtube.com' || host.endsWith('.youtube.com'))) {
+      return false;
+    }
+    var path = (urlObj.pathname || '').toLowerCase();
+    return path === '/watch' || path.indexOf('/watch') === 0 || path.indexOf('/shorts/') === 0;
+  }
+
+  function resolveStableSampleBucket() {
+    var storageKey = 'go_play_adblock_network_hook_bucket';
+    var parsed = -1;
+    try {
+      parsed = parseInt(localStorage.getItem(storageKey) || '', 10);
+    } catch (_) {
+      parsed = -1;
+    }
+    if (!(parsed >= 0 && parsed <= 99)) {
+      parsed = Math.floor(Math.random() * 100);
+      try {
+        localStorage.setItem(storageKey, String(parsed));
+      } catch (_) {}
+    }
+    return parsed;
+  }
+
+  function shouldEnableStagedNetworkHooks() {
+    networkHookBucket = resolveStableSampleBucket();
+    var currentUrl = parseUrl(window.location && window.location.href ? window.location.href : '');
+    if (!isWatchSurfaceUrl(currentUrl)) {
+      return false;
+    }
+    var threshold = Math.max(0, Math.min(Math.round(networkHookSampleRate * 100), 100));
+    return networkHookBucket < threshold;
   }
 
   function shouldBlockUrl(rawUrl) {
@@ -190,6 +348,11 @@ const String goPlayEnableAdblockScript = '''
     var path = (urlObj.pathname || '').toLowerCase();
 
     if (hostMatches(host)) {
+      emitAdblockDebug('network_ad_match', {
+        reason: 'blocked_host',
+        blocked: true,
+        resourceType: 'network'
+      });
       return true;
     }
 
@@ -197,6 +360,11 @@ const String goPlayEnableAdblockScript = '''
     if (isYoutubeHost) {
       for (var i = 0; i < youtubeAdPathTokens.length; i++) {
         if (path.indexOf(youtubeAdPathTokens[i]) !== -1) {
+          emitAdblockDebug('network_ad_match', {
+            reason: 'youtube_ad_path',
+            blocked: true,
+            resourceType: 'network'
+          });
           return true;
         }
       }
@@ -210,6 +378,11 @@ const String goPlayEnableAdblockScript = '''
       isVideoPlaybackPath &&
       hasGoogleVideoAdQuery(urlObj)
     ) {
+      emitAdblockDebug('network_ad_match', {
+        reason: 'googlevideo_ad_query',
+        blocked: true,
+        resourceType: 'media'
+      });
       return true;
     }
 
@@ -647,6 +820,7 @@ const String goPlayEnableAdblockScript = '''
 
   function skipVideoAds() {
     try {
+      detectAntiAdblockSignals();
       var video = document.querySelector('video');
       var adSignalState = getAdSignalState();
       if (!adSignalState.active) {
@@ -706,6 +880,13 @@ const String goPlayEnableAdblockScript = '''
   }
 
   window.__go_playAdblockInstalled = true;
+  enableNetworkHooks = shouldEnableStagedNetworkHooks();
+  blockGoogleVideoPlaybackAdQueries = enableNetworkHooks;
+  emitAdblockDebug('network_hook_state', {
+    reason: enableNetworkHooks ? 'watch_sample_enabled' : 'watch_sample_disabled',
+    blocked: false,
+    resourceType: 'network'
+  });
   if (enableNetworkHooks) {
     installNetworkHooks();
   }

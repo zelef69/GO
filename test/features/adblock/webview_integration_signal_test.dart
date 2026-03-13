@@ -81,6 +81,110 @@ void main() {
       );
     });
 
+    test('keeps stall signal when readyState is 2 but buffer is empty', () {
+      final watchUri = Uri.parse('https://m.youtube.com/watch?v=video1');
+      integration.onMainFrameChanged(watchUri);
+
+      integration.updatePlaybackDebugSignal(<String, dynamic>{
+        'event': 'video:waiting',
+        'videoId': 'video1',
+        'adShowing': false,
+        'adInterrupting': false,
+        'hasAdOverlay': false,
+        'readyState': 2,
+        'networkState': 2,
+        'currentTimeMs': 32000,
+        'bufferedAheadMs': 0,
+        'paused': false,
+        'ended': false,
+      }, pageUri: watchUri);
+
+      final requestUri = Uri.parse(
+        'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123',
+      );
+      expect(
+        integration.isPlaybackStalledForRequest(
+          requestUri,
+          sourceUri: watchUri,
+        ),
+        isTrue,
+      );
+
+      integration.updatePlaybackDebugSignal(<String, dynamic>{
+        'event': 'tick',
+        'videoId': 'video1',
+        'adShowing': false,
+        'adInterrupting': false,
+        'hasAdOverlay': false,
+        'readyState': 2,
+        'networkState': 2,
+        'currentTimeMs': 34200,
+        'bufferedAheadMs': 0,
+        'paused': false,
+        'ended': false,
+      }, pageUri: watchUri);
+
+      expect(
+        integration.isPlaybackStalledForRequest(
+          requestUri,
+          sourceUri: watchUri,
+        ),
+        isTrue,
+      );
+
+      integration.updatePlaybackDebugSignal(<String, dynamic>{
+        'event': 'video:playing',
+        'videoId': 'video1',
+        'adShowing': false,
+        'adInterrupting': false,
+        'hasAdOverlay': false,
+        'readyState': 3,
+        'networkState': 2,
+        'currentTimeMs': 36000,
+        'bufferedAheadMs': 1800,
+        'paused': false,
+        'ended': false,
+      }, pageUri: watchUri);
+
+      expect(
+        integration.isPlaybackStalledForRequest(
+          requestUri,
+          sourceUri: watchUri,
+        ),
+        isFalse,
+      );
+    });
+
+    test(
+      'keeps ad signal for googlevideo requests even when source is youtube root',
+      () {
+        final watchUri = Uri.parse('https://m.youtube.com/watch?v=video1');
+        final genericSource = Uri.parse('https://m.youtube.com/');
+        integration.onMainFrameChanged(watchUri);
+
+        integration.updatePlaybackDebugSignal(<String, dynamic>{
+          'event': 'video:waiting',
+          'videoId': 'video1',
+          'adShowing': true,
+          'adInterrupting': false,
+          'hasAdOverlay': true,
+          'readyState': 0,
+          'networkState': 2,
+        }, pageUri: watchUri);
+
+        final requestUri = Uri.parse(
+          'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123',
+        );
+        expect(
+          integration.isAdSignalActiveForRequest(
+            requestUri,
+            sourceUri: genericSource,
+          ),
+          isTrue,
+        );
+      },
+    );
+
     test('clears stale signals when main frame switches to another video', () {
       final firstWatch = Uri.parse('https://m.youtube.com/watch?v=video1');
       final secondWatch = Uri.parse('https://m.youtube.com/watch?v=video2');

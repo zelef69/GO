@@ -3,9 +3,9 @@ import 'dart:collection';
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import '../adblock_engine_bridge.dart';
 import 'adblock_config.dart';
 import 'adblock_debug_logger.dart';
+import 'types.dart';
 
 class CosmeticFilterInjector {
   CosmeticFilterInjector({required AdblockDebugLogger logger})
@@ -15,6 +15,16 @@ class CosmeticFilterInjector {
 
   final AdblockDebugLogger _logger;
   final LinkedHashSet<String> _injectedPageSignatures = LinkedHashSet<String>();
+
+  int _attemptCount = 0;
+  int _appliedCount = 0;
+  int _skippedCount = 0;
+  int _failedCount = 0;
+  int _totalInjectDurationMs = 0;
+  int _lastInjectDurationMs = 0;
+  int _lastPayloadSelectors = 0;
+  int _lastPayloadProcedural = 0;
+  int _lastPayloadExceptions = 0;
 
   AdblockConfig _config = AdblockConfig.defaults(
     enabled: true,
@@ -28,14 +38,30 @@ class CosmeticFilterInjector {
     }
   }
 
+  Map<String, dynamic> get debugSnapshot => <String, dynamic>{
+    'attempts': _attemptCount,
+    'applied': _appliedCount,
+    'skipped': _skippedCount,
+    'failed': _failedCount,
+    'lastInjectDurationMs': _lastInjectDurationMs,
+    'averageInjectDurationMs': _attemptCount == 0
+        ? 0
+        : _totalInjectDurationMs / _attemptCount,
+    'lastPayloadSelectors': _lastPayloadSelectors,
+    'lastPayloadProcedural': _lastPayloadProcedural,
+    'lastPayloadExceptions': _lastPayloadExceptions,
+  };
+
   Future<void> injectIfNeeded(
     InAppWebViewController controller, {
     required Uri? pageUri,
-    AdblockCosmeticResources? nativeResources,
+    CosmeticPayload? payload,
     Set<String> additionalHideSelectors = const <String>{},
     bool force = false,
   }) async {
+    _attemptCount += 1;
     if (!_config.enabled || !_config.cosmeticFilteringEnabled) {
+      _skippedCount += 1;
       if (force) {
         await _removeInjectedStyle(controller);
       }
@@ -46,24 +72,42 @@ class CosmeticFilterInjector {
     if (!force &&
         signature != null &&
         _injectedPageSignatures.contains(signature)) {
+      _skippedCount += 1;
       return;
     }
 
     final plan = _buildPlan(
-      pageUri,
-      nativeResources: nativeResources,
+      payload: payload,
       additionalHideSelectors: additionalHideSelectors,
     );
+    _lastPayloadSelectors = plan.hideSelectors.length;
+    _lastPayloadProcedural = plan.styleRules.length + plan.domActionScripts.length;
+    _lastPayloadExceptions = payload?.exceptions.length ?? 0;
     if (plan.isEmpty) {
+      _skippedCount += 1;
       return;
     }
     final script = _buildInjectScript(plan);
+    final watch = Stopwatch()..start();
     try {
       await controller.evaluateJavascript(source: script);
+      watch.stop();
+      _appliedCount += 1;
+      _lastInjectDurationMs = watch.elapsedMilliseconds;
+      _totalInjectDurationMs += _lastInjectDurationMs;
       if (signature != null) {
         _rememberSignature(signature);
       }
+      if (_config.debugMode) {
+        _logger.log(
+          'cosmetic inject host=${pageUri?.host ?? "unknown"} selectors=${plan.hideSelectors.length} procedural=${plan.styleRules.length + plan.domActionScripts.length} durationMs=$_lastInjectDurationMs',
+        );
+      }
     } catch (_) {
+      watch.stop();
+      _failedCount += 1;
+      _lastInjectDurationMs = watch.elapsedMilliseconds;
+      _totalInjectDurationMs += _lastInjectDurationMs;
       _logger.log(
         'cosmetic injector failed host=${pageUri?.host ?? "unknown"}',
       );
@@ -99,21 +143,21 @@ class CosmeticFilterInjector {
     }
   }
 
-  _CosmeticInjectionPlan _buildPlan(
-    Uri? pageUri, {
-    AdblockCosmeticResources? nativeResources,
+  _CosmeticInjectionPlan _buildPlan({
+    CosmeticPayload? payload,
     Set<String> additionalHideSelectors = const <String>{},
   }) {
     final hideSelectors = <String>{};
     final styleRules = <_CssStyleRule>[];
     final domActionScripts = <String>[];
-    final exceptions = nativeResources?.exceptions ?? const <String>{};
-    final generichide = nativeResources?.generichide == true;
+    final effectivePayload = payload ?? CosmeticPayload.empty();
+    final exceptions = effectivePayload.exceptions;
+    final generichide = effectivePayload.generichide;
 
-    if (nativeResources != null) {
-      hideSelectors.addAll(nativeResources.hideSelectors);
+    if (!effectivePayload.isEmpty) {
+      hideSelectors.addAll(effectivePayload.hideSelectors);
       final procedural = _parseProceduralActions(
-        nativeResources.proceduralActions,
+        effectivePayload.proceduralActions,
       );
       hideSelectors.addAll(procedural.hideSelectors);
       styleRules.addAll(procedural.styleRules);
@@ -122,24 +166,7 @@ class CosmeticFilterInjector {
     if (!generichide) {
       hideSelectors.addAll(additionalHideSelectors);
     }
-    final host = pageUri?.host.toLowerCase() ?? '';
-    if (host == 'youtube.com' || host.endsWith('.youtube.com')) {
-      hideSelectors.addAll(const <String>[
-        'ytd-display-ad-renderer',
-        'ytd-promoted-video-renderer',
-        'ytd-promoted-sparkles-web-renderer',
-        'ytd-companion-slot-renderer',
-        'ytd-ad-slot-renderer',
-        'ytd-action-companion-ad-renderer',
-        'ytd-player-legacy-desktop-watch-ads-renderer',
-        'ytd-in-feed-ad-layout-renderer',
-        'ytm-promoted-sparkles-web-renderer',
-        'ytm-promoted-sparkles-text-search-renderer',
-        'ytm-companion-ad-renderer',
-        '#player-ads',
-        '.video-ads',
-      ]);
-    }
+
     hideSelectors.removeWhere(
       (selector) =>
           selector.trim().isEmpty || exceptions.contains(selector.trim()),

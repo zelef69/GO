@@ -5,6 +5,17 @@ Priority: Performance / Security / Minimalism
 
 ---
 
+## Mandatory Reading
+
+Before modifying any code the agent MUST read:
+
+1. AGENTS_RULES.md
+2. AGENTS_ADBLOCK.md
+3. AGENTS_ARCHITECTURE.md
+
+These files define the development rules.
+
+
 # 1. PROJECT GOAL
 
 Build a **single-purpose browser application** that behaves like a simplified Brave browser

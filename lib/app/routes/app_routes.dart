@@ -24,8 +24,10 @@ class AppRouter {
     switch (settings.name) {
       case AppRoutes.account:
         return MaterialPageRoute<void>(
-          builder: (_) =>
-              AccountPage(authController: dependencies.authController),
+          builder: (_) => AccountPage(
+            authController: dependencies.authController,
+            updateService: dependencies.updateService,
+          ),
           settings: settings,
         );
       case AppRoutes.settings:

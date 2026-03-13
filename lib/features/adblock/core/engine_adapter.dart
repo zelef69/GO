@@ -19,9 +19,28 @@ class EngineAdapter implements AdblockEngineBridge {
   bool _fallbackInitialized = false;
   bool _usingNativeEngine = false;
   late AdblockEngineBridge _activeEngine;
+  int _nativeInitSuccessCount = 0;
+  int _nativeInitFailureCount = 0;
+  int _fallbackInitSuccessCount = 0;
+  int _fallbackInitFailureCount = 0;
+  int _evaluateRequestCallCount = 0;
+  int _nativeEvaluateCallCount = 0;
+  int _fallbackEvaluateCallCount = 0;
 
   bool get initialized => _initialized;
   bool get usingNativeEngine => _usingNativeEngine;
+
+  Map<String, dynamic> get debugSnapshot => <String, dynamic>{
+    'initialized': _initialized,
+    'usingNativeEngine': _usingNativeEngine,
+    'nativeInitSuccessCount': _nativeInitSuccessCount,
+    'nativeInitFailureCount': _nativeInitFailureCount,
+    'fallbackInitSuccessCount': _fallbackInitSuccessCount,
+    'fallbackInitFailureCount': _fallbackInitFailureCount,
+    'evaluateRequestCallCount': _evaluateRequestCallCount,
+    'nativeEvaluateCallCount': _nativeEvaluateCallCount,
+    'fallbackEvaluateCallCount': _fallbackEvaluateCallCount,
+  };
 
   Future<bool> isNativeEngineAvailable() => _nativeEngineBridge.isAvailable();
 
@@ -60,10 +79,12 @@ class EngineAdapter implements AdblockEngineBridge {
         );
         _activeEngine = _nativeEngineBridge;
         _usingNativeEngine = true;
+        _nativeInitSuccessCount += 1;
         _initialized = true;
         _logger.log('engine adapter selected native');
         return;
       } catch (_) {
+        _nativeInitFailureCount += 1;
         _logger.log('engine adapter native init failed');
       }
     }
@@ -82,7 +103,9 @@ class EngineAdapter implements AdblockEngineBridge {
         enabledTags: enabledTags,
       );
       _fallbackInitialized = true;
+      _fallbackInitSuccessCount += 1;
     } catch (_) {
+      _fallbackInitFailureCount += 1;
       _logger.log('engine adapter fallback init failed');
     }
 
@@ -121,6 +144,12 @@ class EngineAdapter implements AdblockEngineBridge {
   }) async {
     if (!_initialized) {
       return AdblockEngineRequestResult.allow();
+    }
+    _evaluateRequestCallCount += 1;
+    if (_usingNativeEngine) {
+      _nativeEvaluateCallCount += 1;
+    } else {
+      _fallbackEvaluateCallCount += 1;
     }
     return _activeEngine.evaluateRequestDetailed(
       uri,

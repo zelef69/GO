@@ -1,0 +1,17 @@
+{
+  "appId": "com.example.go_play",
+  "channel": "stable",
+  "latestVersionCode": 3,
+  "latestVersionName": "0.0.3-beta+3",
+  "minSupportedVersionCode": 1,
+  "forceUpdate": false,
+  "apkUrl": "https://your-domain.com/releases/go_play-0.0.3-beta+3.apk",
+  "apkSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "apkSizeBytes": 42810432,
+  "changelog": [
+    "ปรับปรุงความเสถียร",
+    "แก้ปัญหาดาวน์โหลดค้างบางเครื่อง",
+    "เพิ่มประสิทธิภาพการเล่นวิดีโอ"
+  ],
+  "publishedAt": "2026-03-13T09:00:00Z"
+}

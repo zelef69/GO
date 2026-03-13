@@ -27,15 +27,23 @@ class LearnedSignatureRepository {
     required SignatureMatcher matcher,
     CrowdCandidateSanitizer? sanitizer,
     DateTime Function()? now,
+    bool debugLoggingEnabled = false,
+    void Function(String message)? logSink,
   }) : _database = database,
        _matcher = matcher,
        _sanitizer = sanitizer ?? const CrowdCandidateSanitizer(),
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now,
+       _debugLoggingEnabled = debugLoggingEnabled,
+       _logSink = logSink;
 
   final LearnedSignatureDb _database;
   final SignatureMatcher _matcher;
   final CrowdCandidateSanitizer _sanitizer;
   final DateTime Function() _now;
+  final bool _debugLoggingEnabled;
+  final void Function(String message)? _logSink;
+
+  static const int _maxCrowdLearnLogs = 260;
 
   bool _initialized = false;
   bool _dbAvailable = false;
@@ -43,6 +51,8 @@ class LearnedSignatureRepository {
   int _snapshotVersion = 0;
   String _snapshotChecksum = '';
   int _nextMemoryCandidateId = -1;
+  int _suspiciousLinkTotal = 0;
+  int _crowdLearnLogCount = 0;
 
   final Map<String, LearnedSignature> _signatures =
       <String, LearnedSignature>{};
@@ -72,6 +82,8 @@ class LearnedSignatureRepository {
     _initialized = false;
     _signatures.clear();
     _memoryPendingEvents.clear();
+    _suspiciousLinkTotal = 0;
+    _crowdLearnLogCount = 0;
     await _database.close();
   }
 
@@ -122,7 +134,18 @@ class LearnedSignatureRepository {
     if (candidate == null) {
       return;
     }
-    await _upsertFromCandidate(candidate, nowMs: nowMs, reason: reason);
+    _suspiciousLinkTotal += 1;
+    final signature = await _upsertFromCandidate(
+      candidate,
+      nowMs: nowMs,
+      reason: reason,
+    );
+    _logSuspiciousLink(
+      candidate: candidate,
+      signature: signature,
+      reason: reason,
+      action: 'learn_candidate',
+    );
     await _enqueueCandidate(candidate, nowMs: nowMs);
     if (matchedRule != null && matchedRule.trim().isNotEmpty) {
       await _setLastReason(candidate.sigHash, reason: reason, nowMs: nowMs);
@@ -176,6 +199,9 @@ class LearnedSignatureRepository {
     );
     _signatures[updated.sigHash] = updated;
     await _persistSignature(updated);
+    _log(
+      'stall_feedback total=$_suspiciousLinkTotal sig=${_shortSig(updated.sigHash)} status=${updated.state}/${_statusLevel(updated)} seen=${updated.seenCount} fp=${updated.falsePositiveCount} score=${updated.score.toStringAsFixed(1)} conf=${updated.confidence.toStringAsFixed(2)}',
+    );
   }
 
   Future<void> recordPlaybackDebugSignal(
@@ -389,7 +415,7 @@ class LearnedSignatureRepository {
     }
   }
 
-  Future<void> _upsertFromCandidate(
+  Future<LearnedSignature> _upsertFromCandidate(
     CrowdSanitizedCandidate candidate, {
     required int nowMs,
     required String reason,
@@ -416,9 +442,10 @@ class LearnedSignatureRepository {
         updatedAtMs: nowMs,
         lastReason: reason,
       );
-      _signatures[created.sigHash] = _maybePromote(created);
-      await _persistSignature(_signatures[created.sigHash]!);
-      return;
+      final next = _maybePromote(created);
+      _signatures[next.sigHash] = next;
+      await _persistSignature(next);
+      return next;
     }
 
     final nextSeenCount = existing.seenCount + 1;
@@ -454,6 +481,7 @@ class LearnedSignatureRepository {
     final promoted = _maybePromote(updated);
     _signatures[promoted.sigHash] = promoted;
     await _persistSignature(promoted);
+    return promoted;
   }
 
   Future<void> _setLastReason(
@@ -600,5 +628,60 @@ class LearnedSignatureRepository {
       return int.tryParse(value.trim()) ?? 0;
     }
     return 0;
+  }
+
+  void _logSuspiciousLink({
+    required CrowdSanitizedCandidate candidate,
+    required LearnedSignature signature,
+    required String reason,
+    required String action,
+  }) {
+    _log(
+      '$action total=$_suspiciousLinkTotal sig=${_shortSig(signature.sigHash)} status=${signature.state}/${_statusLevel(signature)} seen=${signature.seenCount} fp=${signature.falsePositiveCount} score=${signature.score.toStringAsFixed(1)} conf=${signature.confidence.toStringAsFixed(2)} reason=$reason host=${candidate.hostPattern} path=${candidate.pathPattern} markers=${candidate.markerKeys.length}',
+    );
+  }
+
+  String _statusLevel(LearnedSignature signature) {
+    if (signature.state == LearnedSignatureState.quarantined) {
+      return 'critical';
+    }
+    if (signature.state == LearnedSignatureState.expired) {
+      return 'inactive';
+    }
+    if (signature.state == LearnedSignatureState.active) {
+      if (signature.confidence >= 0.94 && signature.score >= 90) {
+        return 'high';
+      }
+      return 'medium';
+    }
+    if (signature.seenCount >= 3 && signature.confidence >= 0.86) {
+      return 'learning_high';
+    }
+    if (signature.seenCount >= 2) {
+      return 'learning_medium';
+    }
+    return 'learning_low';
+  }
+
+  String _shortSig(String sigHash) {
+    if (sigHash.length <= 12) {
+      return sigHash;
+    }
+    return sigHash.substring(0, 12);
+  }
+
+  void _log(String message) {
+    if (!_debugLoggingEnabled || _crowdLearnLogCount >= _maxCrowdLearnLogs) {
+      return;
+    }
+    _crowdLearnLogCount += 1;
+    final line = '[GO_PLAY-CrowdLearn] $message';
+    final sink = _logSink;
+    if (sink != null) {
+      sink(line);
+      return;
+    }
+    // ignore: avoid_print
+    print(line);
   }
 }

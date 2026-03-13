@@ -19,10 +19,16 @@ import '../../features/pip/pip_channel.dart';
 import '../../features/pip/pip_controller.dart';
 import '../../features/session/session_service.dart';
 import '../../features/settings/settings_controller.dart';
+import '../../services/apk_download_service.dart';
+import '../../services/apk_installer_service.dart';
+import '../../services/apk_integrity_service.dart';
 import '../../services/native_secrets_service.dart';
 import '../../services/secure_http_service.dart';
 import '../../services/security_service.dart';
 import '../../services/server_trust_service.dart';
+import '../../services/update_manifest_service.dart';
+import '../../services/update_service.dart';
+import 'app_config.dart';
 
 class AppDependencies {
   AppDependencies._({
@@ -43,6 +49,7 @@ class AppDependencies {
     required this.nativeSecretsService,
     required this.secureHttpService,
     required this.serverTrustService,
+    required this.updateService,
   });
 
   final SettingsController settingsController;
@@ -62,6 +69,7 @@ class AppDependencies {
   final NativeSecretsService nativeSecretsService;
   final SecureHttpService secureHttpService;
   final ServerTrustService serverTrustService;
+  final UpdateService updateService;
 
   factory AppDependencies.create() {
     final settingsController = SettingsController();
@@ -72,6 +80,8 @@ class AppDependencies {
     final learnedSignatureRepository = LearnedSignatureRepository(
       database: LearnedSignatureDb(),
       matcher: const SignatureMatcher(),
+      debugLoggingEnabled: kDebugMode,
+      logSink: (message) => debugPrint(message),
     );
     final crowdSyncService = CrowdSyncService(
       functions: FirebaseFunctions.instance,
@@ -111,6 +121,18 @@ class AppDependencies {
       localSessionStore: localSessionStore,
       browserSessionService: sessionService,
     );
+    final updateService = UpdateService(
+      manifestService: UpdateManifestService(
+        manifestUrl: AppConfig.updateManifestUrl,
+        source: _parseUpdateManifestSource(AppConfig.updateSource),
+        firestoreCollection: AppConfig.updateFirestoreCollection,
+        firestoreDocument: AppConfig.updateFirestoreDocument,
+        defaultAppId: AppConfig.updateAppId,
+      ),
+      apkDownloadService: ApkDownloadService(),
+      apkIntegrityService: ApkIntegrityService(),
+      apkInstallerService: ApkInstallerService(),
+    );
     return AppDependencies._(
       settingsController: settingsController,
       domainPolicyService: domainPolicyService,
@@ -129,6 +151,21 @@ class AppDependencies {
       nativeSecretsService: nativeSecretsService,
       secureHttpService: secureHttpService,
       serverTrustService: serverTrustService,
+      updateService: updateService,
     );
+  }
+}
+
+UpdateManifestSource _parseUpdateManifestSource(String raw) {
+  final normalized = raw.trim().toLowerCase();
+  switch (normalized) {
+    case 'manifest':
+    case 'manifest_url':
+    case 'url':
+      return UpdateManifestSource.manifestUrl;
+    case 'firestore':
+      return UpdateManifestSource.firestore;
+    default:
+      return UpdateManifestSource.auto;
   }
 }

@@ -43,13 +43,29 @@ class LoginPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Center(
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/pic/logo-v2.png',
-                          width: 110,
-                          height: 110,
-                          fit: BoxFit.cover,
-                          filterQuality: FilterQuality.high,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.12),
+                          ),
+                          boxShadow: const <BoxShadow>[
+                            BoxShadow(
+                              color: Color(0x66000000),
+                              blurRadius: 14,
+                              offset: Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(22),
+                          child: Image.asset(
+                            'assets/pic/logo-v2.png',
+                            width: 116,
+                            height: 116,
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.high,
+                          ),
                         ),
                       ),
                     ),
@@ -65,7 +81,7 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Sign in with your Google account to continue.',
+                      'เข้าสู่ระบบด้วยบัญชี Google เพื่อใช้งานต่อ',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.white70,
                       ),
@@ -73,7 +89,7 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Subscription is validated before entering the app.',
+                      'ระบบจะตรวจสอบสิทธิ์แพ็กเกจก่อนเข้าใช้งาน',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: Colors.white54,
                       ),
@@ -104,7 +120,7 @@ class LoginPage extends StatelessWidget {
                           ),
                           SizedBox(width: 8),
                           Text(
-                            'Checking session...',
+                            'กำลังตรวจสอบเซสชัน...',
                             style: TextStyle(
                               color: Colors.white54,
                               fontWeight: FontWeight.w500,
@@ -144,7 +160,9 @@ class LoginPage extends StatelessWidget {
                               const _GoogleMark(),
                             const SizedBox(width: 10),
                             Text(
-                              busy ? 'Signing In...' : 'Sign in with Google',
+                              busy
+                                  ? 'กำลังเข้าสู่ระบบ...'
+                                  : 'เข้าสู่ระบบด้วย Google',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                               ),
@@ -165,7 +183,7 @@ class LoginPage extends StatelessWidget {
                         side: const BorderSide(color: youtubeRed),
                       ),
                       icon: const Icon(Icons.logout),
-                      label: const Text('Logout'),
+                      label: const Text('ออกจากระบบ'),
                     ),
                   ],
                 ),

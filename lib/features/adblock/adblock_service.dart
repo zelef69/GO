@@ -8,9 +8,11 @@ import 'crowd/sync/crowd_sync_service.dart';
 import 'core/adblock_config.dart';
 import 'core/adblock_debug_logger.dart';
 import 'core/adblock_manager.dart';
+import 'core/adblock_metrics.dart';
 import 'core/cosmetic_filter_injector.dart';
 import 'core/request_blocker.dart';
 import 'core/scriptlet_injector.dart';
+import 'core/types.dart';
 import 'core/webview_integration.dart';
 
 class AdblockService {
@@ -69,9 +71,77 @@ class AdblockService {
   bool _initialized = false;
   int _debugBlockLogCount = 0;
   static const int _maxDebugBlockLogs = 120;
+  int _debugDecisionLogCount = 0;
+  static const int _maxDebugDecisionLogs = 600;
 
   bool get enabled => _config.enabled;
   bool get usingNativeEngine => _manager.usingNativeEngine;
+  AdblockMetricsSnapshot get metricsSnapshot => _manager.metricsSnapshot;
+  EngineStatsSnapshot get engineStatsSnapshot => _manager.engineStatsSnapshot;
+
+  Map<String, dynamic> getDebugSnapshot() {
+    final metrics = metricsSnapshot;
+    final engineStats = engineStatsSnapshot;
+    return <String, dynamic>{
+      'enabled': _config.enabled,
+      'usingNativeEngine': usingNativeEngine,
+      'runtime': <String, dynamic>{
+        'blockedRequests': metrics.blockedRequests,
+        'allowedRequests': metrics.allowedRequests,
+        'lastMatchedRule': metrics.lastMatchedRule,
+        'lastDecisionReason': metrics.lastDecisionReason,
+        'lastEvaluationMs': metrics.lastEvaluationMs,
+        'currentPageHost': metrics.currentPageHost,
+        'pageBlockedRequests': metrics.pageBlockedRequests,
+        'pageAllowedRequests': metrics.pageAllowedRequests,
+      },
+      'engine': <String, dynamic>{
+        'totalRequestEvaluations': engineStats.totalRequestEvaluations,
+        'decisionCacheHits': engineStats.decisionCacheHits,
+        'decisionCacheMisses': engineStats.decisionCacheMisses,
+        'decisionCacheHitRate': engineStats.decisionCacheHitRate,
+        'regexFallbackCount': engineStats.regexFallbackCount,
+        'allowDecisionCount': engineStats.allowDecisionCount,
+        'blockDecisionCount': engineStats.blockDecisionCount,
+        'redirectDecisionCount': engineStats.redirectDecisionCount,
+        'rewriteDecisionCount': engineStats.rewriteDecisionCount,
+        'bridgeEvaluationCount': engineStats.bridgeEvaluationCount,
+        'bridgeFallbackCount': engineStats.bridgeFallbackCount,
+        'bridgeErrorCount': engineStats.bridgeErrorCount,
+        'bridgeAllowCount': engineStats.bridgeAllowCount,
+        'bridgeBlockCount': engineStats.bridgeBlockCount,
+        'bridgeRedirectCount': engineStats.bridgeRedirectCount,
+        'bridgeRewriteCount': engineStats.bridgeRewriteCount,
+        'candidateTotalCount': engineStats.candidateTotalCount,
+        'evaluatedTotalCount': engineStats.evaluatedTotalCount,
+        'maxCandidateCount': engineStats.maxCandidateCount,
+        'maxEvaluatedCount': engineStats.maxEvaluatedCount,
+        'averageCandidateCount': engineStats.averageCandidateCount,
+        'averageEvaluatedCount': engineStats.averageEvaluatedCount,
+        'lastNormalizationMicros': engineStats.lastNormalizationMicros,
+        'lastCandidateLookupMicros': engineStats.lastCandidateLookupMicros,
+        'lastCandidateEvaluationMicros':
+            engineStats.lastCandidateEvaluationMicros,
+        'lastBridgeEvaluationMicros': engineStats.lastBridgeEvaluationMicros,
+        'lastCompileDurationMs': engineStats.lastCompileDurationMs,
+        'compileCount': engineStats.compileCount,
+        'lastCompiledNetworkRuleCount':
+            engineStats.lastCompiledNetworkRuleCount,
+        'lastCompiledCosmeticRuleCount':
+            engineStats.lastCompiledCosmeticRuleCount,
+        'lastCompiledScriptletRuleCount':
+            engineStats.lastCompiledScriptletRuleCount,
+        'lastCosmeticPayloadSize': engineStats.lastCosmeticPayloadSize,
+        'lastScriptletPayloadSize': engineStats.lastScriptletPayloadSize,
+      },
+      'injectors': <String, dynamic>{
+        'cosmetic': _cosmeticFilterInjector.debugSnapshot,
+        'scriptlet': _scriptletInjector.debugSnapshot,
+      },
+      'bridge': _manager.bridgeDebugSnapshot,
+      'webview': _webViewIntegration.debugSnapshot,
+    };
+  }
 
   Future<void> initialize() async {
     if (_initialized) {
@@ -87,7 +157,7 @@ class AdblockService {
     _crowdSyncService?.scheduleSync(reason: 'adblock_initialize');
     _initialized = true;
     _logger.log(
-      'service initialized native=${_manager.usingNativeEngine} rules=${_manager.activeRuleCount} revision=${_manager.activeRevision}',
+      'บริการบล็อกโฆษณาเริ่มทำงานแล้ว native=${_manager.usingNativeEngine} จำนวนกฎ=${_manager.activeRuleCount} revision=${_manager.activeRevision}',
     );
   }
 
@@ -102,7 +172,7 @@ class AdblockService {
       crowdLearningEnabled: _config.crowdLearningEnabled,
       crowdSyncEnabled: _config.crowdSyncEnabled,
     );
-    _logger.log('service setEnabled=$enabled');
+    _logger.log('สลับสถานะบริการบล็อกโฆษณา enabled=$enabled');
   }
 
   Future<void> attachWebView(InAppWebViewController controller) async {
@@ -123,6 +193,10 @@ class AdblockService {
 
   Future<void> syncRuntimeLayers({bool force = false}) async {
     await _webViewIntegration.syncRuntimeLayers(force: force);
+  }
+
+  Future<void> onAppResumed() async {
+    await _webViewIntegration.ensureInterceptionAttached(reason: 'app_resumed');
   }
 
   Future<List<String>> getHiddenClassIdSelectors(
@@ -169,6 +243,7 @@ class AdblockService {
     if (!_config.enabled) {
       return const AdblockDecision(blocked: false, reason: 'disabled');
     }
+    final startedAtMs = DateTime.now().millisecondsSinceEpoch;
     final decision = await _webViewIntegration.evaluateRequest(
       uri: uri,
       resourceType: resourceType,
@@ -182,6 +257,16 @@ class AdblockService {
       _debugBlockLogCount += 1;
       _logger.log(
         'blocked host=${uri.host} path=${uri.path} type=$resourceType reason=${decision.reason} cache=${decision.fromCache}',
+      );
+    }
+    if (_config.debugMode && _debugDecisionLogCount < _maxDebugDecisionLogs) {
+      _debugDecisionLogCount += 1;
+      final sourceSummary = sourceUrl == null
+          ? 'none'
+          : '${sourceUrl.host}${sourceUrl.path.isEmpty ? '/' : sourceUrl.path}';
+      final elapsedMs = DateTime.now().millisecondsSinceEpoch - startedAtMs;
+      _logger.log(
+        'สรุปการประเมินคำขอบล็อกโฆษณา host=${uri.host} path=${uri.path} type=$resourceType blocked=${decision.blocked} reason=${decision.reason} cache=${decision.fromCache} sw=$fromServiceWorker adShowing=${adShowing ?? false} stalled=${playbackStalled ?? false} signal=${adSignalKey ?? 'auto'} source=$sourceSummary ใช้เวลาMs=$elapsedMs',
       );
     }
     return decision;
@@ -230,6 +315,10 @@ class AdblockService {
     _webViewIntegration.updatePlaybackDebugSignal(payload, pageUri: pageUri);
   }
 
+  void onAdblockDebugSignal(Map<String, dynamic> payload, {Uri? pageUri}) {
+    _webViewIntegration.updateAdblockDebugSignal(payload, pageUri: pageUri);
+  }
+
   void scheduleCrowdSync({required String reason}) {
     if (!_config.crowdLearningEnabled || !_config.crowdSyncEnabled) {
       return;
@@ -253,5 +342,6 @@ class AdblockService {
     await _manager.dispose();
     _initialized = false;
     _debugBlockLogCount = 0;
+    _debugDecisionLogCount = 0;
   }
 }

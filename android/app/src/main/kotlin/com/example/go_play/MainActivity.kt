@@ -10,6 +10,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.go_play.pip.PipController
 import com.example.go_play.security.SecurityBridge
+import com.example.go_play.update.UpdateBridge
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -23,6 +24,7 @@ class MainActivity : FlutterActivity() {
 
     private var pipController: PipController? = null
     private var securityBridge: SecurityBridge? = null
+    private var updateBridge: UpdateBridge? = null
     private val rustAdblockBridge = RustAdblockBridge
     private val notificationPermissionRequestCode = 9103
     private var adblockDebugLogCount = 0
@@ -31,7 +33,9 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         pipController = PipController(this, flutterEngine.dartExecutor.binaryMessenger)
         securityBridge = SecurityBridge(this)
+        updateBridge = UpdateBridge(this)
         configureSecurityChannel(flutterEngine)
+        configureUpdateChannel(flutterEngine)
         configureAdblockChannel(flutterEngine)
     }
 
@@ -50,6 +54,7 @@ class MainActivity : FlutterActivity() {
         pipController?.onDestroy()
         pipController = null
         securityBridge = null
+        updateBridge = null
         super.onDestroy()
     }
 
@@ -210,6 +215,11 @@ class MainActivity : FlutterActivity() {
     private fun configureSecurityChannel(flutterEngine: FlutterEngine) {
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "go_play/security")
         securityBridge?.attachToChannel(channel)
+    }
+
+    private fun configureUpdateChannel(flutterEngine: FlutterEngine) {
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "go_play/update")
+        updateBridge?.attachToChannel(channel)
     }
 
     private fun requestNotificationPermissionIfNeeded() {

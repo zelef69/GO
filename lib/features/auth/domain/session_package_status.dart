@@ -30,7 +30,7 @@ class SessionPackageStatus {
   final DateTime? expiresAtUtc;
 
   bool get hasPackage => remainingDays > 0;
-  String get tabStatusLabel => hasPackage ? 'PREMIUM' : 'NO PACKAGE';
+  String get tabStatusLabel => hasPackage ? 'พรีเมียม' : 'ไม่มีแพ็กเกจ';
   String get remainingDaysLabel =>
       hasPackage ? 'เหลือ $remainingDays วัน' : 'หมดแพ็กเกจ';
 }

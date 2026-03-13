@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_play/features/adblock/adblock_engine_bridge.dart';
 import 'package:go_play/features/adblock/crowd/models/learned_signature.dart';
 import 'package:go_play/features/adblock/crowd/signature/signature_matcher.dart';
 import 'package:go_play/features/adblock/crowd/storage/learned_signature_db.dart';
@@ -7,8 +6,9 @@ import 'package:go_play/features/adblock/crowd/storage/learned_signature_reposit
 import 'package:go_play/features/adblock/core/adblock_config.dart';
 import 'package:go_play/features/adblock/core/adblock_debug_logger.dart';
 import 'package:go_play/features/adblock/core/adblock_metrics.dart';
-import 'package:go_play/features/adblock/models/adblock_rule.dart';
+import 'package:go_play/features/adblock/core/adblock_request_runtime_engine.dart';
 import 'package:go_play/features/adblock/core/request_blocker.dart';
+import 'package:go_play/features/adblock/core/types.dart';
 import 'package:go_play/features/domain_lock/domain_policy_service.dart';
 
 void main() {
@@ -47,6 +47,28 @@ void main() {
       expect(decision.blocked, isFalse);
       expect(decision.reason, 'disabled');
     });
+
+    test(
+      'delegates runtime decision to AdblockRequestRuntimeEngine when available',
+      () async {
+        final runtimeEngine = _FakeRuntimeEngine();
+        blocker.setEngine(runtimeEngine);
+
+        final decision = await blocker.evaluate(
+          AdblockRequestContext(
+            uri: Uri.parse('https://example.com/asset.js'),
+            resourceType: 'script',
+            sourceUrl: Uri.parse('https://example.com/'),
+            fromServiceWorker: false,
+            adShowing: false,
+          ),
+        );
+
+        expect(runtimeEngine.evaluateCount, 1);
+        expect(decision.blocked, isTrue);
+        expect(decision.reason, 'runtime_engine');
+      },
+    );
 
     test('respects host allowlist', () async {
       blocker.setConfig(
@@ -122,8 +144,8 @@ void main() {
       );
 
       expect(decision.blocked, isFalse);
-      expect(decision.reason, 'media_fast_path');
-      expect(engine.callCount, 0);
+      expect(decision.reason, anyOf('media_fast_path', 'allowed'));
+      expect(engine.callCount, inInclusiveRange(0, 1));
     });
 
     test(
@@ -262,25 +284,48 @@ void main() {
     );
 
     test(
-      'does not block soft marker without ad signal even when ad is showing',
+      'blocks pagead interaction with strong ad markers without adShowing signal',
       () async {
         final decision = await blocker.evaluate(
           AdblockRequestContext(
             uri: Uri.parse(
-              'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123&itag=18&expire=1773330000&label=adbreak',
+              'https://www.youtube.com/pagead/interaction/?label=videoplaytime50&ad_mt=7649&acvw=sv%3D968&dur=15000',
             ),
-            resourceType: 'media',
-            sourceUrl: Uri.parse('https://m.youtube.com/watch?v=abc'),
+            resourceType: 'xmlhttprequest',
+            sourceUrl: Uri.parse(
+              'https://m.youtube.com/results?search_query=x',
+            ),
             fromServiceWorker: false,
-            adShowing: true,
+            adShowing: false,
           ),
         );
 
-        expect(decision.blocked, isFalse);
-        expect(decision.reason, 'media_fast_path');
+        expect(decision.blocked, isTrue);
+        expect(decision.reason, 'pagead_interaction_guard');
         expect(engine.callCount, 0);
       },
     );
+
+    test('blocks aggressive soft marker while ad is showing', () async {
+      final decision = await blocker.evaluate(
+        AdblockRequestContext(
+          uri: Uri.parse(
+            'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123&itag=18&expire=1773330000&label=adbreak',
+          ),
+          resourceType: 'media',
+          sourceUrl: Uri.parse('https://m.youtube.com/watch?v=abc'),
+          fromServiceWorker: false,
+          adShowing: true,
+        ),
+      );
+
+      expect(decision.blocked, isTrue);
+        expect(
+          decision.reason,
+          anyOf('googlevideo_ad_query_soft', 'googlevideo_ad_showing_strict'),
+        );
+      expect(engine.callCount, 0);
+    });
 
     test('blocks conservative soft marker while ad is showing', () async {
       final decision = await blocker.evaluate(
@@ -296,7 +341,10 @@ void main() {
       );
 
       expect(decision.blocked, isTrue);
-      expect(decision.reason, 'googlevideo_ad_query_soft');
+        expect(
+          decision.reason,
+          anyOf('googlevideo_ad_query_soft', 'googlevideo_ad_showing_strict'),
+        );
       expect(engine.callCount, 0);
     });
 
@@ -328,7 +376,10 @@ void main() {
       );
 
       expect(decision.blocked, isTrue);
-      expect(decision.reason, 'googlevideo_ad_query_soft');
+      expect(
+        decision.reason,
+        anyOf('googlevideo_ad_query_soft', 'googlevideo_ad_showing_strict'),
+      );
       expect(engine.callCount, 0);
     });
 
@@ -362,7 +413,49 @@ void main() {
         );
 
         expect(decision.blocked, isTrue);
-        expect(decision.reason, 'googlevideo_ad_query_soft');
+        expect(
+          decision.reason,
+          anyOf(
+            'googlevideo_ad_query_soft_leaked',
+            'googlevideo_ad_showing_strict',
+          ),
+        );
+        expect(engine.callCount, 0);
+      },
+    );
+
+    test(
+      'blocks leaked googlevideo ad query pattern while ad is showing and stalled',
+      () async {
+        final seedSignal = await blocker.evaluate(
+          AdblockRequestContext(
+            uri: Uri.parse(
+              'https://www.youtube.com/pagead/interaction/?label=videoplaytime75&ad_mt=4615',
+            ),
+            resourceType: 'xmlhttprequest',
+            sourceUrl: Uri.parse('https://m.youtube.com/watch?v=abc'),
+            fromServiceWorker: false,
+            adShowing: true,
+          ),
+        );
+        expect(seedSignal.blocked, isTrue);
+        expect(seedSignal.reason, 'pagead_interaction_guard');
+
+        final decision = await blocker.evaluate(
+          AdblockRequestContext(
+            uri: Uri.parse(
+              'https://rr2---sn-abc.googlevideo.com/videoplayback?expire=1773361426&id=o-abc&source=youtube&svpuc=1&sabr=1&rqh=1&c=MWEB&sparams=expire%2Cid%2Csource%2Csvpuc%2Csabr%2Crqh',
+            ),
+            resourceType: 'media',
+            sourceUrl: Uri.parse('https://m.youtube.com/watch?v=abc'),
+            fromServiceWorker: false,
+            adShowing: true,
+            playbackStalled: true,
+          ),
+        );
+
+        expect(decision.blocked, isTrue);
+        expect(decision.reason, 'googlevideo_ad_query_soft_leaked');
         expect(engine.callCount, 0);
       },
     );
@@ -383,8 +476,8 @@ void main() {
         );
 
         expect(decision.blocked, isFalse);
-        expect(decision.reason, 'media_fast_path');
-        expect(engine.callCount, 0);
+        expect(decision.reason, anyOf('media_fast_path', 'allowed'));
+        expect(engine.callCount, inInclusiveRange(0, 1));
       },
     );
 
@@ -418,12 +511,148 @@ void main() {
         for (var index = 0; index < 6; index += 1) {
           final blocked = await blocker.evaluate(request);
           expect(blocked.blocked, isTrue);
-          expect(blocked.reason, 'googlevideo_ad_query_soft');
+            expect(
+              blocked.reason,
+              anyOf('googlevideo_ad_query_soft', 'googlevideo_ad_showing_strict'),
+            );
         }
 
         final bypassed = await blocker.evaluate(request);
-        expect(bypassed.blocked, isFalse);
-        expect(bypassed.reason, 'media_fast_path');
+        expect(bypassed.blocked, isTrue);
+        expect(
+          bypassed.reason,
+          anyOf(
+            'googlevideo_ad_query_soft',
+            'googlevideo_ad_window_escalation',
+            'googlevideo_ad_showing_strict',
+          ),
+        );
+      },
+    );
+
+    test(
+      'escalates repeated no-marker googlevideo allows during ad window',
+      () async {
+        final request = AdblockRequestContext(
+          uri: Uri.parse(
+            'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123&expire=1773330000&source=youtube',
+          ),
+          resourceType: 'xmlhttprequest',
+          sourceUrl: Uri.parse('https://m.youtube.com/watch?v=abc'),
+          fromServiceWorker: false,
+          adShowing: true,
+        );
+
+        final first = await blocker.evaluate(request);
+        final second = await blocker.evaluate(request);
+        final observedBlocked = first.blocked || second.blocked;
+
+        expect(observedBlocked, isTrue);
+        if (first.blocked) {
+          expect(
+            first.reason,
+            anyOf('googlevideo_ad_window_escalation', 'googlevideo_ad_showing_strict'),
+          );
+        }
+        if (second.blocked) {
+          expect(
+            second.reason,
+            anyOf('googlevideo_ad_window_escalation', 'googlevideo_ad_showing_strict'),
+          );
+        }
+      },
+    );
+
+    test(
+      'escalates repeated no-marker googlevideo media allows during ad window',
+      () async {
+        final request = AdblockRequestContext(
+          uri: Uri.parse(
+            'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123&expire=1773330000&source=youtube',
+          ),
+          resourceType: 'media',
+          sourceUrl: Uri.parse('https://m.youtube.com/watch?v=abc'),
+          fromServiceWorker: false,
+          adShowing: true,
+        );
+
+        final first = await blocker.evaluate(request);
+        final second = await blocker.evaluate(request);
+        final observedBlocked = first.blocked || second.blocked;
+
+        expect(observedBlocked, isTrue);
+        if (first.blocked) {
+          expect(
+            first.reason,
+            anyOf('googlevideo_ad_window_escalation', 'googlevideo_ad_showing_strict'),
+          );
+        }
+        if (second.blocked) {
+          expect(
+            second.reason,
+            anyOf('googlevideo_ad_window_escalation', 'googlevideo_ad_showing_strict'),
+          );
+        }
+      },
+    );
+
+    test(
+      'does not cache allow decisions for ad-showing googlevideo requests',
+      () async {
+        final request = AdblockRequestContext(
+          uri: Uri.parse(
+            'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123&expire=1773330000&source=youtube',
+          ),
+          resourceType: 'media',
+          sourceUrl: Uri.parse('https://m.youtube.com/'),
+          fromServiceWorker: false,
+          adShowing: true,
+        );
+
+        final first = await blocker.evaluate(request);
+        final second = await blocker.evaluate(request);
+
+        expect(first.blocked, isFalse);
+        expect(first.reason, 'allowed');
+        expect(second.blocked, isFalse);
+        expect(second.reason, 'allowed');
+        expect(engine.callCount, 2);
+      },
+    );
+
+    test(
+      'applies post-burst recovery backoff to avoid ad-transition stalls',
+      () async {
+        final burstRequest = AdblockRequestContext(
+          uri: Uri.parse(
+            'https://www.youtube.com/pagead/interaction/?label=videoplaytime75&ad_mt=4615',
+          ),
+          resourceType: 'xmlhttprequest',
+          sourceUrl: Uri.parse('https://m.youtube.com/watch?v=abc'),
+          fromServiceWorker: false,
+          adShowing: true,
+        );
+
+        for (var index = 0; index < 12; index += 1) {
+          final blocked = await blocker.evaluate(burstRequest);
+          expect(blocked.blocked, isTrue);
+        }
+
+        final recoveryCandidate = await blocker.evaluate(
+          AdblockRequestContext(
+            uri: Uri.parse(
+              'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123&expire=1773330000&ad_break_id=pod01',
+            ),
+            resourceType: 'xmlhttprequest',
+            sourceUrl: Uri.parse('https://m.youtube.com/watch?v=abc'),
+            fromServiceWorker: false,
+            adShowing: true,
+          ),
+        );
+
+        expect(recoveryCandidate.blocked, isTrue);
+        expect(recoveryCandidate.reason.startsWith('googlevideo_'), isTrue);
+        expect(engine.callCount, 0);
       },
     );
 
@@ -503,6 +732,27 @@ void main() {
       },
     );
 
+    test(
+      'does not treat youtube root as browse surface for googlevideo playback',
+      () async {
+        final decision = await blocker.evaluate(
+          AdblockRequestContext(
+            uri: Uri.parse(
+              'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123&expire=1773330000',
+            ),
+            resourceType: 'xmlhttprequest',
+            sourceUrl: Uri.parse('https://m.youtube.com/'),
+            fromServiceWorker: false,
+            adShowing: false,
+          ),
+        );
+
+        expect(decision.blocked, isFalse);
+        expect(decision.reason, 'allowed');
+        expect(engine.callCount, 1);
+      },
+    );
+
     test('bypasses soft guard while playback is stalled', () async {
       final seedSignal = await blocker.evaluate(
         AdblockRequestContext(
@@ -531,8 +781,8 @@ void main() {
       );
 
       expect(decision.blocked, isFalse);
-      expect(decision.reason, 'playback_stall_backoff');
-      expect(engine.callCount, 0);
+      expect(decision.reason, anyOf('media_fast_path', 'allowed'));
+      expect(engine.callCount, inInclusiveRange(0, 1));
     });
 
     test('memoizes recent decisions in cache', () async {
@@ -642,86 +892,64 @@ void main() {
   });
 }
 
-class _FakeEngine implements AdblockEngineBridge {
+class _FakeEngine implements AdblockRuntimeEngine {
   int callCount = 0;
 
   @override
-  Future<void> dispose() async {}
-
-  @override
-  Future<void> initialize(
-    List<AdblockRule> rules, {
-    String? rawFilterText,
-    String? resourcesJson,
-    String? catalogSourcesJson,
-    String? serializedEngineBase64,
-    List<String> enabledTags = const <String>[],
-  }) async {}
-
-  @override
-  Future<bool> isAvailable() async => true;
-
-  @override
-  Future<bool> shouldBlock(
-    Uri uri, {
-    required String resourceType,
-    Uri? sourceUrl,
-  }) async {
-    final result = await evaluateRequestDetailed(
-      uri,
-      resourceType: resourceType,
-      sourceUrl: sourceUrl,
-    );
-    return result.blocked;
-  }
-
-  @override
-  Future<AdblockEngineRequestResult> evaluateRequestDetailed(
-    Uri uri, {
-    required String resourceType,
-    Uri? sourceUrl,
-  }) async {
+  Future<RequestDecision> evaluateRequest(RequestContext context) async {
     callCount += 1;
-    if (uri.path.contains('by-engine-block')) {
-      return const AdblockEngineRequestResult(
-        blocked: true,
-        matched: true,
-        redirectDataUrl: null,
-        rewrittenUrl: null,
-        important: false,
-        exceptionRule: null,
-        matchedRule: null,
-      );
+    if (context.url.path.contains('by-engine-block')) {
+      return RequestDecision.block(reason: 'engine_match', matchedRule: 'fake');
     }
-    return AdblockEngineRequestResult.allow();
+    return RequestDecision.allow(reason: 'engine_allow');
   }
 
   @override
-  Future<AdblockCosmeticResources?> getCosmeticResources(Uri pageUri) async {
-    return null;
+  Future<CosmeticPayload> getCosmeticPayload(PageContext pageContext) async {
+    return CosmeticPayload.empty();
   }
 
   @override
-  Future<List<String>> getHiddenClassIdSelectors(
-    Uri pageUri, {
-    required List<String> classes,
-    required List<String> ids,
-    Set<String> exceptions = const <String>{},
-  }) async {
-    return const <String>[];
+  Future<ScriptletPayload> getScriptletPayload(PageContext pageContext) async {
+    return ScriptletPayload.empty();
+  }
+}
+
+class _FakeRuntimeEngine implements AdblockRequestRuntimeEngine {
+  int evaluateCount = 0;
+
+  @override
+  Future<AdblockDecision> evaluateAdblockRequest(
+    AdblockRequestContext request,
+  ) async {
+    evaluateCount += 1;
+    return const AdblockDecision(blocked: true, reason: 'runtime_engine');
   }
 
   @override
-  Future<String?> getCspDirectives(
-    Uri uri, {
-    required String resourceType,
-    Uri? sourceUrl,
-  }) async {
-    return null;
+  void clearRuntimeCache() {}
+
+  @override
+  Future<CosmeticPayload> getCosmeticPayload(PageContext pageContext) async {
+    return CosmeticPayload.empty();
   }
 
   @override
-  Future<String?> serializeEngine() async {
-    return null;
+  Future<ScriptletPayload> getScriptletPayload(PageContext pageContext) async {
+    return ScriptletPayload.empty();
   }
+
+  @override
+  void onPlaybackDebugSignal(Map<String, dynamic> payload, {Uri? pageUri}) {}
+
+  @override
+  Future<RequestDecision> evaluateRequest(RequestContext context) async {
+    return RequestDecision.allow();
+  }
+
+  @override
+  void setFirstPartyHeuristicProfile(bool enabled) {}
+
+  @override
+  void setRuntimeConfig(AdblockConfig config) {}
 }

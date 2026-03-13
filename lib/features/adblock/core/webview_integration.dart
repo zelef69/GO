@@ -3,13 +3,14 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import '../adblock_engine_bridge.dart';
 import 'adblock_config.dart';
 import 'adblock_debug_logger.dart';
 import 'adblock_manager.dart';
 import 'cosmetic_filter_injector.dart';
 import 'request_blocker.dart';
 import 'scriptlet_injector.dart';
+import '../intercept/request_interceptor.dart';
+import 'types.dart';
 
 class WebViewAdblockIntegration {
   WebViewAdblockIntegration({
@@ -31,6 +32,7 @@ class WebViewAdblockIntegration {
   final AdblockDebugLogger _logger;
   final CosmeticFilterInjector _cosmeticFilterInjector;
   final ScriptletInjector _scriptletInjector;
+  final RequestInterceptor _requestInterceptor = const RequestInterceptor();
 
   AdblockConfig _config;
   InAppWebViewController? _controller;
@@ -45,10 +47,48 @@ class WebViewAdblockIntegration {
   static const int _maxServiceWorkerBlockLogs = 80;
   static const int _maxCosmeticDomSignals = 480;
   static const Duration _adSignalTtl = Duration(milliseconds: 2400);
-  static const Duration _stallSignalTtl = Duration(milliseconds: 2600);
+  static const Duration _jsAdSignalTtl = Duration(milliseconds: 5600);
+  static const Duration _jsAntiAdblockSignalTtl = Duration(milliseconds: 9000);
+  static const Duration _stallSignalTtl = Duration(milliseconds: 4200);
   static const int _maxSignalStateEntries = 420;
+  static const Duration _interceptProbeWindow = Duration(seconds: 10);
+  static const int _maxInterceptProbeLogs = 120;
+  static const int _maxHookLifecycleLogs = 80;
+  static const int _maxSignalDebugLogs = 260;
+  static const int _maxRequestFlowLogs = 320;
+  int _hookLifecycleLogCount = 0;
+  int _signalDebugLogCount = 0;
+  int _requestFlowLogCount = 0;
+  int _interceptProbeWindowStartMs = 0;
+  int _interceptProbeLogCount = 0;
+  int _interceptProbeRequestCount = 0;
+  int _interceptProbeBlockedCount = 0;
+  int _interceptProbeServiceWorkerCount = 0;
+  int _interceptProbeAdSignalCount = 0;
+  int _interceptProbeStallCount = 0;
+  final Map<String, int> _interceptProbeTypeCounts = <String, int>{};
+  final Map<String, int> _interceptProbeReasonCounts = <String, int>{};
 
   Uri? get currentPageUri => _currentPageUri;
+
+  Map<String, dynamic> get debugSnapshot => <String, dynamic>{
+    'page': _pageSummary(_currentPageUri),
+    'mainFrameSignalKey': _mainFrameSignalKey,
+    'serviceWorkerAttached': _serviceWorkerAttached,
+    'serviceWorkerBlockCount': _serviceWorkerBlockCount,
+    'adSignalEntries': _adSignalStates.length,
+    'stallSignalEntries': _stallSignalStates.length,
+    'interceptProbe': <String, dynamic>{
+      'windowStartMs': _interceptProbeWindowStartMs,
+      'requests': _interceptProbeRequestCount,
+      'blocked': _interceptProbeBlockedCount,
+      'serviceWorker': _interceptProbeServiceWorkerCount,
+      'adSignal': _interceptProbeAdSignalCount,
+      'stalled': _interceptProbeStallCount,
+      'typeCounts': Map<String, int>.from(_interceptProbeTypeCounts),
+      'reasonCounts': Map<String, int>.from(_interceptProbeReasonCounts),
+    },
+  };
 
   void updateConfig(AdblockConfig config) {
     _config = config;
@@ -57,8 +97,29 @@ class WebViewAdblockIntegration {
   }
 
   Future<void> attachWebView(InAppWebViewController controller) async {
+    final replacingController =
+        _controller != null && !identical(_controller, controller);
     _controller = controller;
+    _logHookLifecycle(
+      'hook attach replacing=$replacingController swAttached=$_serviceWorkerAttached',
+    );
+    await ensureInterceptionAttached(reason: 'attach_webview');
+  }
+
+  Future<void> ensureInterceptionAttached({required String reason}) async {
+    if (_controller == null) {
+      _logHookLifecycle('hook ensure reason=$reason controller=missing');
+      return;
+    }
+    if (!_config.enabled) {
+      _logHookLifecycle('hook ensure reason=$reason adblock=disabled');
+      return;
+    }
+    final before = _serviceWorkerAttached;
     await _configureServiceWorkerInterception();
+    _logHookLifecycle(
+      'hook ensure reason=$reason swBefore=$before swAfter=$_serviceWorkerAttached page=${_pageSummary(_currentPageUri)}',
+    );
   }
 
   void onMainFrameChanged(Uri? uri) {
@@ -70,6 +131,9 @@ class WebViewAdblockIntegration {
     _mainFrameSignalKey = nextSignalKey;
     _currentPageUri = uri;
     _manager.onMainFrameChanged(uri);
+    _logSignalDebug(
+      'อัปเดต main frame page=${_pageSummary(uri)} keyเดิม=$previousSignalKey keyใหม่=$nextSignalKey',
+    );
   }
 
   void clearSignalState({String reason = 'manual'}) {
@@ -78,7 +142,7 @@ class WebViewAdblockIntegration {
     }
     _adSignalStates.clear();
     _stallSignalStates.clear();
-    _logger.log('signal_state cleared reason=$reason');
+    _logger.log('ล้างสถานะสัญญาณ ad/stall แล้ว reason=$reason');
   }
 
   void updatePlaybackDebugSignal(Map<String, dynamic> payload, {Uri? pageUri}) {
@@ -100,24 +164,52 @@ class WebViewAdblockIntegration {
     final eventName = (payload['event'] ?? '').toString().trim().toLowerCase();
     final readyState = _toInt(payload['readyState']);
     final networkState = _toInt(payload['networkState']);
+    final currentTimeMs = _toInt(payload['currentTimeMs']);
+    final bufferedAheadMs = _toInt(payload['bufferedAheadMs']);
+    final paused = payload['paused'] == true;
+    final ended = payload['ended'] == true;
+    final spinnerVisible = payload['spinnerVisible'] == true;
     final stallLikeEvent =
         eventName == 'video:waiting' ||
+        eventName == 'video:stalled' ||
         eventName == 'video:emptied' ||
-        eventName == 'video:loadstart';
+        eventName == 'video:loadstart' ||
+        eventName == 'video:suspend';
+    final waitingNetworkState =
+        networkState == 0 || networkState == 2 || networkState == 3;
+    final bufferEmpty = bufferedAheadMs <= 120;
+    final playbackShouldAdvance = !paused && !ended && currentTimeMs > 0;
+    final runtimeStallSnapshot =
+        playbackShouldAdvance &&
+        bufferEmpty &&
+        readyState <= 2 &&
+        (waitingNetworkState || spinnerVisible);
     final looksStalled =
-        stallLikeEvent &&
-        readyState <= 0 &&
-        (networkState == 0 || networkState == 2 || networkState == 3);
+        (stallLikeEvent &&
+            waitingNetworkState &&
+            (readyState <= 2 || bufferEmpty)) ||
+        runtimeStallSnapshot;
+    final recoveredByBuffer = readyState >= 2 && bufferedAheadMs >= 900;
+    final recoveredByReadyState =
+        readyState >= 3 && !bufferEmpty && !spinnerVisible;
     final recovered =
         eventName == 'video:playing' ||
         eventName == 'video:canplay' ||
         eventName == 'video:canplaythrough' ||
-        readyState >= 2;
+        ended ||
+        recoveredByBuffer ||
+        recoveredByReadyState;
 
     if (looksStalled) {
       _setSignal(_stallSignalStates, signalKey, ttl: _stallSignalTtl);
+      _logSignalDebug(
+        'รับ playback debug -> ตีความว่า stall key=$signalKey event=$eventName ready=$readyState net=$networkState bufferMs=$bufferedAheadMs spinner=$spinnerVisible',
+      );
     } else if (recovered) {
       _stallSignalStates.remove(signalKey);
+      _logSignalDebug(
+        'รับ playback debug -> ตีความว่าฟื้นตัว key=$signalKey event=$eventName ready=$readyState bufferMs=$bufferedAheadMs',
+      );
     }
 
     _manager.onPlaybackDebugSignal(
@@ -126,8 +218,59 @@ class WebViewAdblockIntegration {
     );
   }
 
+  void updateAdblockDebugSignal(Map<String, dynamic> payload, {Uri? pageUri}) {
+    final signalKey = _requestSignalKeyFor(
+      uri: pageUri ?? _currentPageUri,
+      fallbackVideoId: payload['videoId']?.toString().trim(),
+    );
+    if (signalKey == 'global') {
+      return;
+    }
+    final eventName = (payload['event'] ?? '').toString().trim().toLowerCase();
+    final reason = (payload['reason'] ?? '').toString().trim().toLowerCase();
+    final blocked = payload['blocked'] == true;
+    final resourceType = (payload['resourceType'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    final antiAdblockEvent =
+        eventName.startsWith('anti_adblock') || reason.contains('anti_adblock');
+    final networkAdMatch = eventName == 'network_ad_match' && blocked;
+    final googlevideoSignal =
+        resourceType == 'media' && reason.contains('googlevideo_ad_query');
+
+    if (antiAdblockEvent) {
+      _setSignal(
+        _adSignalStates,
+        signalKey,
+        ttl: _jsAntiAdblockSignalTtl,
+      );
+      _setSignal(_stallSignalStates, signalKey, ttl: _stallSignalTtl);
+      _logSignalDebug(
+        'รับ adblock debug -> พบสัญญาณ anti-adblock key=$signalKey event=$eventName reason=$reason จึงเร่ง ad/stall signal',
+      );
+      return;
+    }
+
+    if (networkAdMatch || googlevideoSignal) {
+      _setSignal(_adSignalStates, signalKey, ttl: _jsAdSignalTtl);
+      if (resourceType == 'media') {
+        _setSignal(_stallSignalStates, signalKey, ttl: _stallSignalTtl);
+      }
+      _logSignalDebug(
+        'รับ adblock debug -> พบ network ad match key=$signalKey event=$eventName reason=$reason type=$resourceType blocked=$blocked',
+      );
+    }
+  }
+
   String resolveRequestSignalKey(Uri uri, {Uri? sourceUri}) {
-    return _requestSignalKeyFor(uri: sourceUri ?? uri);
+    final resolved = _requestSignalKeyFor(uri: sourceUri ?? uri);
+    return _promoteSignalKeyForRequest(
+      requestUri: uri,
+      sourceUri: sourceUri,
+      resolvedKey: resolved,
+    );
   }
 
   bool isAdSignalActiveForRequest(Uri uri, {Uri? sourceUri}) {
@@ -148,7 +291,8 @@ class WebViewAdblockIntegration {
     bool? adShowing,
     bool? playbackStalled,
     String? adSignalKey,
-  }) {
+  }) async {
+    final startedAtMs = DateTime.now().millisecondsSinceEpoch;
     final effectiveSignalKey =
         (adSignalKey ?? resolveRequestSignalKey(uri, sourceUri: sourceUri))
             .trim()
@@ -174,7 +318,12 @@ class WebViewAdblockIntegration {
       playbackStalled: effectivePlaybackStalled,
       adSignalKey: effectiveSignalKey.isEmpty ? null : effectiveSignalKey,
     );
-    return _manager.evaluate(context);
+    final decision = await _manager.evaluate(context);
+    _recordInterceptProbe(context, decision);
+    _logRequestFlow(
+      'ประเมินคำขอผ่าน WebView host=${uri.host} path=${uri.path} type=${resourceType.toLowerCase()} blocked=${decision.blocked} reason=${decision.reason} cache=${decision.fromCache} sw=$fromServiceWorker adShowing=$effectiveAdShowing stalled=$effectivePlaybackStalled key=${effectiveSignalKey.isEmpty ? _mainFrameSignalKey : effectiveSignalKey} page=${_pageSummary(sourceUri ?? _currentPageUri)} ใช้เวลาMs=${DateTime.now().millisecondsSinceEpoch - startedAtMs}',
+    );
+    return decision;
   }
 
   Future<void> syncRuntimeLayers({bool force = false}) async {
@@ -182,34 +331,37 @@ class WebViewAdblockIntegration {
     if (controller == null) {
       return;
     }
-    final nativeResources = await _manager.getCosmeticResources(
+    final cosmeticPayload = await _manager.getCosmeticPayload(_currentPageUri);
+    final scriptletPayload = await _manager.getScriptletPayload(
       _currentPageUri,
     );
     final additionalHideSelectors = await _resolveHiddenClassIdSelectors(
       controller,
-      nativeResources: nativeResources,
+      cosmeticPayload: cosmeticPayload,
     );
     await _cosmeticFilterInjector.injectIfNeeded(
       controller,
       pageUri: _currentPageUri,
-      nativeResources: nativeResources,
+      payload: cosmeticPayload,
       additionalHideSelectors: additionalHideSelectors,
       force: force,
     );
     await _scriptletInjector.injectIfNeeded(
       controller,
       pageUri: _currentPageUri,
-      nativeResources: nativeResources,
+      payload: scriptletPayload,
       force: force,
     );
   }
 
   Future<void> onPageStarted(Uri? uri) async {
+    await ensureInterceptionAttached(reason: 'page_started');
     onMainFrameChanged(uri);
     await syncRuntimeLayers();
   }
 
   Future<void> onPageFinished(Uri? uri) async {
+    await ensureInterceptionAttached(reason: 'page_finished');
     onMainFrameChanged(uri);
     await syncRuntimeLayers(force: true);
   }
@@ -227,11 +379,21 @@ class WebViewAdblockIntegration {
     _adSignalStates.clear();
     _stallSignalStates.clear();
     _mainFrameSignalKey = 'global';
+    _hookLifecycleLogCount = 0;
+    _interceptProbeWindowStartMs = 0;
+    _interceptProbeLogCount = 0;
+    _interceptProbeRequestCount = 0;
+    _interceptProbeBlockedCount = 0;
+    _interceptProbeServiceWorkerCount = 0;
+    _interceptProbeAdSignalCount = 0;
+    _interceptProbeStallCount = 0;
+    _interceptProbeTypeCounts.clear();
+    _interceptProbeReasonCounts.clear();
   }
 
   Future<void> _configureServiceWorkerInterception() async {
     if (!_config.serviceWorkerInterceptionEnabled) {
-      _logger.log('service worker interception disabled by config');
+      _logger.log('ปิดการดักจับ service worker ตาม config');
       return;
     }
     if (_serviceWorkerAttached ||
@@ -247,7 +409,7 @@ class WebViewAdblockIntegration {
       featureSupported = false;
     }
     if (!featureSupported) {
-      _logger.log('service worker interception not supported');
+      _logger.log('อุปกรณ์นี้ไม่รองรับ service worker interception');
       return;
     }
 
@@ -314,7 +476,7 @@ class WebViewAdblockIntegration {
             if (_serviceWorkerBlockCount < _maxServiceWorkerBlockLogs) {
               _serviceWorkerBlockCount += 1;
               _logger.log(
-                'service worker blocked host=${uri.host} path=${uri.path} reason=${decision.reason}',
+                'service worker บล็อกคำขอ host=${uri.host} path=${uri.path} reason=${decision.reason}',
               );
             }
             return WebResourceResponse(
@@ -328,21 +490,21 @@ class WebViewAdblockIntegration {
         ),
       );
       _serviceWorkerAttached = true;
-      _logger.log('service worker interception enabled');
+      _logger.log('เปิดใช้งาน service worker interception สำเร็จ');
     } catch (_) {
-      _logger.log('service worker interception setup failed');
+      _logger.log('ตั้งค่า service worker interception ไม่สำเร็จ');
     }
   }
 
   Future<Set<String>> _resolveHiddenClassIdSelectors(
     InAppWebViewController controller, {
-    required AdblockCosmeticResources? nativeResources,
+    required CosmeticPayload cosmeticPayload,
   }) async {
     final pageUri = _currentPageUri;
     if (pageUri == null || pageUri.host.isEmpty) {
       return const <String>{};
     }
-    if (nativeResources?.generichide == true) {
+    if (cosmeticPayload.generichide) {
       return const <String>{};
     }
 
@@ -355,7 +517,7 @@ class WebViewAdblockIntegration {
       pageUri,
       classes: domSignals.classes,
       ids: domSignals.ids,
-      exceptions: nativeResources?.exceptions ?? const <String>{},
+      exceptions: cosmeticPayload.exceptions,
     );
     return selectors
         .map((entry) => entry.trim())
@@ -450,6 +612,52 @@ class WebViewAdblockIntegration {
       return 'source:$host$path';
     }
     return 'host:$host';
+  }
+
+  String _promoteSignalKeyForRequest({
+    required Uri requestUri,
+    required Uri? sourceUri,
+    required String resolvedKey,
+  }) {
+    final normalizedMainKey = _mainFrameSignalKey.trim().toLowerCase();
+    if (!normalizedMainKey.startsWith('video:')) {
+      return resolvedKey;
+    }
+    final requestHost = requestUri.host.trim().toLowerCase();
+    final effectiveSource = sourceUri ?? _currentPageUri;
+    final sourceHost = effectiveSource?.host.trim().toLowerCase() ?? '';
+    final sourcePath = effectiveSource?.path.trim().toLowerCase() ?? '';
+
+    if (_isGoogleVideoHost(requestHost) && _isYouTubeHost(sourceHost)) {
+      if (_isGenericYouTubeSourcePath(sourcePath) ||
+          _videoIdFromUri(effectiveSource!) != '') {
+        return normalizedMainKey;
+      }
+    }
+
+    if (_isYouTubeHost(requestHost) &&
+        _isGenericYouTubeSourcePath(sourcePath)) {
+      return normalizedMainKey;
+    }
+    return resolvedKey;
+  }
+
+  bool _isYouTubeHost(String host) {
+    return host == 'youtube.com' || host.endsWith('.youtube.com');
+  }
+
+  bool _isGoogleVideoHost(String host) {
+    return host == 'googlevideo.com' || host.endsWith('.googlevideo.com');
+  }
+
+  bool _isGenericYouTubeSourcePath(String path) {
+    if (path.isEmpty || path == '/') {
+      return true;
+    }
+    if (path == '/watch' || path.startsWith('/watch')) {
+      return true;
+    }
+    return false;
   }
 
   String _videoIdFromUri(Uri uri) {
@@ -572,51 +780,129 @@ class WebViewAdblockIntegration {
   }
 
   Uri? _sourceUriFromHeaders(Map<String, String>? headers) {
-    if (headers == null || headers.isEmpty) {
-      return null;
-    }
-    for (final entry in headers.entries) {
-      final key = entry.key.toLowerCase();
-      if (key != 'referer' && key != 'referrer') {
-        continue;
-      }
-      final value = entry.value.trim();
-      if (value.isEmpty) {
-        continue;
-      }
-      return Uri.tryParse(value);
-    }
-    return null;
+    return _requestInterceptor.sourceUriFromHeaders(headers);
   }
 
   String _resourceTypeFromRequest(WebResourceRequest request) {
-    final headers = request.headers ?? const <String, String>{};
-    final secFetchDest =
-        (headers['Sec-Fetch-Dest'] ?? headers['sec-fetch-dest'] ?? '')
-            .toLowerCase();
-    switch (secFetchDest) {
-      case 'script':
-        return 'script';
-      case 'style':
-        return 'stylesheet';
-      case 'image':
-        return 'image';
-      case 'font':
-        return 'font';
-      case 'video':
-      case 'audio':
-      case 'track':
-        return 'media';
-      case 'iframe':
-      case 'frame':
-        return 'subdocument';
-      case 'document':
-        return 'document';
-      case 'empty':
-        return 'xmlhttprequest';
-      default:
-        return 'other';
+    final requestUri = Uri.tryParse(request.url.toString());
+    if (requestUri == null) {
+      return 'other';
     }
+    return _requestInterceptor.classifyResourceType(
+      url: requestUri,
+      isMainFrame: request.isForMainFrame == true,
+      headers: request.headers,
+    );
+  }
+
+  void _recordInterceptProbe(
+    AdblockRequestContext request,
+    AdblockDecision decision,
+  ) {
+    if (!_config.debugMode) {
+      return;
+    }
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (_interceptProbeWindowStartMs <= 0) {
+      _interceptProbeWindowStartMs = nowMs;
+    }
+    if (nowMs - _interceptProbeWindowStartMs >=
+        _interceptProbeWindow.inMilliseconds) {
+      _flushInterceptProbe(nowMs);
+    }
+    _interceptProbeRequestCount += 1;
+    if (decision.blocked) {
+      _interceptProbeBlockedCount += 1;
+    }
+    if (request.fromServiceWorker) {
+      _interceptProbeServiceWorkerCount += 1;
+    }
+    if (request.adShowing) {
+      _interceptProbeAdSignalCount += 1;
+    }
+    if (request.playbackStalled) {
+      _interceptProbeStallCount += 1;
+    }
+    final typeKey = request.resourceType.trim().toLowerCase();
+    if (typeKey.isNotEmpty) {
+      _interceptProbeTypeCounts.update(
+        typeKey,
+        (value) => value + 1,
+        ifAbsent: () => 1,
+      );
+    }
+    final reasonKey = '${decision.blocked ? 'b' : 'a'}:${decision.reason}';
+    _interceptProbeReasonCounts.update(
+      reasonKey,
+      (value) => value + 1,
+      ifAbsent: () => 1,
+    );
+  }
+
+  void _flushInterceptProbe(int nowMs) {
+    if (_interceptProbeRequestCount > 0 &&
+        _interceptProbeLogCount < _maxInterceptProbeLogs) {
+      _interceptProbeLogCount += 1;
+      _logger.log(
+        'สรุปการดักจับคำขอ 10วินาที req=$_interceptProbeRequestCount blocked=$_interceptProbeBlockedCount sw=$_interceptProbeServiceWorkerCount adSignal=$_interceptProbeAdSignalCount stalled=$_interceptProbeStallCount page=${_pageSummary(_currentPageUri)} mainKey=$_mainFrameSignalKey topType=${_topSummary(_interceptProbeTypeCounts, limit: 4)} topReason=${_topSummary(_interceptProbeReasonCounts, limit: 4)}',
+      );
+    }
+    _interceptProbeWindowStartMs = nowMs;
+    _interceptProbeRequestCount = 0;
+    _interceptProbeBlockedCount = 0;
+    _interceptProbeServiceWorkerCount = 0;
+    _interceptProbeAdSignalCount = 0;
+    _interceptProbeStallCount = 0;
+    _interceptProbeTypeCounts.clear();
+    _interceptProbeReasonCounts.clear();
+  }
+
+  void _logHookLifecycle(String message) {
+    if (!_config.debugMode || _hookLifecycleLogCount >= _maxHookLifecycleLogs) {
+      return;
+    }
+    _hookLifecycleLogCount += 1;
+    _logger.log(message);
+  }
+
+  void _logSignalDebug(String message) {
+    if (!_config.debugMode || _signalDebugLogCount >= _maxSignalDebugLogs) {
+      return;
+    }
+    _signalDebugLogCount += 1;
+    _logger.log('signal_debug $message');
+  }
+
+  void _logRequestFlow(String message) {
+    if (!_config.debugMode || _requestFlowLogCount >= _maxRequestFlowLogs) {
+      return;
+    }
+    _requestFlowLogCount += 1;
+    _logger.log('request_flow $message');
+  }
+
+  String _pageSummary(Uri? uri) {
+    if (uri == null) {
+      return 'none';
+    }
+    final host = uri.host.trim().toLowerCase();
+    final path = uri.path.trim().isEmpty ? '/' : uri.path.trim();
+    if (host.isEmpty) {
+      return path;
+    }
+    return '$host$path';
+  }
+
+  String _topSummary(Map<String, int> counts, {required int limit}) {
+    if (counts.isEmpty) {
+      return 'none';
+    }
+    final entries = counts.entries.toList()
+      ..sort((left, right) => right.value.compareTo(left.value));
+    return entries
+        .take(limit)
+        .map((entry) => '${entry.key}:${entry.value}')
+        .join(',');
   }
 }
 

@@ -12,6 +12,7 @@ import '../../../app/config/app_dependencies.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../adblock/adblock_service.dart';
 import '../../adblock/core/request_blocker.dart';
+import '../../adblock/intercept/request_interceptor.dart';
 import '../../auth/auth_controller.dart';
 import '../../auth/domain/session_package_status.dart';
 import '../../domain_lock/domain_policy_service.dart';
@@ -37,6 +38,7 @@ class BrowserPage extends StatefulWidget {
 
 class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   InAppWebViewController? _webViewController;
+  final RequestInterceptor _requestInterceptor = const RequestInterceptor();
 
   late final NavigationInterceptor _navigationInterceptor;
   late final DomainPolicyService _domainPolicyService;
@@ -99,7 +101,10 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   static const int _maxVideoStateLogs = 500;
   static const int _maxAdblockTraceLogs = 2200;
   static const int _maxAdblockJsLogs = 2200;
-  static const bool _enableVerboseAdblockTrace = false;
+  static const bool _enableVerboseAdblockTrace = bool.fromEnvironment(
+    'GO_PLAY_ADBLOCK_TRACE',
+    defaultValue: false,
+  );
   static const bool _enableDocumentCspInjection = false;
   static const Duration _youtubeClickFallbackDelay = Duration(
     milliseconds: 260,
@@ -194,6 +199,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       unawaited(
         _setBackgroundPlaybackGuardEnabled(false, reason: 'lifecycle_resumed'),
       );
+      unawaited(_adblockService.onAppResumed());
       _adblockService.scheduleCrowdSync(reason: 'app_resumed');
       unawaited(_handleAppResumedLifecycle());
       return;
@@ -340,23 +346,62 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
   }
 
   Uri? _sourceUriFromHeaders(Map<String, dynamic>? headers) {
-    if (headers == null || headers.isEmpty) {
+    return _requestInterceptor.sourceUriFromHeaders(headers);
+  }
+
+  bool _isYouTubeHost(String host) {
+    final normalizedHost = host.toLowerCase();
+    return normalizedHost == 'youtube.com' ||
+        normalizedHost == 'm.youtube.com' ||
+        normalizedHost.endsWith('.youtube.com');
+  }
+
+  bool _isGoogleVideoPlaybackUri(Uri uri) {
+    final normalizedHost = uri.host.toLowerCase();
+    final isGoogleVideoHost =
+        normalizedHost == 'googlevideo.com' ||
+        normalizedHost.endsWith('.googlevideo.com');
+    return isGoogleVideoHost &&
+        uri.path.toLowerCase().contains('/videoplayback');
+  }
+
+  bool _isGenericBrowseSourcePath(Uri sourceUri) {
+    final path = sourceUri.path.toLowerCase();
+    if (path.isEmpty || path == '/') {
+      return true;
+    }
+    return path.startsWith('/results') ||
+        path == '/feed' ||
+        path.startsWith('/feed/');
+  }
+
+  Uri? _synthesizeWatchSourceWhenHeaderMissing({
+    required Uri requestUri,
+    required Uri sourceUri,
+  }) {
+    if (!_isGoogleVideoPlaybackUri(requestUri)) {
       return null;
     }
-
-    for (final entry in headers.entries) {
-      final key = entry.key.toLowerCase();
-      if (key != 'referer' && key != 'referrer') {
-        continue;
-      }
-      final value = entry.value?.toString() ?? '';
-      if (value.isEmpty) {
-        continue;
-      }
-      return Uri.tryParse(value);
+    if (!_isYouTubeHost(sourceUri.host)) {
+      return null;
     }
-
-    return null;
+    if (!_isGenericBrowseSourcePath(sourceUri)) {
+      return null;
+    }
+    final videoId = _currentKnownVideoId().trim();
+    if (videoId.isEmpty) {
+      return null;
+    }
+    final queryParameters = <String, String>{'v': videoId};
+    final listId = _currentKnownListId().trim();
+    if (listId.isNotEmpty) {
+      queryParameters['list'] = listId;
+    }
+    return sourceUri.replace(
+      path: '/watch',
+      queryParameters: queryParameters,
+      fragment: '',
+    );
   }
 
   String? _mainFrameRequestKey(Uri? uri) {
@@ -519,6 +564,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     }
 
     var sourceLookupDuration = Duration.zero;
+    final missingSourceHeader = sourceUri == null;
     var sourceKind = 'request.header';
     Uri effectiveSource;
     if (sourceUri != null) {
@@ -533,6 +579,16 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       sourceWatch.stop();
       sourceLookupDuration = sourceWatch.elapsed;
       _rememberMainFrameUri(effectiveSource);
+    }
+    if (missingSourceHeader) {
+      final synthesizedSource = _synthesizeWatchSourceWhenHeaderMissing(
+        requestUri: uri,
+        sourceUri: effectiveSource,
+      );
+      if (synthesizedSource != null) {
+        effectiveSource = synthesizedSource;
+        sourceKind = '$sourceKind.synthetic_watch';
+      }
     }
 
     final adblockWatch = Stopwatch()..start();
@@ -565,7 +621,7 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
         (blocked || totalWatch.elapsed >= _slowPolicyCheckThreshold)) {
       _policyPerfLogCount += 1;
       debugPrint(
-        '[GO_PLAY-Perf] policy uri=${uri.host}${uri.path} type=$resourceType blocked=$blocked reason=${adblockDecision.reason} adSignal=$adShowing stalled=$playbackStalled signalKey=$signalKey totalMs=${totalWatch.elapsedMilliseconds} sourceMs=${sourceLookupDuration.inMilliseconds} adblockMs=${adblockWatch.elapsedMilliseconds} source=$sourceKind',
+        '[GO_PLAY-Perf] policy uri=${uri.host}${uri.path} type=$resourceType blocked=$blocked action=${adblockDecision.effectiveAction.name} reason=${adblockDecision.reason} adSignal=$adShowing stalled=$playbackStalled signalKey=$signalKey candidates=${adblockDecision.candidateCount} evaluated=${adblockDecision.evaluatedCount} totalMs=${totalWatch.elapsedMilliseconds} sourceMs=${sourceLookupDuration.inMilliseconds} adblockMs=${adblockWatch.elapsedMilliseconds} source=$sourceKind',
       );
     }
 
@@ -635,10 +691,11 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     }
 
     final sourceUri = _sourceUriFromHeaders(ajaxRequest.headers?.getHeaders());
+    final resourceType = _resourceTypeForAjaxLikeRequest(uri);
     final decision = await _shouldBlockByPolicyAndAdblock(
       controller,
       uri,
-      resourceType: 'xmlhttprequest',
+      resourceType: resourceType,
       sourceUri: sourceUri,
     );
     final redirectDataUrl = (decision.redirectDataUrl ?? '').trim();
@@ -678,10 +735,11 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     }
 
     final sourceUri = _sourceUriFromHeaders(fetchRequest.headers);
+    final resourceType = _resourceTypeForAjaxLikeRequest(uri);
     final decision = await _shouldBlockByPolicyAndAdblock(
       controller,
       uri,
-      resourceType: 'xmlhttprequest',
+      resourceType: resourceType,
       sourceUri: sourceUri,
     );
     final redirectDataUrl = (decision.redirectDataUrl ?? '').trim();
@@ -711,71 +769,19 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     return fetchRequest;
   }
 
+  String _resourceTypeForAjaxLikeRequest(Uri uri) {
+    if (_isGoogleVideoPlaybackUri(uri)) {
+      return 'media';
+    }
+    return 'xmlhttprequest';
+  }
+
   String _resourceTypeFromRequest(WebResourceRequest request, Uri uri) {
-    if (request.isForMainFrame == true) {
-      return 'document';
-    }
-
-    final headers = request.headers ?? const <String, String>{};
-    final secFetchDest =
-        (headers['Sec-Fetch-Dest'] ?? headers['sec-fetch-dest'] ?? '')
-            .toLowerCase();
-    switch (secFetchDest) {
-      case 'script':
-        return 'script';
-      case 'style':
-        return 'stylesheet';
-      case 'image':
-        return 'image';
-      case 'font':
-        return 'font';
-      case 'video':
-      case 'audio':
-      case 'track':
-        return 'media';
-      case 'iframe':
-      case 'frame':
-        return 'subdocument';
-      case 'document':
-        return 'document';
-      case 'empty':
-        return 'xmlhttprequest';
-    }
-
-    final path = uri.path.toLowerCase();
-    final host = uri.host.toLowerCase();
-    final isGoogleVideoHost =
-        host == 'googlevideo.com' || host.endsWith('.googlevideo.com');
-    if (isGoogleVideoHost && path.contains('/videoplayback')) {
-      return 'media';
-    }
-    if (path.endsWith('.js') || path.contains('/base.js')) {
-      return 'script';
-    }
-    if (path.endsWith('.css')) {
-      return 'stylesheet';
-    }
-    if (path.endsWith('.jpg') ||
-        path.endsWith('.jpeg') ||
-        path.endsWith('.png') ||
-        path.endsWith('.webp') ||
-        path.endsWith('.gif') ||
-        path.endsWith('.svg')) {
-      return 'image';
-    }
-    if (path.endsWith('.woff') ||
-        path.endsWith('.woff2') ||
-        path.endsWith('.ttf')) {
-      return 'font';
-    }
-    if (path.endsWith('.mp4') ||
-        path.endsWith('.webm') ||
-        path.endsWith('.m3u8') ||
-        path.endsWith('.m4s') ||
-        path.endsWith('.ts')) {
-      return 'media';
-    }
-    return 'other';
+    return _requestInterceptor.classifyResourceType(
+      url: uri,
+      isMainFrame: request.isForMainFrame == true,
+      headers: request.headers,
+    );
   }
 
   String _navigationBlockReasonLabel(NavigationBlockReason? reason) {
@@ -830,16 +836,13 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       return;
     }
     _adblockTraceLogCount += 1;
-    debugPrint('[GO_PLAY-Adblock][Trace] $message');
+    debugPrint('[GO_PLAY-Adblock][Trace][TH] $message');
   }
 
   void _logAdblockJsPayload(Map<String, dynamic> payload) {
-    if (!kDebugMode ||
-        !_enableVerboseAdblockTrace ||
-        _adblockJsLogCount >= _maxAdblockJsLogs) {
+    if (!kDebugMode || _adblockJsLogCount >= _maxAdblockJsLogs) {
       return;
     }
-    _adblockJsLogCount += 1;
     final seq = _toInt(payload['seq']);
     final event = (payload['event'] ?? '').toString().trim();
     final reason = (payload['reason'] ?? '').toString().trim();
@@ -851,8 +854,16 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
     final noProgressMs = _toInt(payload['noProgressMs']);
     final recoverCount = _toInt(payload['recoverCount']);
     final page = (payload['pageVisibility'] ?? '').toString().trim();
+    final criticalEvent =
+        blocked ||
+        event.toLowerCase().startsWith('anti_adblock') ||
+        reason.toLowerCase().contains('anti_adblock');
+    if (!_enableVerboseAdblockTrace && !criticalEvent) {
+      return;
+    }
+    _adblockJsLogCount += 1;
     debugPrint(
-      '[GO_PLAY-Adblock][JS] seq=$seq ev=$event reason=$reason host=$host path=$path type=$type blocked=$blocked clicks=$clicks noProgressMs=$noProgressMs recoverCount=$recoverCount page=$page',
+      '[GO_PLAY-Adblock][JS][TH] ลำดับ=$seq เหตุการณ์=$event เหตุผล=$reason โฮสต์=$host พาธ=$path ประเภท=$type บล็อก=$blocked คลิก=$clicks ค้างMs=$noProgressMs จำนวนกู้คืน=$recoverCount หน้า=$page',
     );
   }
 
@@ -3157,6 +3168,10 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                                 arguments.first as Map,
                                               );
                                           _logAdblockJsPayload(payload);
+                                          _adblockService.onAdblockDebugSignal(
+                                            payload,
+                                            pageUri: _currentMainFrameUri,
+                                          );
                                           return null;
                                         },
                                       );
