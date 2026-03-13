@@ -862,9 +862,34 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
       return;
     }
     _adblockJsLogCount += 1;
-    debugPrint(
-      '[GO_PLAY-Adblock][JS][TH] ลำดับ=$seq เหตุการณ์=$event เหตุผล=$reason โฮสต์=$host พาธ=$path ประเภท=$type บล็อก=$blocked คลิก=$clicks ค้างMs=$noProgressMs จำนวนกู้คืน=$recoverCount หน้า=$page',
-    );
+    final message =
+        '[GO_PLAY-Adblock][JS][TH] ลำดับ=$seq เหตุการณ์=$event เหตุผล=$reason โฮสต์=$host พาธ=$path ประเภท=$type บล็อก=$blocked คลิก=$clicks ค้างMs=$noProgressMs จำนวนกู้คืน=$recoverCount หน้า=$page';
+    final lowerEvent = event.toLowerCase();
+    final lowerReason = reason.toLowerCase();
+    final isTargetBlocked =
+        blocked &&
+        (lowerReason.contains('pagead') ||
+            lowerReason.contains('interaction') ||
+            lowerReason.contains('youtube_pagead_interaction_signature') ||
+            lowerReason.contains('network_ad_match'));
+    final isPotentialAdLeak =
+        !blocked &&
+        (lowerReason.contains('pagead') ||
+            lowerReason.contains('interaction') ||
+            lowerReason.contains('googlevideo') ||
+            lowerReason.contains('youtube_ad_path') ||
+            lowerReason.contains('blocked_host') ||
+            lowerReason.contains('ad_query') ||
+            lowerEvent.contains('network_ad_match'));
+    if (isTargetBlocked) {
+      debugPrint('\x1B[32m$message\x1B[0m');
+      return;
+    }
+    if (isPotentialAdLeak) {
+      debugPrint('\x1B[33m$message\x1B[0m');
+      return;
+    }
+    debugPrint(message);
   }
 
   Future<void> _updateCanGoBack() async {
@@ -3028,9 +3053,9 @@ class _BrowserPageState extends State<BrowserPage> with WidgetsBindingObserver {
                                           false,
                                       supportZoom: false,
                                       useShouldOverrideUrlLoading: true,
-                                      useShouldInterceptRequest: true,
-                                      useShouldInterceptAjaxRequest: true,
-                                      useShouldInterceptFetchRequest: true,
+                                        useShouldInterceptRequest: false,
+                                        useShouldInterceptAjaxRequest: false,
+                                        useShouldInterceptFetchRequest: false,
                                       safeBrowsingEnabled: true,
                                       thirdPartyCookiesEnabled: true,
                                       allowFileAccessFromFileURLs: false,

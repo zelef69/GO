@@ -144,6 +144,8 @@ const String goPlayEnableAdblockScript = '''
   var blockGoogleVideoPlaybackAdQueries = false;
   var networkHookSampleRate = 1.0;
   var networkHookBucket = -1;
+  var pageadInteractionBlockCooldownMs = 3000;
+  var pageadInteractionLastBlockedAtMs = 0;
   var adHardReloadCooldownMs = 45000;
   var hardReloadBudgetStorageKey = 'go_play_ad_hard_reload_budget';
   var adblockDebugSeq = 0;
@@ -329,13 +331,49 @@ const String goPlayEnableAdblockScript = '''
   }
 
   function shouldEnableStagedNetworkHooks() {
-    networkHookBucket = resolveStableSampleBucket();
+    networkHookBucket = 0;
     var currentUrl = parseUrl(window.location && window.location.href ? window.location.href : '');
-    if (!isWatchSurfaceUrl(currentUrl)) {
+    return isWatchSurfaceUrl(currentUrl);
+  }
+
+  function shouldBlockYouTubePageAdInteraction(urlObj) {
+    if (!urlObj) {
       return false;
     }
-    var threshold = Math.max(0, Math.min(Math.round(networkHookSampleRate * 100), 100));
-    return networkHookBucket < threshold;
+    var host = (urlObj.hostname || '').toLowerCase();
+    var isYoutubeHost = host === 'youtube.com' || host.endsWith('.youtube.com');
+    if (!isYoutubeHost) {
+      return false;
+    }
+    var path = (urlObj.pathname || '').toLowerCase();
+    var isPageadPath =
+      path === '/pagead/interaction' ||
+      path.indexOf('/pagead/interaction/') === 0 ||
+      path === '/pagead/adview' ||
+      path.indexOf('/pagead/adview/') === 0;
+    if (!isPageadPath) {
+      return false;
+    }
+
+    var label = String(urlObj.searchParams.get('label') || '').toLowerCase();
+    var hasAdMt = urlObj.searchParams.has('ad_mt');
+    var hasAcvw = urlObj.searchParams.has('acvw');
+    var hasAi = urlObj.searchParams.has('ai');
+    var hasCid = urlObj.searchParams.has('cid');
+    var hasStrongAdMarkers =
+      (label.indexOf('videoplaytime') === 0 || label.indexOf('ad') === 0) &&
+      hasAdMt &&
+      (hasAcvw || hasAi || hasCid);
+    if (!hasStrongAdMarkers) {
+      return false;
+    }
+
+    var now = Date.now();
+    if (now - pageadInteractionLastBlockedAtMs < pageadInteractionBlockCooldownMs) {
+      return false;
+    }
+    pageadInteractionLastBlockedAtMs = now;
+    return true;
   }
 
   function shouldBlockUrl(rawUrl) {
@@ -358,6 +396,14 @@ const String goPlayEnableAdblockScript = '''
 
     var isYoutubeHost = host === 'youtube.com' || host.endsWith('.youtube.com');
     if (isYoutubeHost) {
+      if (shouldBlockYouTubePageAdInteraction(urlObj)) {
+        emitAdblockDebug('network_ad_match', {
+          reason: 'youtube_pagead_interaction_signature',
+          blocked: true,
+          resourceType: 'xmlhttprequest'
+        });
+        return true;
+      }
       for (var i = 0; i < youtubeAdPathTokens.length; i++) {
         if (path.indexOf(youtubeAdPathTokens[i]) !== -1) {
           emitAdblockDebug('network_ad_match', {
@@ -881,7 +927,9 @@ const String goPlayEnableAdblockScript = '''
 
   window.__go_playAdblockInstalled = true;
   enableNetworkHooks = shouldEnableStagedNetworkHooks();
-  blockGoogleVideoPlaybackAdQueries = enableNetworkHooks;
+  // JS-only stable mode: avoid blocking videoplayback query patterns to reduce
+  // stream breakage/black-screen loops. Keep host/path level hooks only.
+  blockGoogleVideoPlaybackAdQueries = false;
   emitAdblockDebug('network_hook_state', {
     reason: enableNetworkHooks ? 'watch_sample_enabled' : 'watch_sample_disabled',
     blocked: false,
