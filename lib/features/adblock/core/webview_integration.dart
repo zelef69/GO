@@ -43,6 +43,8 @@ class WebViewAdblockIntegration {
       LinkedHashMap<String, DateTime>();
   final LinkedHashMap<String, DateTime> _stallSignalStates =
       LinkedHashMap<String, DateTime>();
+  final LinkedHashMap<String, int> _stallPulseCounts =
+      LinkedHashMap<String, int>();
   String _mainFrameSignalKey = 'global';
   static const int _maxServiceWorkerBlockLogs = 80;
   static const int _maxCosmeticDomSignals = 480;
@@ -50,6 +52,7 @@ class WebViewAdblockIntegration {
   static const Duration _jsAdSignalTtl = Duration(milliseconds: 5600);
   static const Duration _jsAntiAdblockSignalTtl = Duration(milliseconds: 9000);
   static const Duration _stallSignalTtl = Duration(milliseconds: 4200);
+  static const int _adSignalStallPulseResetThreshold = 4;
   static const int _maxSignalStateEntries = 420;
   static const Duration _interceptProbeWindow = Duration(seconds: 10);
   static const int _maxInterceptProbeLogs = 120;
@@ -78,6 +81,7 @@ class WebViewAdblockIntegration {
     'serviceWorkerBlockCount': _serviceWorkerBlockCount,
     'adSignalEntries': _adSignalStates.length,
     'stallSignalEntries': _stallSignalStates.length,
+    'stallPulseEntries': _stallPulseCounts.length,
     'interceptProbe': <String, dynamic>{
       'windowStartMs': _interceptProbeWindowStartMs,
       'requests': _interceptProbeRequestCount,
@@ -125,8 +129,14 @@ class WebViewAdblockIntegration {
   void onMainFrameChanged(Uri? uri) {
     final previousSignalKey = _mainFrameSignalKey;
     final nextSignalKey = _requestSignalKeyFor(uri: uri);
-    if (previousSignalKey != nextSignalKey) {
-      clearSignalState(reason: 'main_frame_changed');
+    final previousPage = _pageSummary(_currentPageUri);
+    final nextPage = _pageSummary(uri);
+    if (previousSignalKey != nextSignalKey || previousPage != nextPage) {
+      clearSignalState(
+        reason: previousSignalKey != nextSignalKey
+            ? 'main_frame_changed'
+            : 'main_frame_navigated',
+      );
     }
     _mainFrameSignalKey = nextSignalKey;
     _currentPageUri = uri;
@@ -137,11 +147,14 @@ class WebViewAdblockIntegration {
   }
 
   void clearSignalState({String reason = 'manual'}) {
-    if (_adSignalStates.isEmpty && _stallSignalStates.isEmpty) {
+    if (_adSignalStates.isEmpty &&
+        _stallSignalStates.isEmpty &&
+        _stallPulseCounts.isEmpty) {
       return;
     }
     _adSignalStates.clear();
     _stallSignalStates.clear();
+    _stallPulseCounts.clear();
     _logger.log('ล้างสถานะสัญญาณ ad/stall แล้ว reason=$reason');
   }
 
@@ -157,8 +170,10 @@ class WebViewAdblockIntegration {
     final adShowing = payload['adShowing'] == true;
     final adInterrupting = payload['adInterrupting'] == true;
     final hasAdOverlay = payload['hasAdOverlay'] == true;
-    if (adShowing || adInterrupting || hasAdOverlay) {
+    final hasExplicitAdSignal = adShowing || adInterrupting || hasAdOverlay;
+    if (hasExplicitAdSignal) {
       _setSignal(_adSignalStates, signalKey, ttl: _adSignalTtl);
+      _stallPulseCounts.remove(signalKey);
     }
 
     final eventName = (payload['event'] ?? '').toString().trim().toLowerCase();
@@ -202,11 +217,25 @@ class WebViewAdblockIntegration {
 
     if (looksStalled) {
       _setSignal(_stallSignalStates, signalKey, ttl: _stallSignalTtl);
+      final nextStallPulse = (_stallPulseCounts[signalKey] ?? 0) + 1;
+      _stallPulseCounts[signalKey] = nextStallPulse;
+      _trimStallPulseCounts();
+      if (!hasExplicitAdSignal &&
+          nextStallPulse >= _adSignalStallPulseResetThreshold) {
+        final removedAdSignal = _adSignalStates.remove(signalKey) != null;
+        if (removedAdSignal) {
+          _logSignalDebug(
+            'stall fail-safe -> clear ad signal key=$signalKey pulses=$nextStallPulse event=$eventName',
+          );
+        }
+        _stallPulseCounts[signalKey] = 0;
+      }
       _logSignalDebug(
         'รับ playback debug -> ตีความว่า stall key=$signalKey event=$eventName ready=$readyState net=$networkState bufferMs=$bufferedAheadMs spinner=$spinnerVisible',
       );
     } else if (recovered) {
       _stallSignalStates.remove(signalKey);
+      _stallPulseCounts.remove(signalKey);
       _logSignalDebug(
         'รับ playback debug -> ตีความว่าฟื้นตัว key=$signalKey event=$eventName ready=$readyState bufferMs=$bufferedAheadMs',
       );
@@ -241,11 +270,7 @@ class WebViewAdblockIntegration {
         resourceType == 'media' && reason.contains('googlevideo_ad_query');
 
     if (antiAdblockEvent) {
-      _setSignal(
-        _adSignalStates,
-        signalKey,
-        ttl: _jsAntiAdblockSignalTtl,
-      );
+      _setSignal(_adSignalStates, signalKey, ttl: _jsAntiAdblockSignalTtl);
       _setSignal(_stallSignalStates, signalKey, ttl: _stallSignalTtl);
       _logSignalDebug(
         'รับ adblock debug -> พบสัญญาณ anti-adblock key=$signalKey event=$eventName reason=$reason จึงเร่ง ad/stall signal',
@@ -378,6 +403,7 @@ class WebViewAdblockIntegration {
     _serviceWorkerBlockCount = 0;
     _adSignalStates.clear();
     _stallSignalStates.clear();
+    _stallPulseCounts.clear();
     _mainFrameSignalKey = 'global';
     _hookLifecycleLogCount = 0;
     _interceptProbeWindowStartMs = 0;
@@ -737,6 +763,12 @@ class WebViewAdblockIntegration {
   void _trimSignalMap(LinkedHashMap<String, DateTime> map) {
     while (map.length > _maxSignalStateEntries) {
       map.remove(map.keys.first);
+    }
+  }
+
+  void _trimStallPulseCounts() {
+    while (_stallPulseCounts.length > _maxSignalStateEntries) {
+      _stallPulseCounts.remove(_stallPulseCounts.keys.first);
     }
   }
 

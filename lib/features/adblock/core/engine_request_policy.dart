@@ -34,10 +34,12 @@ class EngineRequestPolicy {
   static const int _maxGoogleVideoPreAdMarkerLogs = 80;
   static const bool _enableGoogleVideoFullQueryLogs = false;
   static const bool _enableAdShowingGuardedGoogleVideoBlock = true;
+  static const bool _enableGoogleVideoAdWindowStrictBlock = false;
   static const bool _enableGoogleVideoBrowsePrefetchGuard = true;
   static const bool _enablePageAdInteractionGuard = true;
   static const bool _enableAdSignalWindowGuard = true;
   static const bool _enableAdWindowEscalationGuard = true;
+  static const bool _enableGoogleVideoOverblockFailOpenGuard = true;
   static const bool _enablePostBurstRecoveryBackoff = true;
   static const int _maxSoftBlockGuardLogs = 80;
   static const int _maxSoftLeakedRecoveryLogs = 80;
@@ -59,6 +61,13 @@ class EngineRequestPolicy {
   static const int _adWindowEscalationAllowThreshold = 1;
   static const Duration _adWindowEscalationBlockFor = Duration(seconds: 3);
   static const int _maxAdWindowEscalationStates = 280;
+  static const Duration _googleVideoOverblockWindow = Duration(seconds: 10);
+  static const int _googleVideoOverblockConsecutiveWindowThreshold = 2;
+  static const Duration _googleVideoOverblockFailOpenDuration = Duration(
+    seconds: 25,
+  );
+  static const int _maxGoogleVideoOverblockStates = 280;
+  static const int _maxGoogleVideoOverblockLogs = 120;
   static const Duration _postBurstWindow = Duration(seconds: 4);
   static const int _postBurstThreshold = 12;
   static const Duration _postBurstRecoveryDuration = Duration(seconds: 3);
@@ -261,6 +270,9 @@ class EngineRequestPolicy {
       LinkedHashMap<String, AdSignalState>();
   final LinkedHashMap<String, AdWindowEscalationState>
   _adWindowEscalationStates = LinkedHashMap<String, AdWindowEscalationState>();
+  final LinkedHashMap<String, GoogleVideoOverblockState>
+  _googleVideoOverblockStates =
+      LinkedHashMap<String, GoogleVideoOverblockState>();
   final LinkedHashMap<String, PostBurstRecoveryState> _postBurstStates =
       LinkedHashMap<String, PostBurstRecoveryState>();
   final Map<String, int> _decisionReasonCounts = <String, int>{};
@@ -274,6 +286,7 @@ class EngineRequestPolicy {
   int _adSignalLogCount = 0;
   int _suspiciousAllowLogCount = 0;
   int _adWindowEscalationLogCount = 0;
+  int _googleVideoOverblockLogCount = 0;
   int _postBurstBackoffLogCount = 0;
   int _decisionStatsSampleCount = 0;
   int _decisionStatsBlockedCount = 0;
@@ -285,6 +298,9 @@ class EngineRequestPolicy {
   int _interceptProbeAdShowingCount = 0;
   int _interceptProbeStalledCount = 0;
   int _interceptProbeCacheHitCount = 0;
+  int _interceptProbeMediaRequestCount = 0;
+  int _interceptProbeMediaBlockedCount = 0;
+  int _interceptProbeFailOpenAllowCount = 0;
   int _decisionDetailLogCount = 0;
   final Map<String, int> _interceptProbeTypeCounts = <String, int>{};
   final Map<String, int> _interceptProbeReasonCounts = <String, int>{};
@@ -302,6 +318,7 @@ class EngineRequestPolicy {
     _softLeakedRecoveryStates.clear();
     _adSignalStates.clear();
     _adWindowEscalationStates.clear();
+    _googleVideoOverblockStates.clear();
     _postBurstStates.clear();
     _decisionReasonCounts.clear();
     _googleVideoAllowTraceCount = 0;
@@ -314,6 +331,7 @@ class EngineRequestPolicy {
     _adSignalLogCount = 0;
     _suspiciousAllowLogCount = 0;
     _adWindowEscalationLogCount = 0;
+    _googleVideoOverblockLogCount = 0;
     _postBurstBackoffLogCount = 0;
     _decisionStatsSampleCount = 0;
     _decisionStatsBlockedCount = 0;
@@ -325,6 +343,9 @@ class EngineRequestPolicy {
     _interceptProbeAdShowingCount = 0;
     _interceptProbeStalledCount = 0;
     _interceptProbeCacheHitCount = 0;
+    _interceptProbeMediaRequestCount = 0;
+    _interceptProbeMediaBlockedCount = 0;
+    _interceptProbeFailOpenAllowCount = 0;
     _decisionDetailLogCount = 0;
     _interceptProbeTypeCounts.clear();
     _interceptProbeReasonCounts.clear();
@@ -343,6 +364,7 @@ class EngineRequestPolicy {
     _softBlockGuardStates.clear();
     _softLeakedRecoveryStates.clear();
     _adSignalStates.clear();
+    _googleVideoOverblockStates.clear();
     _logger.log('first_party_heuristic_profile enabled=$enabled');
   }
 
@@ -352,6 +374,7 @@ class EngineRequestPolicy {
     _softLeakedRecoveryStates.clear();
     _adSignalStates.clear();
     _adWindowEscalationStates.clear();
+    _googleVideoOverblockStates.clear();
     _postBurstStates.clear();
   }
 
@@ -365,6 +388,7 @@ class EngineRequestPolicy {
       matchedRule: result.matchedRule,
       reason: result.reason,
     );
+    _recordGoogleVideoOverblockProbe(request, result);
     _recordInterceptProbe(request, result);
     _recordDecisionStats(result);
     _logDecisionDetail(request, result, elapsedMs);
@@ -468,7 +492,10 @@ class EngineRequestPolicy {
 
     // Direct guard: if googlevideo playback carries clear ad markers,
     // block immediately even when adShowing signal is not currently active.
-    if (_shouldDirectlyBlockGoogleVideoAdMarkedRequest(request, normalizedType)) {
+    if (_shouldDirectlyBlockGoogleVideoAdMarkedRequest(
+      request,
+      normalizedType,
+    )) {
       _recordAdSignal(request, source: 'googlevideo_direct_marker');
       return _finalizeBlockedDecision(
         request,
@@ -498,6 +525,14 @@ class EngineRequestPolicy {
       return const AdblockDecision(
         blocked: false,
         reason: 'post_burst_recovery_backoff',
+      );
+    }
+
+    if (_shouldFailOpenGoogleVideoAfterOverblock(request, normalizedType)) {
+      _logGoogleVideoAllowTrace(request, reason: 'overblock_fail_open');
+      return const AdblockDecision(
+        blocked: false,
+        reason: 'overblock_fail_open',
       );
     }
 
@@ -565,10 +600,7 @@ class EngineRequestPolicy {
           reason: 'soft_leaked_recovery_backoff',
         );
       } else if (!_shouldEnforceStrictAdShowingBlock(request, normalizedType) &&
-          _shouldBypassSoftBlockWithCooldown(
-            request,
-            guard: 'ad_showing',
-          )) {
+          _shouldBypassSoftBlockWithCooldown(request, guard: 'ad_showing')) {
         _logGoogleVideoAllowTrace(
           request,
           reason: 'soft_guard_cooldown_ad_showing',
@@ -910,7 +942,8 @@ class EngineRequestPolicy {
     if (_hasGoogleVideoConservativeSoftAdMarkers(rawQuery)) {
       return true;
     }
-    if (_containsAdLikeQueryKey(rawQuery) || _containsAdLikeQueryValue(rawQuery)) {
+    if (_containsAdLikeQueryKey(rawQuery) ||
+        _containsAdLikeQueryValue(rawQuery)) {
       return true;
     }
     return _matchesLeakedGoogleVideoAdPattern(rawQuery);
@@ -1000,6 +1033,154 @@ class EngineRequestPolicy {
     return true;
   }
 
+  bool _shouldFailOpenGoogleVideoAfterOverblock(
+    AdblockRequestContext request,
+    String normalizedType,
+  ) {
+    if (!_enableGoogleVideoOverblockFailOpenGuard ||
+        !_isGoogleVideoOverblockCandidateRequest(request, normalizedType)) {
+      return false;
+    }
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final key = _softBlockGuardKey(request);
+    final existing = _googleVideoOverblockStates.remove(key);
+    if (existing == null) {
+      return false;
+    }
+    final updated = _advanceGoogleVideoOverblockWindow(
+      key: key,
+      state: existing,
+      nowMs: nowMs,
+    );
+    _googleVideoOverblockStates[key] = updated;
+    _trimGoogleVideoOverblockStates();
+    if (updated.failOpenUntilMs <= nowMs) {
+      return false;
+    }
+    if (_googleVideoOverblockLogCount < _maxGoogleVideoOverblockLogs) {
+      _googleVideoOverblockLogCount += 1;
+      _logger.log(
+        'overblock fail_open_apply key=$key leftMs=${updated.failOpenUntilMs - nowMs} type=$normalizedType',
+      );
+    }
+    return true;
+  }
+
+  void _recordGoogleVideoOverblockProbe(
+    AdblockRequestContext request,
+    AdblockDecision decision,
+  ) {
+    final normalizedType = request.resourceType.trim().toLowerCase();
+    if (!_enableGoogleVideoOverblockFailOpenGuard ||
+        !_isGoogleVideoOverblockCandidateRequest(request, normalizedType)) {
+      return;
+    }
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final key = _softBlockGuardKey(request);
+    final existing =
+        _googleVideoOverblockStates.remove(key) ??
+        GoogleVideoOverblockState(
+          windowStartedAtMs: nowMs,
+          requestCountInWindow: 0,
+          blockedCountInWindow: 0,
+          consecutiveFullBlockWindows: 0,
+          failOpenUntilMs: 0,
+        );
+    final refreshed = _advanceGoogleVideoOverblockWindow(
+      key: key,
+      state: existing,
+      nowMs: nowMs,
+    );
+    if (decision.reason == 'overblock_fail_open') {
+      _googleVideoOverblockStates[key] = refreshed;
+      _trimGoogleVideoOverblockStates();
+      return;
+    }
+    var consecutiveFullBlockWindows = refreshed.consecutiveFullBlockWindows;
+    if (!decision.blocked && refreshed.failOpenUntilMs <= nowMs) {
+      consecutiveFullBlockWindows = 0;
+    }
+    _googleVideoOverblockStates[key] = GoogleVideoOverblockState(
+      windowStartedAtMs: refreshed.windowStartedAtMs,
+      requestCountInWindow: refreshed.requestCountInWindow + 1,
+      blockedCountInWindow:
+          refreshed.blockedCountInWindow + (decision.blocked ? 1 : 0),
+      consecutiveFullBlockWindows: consecutiveFullBlockWindows,
+      failOpenUntilMs: refreshed.failOpenUntilMs > nowMs
+          ? refreshed.failOpenUntilMs
+          : 0,
+    );
+    _trimGoogleVideoOverblockStates();
+  }
+
+  GoogleVideoOverblockState _advanceGoogleVideoOverblockWindow({
+    required String key,
+    required GoogleVideoOverblockState state,
+    required int nowMs,
+  }) {
+    if (nowMs - state.windowStartedAtMs <
+        _googleVideoOverblockWindow.inMilliseconds) {
+      return state;
+    }
+
+    var consecutiveFullBlockWindows = state.consecutiveFullBlockWindows;
+    final hadRequests = state.requestCountInWindow > 0;
+    final isFullyBlockedWindow =
+        hadRequests && state.blockedCountInWindow >= state.requestCountInWindow;
+    if (isFullyBlockedWindow) {
+      consecutiveFullBlockWindows += 1;
+      if (_googleVideoOverblockLogCount < _maxGoogleVideoOverblockLogs) {
+        _googleVideoOverblockLogCount += 1;
+        _logger.log(
+          'overblock window_full key=$key req=${state.requestCountInWindow} blocked=${state.blockedCountInWindow} streak=$consecutiveFullBlockWindows',
+        );
+      }
+    } else if (hadRequests && state.failOpenUntilMs <= nowMs) {
+      consecutiveFullBlockWindows = 0;
+    }
+
+    var failOpenUntilMs = state.failOpenUntilMs;
+    if (failOpenUntilMs <= nowMs &&
+        consecutiveFullBlockWindows >=
+            _googleVideoOverblockConsecutiveWindowThreshold) {
+      failOpenUntilMs =
+          nowMs + _googleVideoOverblockFailOpenDuration.inMilliseconds;
+      consecutiveFullBlockWindows = 0;
+      if (_googleVideoOverblockLogCount < _maxGoogleVideoOverblockLogs) {
+        _googleVideoOverblockLogCount += 1;
+        _logger.log(
+          'overblock fail_open_arm key=$key durationMs=${_googleVideoOverblockFailOpenDuration.inMilliseconds}',
+        );
+      }
+    }
+
+    return GoogleVideoOverblockState(
+      windowStartedAtMs: nowMs,
+      requestCountInWindow: 0,
+      blockedCountInWindow: 0,
+      consecutiveFullBlockWindows: consecutiveFullBlockWindows,
+      failOpenUntilMs: failOpenUntilMs,
+    );
+  }
+
+  bool _isGoogleVideoOverblockCandidateRequest(
+    AdblockRequestContext request,
+    String normalizedType,
+  ) {
+    if (!_isGoogleVideoOverblockTrackedType(normalizedType) ||
+        !request.adShowing) {
+      return false;
+    }
+    if (!_isGoogleVideoPlaybackRequest(request.uri)) {
+      return false;
+    }
+    return _isWatchSurfaceContext(request);
+  }
+
+  bool _isGoogleVideoOverblockTrackedType(String normalizedType) {
+    return normalizedType == 'media' || normalizedType == 'xmlhttprequest';
+  }
+
   bool _shouldCountTowardPostBurst(String reason) {
     if (reason == 'learned_signature' ||
         reason == 'engine_match' ||
@@ -1015,6 +1196,15 @@ class EngineRequestPolicy {
   void _trimPostBurstStates() {
     while (_postBurstStates.length > _maxPostBurstStates) {
       _postBurstStates.remove(_postBurstStates.keys.first);
+    }
+  }
+
+  void _trimGoogleVideoOverblockStates() {
+    while (_googleVideoOverblockStates.length >
+        _maxGoogleVideoOverblockStates) {
+      _googleVideoOverblockStates.remove(
+        _googleVideoOverblockStates.keys.first,
+      );
     }
   }
 
@@ -1309,7 +1499,8 @@ class EngineRequestPolicy {
     if (!hasAggressiveKeys) {
       return false;
     }
-    return _containsAdLikeQueryKey(rawQuery) || _containsAdLikeQueryValue(rawQuery);
+    return _containsAdLikeQueryKey(rawQuery) ||
+        _containsAdLikeQueryValue(rawQuery);
   }
 
   bool _isGoogleVideoPlaybackRequest(Uri uri) {
@@ -1357,6 +1548,9 @@ class EngineRequestPolicy {
     AdblockRequestContext request,
     String normalizedType,
   ) {
+    if (!_enableGoogleVideoAdWindowStrictBlock) {
+      return false;
+    }
     if (!request.adShowing || request.playbackStalled) {
       return false;
     }
@@ -1400,10 +1594,14 @@ class EngineRequestPolicy {
         _matchesLeakedGoogleVideoAdPattern(rawQuery)) {
       return true;
     }
-    if (_containsAnyQueryKeyInRawQuery(rawQuery, _googleVideoAggressiveGuardQueryKeys)) {
+    if (_containsAnyQueryKeyInRawQuery(
+      rawQuery,
+      _googleVideoAggressiveGuardQueryKeys,
+    )) {
       return true;
     }
-    return _containsAdLikeQueryKey(rawQuery) || _containsAdLikeQueryValue(rawQuery);
+    return _containsAdLikeQueryKey(rawQuery) ||
+        _containsAdLikeQueryValue(rawQuery);
   }
 
   bool _isLeakedSoftGuardGoogleVideoRequest(
@@ -1917,7 +2115,8 @@ class EngineRequestPolicy {
     AdblockDecision decision,
     int elapsedMs,
   ) {
-    if (!_config.debugMode || _decisionDetailLogCount >= _maxDecisionDetailLogs) {
+    if (!_config.debugMode ||
+        _decisionDetailLogCount >= _maxDecisionDetailLogs) {
       return;
     }
     _decisionDetailLogCount += 1;
@@ -1991,7 +2190,8 @@ class EngineRequestPolicy {
     AdblockDecision decision,
     String normalizedType,
   ) {
-    if (!_config.debugMode || _suspiciousAllowLogCount >= _maxSuspiciousAllowLogs) {
+    if (!_config.debugMode ||
+        _suspiciousAllowLogCount >= _maxSuspiciousAllowLogs) {
       return;
     }
     final uri = request.uri;
@@ -2018,7 +2218,8 @@ class EngineRequestPolicy {
         rawQuery.contains('adslot=') ||
         rawQuery.contains('advertiser=') ||
         rawQuery.contains('utm_medium=display');
-    final suspicious = looksLikeKnownAdHost || looksLikeAdPath || looksLikeAdQuery;
+    final suspicious =
+        looksLikeKnownAdHost || looksLikeAdPath || looksLikeAdQuery;
     if (!suspicious) {
       return;
     }
@@ -2061,6 +2262,16 @@ class EngineRequestPolicy {
       _interceptProbeCacheHitCount += 1;
     }
     final typeKey = request.resourceType.trim().toLowerCase();
+    if (_isGoogleVideoOverblockTrackedType(typeKey) &&
+        _isGoogleVideoPlaybackRequest(request.uri)) {
+      _interceptProbeMediaRequestCount += 1;
+      if (decision.blocked) {
+        _interceptProbeMediaBlockedCount += 1;
+      }
+      if (!decision.blocked && decision.reason == 'overblock_fail_open') {
+        _interceptProbeFailOpenAllowCount += 1;
+      }
+    }
     if (typeKey.isNotEmpty) {
       _interceptProbeTypeCounts.update(
         typeKey,
@@ -2080,8 +2291,12 @@ class EngineRequestPolicy {
     if (_interceptProbeRequestCount > 0 &&
         _interceptProbeLogCount < _maxInterceptProbeLogs) {
       _interceptProbeLogCount += 1;
+      final mediaBlockPct = _interceptProbeMediaRequestCount <= 0
+          ? 0
+          : (_interceptProbeMediaBlockedCount * 100) ~/
+                _interceptProbeMediaRequestCount;
       _logger.log(
-        'intercept_probe window=10s req=$_interceptProbeRequestCount blocked=$_interceptProbeBlockedCount sw=$_interceptProbeServiceWorkerCount adSignal=$_interceptProbeAdShowingCount stalled=$_interceptProbeStalledCount cache=$_interceptProbeCacheHitCount topType=${_topSummary(_interceptProbeTypeCounts, limit: 4)} topReason=${_topSummary(_interceptProbeReasonCounts, limit: 4)}',
+        'intercept_probe window=10s req=$_interceptProbeRequestCount blocked=$_interceptProbeBlockedCount sw=$_interceptProbeServiceWorkerCount adSignal=$_interceptProbeAdShowingCount stalled=$_interceptProbeStalledCount cache=$_interceptProbeCacheHitCount mediaReq=$_interceptProbeMediaRequestCount mediaBlocked=$_interceptProbeMediaBlockedCount mediaBlockPct=$mediaBlockPct failOpenAllow=$_interceptProbeFailOpenAllowCount topType=${_topSummary(_interceptProbeTypeCounts, limit: 4)} topReason=${_topSummary(_interceptProbeReasonCounts, limit: 4)}',
       );
     }
     _interceptProbeWindowStartMs = nowMs;
@@ -2091,6 +2306,9 @@ class EngineRequestPolicy {
     _interceptProbeAdShowingCount = 0;
     _interceptProbeStalledCount = 0;
     _interceptProbeCacheHitCount = 0;
+    _interceptProbeMediaRequestCount = 0;
+    _interceptProbeMediaBlockedCount = 0;
+    _interceptProbeFailOpenAllowCount = 0;
     _interceptProbeTypeCounts.clear();
     _interceptProbeReasonCounts.clear();
   }

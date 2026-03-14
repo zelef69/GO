@@ -88,6 +88,7 @@ class AdblockManager {
   bool _initialized = false;
   bool _disposed = false;
   bool _firstPartyHeuristicProfileLoaded = false;
+  String _mainFrameSessionKey = 'none';
 
   bool get initialized => _initialized;
   bool get enabled => _config.enabled;
@@ -155,6 +156,18 @@ class AdblockManager {
   }
 
   void onMainFrameChanged(Uri? uri) {
+    final nextSessionKey = _sessionKeyFor(uri);
+    final shouldResetSessionCache =
+        _mainFrameSessionKey != nextSessionKey &&
+        _mainFrameSessionKey != 'none' &&
+        nextSessionKey != 'none';
+    if (shouldResetSessionCache) {
+      _requestBlocker.clearCache();
+      _logger.log(
+        'manager main_frame_session_changed clear_cache from=$_mainFrameSessionKey to=$nextSessionKey',
+      );
+    }
+    _mainFrameSessionKey = nextSessionKey;
     _metrics.onPageChanged(uri);
   }
 
@@ -260,8 +273,34 @@ class AdblockManager {
     _requestBlocker.clearCache();
     _initialized = false;
     _firstPartyHeuristicProfileLoaded = false;
+    _mainFrameSessionKey = 'none';
     _logger.reset();
     _metrics.reset();
+  }
+
+  String _sessionKeyFor(Uri? uri) {
+    if (uri == null) {
+      return 'none';
+    }
+    final host = uri.host.trim().toLowerCase();
+    if (host.isEmpty) {
+      return 'none';
+    }
+    final path = uri.path.trim().toLowerCase();
+    final normalizedPath = path.isEmpty ? '/' : path;
+    final videoId = (uri.queryParameters['v'] ?? '').trim().toLowerCase();
+    if (videoId.isNotEmpty) {
+      return '$host$normalizedPath?v=$videoId';
+    }
+    final segments = uri.pathSegments;
+    final shortsIndex = segments.indexOf('shorts');
+    if (shortsIndex >= 0 && segments.length > shortsIndex + 1) {
+      final shortsId = segments[shortsIndex + 1].trim().toLowerCase();
+      if (shortsId.isNotEmpty) {
+        return '$host/shorts/$shortsId';
+      }
+    }
+    return '$host$normalizedPath';
   }
 
   PageContext? _toPageContext(Uri? pageUri) {

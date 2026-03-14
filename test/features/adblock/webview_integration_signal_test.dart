@@ -185,6 +185,55 @@ void main() {
       },
     );
 
+    test(
+      'clears stale ad signal after repeated stall pulses without ad markers',
+      () {
+        final watchUri = Uri.parse('https://m.youtube.com/watch?v=video1');
+        integration.onMainFrameChanged(watchUri);
+
+        integration.updatePlaybackDebugSignal(<String, dynamic>{
+          'event': 'video:waiting',
+          'videoId': 'video1',
+          'adShowing': true,
+          'adInterrupting': false,
+          'hasAdOverlay': false,
+          'readyState': 0,
+          'networkState': 2,
+        }, pageUri: watchUri);
+
+        final requestUri = Uri.parse(
+          'https://rr2---sn-abc.googlevideo.com/videoplayback?id=123',
+        );
+        expect(
+          integration.isAdSignalActiveForRequest(
+            requestUri,
+            sourceUri: watchUri,
+          ),
+          isTrue,
+        );
+
+        for (var index = 0; index < 4; index += 1) {
+          integration.updatePlaybackDebugSignal(<String, dynamic>{
+            'event': 'video:waiting',
+            'videoId': 'video1',
+            'adShowing': false,
+            'adInterrupting': false,
+            'hasAdOverlay': false,
+            'readyState': 0,
+            'networkState': 2,
+          }, pageUri: watchUri);
+        }
+
+        expect(
+          integration.isAdSignalActiveForRequest(
+            requestUri,
+            sourceUri: watchUri,
+          ),
+          isFalse,
+        );
+      },
+    );
+
     test('clears stale signals when main frame switches to another video', () {
       final firstWatch = Uri.parse('https://m.youtube.com/watch?v=video1');
       final secondWatch = Uri.parse('https://m.youtube.com/watch?v=video2');

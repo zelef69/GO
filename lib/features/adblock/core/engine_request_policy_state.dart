@@ -52,3 +52,19 @@ class PostBurstRecoveryState {
   final int blockedCountInWindow;
   final int recoveryUntilMs;
 }
+
+class GoogleVideoOverblockState {
+  const GoogleVideoOverblockState({
+    required this.windowStartedAtMs,
+    required this.requestCountInWindow,
+    required this.blockedCountInWindow,
+    required this.consecutiveFullBlockWindows,
+    required this.failOpenUntilMs,
+  });
+
+  final int windowStartedAtMs;
+  final int requestCountInWindow;
+  final int blockedCountInWindow;
+  final int consecutiveFullBlockWindows;
+  final int failOpenUntilMs;
+}
