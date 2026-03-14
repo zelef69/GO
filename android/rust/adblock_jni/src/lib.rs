@@ -189,30 +189,51 @@ fn load_engine_with_assets(
 }
 
 fn should_block(url: &str, source_url: &str, resource_type: &str) -> bool {
-    let fallback_source = if source_url.trim().is_empty() {
-        url
-    } else {
-        source_url
-    };
-
-    let request = match Request::new(url, fallback_source, resource_type) {
-        Ok(request) => request,
-        Err(_) => return false,
+    let request = match build_request(url, source_url, resource_type) {
+        Some(request) => request,
+        None => return false,
     };
 
     with_engine(|engine| engine.check_network_request(&request).matched).unwrap_or(false)
 }
 
-fn evaluate_request(url: &str, source_url: &str, resource_type: &str) -> String {
-    let fallback_source = if source_url.trim().is_empty() {
-        url
-    } else {
-        source_url
-    };
+fn build_request(url: &str, source_url: &str, resource_type: &str) -> Option<Request> {
+    let parsed_url = adblock::url_parser::parse_url(url)?;
+    let trimmed_source = source_url.trim();
+    if trimmed_source.is_empty() {
+        return Some(Request::preparsed(
+            &parsed_url.url,
+            parsed_url.hostname(),
+            "",
+            resource_type,
+            true,
+        ));
+    }
 
-    let request = match Request::new(url, fallback_source, resource_type) {
-        Ok(request) => request,
-        Err(_) => return "{\"matched\":false}".to_string(),
+    if let Some(parsed_source) = adblock::url_parser::parse_url(trimmed_source) {
+        let third_party = parsed_source.domain() != parsed_url.domain();
+        return Some(Request::preparsed(
+            &parsed_url.url,
+            parsed_url.hostname(),
+            parsed_source.hostname(),
+            resource_type,
+            third_party,
+        ));
+    }
+
+    Some(Request::preparsed(
+        &parsed_url.url,
+        parsed_url.hostname(),
+        "",
+        resource_type,
+        true,
+    ))
+}
+
+fn evaluate_request(url: &str, source_url: &str, resource_type: &str) -> String {
+    let request = match build_request(url, source_url, resource_type) {
+        Some(request) => request,
+        None => return "{\"matched\":false}".to_string(),
     };
 
     with_engine(|engine| engine.check_network_request(&request))
@@ -252,15 +273,9 @@ fn get_hidden_class_id_selectors(
 }
 
 fn get_csp_directives(url: &str, source_url: &str, resource_type: &str) -> String {
-    let fallback_source = if source_url.trim().is_empty() {
-        url
-    } else {
-        source_url
-    };
-
-    let request = match Request::new(url, fallback_source, resource_type) {
-        Ok(request) => request,
-        Err(_) => return String::new(),
+    let request = match build_request(url, source_url, resource_type) {
+        Some(request) => request,
+        None => return String::new(),
     };
 
     with_engine(|engine| engine.get_csp_directives(&request))

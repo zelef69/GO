@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
+
 import '../core/adblock_config.dart';
 import '../core/adblock_debug_logger.dart';
 import '../core/filter_list_repository.dart';
@@ -49,6 +51,13 @@ class FilterSourceManager {
       base.catalogSourcesJson,
       customFilterTextForNative,
     );
+    var serializedEngineBase64 = base.serializedEngineBase64;
+    var engineSnapshotKey = base.engineSnapshotKey;
+    if (customFilterTextForNative.trim().isNotEmpty) {
+      final customHash = sha256.convert(utf8.encode(customFilterTextForNative));
+      engineSnapshotKey = '${base.engineSnapshotKey}:custom:$customHash';
+      serializedEngineBase64 = '';
+    }
 
     return FilterSourceSnapshot(
       lines: List<String>.unmodifiable(mergedLines),
@@ -58,6 +67,8 @@ class FilterSourceManager {
       resourcesJson: base.resourcesJson,
       enabledTags: base.enabledTags,
       catalogSourcesJson: catalogSourcesJsonForNative,
+      serializedEngineBase64: serializedEngineBase64,
+      engineSnapshotKey: engineSnapshotKey,
       firstPartyHeuristicsProfileEnabled:
           base.firstPartyHeuristicsProfileEnabled,
       metadata: List<FilterListMetadata>.unmodifiable(metadata),
@@ -115,6 +126,18 @@ class FilterSourceManager {
     required AdblockDebugLogger logger,
   }) {
     return load(config: config, logger: logger);
+  }
+
+  Future<void> persistSerializedEngineSnapshot({
+    required String snapshotKey,
+    required String serializedEngineBase64,
+    required AdblockDebugLogger logger,
+  }) {
+    return _repository.persistSerializedEngineSnapshot(
+      snapshotKey: snapshotKey,
+      serializedEngineBase64: serializedEngineBase64,
+      logger: logger,
+    );
   }
 
   void addCustomList(String listText, {required FilterListMetadata metadata}) {

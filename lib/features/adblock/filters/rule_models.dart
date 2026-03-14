@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 enum NetworkRuleAction { block, exception, redirect, rewrite }
 
 class NetworkRule {
@@ -143,7 +141,7 @@ class CompiledFilterSet {
   final Set<int> genericScriptletRuleIds;
 
   Map<int, NetworkRule> networkRuleById() {
-    final map = LinkedHashMap<int, NetworkRule>();
+    final map = <int, NetworkRule>{};
     for (final rule in networkRules) {
       map[rule.id] = rule;
     }
@@ -151,7 +149,7 @@ class CompiledFilterSet {
   }
 
   Map<int, CosmeticRule> cosmeticRuleById() {
-    final map = LinkedHashMap<int, CosmeticRule>();
+    final map = <int, CosmeticRule>{};
     for (final rule in cosmeticRules) {
       map[rule.id] = rule;
     }
@@ -159,7 +157,7 @@ class CompiledFilterSet {
   }
 
   Map<int, ScriptInjectionRule> scriptletRuleById() {
-    final map = LinkedHashMap<int, ScriptInjectionRule>();
+    final map = <int, ScriptInjectionRule>{};
     for (final rule in scriptInjectionRules) {
       map[rule.id] = rule;
     }

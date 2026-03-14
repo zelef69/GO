@@ -63,7 +63,8 @@ class EngineAdapter implements AdblockEngineBridge {
     List<String> enabledTags = const <String>[],
   }) async {
     if (_initialized) {
-      return;
+      _logger.log('engine adapter reinitialize requested');
+      await dispose();
     }
 
     final isNativeAvailable = await _nativeEngineBridge.isAvailable();

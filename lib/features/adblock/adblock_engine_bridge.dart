@@ -82,14 +82,18 @@ class AdblockEngineRequestResult {
     final redirectValue = (redirect == null || redirect.isEmpty)
         ? null
         : redirect;
+    final exceptionRule = json['exception']?.toString().trim();
+    final exceptionValue = (exceptionRule == null || exceptionRule.isEmpty)
+        ? null
+        : exceptionRule;
     final matched = json['matched'] == true;
     return AdblockEngineRequestResult(
-      blocked: matched || redirectValue != null,
+      blocked: exceptionValue == null && (matched || redirectValue != null),
       matched: matched,
       redirectDataUrl: redirectValue,
       rewrittenUrl: json['rewritten_url']?.toString(),
       important: json['important'] == true,
-      exceptionRule: json['exception']?.toString(),
+      exceptionRule: exceptionValue,
       matchedRule: json['filter']?.toString(),
     );
   }

@@ -2,7 +2,8 @@ param(
     [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 )
 
-$manifest = Join-Path $ProjectRoot "rust\\adblock_jni\\Cargo.toml"
+$crateDir = Join-Path $ProjectRoot "rust\\adblock_jni"
+$manifest = Join-Path $crateDir "Cargo.toml"
 if (-not (Test-Path $manifest)) {
     Write-Error "Rust manifest not found: $manifest"
     exit 1
@@ -21,26 +22,24 @@ if (-not $env:ANDROID_NDK_HOME) {
     }
 }
 
-Push-Location $ProjectRoot
+Push-Location $crateDir
 try {
     cargo ndk `
       -t armeabi-v7a `
       -t arm64-v8a `
       -t x86_64 `
-      -o app/src/main/jniLibs `
+      -o ../../app/src/main/jniLibs `
       build `
-      --manifest-path rust/adblock_jni/Cargo.toml `
       --release
 
     if ($LASTEXITCODE -ne 0) {
-        cargo clean --manifest-path rust/adblock_jni/Cargo.toml
+        cargo clean
         cargo ndk `
           -t armeabi-v7a `
           -t arm64-v8a `
           -t x86_64 `
-          -o app/src/main/jniLibs `
+          -o ../../app/src/main/jniLibs `
           build `
-          --manifest-path rust/adblock_jni/Cargo.toml `
           --release
     }
 } finally {

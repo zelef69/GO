@@ -5,8 +5,7 @@ version = 4
 [[package]]
 name = "adblock"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "698c1e831aaee3d583efe775790acc7d59fd99d8060e7385b99d2d369a5cdca8"
+source = "git+https://github.com/brave/adblock-rust.git?rev=0de87f2fd0dc1c5830e46352f1936576b02f0c06#0de87f2fd0dc1c5830e46352f1936576b02f0c06"
 dependencies = [
  "addr",
  "arrayvec",
@@ -16,7 +15,6 @@ dependencies = [
  "idna",
  "itertools",
  "memchr",
- "once_cell",
  "percent-encoding",
  "precomputed-hash",
  "regex",
@@ -298,12 +296,6 @@ name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
-
-[[package]]
-name = "once_cell"
-version = "1.21.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "percent-encoding"

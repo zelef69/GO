@@ -65,10 +65,12 @@ The adblock subsystem follows a browser-core style design where `AdblockEngine` 
 3. Compatibility `RequestBlocker` forwards to `AdblockEngine.evaluateAdblockRequest(...)`.
 4. Engine-owned request policy applies guardrails/safeguards and delegates matching to `AdblockEngine.evaluateRequest(...)`.
 5. `AdblockEngine` runs:
-   - compiled matcher (`findCandidates` -> `evaluateCandidates`),
-   - optional native bridge evaluation,
-   - deterministic typed decision resolution (`allow`, `block`, `redirect`, `rewriteResponse`) with exception precedence.
+   - compiled matcher (`findCandidates` -> `evaluateCandidates`) for local fallback and metrics,
+   - native `adblock-rust` bridge evaluation as authoritative path when available,
+   - deterministic typed decision resolution (`allow`, `block`, `redirect`, `rewriteResponse`).
 6. Decision is returned through compatibility adapters to existing call sites.
+
+When native bridge is available, native decision is authoritative. Local matcher remains as fallback when native bridge is unavailable or errors.
 
 ## Page Runtime Flow
 
@@ -90,6 +92,18 @@ Cosmetic and scriptlet flows are separated end-to-end: matching is in engine/mat
 - Regex rules are kept out of the fast path whenever possible and evaluated in fallback stages.
 - `AdblockEngine` maintains bounded request decision caching for repeated normalized requests.
 - Parsed lists run through explicit `parse -> normalize -> compile` before runtime matching.
+- Native engine snapshots are cached and reused via `Engine::serialize`/`deserialize` to reduce startup compile latency.
+
+## Brave Flow Mapping
+
+The runtime now mirrors Brave's core adblock lifecycle:
+
+1. Load filter catalog + list sources + resources.
+2. Build engine from rules (or deserialize cached snapshot when compatible).
+3. Apply resources and tags.
+4. Evaluate each request through native engine network matcher.
+5. Evaluate cosmetic/scriptlet resources per page and inject in runtime layers.
+6. Rebuild/reinitialize engine on list updates (no stale singleton init state).
 
 ## Observability
 

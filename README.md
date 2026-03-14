@@ -48,7 +48,8 @@ lib/
   - `AdblockService`
   - `AdblockEngineBridge`
   - Native `adblock-rust` engine through Rust JNI (`android/rust/adblock_jni`) and Android method channel (`go_play/adblock`)
-  - Automatic fallback to Dart matcher when native library is not available
+  - Native-first decision flow with automatic fallback to Dart matcher when native library is not available
+  - Serialized native engine snapshot cache (`serialize`/`deserialize`) to speed up next startup
 - PiP:
   - Flutter <-> Android platform channel (`go_play/pip`)
   - Home press during active playback triggers native `enterPictureInPictureMode()` when enabled.
@@ -116,6 +117,7 @@ Prerequisites:
 - Rust toolchain (`rustup`, `cargo`)
 - `cargo-ndk` (`cargo install cargo-ndk`)
 - Android NDK (already required by Flutter Android toolchain)
+- Rust crate source is pinned to Brave upstream repo (`https://github.com/brave/adblock-rust`)
 
 Build command options:
 1. Gradle task:
@@ -131,6 +133,6 @@ Output library path:
 ## Known Limitations
 
 1. If Rust JNI library is not built/present, app falls back to Dart adblock logic.
-2. Filter list is currently a lightweight starter list (`assets/filters/basic.txt`), not full EasyList/EasyPrivacy.
+2. Brave remote catalog/resources are used by default; if remote sources are unavailable, runtime falls back to bundled/basic lists.
 3. Domain lock is strict for top-level navigation; request allowlist includes required YouTube infrastructure domains for playback/auth to work.
 4. No tabs/bookmarks/history/address bar/download manager by design.

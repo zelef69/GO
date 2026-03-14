@@ -33,5 +33,15 @@ void main() {
       expect(result.blocked, isFalse);
       expect(result.redirectDataUrl, isNull);
     });
+
+    test('honors exception rule even when matched is true', () {
+      final result = AdblockEngineRequestResult.fromJson(<String, dynamic>{
+        'matched': true,
+        'exception': '@@||example.com^',
+      });
+
+      expect(result.blocked, isFalse);
+      expect(result.exceptionRule, '@@||example.com^');
+    });
   });
 }

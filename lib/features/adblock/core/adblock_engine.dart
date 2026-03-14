@@ -317,17 +317,6 @@ class AdblockEngine
     final localRequestDecision = _networkDecisionToRequestDecision(
       localDecision,
     );
-    if (localDecision.exceptionRule != null) {
-      final allow = RequestDecision.allow(
-        reason: localRequestDecision.reason,
-        exceptionRule: localRequestDecision.exceptionRule,
-        candidateCount: localRequestDecision.candidateCount,
-        evaluatedCount: localRequestDecision.evaluatedCount,
-      );
-      _recordFinalAction(allow.action);
-      _writeDecisionCache(cacheKey, allow);
-      return allow;
-    }
 
     final bridgeDecision = await _evaluateWithBridge(context);
     final finalDecision = _resolveFinalDecision(
@@ -558,11 +547,9 @@ class AdblockEngine
 
     final legacyCompiled = _legacyCompiler.compile(sourceSnapshot.lines);
     if (legacyCompiled.rules.isEmpty) {
-      _bridgeInitialized = false;
       _logger.log(
-        'core_engine compile revision=${_compiledSet.revision} network=${_compiledSet.networkRules.length} cosmetic=${_compiledSet.cosmeticRules.length} scriptlets=${_compiledSet.scriptInjectionRules.length}',
+        'core_engine compile revision=${_compiledSet.revision} network=${_compiledSet.networkRules.length} cosmetic=${_compiledSet.cosmeticRules.length} scriptlets=${_compiledSet.scriptInjectionRules.length} legacyRules=0',
       );
-      return;
     }
 
     try {
@@ -571,9 +558,21 @@ class AdblockEngine
         rawFilterText: sourceSnapshot.rawFilterText,
         resourcesJson: sourceSnapshot.resourcesJson,
         catalogSourcesJson: sourceSnapshot.catalogSourcesJson,
+        serializedEngineBase64: sourceSnapshot.serializedEngineBase64,
         enabledTags: sourceSnapshot.enabledTags,
       );
       _bridgeInitialized = true;
+      if (_bridge.usingNativeEngine) {
+        final serialized = (await _bridge.serializeEngine())?.trim() ?? '';
+        if (serialized.isNotEmpty &&
+            sourceSnapshot.engineSnapshotKey.isNotEmpty) {
+          await _sourceManager.persistSerializedEngineSnapshot(
+            snapshotKey: sourceSnapshot.engineSnapshotKey,
+            serializedEngineBase64: serialized,
+            logger: _logger,
+          );
+        }
+      }
       _logger.log(
         'core_engine initialized revision=${_compiledSet.revision} rules=${legacyCompiled.rules.length} native=${_bridge.usingNativeEngine}',
       );
@@ -725,19 +724,7 @@ class AdblockEngine
     required int candidateCount,
     required int evaluatedCount,
   }) {
-    // Compiled exceptions are authoritative and short-circuit all other paths.
-    if ((localDecision.exceptionRule ?? '').trim().isNotEmpty) {
-      return RequestDecision.allow(
-        reason: localDecision.reason,
-        exceptionRule: localDecision.exceptionRule,
-        candidateCount: candidateCount,
-        evaluatedCount: evaluatedCount,
-      );
-    }
-
-    // Native bridge decisions override local non-exception decisions when they
-    // are explicit actions or native exceptions.
-    if (bridgeDecision.action != DecisionAction.allow) {
+    if (_isBridgeDecisionAuthoritative(bridgeDecision)) {
       return RequestDecision(
         action: bridgeDecision.action,
         reason: bridgeDecision.reason,
@@ -750,10 +737,10 @@ class AdblockEngine
       );
     }
 
-    if ((bridgeDecision.exceptionRule ?? '').trim().isNotEmpty) {
+    if ((localDecision.exceptionRule ?? '').trim().isNotEmpty) {
       return RequestDecision.allow(
-        reason: bridgeDecision.reason,
-        exceptionRule: bridgeDecision.exceptionRule,
+        reason: localDecision.reason,
+        exceptionRule: localDecision.exceptionRule,
         candidateCount: candidateCount,
         evaluatedCount: evaluatedCount,
       );
@@ -773,10 +760,15 @@ class AdblockEngine
     }
 
     return RequestDecision.allow(
-      reason: bridgeDecision.reason,
+      reason: localDecision.reason,
       candidateCount: candidateCount,
       evaluatedCount: evaluatedCount,
     );
+  }
+
+  bool _isBridgeDecisionAuthoritative(RequestDecision bridgeDecision) {
+    final reason = bridgeDecision.reason.trim().toLowerCase();
+    return reason != 'bridge_unavailable' && reason != 'engine_error_allow';
   }
 
   String _decisionCacheKey(RequestContext context) {

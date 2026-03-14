@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 class RequestContext {
   const RequestContext({
     required this.url,
@@ -297,6 +295,8 @@ class FilterSourceSnapshot {
     required this.resourcesJson,
     required this.enabledTags,
     required this.catalogSourcesJson,
+    required this.serializedEngineBase64,
+    required this.engineSnapshotKey,
     required this.firstPartyHeuristicsProfileEnabled,
     required this.metadata,
   });
@@ -308,6 +308,8 @@ class FilterSourceSnapshot {
   final String resourcesJson;
   final List<String> enabledTags;
   final String catalogSourcesJson;
+  final String serializedEngineBase64;
+  final String engineSnapshotKey;
   final bool firstPartyHeuristicsProfileEnabled;
   final List<FilterListMetadata> metadata;
 }
@@ -318,7 +320,7 @@ class FilterSourceRegistry {
   final List<FilterListMetadata> metadata;
 
   Map<String, FilterListMetadata> byId() {
-    final map = LinkedHashMap<String, FilterListMetadata>();
+    final map = <String, FilterListMetadata>{};
     for (final entry in metadata) {
       map[entry.id] = entry;
     }

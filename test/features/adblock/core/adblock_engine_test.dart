@@ -136,6 +136,8 @@ class _FakeFilterListRepository extends FilterListRepository {
       resourcesJson: '[]',
       enabledTags: const <String>[],
       catalogSourcesJson: '[]',
+      serializedEngineBase64: '',
+      engineSnapshotKey: 'test_snapshot_key',
       firstPartyHeuristicsProfileEnabled: false,
     );
   }

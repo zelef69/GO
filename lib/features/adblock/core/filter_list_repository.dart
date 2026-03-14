@@ -19,6 +19,8 @@ class FilterListBundle {
     required this.resourcesJson,
     required this.enabledTags,
     required this.catalogSourcesJson,
+    required this.serializedEngineBase64,
+    required this.engineSnapshotKey,
     required this.firstPartyHeuristicsProfileEnabled,
   });
 
@@ -29,6 +31,8 @@ class FilterListBundle {
   final String resourcesJson;
   final List<String> enabledTags;
   final String catalogSourcesJson;
+  final String serializedEngineBase64;
+  final String engineSnapshotKey;
   final bool firstPartyHeuristicsProfileEnabled;
 }
 
@@ -41,6 +45,8 @@ class FilterListRepository {
   static const String _manifestFileName = 'filter_manifest.json';
   static const String _cachedRemotePrefix = 'remote_';
   static const String _cachedRemoteSuffix = '.txt';
+  static const String _cachedEngineSnapshotPrefix = 'engine_snapshot_';
+  static const String _cachedEngineSnapshotSuffix = '.b64';
 
   final Dio _dio;
   final AssetBundle _rootBundle;
@@ -58,6 +64,27 @@ class FilterListRepository {
     }
 
     return _loadLegacyBundle(config: config, logger: logger);
+  }
+
+  Future<void> persistSerializedEngineSnapshot({
+    required String snapshotKey,
+    required String serializedEngineBase64,
+    required AdblockDebugLogger logger,
+  }) async {
+    final normalizedKey = snapshotKey.trim();
+    final normalizedPayload = serializedEngineBase64.trim();
+    if (normalizedKey.isEmpty || normalizedPayload.isEmpty) {
+      return;
+    }
+    try {
+      final cacheDir = await _resolveCacheDirectory();
+      final file = File(
+        '${cacheDir.path}${Platform.pathSeparator}$_cachedEngineSnapshotPrefix${_cacheFileToken(normalizedKey)}$_cachedEngineSnapshotSuffix',
+      );
+      await file.writeAsString(normalizedPayload, flush: true);
+    } catch (_) {
+      logger.log('engine snapshot persist failed');
+    }
   }
 
   Future<FilterListBundle?> _loadBraveCatalogBundle({
@@ -167,19 +194,34 @@ class FilterListRepository {
       'brave catalog loaded entries=${activeEntries.length} lines=${mergedLines.length} resourcesChars=${resourcesJson.length} firstPartyProfile=$firstPartyProfileEnabled',
     );
 
+    final catalogSourcesJson = jsonEncode(
+      nativeCatalogSources
+          .where((source) => source.text.trim().isNotEmpty)
+          .map((source) => source.toJson())
+          .toList(growable: false),
+    );
+    final rawFilterText = mergedLines.join('\n');
+    final engineSnapshotKey = _buildEngineSnapshotKey(
+      rawFilterText: rawFilterText,
+      resourcesJson: resourcesJson,
+      enabledTags: enabledTags,
+      catalogSourcesJson: catalogSourcesJson,
+    );
+    final serializedEngineBase64 = await _readSerializedEngineSnapshot(
+      snapshotKey: engineSnapshotKey,
+      logger: logger,
+    );
+
     return FilterListBundle(
       lines: List<String>.unmodifiable(mergedLines),
       loadedSources: List<String>.unmodifiable(loadedSources),
       usedCachedData: usedCachedData,
-      rawFilterText: mergedLines.join('\n'),
+      rawFilterText: rawFilterText,
       resourcesJson: resourcesJson,
       enabledTags: List<String>.unmodifiable(enabledTags),
-      catalogSourcesJson: jsonEncode(
-        nativeCatalogSources
-            .where((source) => source.text.trim().isNotEmpty)
-            .map((source) => source.toJson())
-            .toList(growable: false),
-      ),
+      catalogSourcesJson: catalogSourcesJson,
+      serializedEngineBase64: serializedEngineBase64,
+      engineSnapshotKey: engineSnapshotKey,
       firstPartyHeuristicsProfileEnabled: firstPartyProfileEnabled,
     );
   }
@@ -309,15 +351,31 @@ class FilterListRepository {
         .map((line) => line.trimRight())
         .where((line) => line.isNotEmpty)
         .toList(growable: false);
+    final rawFilterText = normalized.join('\n');
+    const resourcesJson = '[]';
+    const enabledTags = <String>[];
+    const catalogSourcesJson = '[]';
+    final engineSnapshotKey = _buildEngineSnapshotKey(
+      rawFilterText: rawFilterText,
+      resourcesJson: resourcesJson,
+      enabledTags: enabledTags,
+      catalogSourcesJson: catalogSourcesJson,
+    );
+    final serializedEngineBase64 = await _readSerializedEngineSnapshot(
+      snapshotKey: engineSnapshotKey,
+      logger: logger,
+    );
 
     return FilterListBundle(
       lines: normalized,
       loadedSources: List<String>.unmodifiable(loadedSources),
       usedCachedData: usedCachedData,
-      rawFilterText: normalized.join('\n'),
-      resourcesJson: '[]',
-      enabledTags: const <String>[],
-      catalogSourcesJson: '[]',
+      rawFilterText: rawFilterText,
+      resourcesJson: resourcesJson,
+      enabledTags: enabledTags,
+      catalogSourcesJson: catalogSourcesJson,
+      serializedEngineBase64: serializedEngineBase64,
+      engineSnapshotKey: engineSnapshotKey,
       firstPartyHeuristicsProfileEnabled: false,
     );
   }
@@ -652,6 +710,53 @@ class FilterListRepository {
         return AppConfig.filterAssetPath;
       default:
         return null;
+    }
+  }
+
+  String _buildEngineSnapshotKey({
+    required String rawFilterText,
+    required String resourcesJson,
+    required Iterable<String> enabledTags,
+    required String catalogSourcesJson,
+  }) {
+    final normalizedTags =
+        enabledTags
+            .map((entry) => entry.trim().toLowerCase())
+            .where((entry) => entry.isNotEmpty)
+            .toList(growable: false)
+          ..sort();
+    final payload = <String, dynamic>{
+      'filtersSha256': sha256.convert(utf8.encode(rawFilterText)).toString(),
+      'resourcesSha256': sha256.convert(utf8.encode(resourcesJson)).toString(),
+      'catalogSha256': sha256
+          .convert(utf8.encode(catalogSourcesJson))
+          .toString(),
+      'tags': normalizedTags,
+    };
+    return sha256.convert(utf8.encode(jsonEncode(payload))).toString();
+  }
+
+  Future<String> _readSerializedEngineSnapshot({
+    required String snapshotKey,
+    required AdblockDebugLogger logger,
+  }) async {
+    final normalizedKey = snapshotKey.trim();
+    if (normalizedKey.isEmpty) {
+      return '';
+    }
+    try {
+      final cacheDir = await _resolveCacheDirectory();
+      final file = File(
+        '${cacheDir.path}${Platform.pathSeparator}$_cachedEngineSnapshotPrefix${_cacheFileToken(normalizedKey)}$_cachedEngineSnapshotSuffix',
+      );
+      if (!file.existsSync()) {
+        return '';
+      }
+      final payload = await file.readAsString();
+      return payload.trim();
+    } catch (_) {
+      logger.log('engine snapshot read failed');
+      return '';
     }
   }
 
