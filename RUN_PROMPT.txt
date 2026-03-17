@@ -1,0 +1,50 @@
+Use the repository in the current workspace and execute the implementation described in AGENT.MD.
+
+Your job is to transform the Brave Android codebase into a Chromium-based Android app whose product surface is restricted to a one-tab, YouTube-only browser while preserving Brave Shields/adblock integration as much as the existing Brave Android architecture allows.
+
+Execution rules:
+1. Read `AGENT.MD` fully before making any changes.
+2. Inspect the repository structure first. Do not start blind edits.
+3. Produce these documents before major code changes:
+   - `docs/architecture-notes.md`
+   - `docs/change-plan.md`
+4. Then implement the minimum set of code/config changes needed to:
+   - add a distinct product flavor/brand
+   - default to YouTube home
+   - enforce one-tab-only behavior
+   - block navigation outside the YouTube allowlist
+   - remove or hide non-essential browser/product surfaces
+   - keep Brave Shields/adblock code path enabled
+5. Prefer flavor-based gating, flags, and UI pruning over destructive deletion.
+6. Keep patches small and explainable.
+7. After each meaningful group of edits, report:
+   - findings
+   - files changed
+   - build status
+   - risks
+   - next step
+8. Create/update these files as part of the work:
+   - `README.md`
+   - `docs/architecture-notes.md`
+   - `docs/change-plan.md`
+   - `docs/patch-summary.md`
+   - `docs/testing.md`
+9. Run the most relevant build command for the new flavor and fix build issues when feasible.
+10. End with a final report containing:
+   - what changed
+   - what remains Brave-derived
+   - what was removed/hidden
+   - how one-tab enforcement works
+   - how YouTube allowlist enforcement works
+   - how Brave adblock/shields were preserved
+   - known limitations
+   - exact build command
+   - exact APK path
+
+Hard constraints:
+- Do not replace Brave adblock with a custom adblocker.
+- Do not rebuild this as a WebView app.
+- Do not claim guaranteed permanent 100% YouTube ad blocking.
+- Be explicit whenever something depends on upstream Brave or YouTube behavior.
+
+If the repo structure differs from expectations, adapt the plan but keep the same product goal and constraints.
