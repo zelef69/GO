@@ -1,11 +1,11 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-02 02:35:52 +07:00
+  - 2026-04-02 02:40:48 +07:00
 - Current phase:
   - Phase 7 - Validation / real-device smoke test
 - Current objective:
-  - Align the local OneTabTube workspace snapshot with the repo state that was actually device-validated, then publish that snapshot safely into `https://github.com/zelef69/GO_PLAY` without overwriting the existing remote `main` history.
+  - Keep the local repo and the published GitHub branch aligned after the successful safe publish of the device-validated OneTabTube snapshot.
 - Completed since last update:
   - Audited git remotes and confirmed the requested publish target is `https://github.com/zelef69/GO_PLAY`, while the configured `origin` still points to `https://github.com/zelef69/GO.git`.
   - Verified the Windows repo was still missing ext4/device-tested fixes in `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`.
@@ -15,8 +15,8 @@
   - Created a full local snapshot commit on `main`: `2d1de86a3` (`Add OneTabTube product wiring and device-validated fixes`).
   - Fetched `https://github.com/zelef69/GO_PLAY.git main` and created a publish branch from the remote tip to avoid force-pushing over the user's existing `main` history.
 - In progress now:
-  - The repo is now on `publish/go_play-sync-20260402`, based on remote `GO_PLAY/main` (`a47b5b9232566c5cbf9aea557e72a8f9221f9cdc`).
-  - A large staged snapshot from local commit `2d1de86a3` is ready to be committed on top of the remote base and then pushed as a safe publish branch.
+  - The safe publish branch flow is complete.
+  - The local working branch `publish/go_play-sync-20260402` now matches the published remote branch `codex/onetabtube-sync-20260402`.
 - Files/modules touched:
   - `docs/current-status.md`
   - `docs/progress-log.md`
@@ -39,16 +39,17 @@
   - Git publish status:
     - local snapshot commit created on `main`: pass (`2d1de86a3`)
     - direct push of that history to `GO_PLAY`: fail (`remote unpack failed: index-pack failed`)
-    - safe branch rebase/import path onto remote `GO_PLAY/main`: in progress
+    - safe branch rebase/import path onto remote `GO_PLAY/main`: pass
+    - published commit on safe branch: `e2250064b`
+    - remote branch created successfully:
+      - `codex/onetabtube-sync-20260402`
+      - PR URL hint: `https://github.com/zelef69/GO_PLAY/pull/new/codex/onetabtube-sync-20260402`
 - Blockers/risks:
   - `GO_PLAY/main` has its own existing history, so pushing local `main` directly would be unsafe without explicit confirmation to overwrite or reconcile remote commits.
-  - The publish branch currently stages roughly the full Brave-based product snapshot; the next push may still fail if GitHub rejects the pack size or object graph, so the fallback may need a narrower import.
   - Untracked local artifacts/logs still exist in large numbers and must stay excluded from the publish commit unless explicitly requested.
 - Next concrete step:
-  - Commit the staged snapshot on `publish/go_play-sync-20260402`.
-  - Push that branch to `https://github.com/zelef69/GO_PLAY.git`.
-  - If the push succeeds, report the branch/ref to the user.
-  - If the push still fails, reduce the staged scope to the minimal repo snapshot that preserves the current buildable OneTabTube product state and retry.
+  - Keep working on `publish/go_play-sync-20260402` if more changes are needed so local history stays on top of the published safe branch.
+  - If the user wants GitHub `main` updated, open or merge a PR from `codex/onetabtube-sync-20260402` instead of force-pushing.
 - Expected resume inspection scope:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
@@ -74,14 +75,17 @@
   - Align repo state with the ext4/device-validated OneTabTube source snapshot and publish it safely to the user's GitHub repo without rewriting remote history.
 - Tool state:
   - No build or device test is currently running.
-  - The publish branch has a fully staged snapshot and is waiting for commit/push.
+  - No git command is running.
+  - The publish branch is committed and pushed.
 - Expected resume command:
   - `git status --short`
-  - `git commit -m "Import current OneTabTube workspace snapshot"`
-  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
+  - `git log --oneline --decorate -n 5 --all`
+  - continue working from `publish/go_play-sync-20260402`, then `git push https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402` for follow-up updates
 - Expected output/artifact path:
   - Git branch ref on remote:
     - `refs/heads/codex/onetabtube-sync-20260402`
+  - GitHub compare / PR entry:
+    - `https://github.com/zelef69/GO_PLAY/pull/new/codex/onetabtube-sync-20260402`
   - Build artifact preserved in repo history/context:
     - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Repo root / working directory:
@@ -91,6 +95,7 @@
 - Base commit / HEAD seen:
   - remote `GO_PLAY/main`: `a47b5b9232566c5cbf9aea557e72a8f9221f9cdc`
   - local full snapshot commit on `main`: `2d1de86a3`
+  - published safe-branch commit: `e2250064b`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
@@ -114,20 +119,19 @@
   - local git credentials usable for that repo
   - staged snapshot on `publish/go_play-sync-20260402` remains intact until committed
 - Expected success signal:
-  - publish branch commit is created on top of `a47b5b923...`
-  - `git push` returns success and remote branch `codex/onetabtube-sync-20260402` becomes visible
+  - `git ls-remote https://github.com/zelef69/GO_PLAY.git refs/heads/codex/onetabtube-sync-20260402` returns `e2250064b`
 - Expected failure signal:
-  - `git push` fails again with pack/unpack/index errors
-  - branch commit cannot be created because staged scope still contains something invalid for remote publish
+  - local branch drifts without a matching follow-up push
 - Last known log location:
-  - previous failed push output ended with:
-    - `remote: fatal: did not receive expected object ea101c2709b3076d13c183a41b3ad38a51ee70e3`
-    - `error: remote unpack failed: index-pack failed`
+  - successful push output ended with:
+    - `* [new branch]          HEAD -> codex/onetabtube-sync-20260402`
 - Last known artifact path:
   - local snapshot commit:
     - `2d1de86a3`
   - intended remote branch:
     - `codex/onetabtube-sync-20260402`
+  - published safe-branch commit:
+    - `e2250064b`
 - Recent decisions:
   - Use the ext4/device-tested source state as the source of truth, then backfill missing fixes into the tracked Windows repo before publishing.
   - Do not push local `main` directly into `GO_PLAY/main` because the remote already has user commits on top of a different history.
@@ -137,22 +141,22 @@
   - Trusting the Windows repo blindly without checking ext4-only/device-tested fixes
   - Publishing untracked local logs and artifacts together with source changes
 - Stop point classification:
-  - publish branch prepared and fully staged, commit/push not yet verified
+  - publish branch committed and pushed successfully; waiting for user direction on PR/merge/follow-up work
 - What is done but unverified:
-  - successful remote push of the publish branch
-  - whether the first publish attempt on the remote-base branch will be accepted without pack/index issues
+  - whether the user wants this branch merged into GitHub `main`
 - What is verified:
   - latest tree previously built and ran on `R9TRC00GA2E`
   - local commit `2d1de86a3` captures the intended OneTabTube snapshot on `main`
   - remote `GO_PLAY/main` is reachable and fetchable
   - the publish branch now sits on the remote base instead of the Brave-derived local history
+  - remote branch `codex/onetabtube-sync-20260402` now exists on GitHub
 - External prerequisite:
   - GitHub access to `https://github.com/zelef69/GO_PLAY.git` remains required for push
 - Secret required but not stored:
   - Any GitHub credential/token used by local git is intentionally not stored in the repo
 - Actual code state after resume:
-  - The working tree is no longer on the previously recorded `main`; it is on `publish/go_play-sync-20260402`.
-  - The repo now contains the missing ext4-alignment fixes for omnibox suggestion handling and the renderer content-settings fallback.
-  - The staged snapshot is ready to be turned into a clean remote-base commit.
+  - The working tree is on `publish/go_play-sync-20260402`.
+  - The repo contains the missing ext4-alignment fixes for omnibox suggestion handling and the renderer content-settings fallback.
+  - The remote publish branch is in sync with the current committed state.
 - Chosen direction:
-  - Finish the remote-base publish flow first by committing and pushing the staged snapshot on a safe branch, then report the branch back to the user instead of risking a destructive update to `GO_PLAY/main`.
+  - Keep the safe-branch publishing strategy as the default and avoid destructive updates to `GO_PLAY/main`.

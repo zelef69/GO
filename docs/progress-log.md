@@ -1270,6 +1270,103 @@
 - Secret required but not stored:
   - any local GitHub credential/token used by git
 
+## [2026-04-02 02:40]
+- Phase:
+  - Phase 7 - Validation / publish handoff
+- Objective:
+  - Finish the safe publish flow by pushing the aligned OneTabTube snapshot to the user's GitHub repo.
+- Done:
+  - Committed the remote-base snapshot on `publish/go_play-sync-20260402` as `e2250064b` (`Import current OneTabTube workspace snapshot`).
+  - Pushed successfully to `https://github.com/zelef69/GO_PLAY.git`.
+  - Created remote branch `codex/onetabtube-sync-20260402`.
+- In progress:
+  - No active command running; waiting for user direction on PR/merge/follow-up work.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build/runtime evidence remains `rerun200` on `R9TRC00GA2E`.
+  - Git publish status:
+    - safe-branch commit created: pass (`e2250064b`)
+    - safe-branch push: pass
+    - remote branch: `codex/onetabtube-sync-20260402`
+- Blockers/risks:
+  - `GO_PLAY/main` still has its own history; merging to `main` should go through PR/merge, not force-push.
+  - Local untracked logs/artifacts are still intentionally excluded.
+- Next step:
+  - If asked to update GitHub `main`, open or merge a PR from `codex/onetabtube-sync-20260402`.
+  - Otherwise continue future changes from `publish/go_play-sync-20260402` and push follow-up commits to the same remote branch.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-02 02:40` entry
+  - `git log --oneline --decorate -n 5 --all`
+  - `git ls-remote https://github.com/zelef69/GO_PLAY.git refs/heads/codex/onetabtube-sync-20260402`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `git`
+- Exact command(s):
+  - `git commit -m "Import current OneTabTube workspace snapshot"`
+  - `git push --progress https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
+- Tool purpose:
+  - Publish the aligned OneTabTube workspace snapshot safely to GitHub.
+- Tool state:
+  - Commit and push both completed successfully.
+- Expected resume command:
+  - `git status --short`
+  - `git log --oneline --decorate -n 5 --all`
+- Expected output/artifact path:
+  - Remote branch:
+    - `refs/heads/codex/onetabtube-sync-20260402`
+  - PR entry:
+    - `https://github.com/zelef69/GO_PLAY/pull/new/codex/onetabtube-sync-20260402`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - remote `GO_PLAY/main`: `a47b5b9232566c5cbf9aea557e72a8f9221f9cdc`
+  - published safe-branch commit: `e2250064b`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `.git` branch state
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this `2026-04-02 02:40` entry
+  - `git status --short`
+  - `git log --oneline --decorate -n 5 --all`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - GitHub repo reachable
+  - local git credentials usable
+- Expected success signal:
+  - `git ls-remote` shows `refs/heads/codex/onetabtube-sync-20260402`
+- Expected failure signal:
+  - future local commits diverge without a matching push
+- Last known log location:
+  - push output ended with `* [new branch]          HEAD -> codex/onetabtube-sync-20260402`
+- Last known artifact path:
+  - remote branch `codex/onetabtube-sync-20260402`
+- Recent decisions:
+  - Keep using the safe-branch strategy rather than rewriting GitHub `main`.
+- Rejected approaches:
+  - Force-pushing `GO_PLAY/main`
+- Stop point classification:
+  - publish branch committed and pushed successfully
+- What is done but unverified:
+  - whether the user wants this branch merged into GitHub `main`
+- What is verified:
+  - remote branch exists on GitHub
+  - local publish branch is committed
+- External prerequisite:
+  - GitHub access to `https://github.com/zelef69/GO_PLAY.git`
+- Secret required but not stored:
+  - any local GitHub credential/token used by git
+
 ## [2026-04-02 01:48 +07:00]
 - Phase:
   - Phase 7 - Validation / device smoke test on `R9TRC00GA2E`
