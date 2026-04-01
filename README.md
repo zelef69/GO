@@ -1,138 +1,99 @@
-# GO_PLAY - YouTube-Only Browser (Flutter + Android)
+# OneTabTube
 
-Single-purpose Android browser focused on YouTube, with strict domain policy, minimal controls, Android PiP support, and Brave adblock-rust integration (JNI).
+OneTabTube is a Brave-derived Android browser fork that constrains the product surface to a one-tab, YouTube-only browsing shell while retaining Brave's normal browser engine and Shields/adblock wiring.
 
-## Architecture
+This fork does not claim permanent or perfect YouTube ad blocking. It retains Brave's adblocking stack and aims to preserve Brave Shields behavior for YouTube, but actual effectiveness can vary as upstream rules and YouTube behavior evolve.
 
+## Current Product Behavior
+
+- Default home target is `https://www.youtube.com/`
+- Navigation is filtered through a centralized allowlist policy
+- Non-allowlisted URLs are redirected back to YouTube home
+- New-tab, incognito, and tab-switcher paths are blocked or collapsed into the existing tab
+- Major Brave product surfaces such as Rewards, Wallet, VPN, News, Leo, sync/account upsell, bookmarks/history/downloads menu entry points, and widget incognito entry are hidden in the main product flow
+- Brave Shields code paths remain wired through the normal Brave Android stack
+
+## Repository Layout Requirement
+
+Brave's build scripts expect a full Brave checkout layout, not a standalone folder on the desktop.
+
+Expected layout:
+
+```text
+C:\Users\Master\src\
+  brave\        <- this repository
+  chromium src\ <- synced by Brave tooling
 ```
-lib/
-  app/
-    config/
-    routes/
-  features/
-    browser/
-    domain_lock/
-    adblock/
-    pip/
-    session/
-    settings/
-  shared/
-    constants/
-    platform/
-    utils/
+
+The current workspace is at `C:\Users\Master\Desktop\GO_PLAY`, so build scripts fail before GN generation unless the repo is moved or linked into the expected checkout layout and Chromium dependencies are synced.
+
+## Setup
+
+1. Place this repository at `C:\Users\Master\src\brave` or create an equivalent junction/symlink.
+1. Install Node dependencies:
+
+```powershell
+npm install
 ```
 
-## Key Components
+1. Initialize the Brave/Chromium checkout:
 
-- Browser UI: `InAppWebView` with minimal controls (back, refresh, loading, settings).
-- Auth (Google Login + Firebase session):
-  - Google Sign-In via Firebase Auth
-  - Session document persisted in Firestore (`userSessions`)
-  - Per-email active session limit (10)
-  - Session expiration (`expiresAt`) written on login
-  - Auto-login on app reopen with Firebase user + session validation
-- Domain Lock:
-  - `URLValidator`
-  - `DomainPolicyService`
-  - `NavigationInterceptor`
-  - Main-frame navigation is restricted to:
-    - `youtube.com`
-    - `www.youtube.com`
-    - `m.youtube.com`
-    - `youtu.be`
-- Request Policy:
-  - Subresource requests are filtered by domain policy.
-  - A limited allowlist of YouTube infrastructure hosts is included for playback/login compatibility.
-- Adblock:
-  - `FilterListLoader`
-  - `AdblockService`
-  - `AdblockEngineBridge`
-  - Native `adblock-rust` engine through Rust JNI (`android/rust/adblock_jni`) and Android method channel (`go_play/adblock`)
-  - Native-first decision flow with automatic fallback to Dart matcher when native library is not available
-  - Serialized native engine snapshot cache (`serialize`/`deserialize`) to speed up next startup
-- PiP:
-  - Flutter <-> Android platform channel (`go_play/pip`)
-  - Home press during active playback triggers native `enterPictureInPictureMode()` when enabled.
-- Session:
-  - Cookie/WebStorage support via WebView stack.
-  - Clear session/cache from Settings.
+```powershell
+npm run init -- --target_os=android --target_arch=arm64
+```
 
-## Build & Run
+1. If the checkout is already initialized, sync it:
 
-1. `flutter pub get`
-2. `flutter run -d android`
+```powershell
+npm run sync -- --target_os=android --target_arch=arm64
+```
 
-## Release Build (Obfuscated)
+## Build Debug APK
 
-Recommended hardened release command:
+Equivalent Brave build command used for this fork:
 
-`flutter build apk --release --obfuscate --split-debug-info=build/debug-info`
+```powershell
+npm run build -- --target_os=android --target_arch=arm64 --target=chrome_public_apk
+```
 
-Optional security build properties (Gradle `-P` or environment variables):
-- `GO_PLAY_EXPECTED_CERT_SHA256`
-- `GO_PLAY_PIN_SET_ID`
-- `GO_PLAY_PIN_SHA256_PRIMARY`
-- `GO_PLAY_PIN_SHA256_BACKUP`
-- `GO_PLAY_SECURITY_BLOCK_ON_TAMPER`
-- `GO_PLAY_SECURITY_BLOCK_ON_DEBUGGER`
-- `GO_PLAY_SECURITY_BLOCK_ON_HOOK`
-- `GO_PLAY_SECURITY_BLOCK_ON_EMULATOR`
-- `GO_PLAY_SECURITY_BLOCK_ON_ROOT`
+With the current OneTabTube naming patch, the upstream-produced APK basename is:
 
-## Firebase Login Setup
+```text
+C:\Users\Master\src\out\android_Component_arm64\apks\OneTabTube.apk
+```
 
-1. Create Firebase project and enable:
-   - Authentication -> Google provider
-   - Cloud Firestore
-2. Add Firebase config files:
-   - Android: `android/app/google-services.json`
-   - iOS: `ios/Runner/GoogleService-Info.plist`
-3. Run app:
-   - `flutter run`
+The Brave wrapper then copies that into the expected packaged output artifact:
 
-Firestore collection used by app:
-- `userSessions/{sessionId}`
-  - `sessionId`, `uid`, `email`, `status`
-  - `createdAt`, `lastSeenAt`, `updatedAt`, `revokedAt`
-  - `expiresAt`, `platform`
+```text
+C:\Users\Master\src\out\android_Component_arm64\apks\OneTabTubeMonoarm64.apk
+```
 
-Recommended index for session checks:
-- Collection: `userSessions`
-- Fields:
-  - `email` Asc
-  - `uid` Asc
-  - `status` Asc
-  - `expiresAt` Asc
+## Install
 
-Firestore rules/index config files:
-- `firestore.rules`
-- `firestore.indexes.json`
+After a successful build:
 
-Deploy Firestore config:
-- `firebase deploy --only firestore --project offline-pos-khai-lheak`
+```powershell
+adb install -r C:\Users\Master\src\out\android_Component_arm64\apks\OneTabTubeMonoarm64.apk
+```
 
-## Build Native adblock-rust JNI
+If you need to inspect the upstream Chromium-side APK before Brave's copy/sign wrapper runs, check:
 
-Prerequisites:
-- Rust toolchain (`rustup`, `cargo`)
-- `cargo-ndk` (`cargo install cargo-ndk`)
-- Android NDK (already required by Flutter Android toolchain)
-- Rust crate source is pinned to Brave upstream repo (`https://github.com/brave/adblock-rust`)
+```text
+C:\Users\Master\src\out\android_Component_arm64\apks\OneTabTube.apk
+```
 
-Build command options:
-1. Gradle task:
-   - `cd android`
-   - `./gradlew :app:buildRustAdblockJni` (Windows: `gradlew.bat :app:buildRustAdblockJni`)
-2. Script:
-   - PowerShell: `./android/scripts/build_rust_adblock.ps1`
-   - Bash: `./android/scripts/build_rust_adblock.sh`
+## Manual Smoke Test
 
-Output library path:
-- `android/app/src/main/jniLibs/<abi>/libgo_play_adblock_jni.so`
+1. Launch the app and confirm it opens to YouTube home.
+2. Open a `youtube.com/watch?v=...` link and confirm it stays in the same tab.
+3. Open a `youtu.be/...` link and confirm it resolves in-app.
+4. Open a non-allowlisted URL such as `https://google.com` and confirm redirect to YouTube home.
+5. Confirm there is no usable new-tab, incognito, or tab-switcher entry point in the main UI.
+6. Confirm Shields still appears and normal page navigation still uses Brave browser internals rather than WebView glue code.
 
 ## Known Limitations
 
-1. If Rust JNI library is not built/present, app falls back to Dart adblock logic.
-2. Brave remote catalog/resources are used by default; if remote sources are unavailable, runtime falls back to bundled/basic lists.
-3. Domain lock is strict for top-level navigation; request allowlist includes required YouTube infrastructure domains for playback/auth to work.
-4. No tabs/bookmarks/history/address bar/download manager by design.
+- This implementation is currently a restricted product mode layered onto Brave Android Java/resources, not a fully isolated GN flavor/target.
+- Android manifest package identity is separated to `com.onetabtube.browser*`, and the copied output artifact name is now `OneTabTube*`.
+- The current workspace does not contain the full Brave/Chromium checkout layout required to finish a local APK build.
+- Allowlist coverage includes YouTube hosts plus limited Google account/consent hosts, but some future auth or embed flows may require further tuning.

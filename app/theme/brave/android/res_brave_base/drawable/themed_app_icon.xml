@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2022 The Brave Authors. All rights reserved.
+     Use of this source code is governed by a BSD-style license that can be
+     found in the LICENSE file. -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="108dp"
+  android:height="108dp"
+  android:viewportWidth="108"
+  android:viewportHeight="108">
+  <path
+    android:fillColor="#000000"
+    android:pathData="M18,24H90C96.63,24 102,29.37 102,36V72C102,78.63 96.63,84 90,84H18C11.37,84 6,78.63 6,72V36C6,29.37 11.37,24 18,24Z" />
+  <path
+    android:fillColor="#FFFFFFFF"
+    android:pathData="M45,40L72,54L45,68Z" />
+</vector>

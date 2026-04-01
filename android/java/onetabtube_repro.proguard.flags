@@ -1,0 +1,155 @@
+# Minimal OneTabTube keep rules used only to reproduce the device-matching APK.
+# Keep the site-settings model classes that the baseline APK retains without
+# pulling in the broader Brave keep-set, which over-preserves wallet/Leo code.
+
+-keep class org.chromium.components.browser_ui.site_settings.ContentSettingsResources {
+    *** getResourceItem(...);
+}
+
+-keep class org.chromium.components.browser_ui.site_settings.SingleCategorySettings {
+    *** mCategory;
+    *** getAddExceptionDialogMessageResourceId(...);
+    *** resetList(...);
+}
+
+-keep class org.chromium.components.browser_ui.site_settings.SingleWebsiteSettings {
+    *** mSite;
+    *** getPreferenceKey(...);
+    *** setupContentSettingsPreferences(...);
+    *** setupContentSettingsPreference(...);
+}
+
+-keep class org.chromium.components.browser_ui.site_settings.Website {
+    *** getPermissionInfo(...);
+    *** getContentSettingException(...);
+    *** getAddress(...);
+    *** setContentSettingException(...);
+    *** setContentSetting(...);
+}
+
+# Retain the small set of Chromium classes/members still present in the
+# device-matching baseline after OneTab-specific pruning.
+-keep class org.chromium.chrome.browser.media.FullscreenVideoPictureInPictureController {
+    <init>(...);
+}
+
+-keep class org.chromium.chrome.browser.tasks.tab_management.IncognitoTabSwitcherPane {
+    <init>(...);
+}
+
+-keep class org.chromium.chrome.browser.toolbar.top.TopToolbarCoordinator {
+    *** mOptionalButtonController;
+    *** mToolbarColorObserverManager;
+    public <init>(...);
+}
+
+-keep class org.chromium.chrome.browser.toolbar.top.BraveTopToolbarCoordinator {
+    public <init>(...);
+}
+
+-keep class org.chromium.chrome.browser.toolbar.top.BraveToolbarLayoutImpl
+
+-keep class org.chromium.chrome.browser.toolbar.top.ToolbarPhone {
+    *** mLocationBarBackgroundColorForNtp;
+    *** mToolbarBackgroundColorForNtp;
+}
+
+-keep class org.chromium.chrome.browser.ui.AdaptiveToolbarUiCoordinator {
+    <init>(...);
+    *** mContext;
+    *** mActivityTabProvider;
+    *** mModalDialogManagerSupplier;
+    *** mProfileSupplier;
+    *** mAdaptiveToolbarButtonController;
+}
+
+-keep class org.chromium.chrome.browser.ui.BraveAdaptiveToolbarUiCoordinator {
+    <init>(...);
+}
+
+-keepnames class org.chromium.chrome.browser.ChromeTabbedActivity
+
+-keepclassmembers class org.chromium.chrome.browser.ChromeTabbedActivity {
+    *** mLayoutManager;
+    *** mMultiInstanceManager;
+    *** hideOverview(...);
+    *** maybeHandleUrlIntent(...);
+}
+
+-keepnames class org.chromium.chrome.browser.tabbed_mode.TabbedNavigationBarColorController
+
+-keepclassmembers class org.chromium.chrome.browser.tabbed_mode.TabbedNavigationBarColorController {
+    private *** getNavigationBarColor(...);
+    *** useActiveTabColor(...);
+}
+
+-keepclassmembers class org.chromium.chrome.browser.app.BraveActivity {
+    *** maybeHandleUrlIntent(...);
+}
+
+# Mirror the small set of Brave keep rules that the OneTabTube target does not
+# inherit automatically but that still survive in the device-matching baseline.
+-keepnames class org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator
+
+-keepclassmembers class org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator {
+    *** createViewProvider(...);
+}
+
+-keepnames class org.chromium.chrome.browser.omnibox.suggestions.AutocompleteMediator
+
+-keepclassmembers class org.chromium.chrome.browser.omnibox.suggestions.AutocompleteMediator {
+    *** mContext;
+    *** mDataProvider;
+    *** loadUrlForOmniboxMatch(...);
+}
+
+-keepnames class org.chromium.chrome.browser.tabmodel.TabCollectionTabModelImpl
+
+-keepclassmembers class org.chromium.chrome.browser.tabmodel.TabCollectionTabModelImpl {
+    *** shouldGroupWithParent(...);
+    *** isTabModelRestored(...);
+}
+
+-keepnames class org.chromium.chrome.browser.omnibox.suggestions.editurl.EditUrlSuggestionProcessor
+
+-keepclassmembers class org.chromium.chrome.browser.omnibox.suggestions.editurl.EditUrlSuggestionProcessor {
+    *** onCopyLink(...);
+}
+
+-keepnames class org.chromium.chrome.browser.hub.HubManagerImpl
+
+-keepclassmembers class org.chromium.chrome.browser.hub.HubManagerImpl {
+    *** ensureHubCoordinatorIsInitialized(...);
+}
+
+-keepnames class org.chromium.chrome.browser.undo_tab_close_snackbar.UndoBarController
+
+-keepclassmembers class org.chromium.chrome.browser.undo_tab_close_snackbar.UndoBarController {
+    *** showUndoBar(...);
+}
+
+-keepnames class org.chromium.components.browser_ui.media.MediaSessionHelper
+
+-keepclassmembers class org.chromium.components.browser_ui.media.MediaSessionHelper {
+    *** mWebContents;
+    *** mNotificationInfoBuilder;
+    *** mMediaSessionActions;
+    *** showNotification(...);
+    *** createMediaSessionObserver(...);
+}
+
+-keep class org.chromium.components.media_router.BrowserMediaRouter { *; }
+
+-keepnames class org.chromium.chrome.browser.notifications.channels.SiteChannelsManager
+
+-keepclassmembers class org.chromium.chrome.browser.notifications.channels.SiteChannelsManager {
+    *** toChannelStatus(...);
+}
+
+-keep,allowoptimization class com.google.android.material.behavior.HideBottomViewOnScrollBehavior { *; }
+
+-keep,allowoptimization class com.google.android.material.bottomsheet.BottomSheetBehavior { *; }
+
+-keep,allowoptimization class com.google.android.material.bottomsheet.BottomSheetBehavior$SavedState { *; }
+
+-applymapping onetabtube_bottomsheet_apply.mapping

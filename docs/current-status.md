@@ -1,0 +1,158 @@
+# Current Status
+
+- Last updated:
+  - 2026-04-02 02:35:52 +07:00
+- Current phase:
+  - Phase 7 - Validation / real-device smoke test
+- Current objective:
+  - Align the local OneTabTube workspace snapshot with the repo state that was actually device-validated, then publish that snapshot safely into `https://github.com/zelef69/GO_PLAY` without overwriting the existing remote `main` history.
+- Completed since last update:
+  - Audited git remotes and confirmed the requested publish target is `https://github.com/zelef69/GO_PLAY`, while the configured `origin` still points to `https://github.com/zelef69/GO.git`.
+  - Verified the Windows repo was still missing ext4/device-tested fixes in `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`.
+  - Added the missing omnibox null-guard/product-skip logic to `BraveDropdownItemViewInfoListBuilder.java`.
+  - Added `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch` so the Windows tree now also carries the ext4 fallback that returns `CONTENT_SETTING_DEFAULT` instead of aborting in the unmatched secondary-pattern path.
+  - Re-synced the updated Windows tree into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
+  - Created a full local snapshot commit on `main`: `2d1de86a3` (`Add OneTabTube product wiring and device-validated fixes`).
+  - Fetched `https://github.com/zelef69/GO_PLAY.git main` and created a publish branch from the remote tip to avoid force-pushing over the user's existing `main` history.
+- In progress now:
+  - The repo is now on `publish/go_play-sync-20260402`, based on remote `GO_PLAY/main` (`a47b5b9232566c5cbf9aea557e72a8f9221f9cdc`).
+  - A large staged snapshot from local commit `2d1de86a3` is ready to be committed on top of the remote base and then pushed as a safe publish branch.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
+  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
+  - `tools/sync_changed_files_to_wsl.ps1`
+  - `.git` branch state for `main` and `publish/go_play-sync-20260402`
+- Build/test status:
+  - Latest verified successful packaged build remains `rerun200`:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log 2>&1"`
+  - Latest APK:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - Latest APK SHA-256:
+    - `08c34f11821d3fe1245a5a02c2aa27453a1debc71ea9c6f1a220aabc557ac33d`
+  - Device runtime validation on `R9TRC00GA2E` is still the last verified runtime evidence:
+    - normal launch: pass
+    - `VIEW https://youtu.be/dQw4w9WgXcQ`: pass
+    - `VIEW https://google.com`: pass by redirecting back into `m.youtube.com`
+    - crash buffer after these runs: no new crash output observed from `adb logcat -b crash -d`
+  - Git publish status:
+    - local snapshot commit created on `main`: pass (`2d1de86a3`)
+    - direct push of that history to `GO_PLAY`: fail (`remote unpack failed: index-pack failed`)
+    - safe branch rebase/import path onto remote `GO_PLAY/main`: in progress
+- Blockers/risks:
+  - `GO_PLAY/main` has its own existing history, so pushing local `main` directly would be unsafe without explicit confirmation to overwrite or reconcile remote commits.
+  - The publish branch currently stages roughly the full Brave-based product snapshot; the next push may still fail if GitHub rejects the pack size or object graph, so the fallback may need a narrower import.
+  - Untracked local artifacts/logs still exist in large numbers and must stay excluded from the publish commit unless explicitly requested.
+- Next concrete step:
+  - Commit the staged snapshot on `publish/go_play-sync-20260402`.
+  - Push that branch to `https://github.com/zelef69/GO_PLAY.git`.
+  - If the push succeeds, report the branch/ref to the user.
+  - If the push still fails, reduce the staged scope to the minimal repo snapshot that preserves the current buildable OneTabTube product state and retry.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
+  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
+  - `git status --short`
+  - `git log --oneline --decorate -n 5 --all`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `git`
+- Exact command(s):
+  - `git status --short`
+  - `git remote -v`
+  - `git ls-remote https://github.com/zelef69/GO_PLAY.git`
+  - `git fetch https://github.com/zelef69/GO_PLAY.git main`
+  - `git switch -c publish/go_play-sync-20260402 FETCH_HEAD`
+  - `git checkout 2d1de86a3 -- AGENTS.md README.md android app base browser build chromium_src components docs patches renderer tools/check-cipd-match.sh tools/check_luci.py tools/create_onetabyt_browser_media_router_stub_srcjar.py tools/create_onetabyt_language_split_installer_stub_srcjar.py tools/create_onetabyt_leo_stub_srcjar.py tools/create_onetabyt_module_installer_stub_srcjar.py tools/create_onetabyt_playcore_update_stub_srcjar.py tools/create_onetabyt_rate_stub_srcjar.py tools/create_onetabyt_rate_stub_srcjar.pydeps tools/create_onetabyt_xr_stub_srcjar.py tools/fix-shebang-crlf.sh tools/install-android-cipd-deps.ps1 tools/install-android-cipd-full.py tools/monitor_brave_apk_build.sh tools/normalize-vendor-depot-tools-lfs.sh tools/parse-android-cipd.py tools/print-build-config.mjs tools/run_brave_apk_build.sh tools/show-chromium-sync-progress.ps1 tools/sync_changed_files_to_wsl.ps1`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - previous failed direct push attempt:
+    - `git push --progress https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
+- Tool purpose:
+  - Align repo state with the ext4/device-validated OneTabTube source snapshot and publish it safely to the user's GitHub repo without rewriting remote history.
+- Tool state:
+  - No build or device test is currently running.
+  - The publish branch has a fully staged snapshot and is waiting for commit/push.
+- Expected resume command:
+  - `git status --short`
+  - `git commit -m "Import current OneTabTube workspace snapshot"`
+  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
+- Expected output/artifact path:
+  - Git branch ref on remote:
+    - `refs/heads/codex/onetabtube-sync-20260402`
+  - Build artifact preserved in repo history/context:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - remote `GO_PLAY/main`: `a47b5b9232566c5cbf9aea557e72a8f9221f9cdc`
+  - local full snapshot commit on `main`: `2d1de86a3`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java` - Windows repo was missing ext4/device-tested null guards; now aligned
+  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch` - carries the ext4 renderer fallback into the tracked patch set
+  - `tools/sync_changed_files_to_wsl.ps1` - keeps Windows and ext4 trees aligned before any future rebuild
+  - `docs/current-status.md` - latest desk-state source of truth for the publish operation
+  - `docs/progress-log.md` - append-only audit trail for publish attempts and outcomes
+  - `.git` branch state (`main`, `publish/go_play-sync-20260402`) - determines safe push path
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
+  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
+  - `git status --short`
+  - `git log --oneline --decorate -n 5 --all`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - remote GitHub repo `https://github.com/zelef69/GO_PLAY.git` reachable
+  - local git credentials usable for that repo
+  - staged snapshot on `publish/go_play-sync-20260402` remains intact until committed
+- Expected success signal:
+  - publish branch commit is created on top of `a47b5b923...`
+  - `git push` returns success and remote branch `codex/onetabtube-sync-20260402` becomes visible
+- Expected failure signal:
+  - `git push` fails again with pack/unpack/index errors
+  - branch commit cannot be created because staged scope still contains something invalid for remote publish
+- Last known log location:
+  - previous failed push output ended with:
+    - `remote: fatal: did not receive expected object ea101c2709b3076d13c183a41b3ad38a51ee70e3`
+    - `error: remote unpack failed: index-pack failed`
+- Last known artifact path:
+  - local snapshot commit:
+    - `2d1de86a3`
+  - intended remote branch:
+    - `codex/onetabtube-sync-20260402`
+- Recent decisions:
+  - Use the ext4/device-tested source state as the source of truth, then backfill missing fixes into the tracked Windows repo before publishing.
+  - Do not push local `main` directly into `GO_PLAY/main` because the remote already has user commits on top of a different history.
+  - Publish on a safe branch first, then let the user decide how to merge it upstream.
+- Rejected approaches:
+  - Force-pushing over `GO_PLAY/main`
+  - Trusting the Windows repo blindly without checking ext4-only/device-tested fixes
+  - Publishing untracked local logs and artifacts together with source changes
+- Stop point classification:
+  - publish branch prepared and fully staged, commit/push not yet verified
+- What is done but unverified:
+  - successful remote push of the publish branch
+  - whether the first publish attempt on the remote-base branch will be accepted without pack/index issues
+- What is verified:
+  - latest tree previously built and ran on `R9TRC00GA2E`
+  - local commit `2d1de86a3` captures the intended OneTabTube snapshot on `main`
+  - remote `GO_PLAY/main` is reachable and fetchable
+  - the publish branch now sits on the remote base instead of the Brave-derived local history
+- External prerequisite:
+  - GitHub access to `https://github.com/zelef69/GO_PLAY.git` remains required for push
+- Secret required but not stored:
+  - Any GitHub credential/token used by local git is intentionally not stored in the repo
+- Actual code state after resume:
+  - The working tree is no longer on the previously recorded `main`; it is on `publish/go_play-sync-20260402`.
+  - The repo now contains the missing ext4-alignment fixes for omnibox suggestion handling and the renderer content-settings fallback.
+  - The staged snapshot is ready to be turned into a clean remote-base commit.
+- Chosen direction:
+  - Finish the remote-base publish flow first by committing and pushing the staged snapshot on a safe branch, then report the branch back to the user instead of risking a destructive update to `GO_PLAY/main`.

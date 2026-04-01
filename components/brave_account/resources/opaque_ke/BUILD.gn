@@ -1,0 +1,56 @@
+# Copyright (c) 2026 The Brave Authors. All rights reserved.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at https://mozilla.org/MPL/2.0/.
+
+import("//brave/components/common/typescript.gni")
+
+_opaque_ke_generated_pkg_dir =
+    "$root_gen_dir/brave/components/brave_account/resources/opaque_ke/generated_pkg"
+
+rust_to_wasm("opaque_ke_wasm") {
+  inputs = [
+    rebase_path("//brave/third_party/wasm/Cargo.lock"),
+    rebase_path("src/lib.rs"),
+  ]
+  rust_packages = [ rebase_path("Cargo.toml") ]
+  generated_pkg_dir = "$root_gen_dir/{{source_root_relative_dir}}/generated_pkg"
+}
+
+copy("opaque_ke_fixed_pkg") {
+  sources = [
+    "$_opaque_ke_generated_pkg_dir/index.d.ts",
+    "$_opaque_ke_generated_pkg_dir/index.js",
+    "$_opaque_ke_generated_pkg_dir/index_bg.js",
+    "$_opaque_ke_generated_pkg_dir/index_bg.wasm.d.ts",
+    "$_opaque_ke_generated_pkg_dir/package.json",
+    "prebuilt_wasm/index_bg.wasm",
+  ]
+  outputs = [
+    "$root_gen_dir/brave/components/brave_account/resources/opaque_ke/bundler/pkg/{{source_file_part}}",
+  ]
+  deps = [ ":opaque_ke_wasm" ]
+}
+
+transpile_web_ui("opaque_ke") {
+  resource_name = "opaque_ke"
+  generate_grdp = true
+  resource_path_prefix = "brave"
+
+  entry_points = [ [
+        "opaque_ke",
+        rebase_path("index.js"),
+      ] ]
+
+  inputs = [
+    rebase_path("//brave/third_party/wasm/Cargo.lock"),
+    rebase_path("prebuilt_wasm/index_bg.wasm"),
+    rebase_path("src/lib.rs"),
+  ]
+
+  deps = [ ":opaque_ke_fixed_pkg" ]
+
+  imports_from = [ "//brave/components/brave_account/resources/opaque_ke/" ]
+
+  public_asset_path = "chrome://resources/brave/"
+}

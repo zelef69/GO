@@ -1,0 +1,2681 @@
+# Progress Log
+
+## [2026-04-01 08:03]
+- Phase: Phase 7 - Validation / APK reproducibility
+- Objective: Keep the package build green while converging the emitted OneTabTube APK back to the saved device baseline.
+- Done:
+  - Replaced the temporary full Brave proguard injection with `android/java/onetabtube_repro.proguard.flags`.
+  - Patched live ext4 `chrome/android/BUILD.gn` to use the minimal keep file only for `is_onetabyt`.
+  - Ran `rerun81`; APK still differed in 4 entries, but dex sizes moved materially closer to baseline than the full-proguard attempt.
+  - Compared extracted `libchrome.so` files and proved the missing baseline-only block was the NTP background / new-tab-takeover graph.
+  - Re-enabled NTP background / new-tab-takeover Android deps in `browser/sources.gni` and `browser/ui/config.gni`.
+  - Restored branded wallpaper / sponsored background behavior in `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc` and `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc`.
+  - Fixed the broken `GetClockFormat()` body while restoring the NTP handler.
+  - Ran `rerun82`; APK packaging still succeeds.
+- In progress:
+  - Inspecting the remaining 4-entry APK diff after `rerun82`.
+  - Need to identify the residual `libchrome.so` / dex drift now that the NTP graph is back.
+- Files touched:
+  - `android/java/onetabtube_repro.proguard.flags`
+  - `patches/chrome-android-BUILD.gn.patch`
+  - `browser/sources.gni`
+  - `browser/ui/config.gni`
+  - `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc`
+  - `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Latest successful build log: `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log`
+  - Current APK hash: `5965ce8af3063c3eb30759549ea0ede8a728dfd8aa7aaad5d200095290fac085`
+  - Baseline APK hash: `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
+  - Current remaining zip-entry diffs:
+    - `classes.dex`
+    - `classes2.dex`
+    - `lib/arm64-v8a/libai_chat_common.cr.so`
+    - `lib/arm64-v8a/libchrome.so`
+- Blockers/risks:
+  - Exact reproducibility is still blocked by the last 4 entry diffs.
+  - `libai_chat_common.cr.so` still differs with no obvious printable-string-set delta.
+  - Residual dex/lib drift may now be dominated by wallet/Leo retention or Android/JNI wiring.
+- Next step:
+  - Diff `rerun82` current vs baseline dex/lib contents again and identify the next smallest source change that materially reduces the remaining 4-entry diff.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest progress entry
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `browser/sources.gni`
+  - `browser/ui/config.gni`
+  - `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc`
+  - `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `gn gen`
+  - `autoninja`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/gn gen out/android_Component_arm64 > out/android_Component_arm64/codex_onetabtube_gn_gen_rerun82.log 2>&1 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log 2>&1"`
+- Tool purpose:
+  - Rebuild the Android package and compare the result against the saved baseline APK after each targeted graph correction.
+- Tool state:
+  - No active build at snapshot time.
+  - `rerun82` completed successfully.
+- Expected resume command:
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun83.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/onetabtube_repro.proguard.flags` - minimal keep rules
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn` - live build truth for `chrome_public_apk`
+  - `browser/sources.gni` - Android browser deps
+  - `browser/ui/config.gni` - circular-include allowance for `new_tab_takeover`
+  - `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc` - NTP sponsored background handler
+  - `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc` - NTP branded wallpaper prefs/messages
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` - current artifact
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk` - baseline artifact
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log`
+  - `browser/sources.gni`
+  - `browser/ui/config.gni`
+  - `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc`
+  - `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 reachable
+  - sync helper run immediately before build
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - 4-entry diff count drops or final APK hash matches baseline
+- Expected failure signal:
+  - compile/link regression or no measurable movement after the next targeted fix
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Replace full Brave proguard injection with a minimal site-settings keep file
+  - Re-enable NTP/new-tab-takeover because baseline evidence showed those symbols must exist
+- Rejected approaches:
+  - keeping NTP graph disabled for `is_onetabyt`
+  - stopping at “APK builds” instead of matching the saved device artifact
+- Stop point classification:
+  - Build passed, fresh APK emitted, but exact baseline reproduction still not achieved
+- What is done but unverified:
+  - how much rerun82 reduced the remaining `libchrome.so` delta beyond restoring the known NTP strings
+- What is verified:
+  - `resources.pak` and `libcontent.cr.so` match baseline
+  - build stays green
+  - current APK still differs in only 4 entries
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium deps
+- Secret required but not stored:
+  - None
+
+## [2026-04-01 03:30]
+- Phase: Phase 7 - Validation / APK reproducibility
+- Objective: Restore source-tree buildability first, then reduce the emitted APK back toward the saved device baseline.
+- Done:
+  - Re-read stale desk-state files and confirmed they were behind reality.
+  - Re-synced and hash-verified the current working set between Windows and ext4, including proving again that the sync helper can miss critical files.
+  - Reopened `enable_brave_wallet`, `enable_brave_vpn`, and `enable_ai_chat` for `is_onetabyt` to unblock the compile graph.
+  - Advanced builds through:
+    - `rerun52` Java wallet/vpn dependency failure
+    - `rerun53` Leo Java package failure
+    - `rerun54` `BRAVE_AI_CHAT` enum switch failure
+    - `rerun55` missing `ChromeAutocompleteProviderClient` Leo methods at final link
+  - Patched ext4 build-source files directly:
+    - `/home/master/src_ext4/components/browsing_data/core/browsing_data_utils.cc`
+    - `/home/master/src_ext4/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc`
+  - `rerun56` succeeded and emitted a fresh APK.
+- In progress:
+  - Comparing the fresh APK against `OneTabTube.baseline_saved.apk` to remove feature-graph drift without losing buildability.
+- Files touched:
+  - `components/brave_wallet/common/buildflags/buildflags.gni`
+  - `components/brave_vpn/common/buildflags/buildflags.gni`
+  - `components/ai_chat/core/common/buildflags/buildflags.gni`
+  - `android/brave_java_sources.gni`
+  - `build/android/config.gni`
+  - `components/brave_wallet/common/BUILD.gn`
+  - `components/brave_mobile_subscription/renderer/android/BUILD.gn`
+  - `components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.cc`
+  - `components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.h`
+  - `renderer/BUILD.gn`
+  - `renderer/brave_content_renderer_client.cc`
+  - `chromium_src/chrome/browser/notifications/notification_handler.h`
+  - `chromium_src/chrome/browser/notifications/notification_handler.cc`
+  - `/home/master/src_ext4/components/browsing_data/core/browsing_data_utils.cc`
+  - `/home/master/src_ext4/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `gn gen` succeeded at `codex_onetabtube_gn_regen_rerun55.log`
+  - `autoninja` succeeded at `codex_onetabtube_build_repro_from_baseline_rerun56.log`
+  - fresh APK hash: `457f7b39bff50402e73ee919d5580aceaea49a18919123e47eafd991afa0051a`
+  - baseline saved hash: `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
+  - `AndroidManifest.xml` hashes match, but `classes.dex`, `classes2.dex`, `assets/resources.pak`, and `libchrome.so` differ
+- Blockers/risks:
+  - Buildability is restored, but exact baseline reproducibility is still blocked by reopened feature graphs.
+  - ext4-direct edits must be remembered during future sync/cleanup work.
+- Next step:
+  - Re-close AI/Leo for `is_onetabyt` while preserving the minimum Java/JNI compile surface, rebuild, and compare the next APK hash to baseline.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest progress entry
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun56.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `components/ai_chat/core/common/buildflags/buildflags.gni`
+  - `android/brave_java_sources.gni`
+  - `build/android/config.gni`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `gn gen`
+  - `autoninja`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - manual UNC copy for files missed by the sync helper
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/gn gen out/android_Component_arm64 > out/android_Component_arm64/codex_onetabtube_gn_regen_rerun55.log 2>&1"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun56.log 2>&1"`
+- Tool purpose:
+  - Build the OneTabTube APK and compare the emitted binary against the saved baseline while preserving the desk-state workflow.
+- Tool state:
+  - No active build
+  - latest package build succeeded
+- Expected resume command:
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun57.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `components/ai_chat/core/common/buildflags/buildflags.gni`
+  - `android/brave_java_sources.gni`
+  - `build/android/config.gni`
+  - `/home/master/src_ext4/components/browsing_data/core/browsing_data_utils.cc`
+  - `/home/master/src_ext4/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun56.log`
+  - `components/ai_chat/core/common/buildflags/buildflags.gni`
+  - `android/brave_java_sources.gni`
+  - `build/android/config.gni`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 reachable
+  - verify hashes for critical files
+  - keep `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - emitted APK hash moves toward or matches `70df...`
+- Expected failure signal:
+  - build regresses into compile/link failure, or emitted hash remains far from baseline after the next graph reduction
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun56.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - accept temporary feature-graph reopening to restore buildability
+  - treat reproducibility drift as the new primary blocker once the package build passed
+- Rejected approaches:
+  - stopping immediately after build success
+  - trusting the sync helper alone for critical files
+- Stop point classification:
+  - fresh APK created successfully, but exact baseline hash still not reproduced
+- What is done but unverified:
+  - AI/Leo graph reduction path back toward baseline
+- What is verified:
+  - source tree can build a fresh `OneTabTube.apk`
+  - fresh artifact differs from baseline in code/resource payload, not manifest bytes
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium dependencies
+- Secret required but not stored:
+  - None
+
+> Note: Earlier same-day entries below `21:51` are reconstructed from console evidence after an accidental overwrite of this untracked log during the 2026-03-31 handoff update. There is no repo-tracked copy in `HEAD` to restore from.
+
+## [2026-03-31 20:11]
+- Phase: Phase 7 - Validation / APK assembly
+- Objective: Audit the pre-17:00 logs from `2026-03-31` and compare them against the current blocker family.
+- Done:
+  - Confirmed the pre-17 evidence lives under `/home/master/src_ext4/brave/artifacts/build/`, not under `/home/master/src_ext4/out/android_Component_arm64/`.
+  - Reconstructed the failure progression:
+    - `15:18` Java playlist symbols in `BraveToolbarLayoutImpl.java`
+    - `15:44` GN unresolved dependency `new_tab_takeover_generated_resources`
+    - `15:46` GN sync fixed that dependency
+    - `15:46` old `apks/OneTabTube.apk` file target already invalid
+    - `15:47` Python preprocessing failed on missing `brave_chromium_utils`
+    - `15:49` Java missing-symbol errors around `OneTabYouTubeMode`
+    - `15:58` native C++ failure in `brave_pref_service_bridge.cc` on `ENABLE_BRAVE_NEWS`
+- In progress:
+  - No build running.
+  - Plan remained to keep using the compile-capable `autoninja` path.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Read-only log audit only.
+- Blockers/risks:
+  - Historical logs were evidence only and did not override the current blocker path.
+- Next step:
+  - Re-run sync verification and continue current `autoninja` blocker fixes instead of switching back to the old file target.
+
+## [2026-03-31 20:14]
+- Phase: Phase 7 - Validation / APK assembly
+- Objective: Make Windows-to-WSL sync trustworthy before the next compile rerun and confirm the current APK baseline.
+- Done:
+  - Verified the working-set hashes matched between `C:\Users\Master\Desktop\GO_PLAY` and `/home/master/src_ext4/brave`.
+  - Confirmed `.codex_build_sync_list.txt` was stale and missed multiple modified tracked files.
+  - Added and validated `tools/sync_changed_files_to_wsl.ps1` in both verify and copy modes.
+  - Confirmed the installed package `com.onetabtube.browser_default` on device `R9TRC00GA2E` matched `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` byte-for-byte.
+- In progress:
+  - No build running yet after the sync workflow change.
+- Files touched:
+  - `tools/sync_changed_files_to_wsl.ps1`
+  - `.codex_build_sync_list.txt`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Sync helper passed.
+  - APK artifact existed but was stale relative to source edits.
+- Blockers/risks:
+  - Sync correctness could no longer rely on `.codex_build_sync_list.txt` alone.
+  - The source tree still was not proven to recreate the device-matching APK.
+- Next step:
+  - Run the sync helper before every rerun and keep unblocking the current `autoninja` path.
+
+## [2026-03-31 21:51]
+- Phase: Phase 7 - Validation / APK assembly
+- Objective: Keep advancing the current checkout until it can reproduce the device-matching OneTabTube APK baseline.
+- Done:
+  - Confirmed the device APK and `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` are still byte-identical:
+    - SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
+  - Used `artifacts/repro_baseline/` as the rollback/backup lane and iteratively reran the Android package build with synced Windows -> WSL sources.
+  - Removed or flattened multiple stale shim blockers so the build progressed through these layers:
+    - `chrome_browser_main`
+    - `chrome_browser_field_trials`
+    - `chrome_metrics_service_client`
+    - `chrome_content_browser_client`
+    - `device_info_sync_bridge`
+    - `host_port_pair`
+    - `AdBlockSubscriptionFiltersProvider`
+    - `wallet_http_client_impl`
+    - `component_installer`
+  - Latest rerun reached `stub_resolver_config_reader.o` as the new first blocker instead of the earlier browser-override failures.
+- In progress:
+  - No command is running.
+  - The next targeted fix should be in `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`.
+- Files touched:
+  - `browser/brave_browser_main_parts.h`
+  - `browser/brave_content_browser_client.cc`
+  - `chromium_src/chrome/browser/chrome_browser_main.h`
+  - `chromium_src/chrome/browser/chrome_browser_main.cc`
+  - `chromium_src/chrome/browser/chrome_browser_field_trials.h`
+  - `chromium_src/chrome/browser/chrome_browser_field_trials.cc`
+  - `chromium_src/chrome/browser/metrics/chrome_browser_main_extra_parts_metrics.h`
+  - `chromium_src/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.h`
+  - `chromium_src/chrome/browser/metrics/chrome_metrics_service_client.h`
+  - `chromium_src/chrome/browser/metrics/chrome_metrics_service_client.cc`
+  - `chromium_src/components/sync_device_info/device_info_sync_bridge.h`
+  - `chromium_src/components/component_updater/component_installer.h`
+  - `chromium_src/components/wallet/core/browser/network/wallet_http_client_impl.h`
+  - `chromium_src/net/base/host_port_pair.h`
+  - `components/brave_shields/content/browser/ad_block_subscription_filters_provider.h`
+  - `components/brave_shields/content/browser/ad_block_subscription_filters_provider.cc`
+  - `tools/sync_changed_files_to_wsl.ps1`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Latest rerun command:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log 2>&1"`
+  - Latest first failure:
+    - `obj/chrome/browser/browser/stub_resolver_config_reader.o`
+    - `../../chrome/browser/net/stub_resolver_config_reader.cc:148:53: error: no member named 'kParentalControlsCheckDelay' in 'StubResolverConfigReader'`
+  - Earlier reruns worth keeping:
+    - `...rerun11.log` advanced into `component_installer` and component-updater-heavy compile paths
+    - `...rerun10.log` exposed `wallet_http_client_impl`
+    - `...rerun9.log` exposed `AdBlockSubscriptionFiltersProvider`
+    - `...rerun8.log` exposed `host_port_pair` linker drift
+    - `...rerun7.log` exposed `device_info_sync_bridge`
+- Blockers/risks:
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h` still defines a stale Brave subclass layout that no longer matches upstream.
+  - More stale shim headers may surface later even after this fix.
+  - No fresh APK has been emitted yet, so exact source-to-APK reproducibility remains unverified.
+- Next step:
+  - Compare `chromium_src/chrome/browser/net/stub_resolver_config_reader.h` with `/home/master/src_ext4/chrome/browser/net/stub_resolver_config_reader.h`.
+  - Flatten the Brave shim so it stops redefining the upstream class layout.
+  - Run the sync helper.
+  - Rerun build to `...rerun13.log`.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log`
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
+  - `/home/master/src_ext4/chrome/browser/net/stub_resolver_config_reader.h`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log 2>&1"`
+- Tool purpose:
+  - Sync changed sources into ext4 and drive the package build forward until a new APK can be compared against the baseline.
+- Tool state:
+  - Sync helper passed.
+  - Build stopped on `stub_resolver_config_reader.o`.
+- Expected resume command:
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun13.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
+  - `/home/master/src_ext4/chrome/browser/net/stub_resolver_config_reader.h`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log`
+  - `chromium_src/components/component_updater/component_installer.h`
+  - `chromium_src/components/wallet/core/browser/network/wallet_http_client_impl.h`
+  - `chromium_src/net/base/host_port_pair.h`
+  - `components/brave_shields/content/browser/ad_block_subscription_filters_provider.h`
+  - `tools/sync_changed_files_to_wsl.ps1`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log`
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
+  - `/home/master/src_ext4/chrome/browser/net/stub_resolver_config_reader.h`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - WSL ext4 checkout reachable through `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave`
+  - Sync helper run immediately before the build
+- Expected success signal:
+  - `stub_resolver_config_reader.o` compiles and the build moves deeper or emits a new APK.
+- Expected failure signal:
+  - The next log still fails in `stub_resolver_config_reader` or the next stale shim directly adjacent to it.
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep moving the current checkout toward the known-good binary instead of trying to guess a missing historical source snapshot.
+  - Flatten stale Brave shim headers when upstream already contains the Brave-aware declarations or behavior.
+  - Treat `tools/sync_changed_files_to_wsl.ps1` as mandatory before every rerun.
+- Rejected approaches:
+  - Old file-target `ninja.py ... apks/OneTabTube.apk`
+  - `.codex_build_sync_list.txt`-only sync
+  - Broad repo rescans after resume
+  - Vague rollback to “before 17:00” without an exact source snapshot
+- Stop point classification:
+  - Multiple compile reruns completed; latest build failed at `stub_resolver_config_reader.o`; no fresh APK emitted.
+- What is done but unverified:
+  - The latest shim-flattening fixes have not yet been followed by a successful full package build.
+  - Exact source reproduction of the device APK is not yet proven.
+- What is verified:
+  - The device-installed APK matches `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`.
+  - The sync helper continues to pass.
+  - The build path is now far beyond the original browser override blockers and into late component/network config compilation.
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium dependencies remain required.
+- Secret required but not stored:
+  - None.
+
+## [2026-04-01 13:32 +07:00]
+- Phase:
+  - Phase 7 - Validation / APK reproducibility
+- Objective:
+  - Refresh the stale desk state to match `rerun119`, then keep shrinking the last dex/native drift until the rebuilt APK matches the saved baseline.
+- Done:
+  - Read the stale `docs/current-status.md` and confirmed it stopped at `rerun110`, then checked the live tree and artifacts instead of trusting it.
+  - Verified the actual current APK is `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` with SHA-256 `5876c0ff7456cf97e99a88dade5225205f8ab95427304d6efb0993a4e74fcda5`.
+  - Verified `rerun119` is the latest successful build and that `res/xml/brave_main_preferences.xml` now matches the baseline again.
+  - Re-ran the tighter descriptor extraction over `classes.dex` and `classes2.dex` and confirmed the remaining current-only tail is only 5 descriptors:
+    - `com/google/android/material/bottomsheet/e`
+    - `com/google/android/material/bottomsheet/f`
+    - `java/time/chrono/ChronoLocalDateTime`
+    - `org/chromium/chrome/browser/omnibox/suggestions/l`
+    - `org/chromium/chrome/browser/omnibox/suggestions/m`
+  - Confirmed via the current mapping file that:
+    - `l` -> `BraveAutocompleteMediator`
+    - `m` -> `BraveAutocompleteMediatorBase`
+    - `e` -> `BottomSheetDialog`
+    - `f` -> `BottomSheetDialogFragment`
+  - Traced `ChronoLocalDateTime` back to Brave sync Java:
+    - [BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
+    - [BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
+    - [BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
+- In progress:
+  - Preparing the next patch set to replace the `LocalDateTime` flow with `Instant`/epoch-second handling so `ChronoLocalDateTime` can drop out without deleting the sync UI classes that still exist in the baseline APK.
+- Files touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
+  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
+- Build/test status:
+  - Latest successful sync command:
+    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - Latest successful build command:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log 2>&1"`
+  - Current APK artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+    - SHA-256 `5876c0ff7456cf97e99a88dade5225205f8ab95427304d6efb0993a4e74fcda5`
+    - size `691473170`
+  - Baseline APK artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk`
+    - SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
+    - size `691424018`
+  - Remaining zip-entry drift:
+    - `classes.dex`
+    - `classes2.dex`
+    - `lib/arm64-v8a/libai_chat_common.cr.so`
+    - `lib/arm64-v8a/libchrome.so`
+- Blockers/risks:
+  - Status docs were stale by 9 reruns; live artifacts are now the authoritative state.
+  - The ext4-root permission delegate source still contains a direct edit not yet mirrored into the repo patch workflow.
+  - The remaining dex tail is tiny enough that every change is high leverage; a sloppy patch can easily create new baseline-only drift.
+  - Native hashes are still unresolved and may remain even after dex parity improves.
+- Next step:
+  - Patch the Brave sync Java path from `LocalDateTime` to `Instant`, sync to ext4, then build `rerun120`.
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this latest progress entry
+  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log 2>&1"`
+  - descriptor inspection:
+    - `wsl.exe bash -lc "python3 - <<'PY' ... compare filtered descriptor sets from both APKs ... PY"`
+- Tool purpose:
+  - Keep the repo mirrored into ext4, rebuild the Android package target, and verify whether each small Java patch reduces the final APK drift.
+- Tool state:
+  - No build currently running.
+  - Latest successful packaging run is `rerun119`.
+- Expected resume command:
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun120.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
+  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log`
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest `docs/progress-log.md` entry
+  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
+  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - sync helper run immediately before build
+  - `PYTHONPATH=/home/master/src_ext4/brave/script` still required
+- Expected success signal:
+  - `ChronoLocalDateTime` disappears and the current-only descriptor set shrinks below 5.
+- Expected failure signal:
+  - `ChronoLocalDateTime` survives after the sync patch, or new baseline-only descriptors appear.
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Use the live artifact/log state as the source of truth.
+  - Start with the smallest provable Java leak before touching native or broader bytecode paths again.
+- Rejected approaches:
+  - broad repo rescans
+  - reverting the successful permission/account pruning work
+  - guessing at obfuscated class meaning without mapping evidence
+- Stop point classification:
+  - build passed and fresh APK emitted; next Java parity patch identified but not applied yet
+- What is done but unverified:
+  - whether `Instant` conversion alone removes `ChronoLocalDateTime`
+  - whether the remaining omnibox pair should be removed by OneTab-specific bytecode gating
+- What is verified:
+  - `rerun119` packages successfully
+  - the remaining descriptor tail is only 5 entries
+  - account and permission descriptor tails are gone
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
+- Secret required but not stored:
+  - None
+
+## [2026-04-01 12:00:45 +07:00]
+- Phase: Phase 7 - Validation / APK reproducibility
+- Objective: Keep the OneTabTube tree buildable while converging the emitted APK back to the device-matching baseline exactly.
+- Done:
+  - Resumed from the stale `rerun90` handoff and verified the live source/build state had already advanced to `rerun105`.
+  - Tuned `android/java/onetabtube_repro.proguard.flags` across `rerun106`-`rerun110`.
+  - Confirmed the OneTabTube target uses `onetabtube_repro.proguard.flags` directly and does not inherit `android/java/proguard.flags`.
+  - Imported the exact Brave keep rules still reflected in the baseline for `Autocomplete*`, `EditUrlSuggestionProcessor`, `HubManagerImpl`, `MediaSessionHelper`, `SiteChannelsManager`, `TabCollectionTabModelImpl`, `UndoBarController`, `TabbedNavigationBarColorController`, and `ChromeTabbedActivity`.
+  - Reintroduced the package-level Play Core keep rules only after the exact-class-only attempt dropped appupdate/review internals that the baseline still contains.
+  - Used `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping` to resolve the remaining obfuscated current-only classes; the largest bucket maps to `com.google.android.gms.internal.cast.*`.
+  - Reduced raw descriptor drift from `baseline_only_count 21` down to `baseline_only_count 2` by `rerun110`.
+- In progress:
+  - Exact APK reproduction is still blocked by `classes.dex`, `classes2.dex`, `libai_chat_common.cr.so`, and `libchrome.so`.
+  - Java/dex drift is now concentrated in current-only retention, not missing baseline names.
+  - `BraveAccountPreference` is still retained because `BraveMainPreferencesBase.java` always inflates `brave_main_preferences.xml`, which directly references that class.
+  - `BravePermissionDialogDelegate` is still retained because the host-side bytecode rewriter always chains `BravePermissionDialogDelegateClassAdapter.java`.
+- Files touched:
+  - `android/java/onetabtube_repro.proguard.flags`
+  - `android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java`
+  - `android/java/brave-res/xml/brave_main_preferences.xml`
+  - `components/permissions/android/java_sources.gni`
+  - `components/permissions/android/BUILD.gn`
+  - `components/permissions/android/java/src/org/chromium/components/permissions/BravePermissionDialogDelegate.java`
+  - `components/permissions/android/java/src/org/chromium/components/permissions/BravePermissionDialogModel.java`
+  - `build/android/bytecode/BUILD.gn`
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `build/android/bytecode/java/org/brave/bytecode/BravePermissionDialogDelegateClassAdapter.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Latest successful sync command:
+    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - Latest successful build command:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log 2>&1"`
+  - Current APK:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+    - SHA-256 `47556ba523b88791d6031414ee7a5ed8b028a9839a5b7a7ac5908d644b054cb2`
+    - size `691505938`
+  - Baseline APK:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk`
+    - SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
+    - size `691424018`
+  - Remaining entry drift:
+    - `classes.dex` current `9748300` / `25ec1c0dd0f539d403bab824d66c91d1f63c80c9bfceb9c82cd5a94fc180c4d8`
+    - `classes.dex` baseline `9841076` / `ec4c4124b0facb309600548841c035d6d20f8c4c4dd11bd3fab18df0a178139b`
+    - `classes2.dex` current `3989552` / `73efa45329959c635b6d91cb335fd7d4ed6f9a952fe5e704ddbd850b5da48061`
+    - `classes2.dex` baseline `3824764` / `542766c632a715f06f74a524345f09b9a5d84b364bde8683bd2f145990871a44`
+    - `lib/arm64-v8a/libai_chat_common.cr.so` current `228808` / `f422f53fdf07e88a047e5b28eefe0272906f572c09cd8bd8497f5478ad0ae2d8`
+    - `lib/arm64-v8a/libai_chat_common.cr.so` baseline `228808` / `710c3f62e6c95fe03c995259f341175bff851e54c858c9bc1d48773c03d708c1`
+    - `lib/arm64-v8a/libchrome.so` current `71016592` / `c3241c3a217dd5fea5d67f1e2ba0679ed53708826e064f585b9a9960206410b5`
+    - `lib/arm64-v8a/libchrome.so` baseline `71015264` / `22679605b741f49143c7cde3fab88d632cb371f6be9b1978e6aec1b53988a21f`
+  - Latest descriptor drift:
+    - `baseline_only_count 2`
+    - `current_only_count 129`
+    - remaining `baseline_only` tokens:
+      - `1c`
+      - `Ra6LUb`
+    - remaining meaningful `current_only` descriptors:
+      - `org/chromium/chrome/browser/settings/BraveAccountPreference`
+      - `org/chromium/components/permissions/BravePermissionDialogDelegate`
+      - `java/time/chrono/ChronoLocalDateTime`
+      - `0/YM`
+- Blockers/risks:
+  - Remaining dex mismatch is now mostly retention/graph-shape drift rather than missing keep-rule names.
+  - `BraveAccountPreference` requires resource/build wiring changes, not runtime-only preference removal.
+  - `BravePermissionDialogDelegate` requires coordinated changes across source lists and the host bytecode rewriter if we try to remove it for OneTab.
+  - The remaining current-only obfuscated tail is dominated by `com.google.android.gms.internal.cast.*`, which may need a broader media-router/cast retention investigation.
+  - Native drift in `libai_chat_common.cr.so` and `libchrome.so` remains unchanged.
+- Next step:
+  - Create a OneTab-specific settings XML path and update `BraveMainPreferencesBase.java` to select it via compile-time `BraveConfig.IS_ONETABYT`, so the OneTab build stops referencing `<BraveAccountPreference>`.
+  - Rebuild as `rerun111` and verify whether `BraveAccountPreference` disappears from `classes2.dex`.
+  - Then decide whether the next higher-leverage fix is gating the permission override path or trimming the cast/media-router retention bucket.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest progress entry
+  - `android/java/onetabtube_repro.proguard.flags`
+  - `android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java`
+  - `android/java/brave-res/xml/brave_main_preferences.xml`
+  - `components/permissions/android/java_sources.gni`
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log 2>&1"`
+  - mapping inspection against `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+- Tool purpose:
+  - Keep the Windows repo mirrored into ext4, rebuild the OneTabTube APK, and use artifact/mapping evidence to shrink the remaining dex drift.
+- Tool state:
+  - No build currently running.
+  - Latest successful packaging run is `rerun110`.
+- Expected resume command:
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun111.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/onetabtube_repro.proguard.flags`
+  - `android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java`
+  - `android/java/brave-res/xml/brave_main_preferences.xml`
+  - `components/permissions/android/java_sources.gni`
+  - `build/android/bytecode/BUILD.gn`
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java`
+  - `android/java/brave-res/xml/brave_main_preferences.xml`
+  - `components/permissions/android/java_sources.gni`
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - sync helper run immediately before build
+  - `PYTHONPATH=/home/master/src_ext4/brave/script` still required on the build command
+- Expected success signal:
+  - `BraveAccountPreference` disappears from the packaged dex and the hash/entry drift moves closer to baseline without increasing `baseline_only_count`
+- Expected failure signal:
+  - OneTab-specific settings resource patch leaves the dex unchanged or regresses the nearly-clean descriptor diff
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Use R8 mapping to reason about obfuscated current-only classes instead of guessing from short residual names.
+  - Keep the `ChromeTabbedActivity` and `TabbedNavigationBarColorController` rules because they collapsed the baseline-only tail dramatically.
+  - Treat the settings XML/resource path as the first remaining user-surface cleanup because it directly matches a meaningful current-only class.
+- Rejected approaches:
+  - broad repo rescans
+  - reverting the working playlist/HLS/source-filtering path
+  - relying on runtime-only preference removal to prune XML-instantiated preference classes
+  - removing the permission override path without first checking the bytecode adapter wiring
+- Stop point classification:
+  - build passed and fresh APK emitted; exact reproduction not reached; next resource-pruning patch not started
+- What is done but unverified:
+  - whether a OneTab-specific settings XML path removes `BraveAccountPreference`
+  - whether `BravePermissionDialogDelegate` can be safely gated out for OneTab
+  - whether cast/media-router retention is the next dominant dex-size lever after the settings fix
+- What is verified:
+  - `rerun110` packages successfully
+  - OneTabTube uses `onetabtube_repro.proguard.flags` as its active keep-set
+  - `baseline_only_count` is down to 2
+  - `BraveAccountPreference` is retained through XML/resource wiring
+  - `BravePermissionDialogDelegate` is retained through the always-on bytecode adapter path
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
+- Secret required but not stored:
+  - None
+
+## [2026-04-01 09:09]
+- Phase:
+  - Phase 7 - Validation / APK reproducibility
+- Objective:
+  - Keep the source tree buildable while pushing the emitted OneTabTube APK back toward the saved device-matching baseline.
+- Done:
+  - Resumed from the stale desk state, verified the actual blocker had moved on to `BraveActivity` PiP methods, and recovered the missing method surface so `rerun86` built again.
+  - Confirmed the packaged APK still differs in 4 entries after `rerun86`, and proved the packaged `libchrome.so` no longer differed on the previously removed NTP sponsored WebUI source strings.
+  - Identified the remaining native drift as the ads-backed sponsored wallpaper path inside `ViewCounterService`.
+  - Patched [view_counter_service_factory.cc](C:/Users/Master/Desktop/GO_PLAY/browser/ntp_background/view_counter_service_factory.cc) and [view_counter_service.cc](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/view_counter_service.cc) to compile-gate the ads-backed sponsored wallpaper path for `is_onetabyt`, then added the missing build dep in [components/ntp_background_images/browser/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/BUILD.gn).
+  - Pushed through `rerun87`, `rerun88`, and `rerun89` fallout, then got `rerun90` green.
+  - Reduced packaged `libchrome.so` drift to one current-only printable string.
+- In progress:
+  - Exact reproduction is still blocked by the same 4 zip entries.
+  - Investigating the remaining dex drift by comparing live [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java) against the pre-restore snapshot in [artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java).
+- Files touched:
+  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - [browser/ntp_background/view_counter_service_factory.cc](C:/Users/Master/Desktop/GO_PLAY/browser/ntp_background/view_counter_service_factory.cc)
+  - [components/ntp_background_images/browser/view_counter_service.cc](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/view_counter_service.cc)
+  - [components/ntp_background_images/browser/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/BUILD.gn)
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+- Build/test status:
+  - `rerun86` built successfully after recovering the missing PiP methods in `BraveActivity`.
+  - `rerun87`, `rerun88`, and `rerun89` failed while wiring the new `is_onetabyt` native gating.
+  - `rerun90` built successfully:
+    - command:
+      - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log 2>&1"`
+    - artifact hash:
+      - current `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` -> `944a0ea69abc3e15f41a1b73a7445faa142b5809f9f094ead96c4b72c8a3969c`
+      - baseline `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk` -> `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
+    - remaining diff entries:
+      - `classes.dex`
+      - `classes2.dex`
+      - `lib/arm64-v8a/libai_chat_common.cr.so`
+      - `lib/arm64-v8a/libchrome.so`
+- Blockers/risks:
+  - `BraveActivity` still under-matches the richer PiP / OneTab lifecycle block seen in the pre-restore snapshot, and baseline-only dex strings map strongly to that missing block.
+  - `libai_chat_common.cr.so` still differs byte-for-byte despite matching printable strings.
+  - `libchrome.so` is nearly aligned but still has one current-only printable string:
+    - `_ZN28KeyedServiceTemplatedFactoryI12KeyedServiceE20GetServiceForContextEPvb`
+- Next step:
+  - Start transplanting the missing PiP / OneTab lifecycle block from the pre-restore `BraveActivity` snapshot into the live `BraveActivity` in compile-safe chunks.
+  - Then rerun sync + build as `rerun91` and re-compare dex drift plus the final `libchrome.so` one-string delta.
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this latest progress entry
+  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - [artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `gn gen`
+  - `autoninja`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/gn gen out/android_Component_arm64 > out/android_Component_arm64/codex_onetabtube_gn_gen_rerun89.log 2>&1 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun89.log 2>&1"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log 2>&1"`
+- Tool purpose:
+  - Sync repo changes into ext4, build the Android package target, and compare the emitted APK against the saved baseline.
+- Tool state:
+  - No active build at snapshot time.
+  - Latest successful package build: `rerun90`.
+- Expected resume command:
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun91.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - [artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - [browser/ntp_background/view_counter_service_factory.cc](C:/Users/Master/Desktop/GO_PLAY/browser/ntp_background/view_counter_service_factory.cc)
+  - [components/ntp_background_images/browser/view_counter_service.cc](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/view_counter_service.cc)
+  - [components/ntp_background_images/browser/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/BUILD.gn)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest `docs/progress-log.md` entry
+  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - [artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - sync helper run immediately before build
+  - `PYTHONPATH=/home/master/src_ext4/brave/script` still required for the build lane
+- Expected success signal:
+  - dex hashes / sizes move closer to baseline after the `BraveActivity` transplant
+  - or the emitted APK hash matches baseline exactly
+- Expected failure signal:
+  - `BraveActivity` compile fallout from missing PiP / OneTab dependencies
+  - or the same 4 entries remain unchanged after the next targeted patch
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the build green and use artifact-driven fixes instead of broad rollback.
+  - Compile-gate the OneTabTube lane away from ads-backed sponsored wallpaper code instead of deleting `ViewCounterService` / bridge entirely.
+  - Use the pre-restore `BraveActivity` snapshot as the strongest local reference for the remaining dex mismatch.
+- Rejected approaches:
+  - broad repo rescans
+  - reverting the full NTP background stack
+  - assuming the minimal PiP recovery in `BraveActivity` was enough for dex parity
+- Stop point classification:
+  - build passed and fresh APK emitted, but exact APK reproduction is still incomplete
+- What is done but unverified:
+  - whether transplanting the larger `BraveActivity` PiP / OneTab lifecycle block will materially reduce dex drift
+  - whether the final `libchrome.so` one-string drift can be eliminated without reopening native build failures
+- What is verified:
+  - `rerun90` packages successfully
+  - packaged `libchrome.so` no longer contains the sponsored-ads strings that previously made it diverge from baseline
+  - exact APK reproduction still fails in exactly 4 entries
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
+- Secret required but not stored:
+  - None
+
+## [2026-03-31 23:35:25 +07:00]
+- Phase:
+  - Phase 7 - Validation / APK assembly
+- Objective:
+  - Keep driving the current tree toward a fresh build of the exact OneTabTube baseline APK.
+- Done:
+  - Restored the missing PiP entry/cleanup methods in `android/java/org/chromium/chrome/browser/app/BraveActivity.java`, which removed the late Java blocker from `BraveFullscreenVideoPictureInPictureController`, fullscreen handlers, and `BraveYouTubeScriptInjectorNativeHelper`.
+  - Confirmed `chrome_public_apk__lint` no longer fails when the build is run with `PYTHONPATH=/home/master/src_ext4/brave/script`.
+  - Flattened stale late translate wrappers so current upstream class layouts compile again:
+    - `translate_prefs`
+    - `translate_ui_delegate`
+    - `translate_language_list`
+  - Reworked `stub_resolver_config_reader` again after reaching late link and discovering the previous method-macro approach was still producing a phantom `_ChromiumImpl` virtual symbol.
+  - Converted `translate_script` to passthrough after confirming the current root source already contains Brave translate logic and the old class-rename wrapper was now manufacturing `ChromiumTranslateScript`.
+- In progress:
+  - No active build at snapshot time.
+  - Preparing rerun19 to validate the latest `stub_resolver_config_reader` subclass wrapper and `translate_script` passthrough at `libchrome.so` link.
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.cc`
+  - `chromium_src/chrome/browser/preloading/prerender/prerender_manager.h`
+  - `chromium_src/chrome/browser/preloading/prerender/prerender_manager.cc`
+  - `chromium_src/components/translate/core/browser/translate_prefs.h`
+  - `chromium_src/components/translate/core/browser/translate_prefs.cc`
+  - `chromium_src/components/translate/core/browser/translate_ui_delegate.h`
+  - `chromium_src/components/translate/core/browser/translate_ui_delegate.cc`
+  - `chromium_src/components/translate/core/browser/translate_language_list.h`
+  - `chromium_src/components/translate/core/browser/translate_language_list.cc`
+  - `chromium_src/components/translate/core/browser/translate_script.h`
+  - `chromium_src/components/translate/core/browser/translate_script.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Sync helper keeps passing.
+  - `rerun16` proved the lint lane works with `PYTHONPATH=/home/master/src_ext4/brave/script`, and moved the build to `libchrome.so` link.
+  - `rerun17` removed the first `TranslatePrefs` / `TranslateUIDelegate` / `TranslateLanguageList` blockers but exposed more stale translate wrappers.
+  - `rerun18` compiled the translate family again and failed at final link with:
+    - `undefined symbol: StubResolverConfigReader::ShouldDisableDohForManaged_ChromiumImpl()`
+    - `undefined symbol: translate::ChromiumTranslateScript::ChromiumTranslateScript()`
+  - The APK in `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` is still the old baseline artifact, unchanged hash `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`.
+- Blockers/risks:
+  - Need one more rerun to validate the newest `stub_resolver_config_reader` and `translate_script` fixes.
+  - Additional late stale wrappers may still surface after `libchrome.so` links.
+  - Exact source-to-APK reproducibility is still not proven until a fresh APK is emitted and hashed.
+- Next step:
+  - Run sync helper.
+  - Run:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun19.log 2>&1"`
+  - Inspect whether `libchrome.so` now links or which next late blocker appears first.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest progress entry
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log`
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
+  - `chromium_src/components/translate/core/browser/translate_script.h`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log 2>&1"`
+- Tool purpose:
+  - Keep the Windows repo mirrored into ext4 and push the Android package build through final late-stage link blockers.
+- Tool state:
+  - Sync helper passed.
+  - No active build at snapshot time.
+- Expected resume command:
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun19.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.cc`
+  - `chromium_src/components/translate/core/browser/translate_script.h`
+  - `chromium_src/components/translate/core/browser/translate_script.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log`
+  - `tools/sync_changed_files_to_wsl.ps1`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log`
+  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
+  - `chromium_src/components/translate/core/browser/translate_script.h`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave` reachable
+  - sync helper run immediately before build
+  - `PYTHONPATH=/home/master/src_ext4/brave/script` still required for lint lane
+- Expected success signal:
+  - `libchrome.so` links and the build advances into final packaging/APK generation.
+- Expected failure signal:
+  - Late link still references `ChromiumTranslateScript` or `ShouldDisableDohForManaged_ChromiumImpl`, or reveals the next stale wrapper.
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep `PYTHONPATH` on the build command for now to preserve momentum through the lint lane.
+  - Prefer flattening stale wrappers to current upstream class layouts instead of subclassing when the upstream data members have drifted.
+  - Replace `translate_script` override with passthrough because the current root source already carries Brave translate logic.
+- Rejected approaches:
+  - broad repo rescans
+  - old `ninja.py ... apks/OneTabTube.apk` target
+  - `.codex_build_sync_list.txt`-only sync
+  - vague rollback without a precise source snapshot
+- Stop point classification:
+  - Code edited and multiple reruns completed; latest stop point is very late `libchrome.so` link failure; no fresh APK emitted yet.
+- What is done but unverified:
+  - Latest `stub_resolver_config_reader` wrapper rewrite
+  - Latest `translate_script` passthrough fix
+- What is verified:
+  - Existing baseline APK still matches the device APK hash.
+  - PiP Java blocker is gone.
+  - Translate compile blockers up to `translate_ui_delegate` and `translate_language_list` are gone.
+  - Sync helper passes repeatedly.
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium dependencies remain required.
+- Secret required but not stored:
+  - None.
+## [2026-04-01 15:31]
+- Phase:
+  - Phase 7 - Validation / APK reproducibility
+- Objective:
+  - Reconcile the stale `rerun119` desk state with the live repo/ext4 state, then restore repo/ext4 parity so the next APK build is compiling the intended Brave sync countdown code.
+- Done:
+  - Read the current desk-state files first and treated them only as a starting point.
+  - Verified that the Windows repo copy of [BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java) already uses `LocalDateTime`.
+  - Verified that the ext4 build-tree copy `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java` still uses `Instant`.
+  - Verified from `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log` that the active failure is:
+    - `Instant cannot be converted to LocalDateTime`
+    - at lines `1340` and `1385` in the ext4 copy of `BraveSyncScreensPreference.java`
+  - Reconfirmed the current APK artifact on disk at `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` hashes to `b83d8c1e0aebb6ae1bb61785e761c018f16a679dc6a071d269f1ef8343fa3f1f`.
+- In progress:
+  - Restoring ext4 parity with the current Windows repo before the next build rerun.
+- Files touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
+  - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java`
+  - [tools/sync_changed_files_to_wsl.ps1](C:/Users/Master/Desktop/GO_PLAY/tools/sync_changed_files_to_wsl.ps1)
+- Build/test status:
+  - No build currently running.
+  - Latest attempted build command:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log 2>&1"`
+  - Latest observed failure:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log`
+    - `../../brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java:1340: error: incompatible types: Instant cannot be converted to LocalDateTime`
+    - `../../brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java:1385: error: incompatible types: Instant cannot be converted to LocalDateTime`
+- Blockers/risks:
+  - The desk-state snapshot was stale and no longer matched the code/build tree.
+  - ext4 is not guaranteed to reflect Windows-side edits until the sync helper runs and is verified.
+  - `rerun120` left a current APK artifact on disk but its log does not end with a clean success marker, so the next rerun needs to re-establish clean build evidence.
+- Next step:
+  - Run `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`.
+  - Verify the ext4 copy of `BraveSyncScreensPreference.java` switched to the `LocalDateTime` signatures.
+  - Rebuild as `rerun122`.
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this latest progress entry
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
+  - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+- Exact command(s):
+  - `rg -n "Instant notAfterTime|LocalDateTime notAfterTime|getNotAfterFromQrCodeString|setQrCountDown|setWordsCountDown" android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4/brave && rg -n 'Instant notAfterTime|LocalDateTime notAfterTime|getNotAfterFromQrCodeString|setQrCountDown|setWordsCountDown' android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... scan rerun121 log for FAILED/error/ninja stopped lines ... PY"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk"`
+- Tool purpose:
+  - Confirm repo/ext4 divergence, identify the active compile blocker, and prepare the exact next sync/build commands.
+- Tool state:
+  - Inspection complete.
+  - No build currently running.
+- Expected resume command:
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun122.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java) - repo-side sync timestamp producer
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java) - repo-side sync countdown consumer
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java) - repo-side caller now on `LocalDateTime`
+  - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java` - stale ext4 caller still on `Instant`
+  - [tools/sync_changed_files_to_wsl.ps1](C:/Users/Master/Desktop/GO_PLAY/tools/sync_changed_files_to_wsl.ps1) - required sync mechanism before rebuild
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log` - proof of the current blocker
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest `docs/progress-log.md` entry
+  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
+  - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - sync helper run immediately before the next build
+  - `PYTHONPATH=/home/master/src_ext4/brave/script` preserved for the build command
+- Expected success signal:
+  - ext4 `BraveSyncScreensPreference.java` matches the repo-side `LocalDateTime` signatures
+  - `rerun122` compiles past the current `Instant`/`LocalDateTime` mismatch
+  - a fresh APK is emitted for renewed APK/hash/descriptor comparison
+- Expected failure signal:
+  - ext4 still shows `Instant` after sync
+  - `rerun122` fails with the same type mismatch
+  - or a new compile blocker appears in the same sync-countdown working set
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Use code/build reality as the source of truth over the stale `rerun119` handoff.
+  - Fix repo/ext4 parity before changing sync logic again.
+  - Keep the current repo-side `LocalDateTime` revision in place until a synced rebuild proves otherwise.
+- Rejected approaches:
+  - broad repo rescans
+  - assuming ext4 was already synced
+  - rewriting more sync logic before verifying the sync helper result
+- Stop point classification:
+  - blocker isolated and documented; docs updated; next action is sync plus rerun build
+- What is done but unverified:
+  - Whether the repo-side `LocalDateTime` path restores the baseline-only `java/time/LocalDateTime` and `java/time/ZoneOffset` descriptors without reintroducing `ChronoLocalDateTime`
+- What is verified:
+  - Repo and ext4 copies of `BraveSyncScreensPreference.java` diverge right now
+  - `rerun121` fails because ext4 still compiles the stale `Instant` signatures
+  - Current artifact hash is `b83d8c1e0aebb6ae1bb61785e761c018f16a679dc6a071d269f1ef8343fa3f1f`
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
+- Secret required but not stored:
+  - None for debug APK assembly
+
+## [2026-04-02 02:35]
+- Phase:
+  - Phase 7 - Validation / publish handoff
+- Objective:
+  - Align the repo with the ext4/device-validated OneTabTube state and publish that snapshot safely to `https://github.com/zelef69/GO_PLAY`.
+- Done:
+  - Audited git remotes and confirmed `origin` still points to `https://github.com/zelef69/GO.git`, not the requested `GO_PLAY` repo.
+  - Verified missing ext4/device-tested fixes in the Windows tree.
+  - Added the missing omnibox null guards/product skip logic to `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`.
+  - Added `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch` to carry the renderer fallback into the tracked patch set.
+  - Re-synced the Windows tree into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
+  - Created local snapshot commit `2d1de86a3` on `main`.
+  - Fetched `https://github.com/zelef69/GO_PLAY.git main` and created `publish/go_play-sync-20260402` from the remote tip to avoid rewriting `GO_PLAY/main`.
+- In progress:
+  - The remote-base publish branch currently holds a large staged import from commit `2d1de86a3` and is waiting for commit/push verification.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
+  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
+  - `tools/sync_changed_files_to_wsl.ps1`
+- Build/test status:
+  - Latest verified build/runtime evidence is still `rerun200` on `R9TRC00GA2E`.
+  - Git publish evidence:
+    - local snapshot commit created: pass (`2d1de86a3`)
+    - direct push from local history: fail (`remote unpack failed: index-pack failed`)
+    - remote-base publish branch preparation: in progress
+- Blockers/risks:
+  - `GO_PLAY/main` has divergent user history and must not be force-updated without explicit approval.
+  - The staged snapshot is large; push may still fail and require a narrower import scope.
+  - Untracked logs/artifacts remain present locally and should stay excluded from the publish commit.
+- Next step:
+  - Commit the staged snapshot on `publish/go_play-sync-20260402`.
+  - Push to `https://github.com/zelef69/GO_PLAY.git` as `codex/onetabtube-sync-20260402`.
+  - If push fails again, reduce the staged scope and retry.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-02 02:35` entry
+  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
+  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
+  - `git status --short`
+  - `git log --oneline --decorate -n 5 --all`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `git`
+- Exact command(s):
+  - `git status --short`
+  - `git remote -v`
+  - `git ls-remote https://github.com/zelef69/GO_PLAY.git`
+  - `git fetch https://github.com/zelef69/GO_PLAY.git main`
+  - `git switch -c publish/go_play-sync-20260402 FETCH_HEAD`
+  - `git checkout 2d1de86a3 -- AGENTS.md README.md android app base browser build chromium_src components docs patches renderer tools/check-cipd-match.sh tools/check_luci.py tools/create_onetabyt_browser_media_router_stub_srcjar.py tools/create_onetabyt_language_split_installer_stub_srcjar.py tools/create_onetabyt_leo_stub_srcjar.py tools/create_onetabyt_module_installer_stub_srcjar.py tools/create_onetabyt_playcore_update_stub_srcjar.py tools/create_onetabyt_rate_stub_srcjar.py tools/create_onetabyt_rate_stub_srcjar.pydeps tools/create_onetabyt_xr_stub_srcjar.py tools/fix-shebang-crlf.sh tools/install-android-cipd-deps.ps1 tools/install-android-cipd-full.py tools/monitor_brave_apk_build.sh tools/normalize-vendor-depot-tools-lfs.sh tools/parse-android-cipd.py tools/print-build-config.mjs tools/run_brave_apk_build.sh tools/show-chromium-sync-progress.ps1 tools/sync_changed_files_to_wsl.ps1`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - previous failed push:
+    - `git push --progress https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
+- Tool purpose:
+  - Publish the aligned OneTabTube source snapshot safely to the user's GitHub repo.
+- Tool state:
+  - No build/device command running.
+  - Publish branch staged, commit not yet created.
+- Expected resume command:
+  - `git status --short`
+  - `git commit -m "Import current OneTabTube workspace snapshot"`
+  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
+- Expected output/artifact path:
+  - Remote branch ref:
+    - `refs/heads/codex/onetabtube-sync-20260402`
+  - Last known build artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - remote `GO_PLAY/main`: `a47b5b9232566c5cbf9aea557e72a8f9221f9cdc`
+  - local source snapshot: `2d1de86a3`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
+  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `.git` branch state
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this `2026-04-02 02:35` entry
+  - `git status --short`
+  - `git log --oneline --decorate -n 5 --all`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - GitHub repo reachable
+  - local git credentials usable
+  - staged publish snapshot intact
+- Expected success signal:
+  - commit created on top of `a47b5b923...`
+  - push succeeds and remote branch becomes visible
+- Expected failure signal:
+  - `git push` returns another pack/unpack/index failure
+- Last known log location:
+  - previous failed push output ended with `remote unpack failed: index-pack failed`
+- Last known artifact path:
+  - local snapshot commit `2d1de86a3`
+- Recent decisions:
+  - Use ext4/device-tested state as source of truth, then backfill missing fixes into the tracked Windows repo.
+  - Publish on a safe branch first instead of rewriting `GO_PLAY/main`.
+- Rejected approaches:
+  - Force-pushing `GO_PLAY/main`
+  - Publishing untracked local evidence/log artifacts
+- Stop point classification:
+  - publish branch prepared and staged, commit/push not yet verified
+- What is done but unverified:
+  - successful remote push of the publish branch
+- What is verified:
+  - local snapshot commit exists
+  - remote `GO_PLAY/main` is fetchable
+  - publish branch is based on the remote tip
+- External prerequisite:
+  - GitHub access to `https://github.com/zelef69/GO_PLAY.git`
+- Secret required but not stored:
+  - any local GitHub credential/token used by git
+
+## [2026-04-02 01:48 +07:00]
+- Phase:
+  - Phase 7 - Validation / device smoke test on `R9TRC00GA2E`
+- Objective:
+  - Install the latest OneTabTube APK on a real device, remove startup/runtime blockers, and validate normal launch plus external intent behavior.
+- Done:
+  - Resumed from the stale `rerun188` desk state and used real build/device state as source of truth.
+  - Confirmed `adb devices` now shows `R9TRC00GA2E`.
+  - Installed current APK and captured the first real startup crash.
+  - Fixed Rewards JNI startup crash by gating Rewards for OneTabTube in:
+    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+    - `android/java/org/chromium/chrome/browser/BraveRewardsNativeWorker.java`
+  - Fixed missing `assets/brave_resources.pak` by patching:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - Fixed omnibox startup NPE by null-guarding Brave suggestion processors in:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\browser\ui\android\omnibox\java\src\org\chromium\chrome\browser\omnibox\suggestions\BraveDropdownItemViewInfoListBuilder.java`
+  - Fixed renderer abort on autoplay rule mismatch by returning `CONTENT_SETTING_DEFAULT` instead of aborting in:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\content_settings\renderer\content_settings_agent_impl.cc`
+  - Fixed `jni_zero` failure to find `org/chromium/components/media_router/BrowserMediaRouter` by adding a keep rule in:
+    - `android/java/onetabtube_repro.proguard.flags`
+  - Rebuilt successfully through `rerun192`, `rerun193`, `rerun195`, `rerun197`, `rerun198`, and `rerun199`.
+  - Reinstalled `rerun199` and verified normal launch stays alive on device for more than 35 seconds.
+  - Captured a stable UI dump showing `m.youtube.com/watch?v=IOd9r5bYwOQ` in the URL bar while the app remained top-resumed.
+- In progress:
+  - External `VIEW` intent smoke testing is the only remaining runtime blocker in this pass.
+- Files touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [BraveToolbarLayoutImpl.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java)
+  - [BraveRewardsNativeWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveRewardsNativeWorker.java)
+  - [onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\browser\ui\android\omnibox\java\src\org\chromium\chrome\browser\omnibox\suggestions\BraveDropdownItemViewInfoListBuilder.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\content_settings\renderer\content_settings_agent_impl.cc`
+- Build/test status:
+  - Latest successful build:
+    - `rerun199`
+  - Latest APK SHA-256:
+    - `809f16b18eaaa488e3dde14a9cf1969c7e8676544bc9aa259b0aae016a04d316`
+  - Verified normal startup on device:
+    - yes
+  - Verified external intent handling:
+    - not yet
+- Blockers/risks:
+  - External `VIEW` intents still crash the main process after transition.
+  - Latest fatal path is no longer Rewards/omnibox/media-router startup.
+  - Latest crash evidence points to:
+    - `content::MediaWebContentsObserver::IsPictureInPictureAllowedForFullscreenVideo()`
+    - around `IntentDispatcher` / `onUserLeaveHint`
+  - PiP is optional for this product and currently looks like the fastest thing to disable.
+- Next step:
+  - Disable PiP for OneTabTube in the runtime path reached during external intent transitions.
+  - Build `rerun200`.
+  - Reinstall on `R9TRC00GA2E`.
+  - Re-test:
+    - normal launch
+    - `VIEW https://youtu.be/dQw4w9WgXcQ`
+    - `VIEW https://google.com`
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this entry
+  - [onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\toolbar\top\BraveToolbarLayoutImpl.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun199.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun199.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb -s R9TRC00GA2E logcat -b crash -d`
+  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/onetabtube_ok.xml`
+- Tool purpose:
+  - Build, install, and validate the debug APK on a real device while trimming out-of-scope surfaces.
+- Tool state:
+  - No build currently running.
+  - Device is attached and authorized.
+  - Latest APK is installed.
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -c`
+  - patch PiP disable path
+  - run `rerun200`
+  - rerun the three smoke tests above
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - [BraveRewardsNativeWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveRewardsNativeWorker.java)
+  - [BraveToolbarLayoutImpl.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\browser\ui\android\omnibox\java\src\org\chromium\chrome\browser\omnibox\suggestions\BraveDropdownItemViewInfoListBuilder.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\content_settings\renderer\content_settings_agent_impl.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java`
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun199.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL/ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - device `R9TRC00GA2E` connected
+- Expected success signal:
+  - app stays alive for normal launch and both external intents
+- Expected failure signal:
+  - crash buffer shows PiP/media-session fatal again
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun199.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Disable or stub out non-required surfaces instead of restoring full product areas.
+  - Keep only the media-router class that JNI still requires, rather than restoring cast UX.
+  - Trust device crash signatures over stale desk-state notes.
+- Rejected approaches:
+  - preserving the old APK exactly instead of meeting AGENTS.md runtime goals
+  - reopening Rewards or Cast surface area fully
+- Stop point classification:
+  - build passed, APK installed, normal launch verified, external intent runtime still failing
+- What is done but unverified:
+  - whether fully disabling PiP resolves external intent crashes
+- What is verified:
+  - device connection
+  - successful build through `rerun199`
+  - successful install
+  - stable normal launch into YouTube on device
+- External prerequisite:
+  - physical device `R9TRC00GA2E`
+  - WSL/ext4 checkout
+- Secret required but not stored:
+  - None for debug APK assembly
+
+## [2026-04-01 16:48]
+- Phase: Phase 7 - Validation / APK reproducibility
+- Objective:
+  - Reconcile the stale `rerun121` desk state with the live best-known `rerun130` build state, then continue narrowing the final APK delta from that stronger baseline.
+- Done:
+  - Re-read the desk-state files first, then verified they were stale relative to the live repo/build outputs.
+  - Reconfirmed the current best APK artifact on disk is `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` with SHA-256 `c9b7af413e9dfaad58c073115c9273cc5ac578391e72e989e041c7ada8ff58fa`.
+  - Reconfirmed the baseline APK remains `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk` with SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`.
+  - Reconfirmed `rerun130` is the best-known successful package build by tailing `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`.
+  - Revalidated the live working set:
+    - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
+    - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
+    - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+    - [android/java/onetabtube_bottomsheet_apply.mapping](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_bottomsheet_apply.mapping)
+  - Recomputed the current APK zip-entry hashes:
+    - `classes.dex` `e82538b985f404bfc7034ae8c84f204a871ed0c8f36582265b34be123132bc96`
+    - `classes2.dex` `efe15d6d531a8fe7d0a0a64634dbdd4de34eb8805adeb8dec2e7ca6cb4aeb0f7`
+    - `lib/arm64-v8a/libai_chat_common.cr.so` `f422f53fdf07e88a047e5b28eefe0272906f572c09cd8bd8497f5478ad0ae2d8`
+    - `lib/arm64-v8a/libchrome.so` `7c81d361b2be7f0719c10e88afaaa14d9580d2f7cb67a43307cc0f4898469388`
+  - Recomputed the class-descriptor set diff from `classes.dex` + `classes2.dex`:
+    - current-only count `30`
+    - baseline-only count `2`
+  - Mapped the current-only descriptor bucket from the current R8 mapping:
+    - `com.google.android.gms.internal.cast.zzye` ... `zzzu`
+    - `com.google.android.gms.location.zzz`
+    - `com.google.android.play.core.splitinstall.internal.zzz`
+    - `com.google.android.play.core.splitinstall.testing.zzz`
+  - Reconfirmed the only baseline-only descriptors are:
+    - `Lorg/chromium/chrome/browser/omnibox/suggestions/j;`
+    - `Lorg/chromium/chrome/browser/omnibox/suggestions/k;`
+  - Verified the raw dex string markers for `splitinstall`, `com/google/android/gms/internal/cast`, and `CastOptionsProvider` still exist in both current and baseline, which suggests the residual drift is subtle retention/layout drift rather than an obviously missing whole subsystem.
+  - Updated [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md) to the live `rerun130` state.
+- In progress:
+  - Investigating whether the Brave media-session rewrite path is the narrowest remaining OneTab-specific lever for removing the external cast/play-core descriptor bucket.
+- Files touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
+  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
+  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - [android/java/onetabtube_bottomsheet_apply.mapping](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_bottomsheet_apply.mapping)
+  - [components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java](C:/Users/Master/Desktop/GO_PLAY/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java)
+  - [android/java/org/chromium/chrome/browser/media/ui/BraveMediaSessionTabHelper.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/media/ui/BraveMediaSessionTabHelper.java)
+- Build/test status:
+  - No build currently running.
+  - Latest verified successful build command:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log 2>&1"`
+  - Latest verified success evidence:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`
+    - final actions include `chrome_public_apk__final_dex__r8`, `chrome_public_apk__final_dex`, and `chrome_public_apk__create`
+- Blockers/risks:
+  - Remaining Java drift is now small and easy to worsen accidentally.
+  - The remaining native drift may or may not share the same root cause as the residual Java bucket.
+  - Any change that regresses the current best hash or reintroduces the earlier omnibox/bottomsheet/media-notification drift should be reverted immediately.
+- Next step:
+  - Gate `BraveMediaSessionHelperClassAdapter` and `BraveMediaSessionTabHelperClassAdapter` behind `!sIsOneTabYT` in [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java).
+  - Sync to ext4.
+  - Rebuild as `rerun131`.
+  - Compare:
+    - APK SHA-256
+    - entry hashes
+    - class-descriptor diff
+  - Keep the experiment only if it improves on `c9b7af...`.
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this latest progress entry
+  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
+  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+- Exact command(s):
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk"`
+  - `wsl.exe bash -lc "tail -n 40 /home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... parse dex class descriptors and compare current vs baseline ... PY"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... inspect OneTabTube.apk.mapping for ahj/bhj/... and media-session classes ... PY"`
+  - expected sync:
+    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - expected build:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun131.log 2>&1"`
+- Tool purpose:
+  - Validate the current best-known APK state and run the next narrow experiment against the remaining descriptor/native drift.
+- Tool state:
+  - Inspection complete.
+  - No build currently running.
+- Expected resume command:
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun131.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
+  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
+  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - [android/java/onetabtube_bottomsheet_apply.mapping](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_bottomsheet_apply.mapping)
+  - [components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java](C:/Users/Master/Desktop/GO_PLAY/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java)
+  - [android/java/org/chromium/chrome/browser/media/ui/BraveMediaSessionTabHelper.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/media/ui/BraveMediaSessionTabHelper.java)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md) entry
+  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - sync helper run immediately before the next build
+  - `PYTHONPATH=/home/master/src_ext4/brave/script` preserved for the build command
+- Expected success signal:
+  - `rerun131` packages successfully and reduces the descriptor delta or improves the APK hash
+- Expected failure signal:
+  - `rerun131` fails or worsens the descriptor/native diff
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the `rerun130` state as the source of truth.
+  - Continue with the narrowest remaining OneTab-specific experiment first.
+- Rejected approaches:
+  - falling back to the stale `rerun121` blocker narrative
+  - reviving the failed middle-ground omnibox experiment
+  - broad repo rescans
+- Stop point classification:
+  - best-known state revalidated; docs updated; next step is code edit plus rebuild experiment
+- What is done but unverified:
+  - whether the media-session gating experiment improves the APK match
+- What is verified:
+  - `rerun130` remains the current best build
+  - current best APK size matches baseline exactly
+  - residual Java drift is `30 current-only / 2 baseline-only`
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
+- Secret required but not stored:
+  - None for debug APK assembly
+
+## [2026-04-01 17:58]
+- Phase: Phase 7 - Validation / APK reproducibility
+- Objective: Reconcile the stale `rerun130` desk state with the live `rerun139` build and repair the late-stage rate-dialog regression without losing the proven `rerun137` improvements.
+- Done:
+  - Re-read `docs/current-status.md` and the latest progress entry per the desk-state workflow.
+  - Verified the recorded `rerun130` state is stale relative to the live repo and ext4 output.
+  - Reconfirmed the latest successful packaged build is `rerun139`.
+  - Reconfirmed current APK SHA-256 `4fcdeb4f7bc339119a414561bd6ab065e0a7b7cb61eae48b71c506f29dd556ae`.
+  - Reconfirmed baseline APK SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`.
+  - Recomputed current zip-entry hashes:
+    - `classes.dex` `989ab0ce650fde55cc8472ecedf8aafc134a1dff164542d030372eece6c55de9`
+    - `classes2.dex` `59a2c9d6a476a78474a210666b8b131a9ae8631b8e7cdbd94e4cef90c9967097`
+    - `lib/arm64-v8a/libai_chat_common.cr.so` `f422f53fdf07e88a047e5b28eefe0272906f572c09cd8bd8497f5478ad0ae2d8`
+    - `lib/arm64-v8a/libchrome.so` `f1f35b6257dcfa0966f1257ad7980db5fa32870f774b6438603ad340b2a51d1a`
+  - Recomputed descriptor drift for `rerun139`:
+    - current-only: 17
+    - baseline-only: 3
+  - Mapped the current-only obfuscated descriptors back to:
+    - `com.google.android.gms.internal.cast.zzz`
+    - `com.google.android.gms.internal.cast.zzza`
+    - `com.google.android.gms.internal.cast.zzzd`
+    - `com.google.android.gms.internal.cast.zzze`
+    - `com.google.android.gms.internal.cast.zzzg`
+    - `com.google.android.gms.internal.cast.zzzk`
+    - `com.google.android.gms.internal.cast.zzzl`
+    - `com.google.android.gms.internal.cast.zzzm`
+    - `com.google.android.gms.internal.cast.zzzn`
+    - `com.google.android.gms.internal.cast.zzzo`
+    - `com.google.android.gms.internal.cast.zzzp`
+    - `com.google.android.gms.internal.cast.zzzq`
+    - `com.google.android.gms.internal.cast.zzzr`
+    - `com.google.android.gms.internal.cast.zzzs`
+    - `com.google.android.gms.internal.cast.zzzu`
+    - `com.google.android.play.core.splitinstall.internal.zzz`
+    - `com.google.android.play.core.splitinstall.testing.zzz`
+  - Reconfirmed the 3 baseline-only classes are:
+    - `BraveAskPlayStoreRatingDialog`
+    - `BraveRateDialogFragment`
+    - `BraveRateThanksFeedbackDialog`
+  - Verified the source of the regression: `android/brave_java_sources.gni` currently excludes the three rate-dialog classes for `is_onetabyt`.
+  - Updated `docs/current-status.md` to the live `rerun139` state.
+- In progress:
+  - Preparing the next narrow experiment: restore the rate-dialog classes to the APK while stripping their Play Core review compile-time retention path.
+- Files touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
+  - [android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java)
+  - [android/java/org/chromium/chrome/browser/rate/BraveRateDialogFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateDialogFragment.java)
+  - [android/java/org/chromium/chrome/browser/rate/BraveRateThanksFeedbackDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateThanksFeedbackDialog.java)
+  - [android/java/org/chromium/chrome/browser/rate/BraveRateDialogLauncher.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateDialogLauncher.java)
+  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - [android/java/onetabtube_bottomsheet_apply.mapping](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_bottomsheet_apply.mapping)
+  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - [android/java/org/chromium/chrome/browser/BraveApplicationImplBase.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveApplicationImplBase.java)
+  - [android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java)
+  - [android/java/org/chromium/chrome/browser/brave_news/CardBuilderFeedCard.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/brave_news/CardBuilderFeedCard.java)
+  - [browser/brave_profile_prefs.cc](C:/Users/Master/Desktop/GO_PLAY/browser/brave_profile_prefs.cc)
+  - [chromium_src/chrome/browser/media/router/media_router_feature.cc](C:/Users/Master/Desktop/GO_PLAY/chromium_src/chrome/browser/media/router/media_router_feature.cc)
+  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
+- Build/test status:
+  - No build currently running.
+  - Latest verified successful build command:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log 2>&1"`
+  - Latest verified success evidence:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
+- Blockers/risks:
+  - The `rerun139` improvement is not yet a net win because it swapped the previous `location/splitinstall` drift for three missing baseline rate classes.
+  - The rate-dialog classes still contain direct Play Core review imports, and the OneTab repro keep file still explicitly keeps `com.google.android.play.core.review.*`.
+  - Any edit that disturbs the already-proven media-router, app-update, or media-session improvements should be reverted immediately.
+- Next step:
+  - Remove the three rate-dialog source-filter patterns from `android/brave_java_sources.gni`.
+  - Refactor `BraveAskPlayStoreRatingDialog.java` to replace direct Play Core review imports with reflection so the class can stay present without dragging the splitinstall tail.
+  - Remove the OneTab-specific keep rules for `com.google.android.play.core.review.*` from `android/java/onetabtube_repro.proguard.flags` if the reflection refactor makes them unnecessary.
+  - Sync to ext4 and rebuild as `rerun140`.
+  - Compare APK hash, entry hashes, and descriptor drift against `rerun139`.
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this `2026-04-01 17:58` progress entry
+  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
+  - [android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java)
+  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+- Exact command(s):
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk"`
+  - `wsl.exe bash -lc "tail -n 40 /home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... parse dex class descriptors and compare current vs baseline ... PY"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... map ahj..zgj back to original names from OneTabTube.apk.mapping ... PY"`
+  - expected sync:
+    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - expected build:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun140.log 2>&1"`
+- Tool purpose:
+  - Repair the `rerun139` regression without giving back the proven late-stage improvements.
+- Tool state:
+  - Inspection complete.
+  - No build currently running.
+- Expected resume command:
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun140.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
+  - [android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java)
+  - [android/java/org/chromium/chrome/browser/rate/BraveRateDialogFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateDialogFragment.java)
+  - [android/java/org/chromium/chrome/browser/rate/BraveRateThanksFeedbackDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateThanksFeedbackDialog.java)
+  - [android/java/org/chromium/chrome/browser/rate/BraveRateDialogLauncher.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateDialogLauncher.java)
+  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md) entry
+  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
+  - [android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java)
+  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - sync helper run immediately before the next build
+  - `PYTHONPATH=/home/master/src_ext4/brave/script` preserved for the build command
+- Expected success signal:
+  - `rerun140` packages successfully and restores baseline-only to `0` without growing the 17-class current-only bucket
+- Expected failure signal:
+  - `rerun140` fails or reintroduces the removed location/splitinstall drift while keeping baseline-only above `0`
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Treat `rerun139` as the actual source/build truth.
+  - Repair the regression locally instead of rolling the whole tree back.
+- Rejected approaches:
+  - broad repo rescans
+  - keeping the OneTab rate source filters despite the baseline-only regression
+- Stop point classification:
+  - desk state reconciled; next step is a code edit plus rebuild experiment
+- What is done but unverified:
+  - whether reflective review wiring plus restored rate classes will preserve the `rerun139` improvement without the regression
+- What is verified:
+  - `rerun139` is the current latest successful build
+  - current APK drift is `17 current-only / 3 baseline-only`
+  - the regression source is the rate-dialog source filter
+- External prerequisite:
+  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
+- Secret required but not stored:
+  - None for debug APK assembly
+
+## [2026-04-01 20:11]
+- Phase:
+  - Phase 7 - Validation / APK reproducibility
+- Objective:
+  - Keep the source tree buildable for device testing and continue shrinking the last APK drift against the saved device APK.
+- Done:
+  - Removed the temporary `-whyareyoukeeping` diagnostics from [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags) and restored a clean build path.
+  - Rebuilt successfully through `rerun150`, then explored the remaining `17/0` drift with targeted media-router and stack-unwinder inspection.
+  - Confirmed the splitinstall tail still points at stack unwinder / module installer.
+  - Confirmed the remaining class-set drift is exactly `15` `com.google.android.gms.internal.cast.*` classes plus `2` `com.google.android.play.core.splitinstall.*` classes.
+  - Tried removing `removeSessionManagerListener()` and then both listener registration calls from [CafBaseMediaRouteProvider.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CafBaseMediaRouteProvider.java); both builds passed (`rerun155`, `rerun156`) but the drift stayed `17/0`.
+  - Reverted that experiment and rebuilt successfully again as `rerun157`.
+  - Verified the latest testable APK hash is `7ee1bde092c7202a4b33fd0e7b6a3a71ed1178564e7cc341d49eabd5f762d532`.
+- In progress:
+  - Tracing cast retention to bootstrap points such as manifest metadata and keep rules instead of listener cleanup code.
+- Files touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
+  - [CafBaseMediaRouteProvider.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CafBaseMediaRouteProvider.java)
+  - [BrowserMediaRouter.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java)
+  - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
+- Build/test status:
+  - Latest verified successful packaged build:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun157.log 2>&1"`
+  - Current APK is buildable and suitable for device testing.
+  - Remaining reproducibility drift:
+    - zip-entry drift in `classes.dex`, `classes2.dex`, `libai_chat_common.cr.so`, `libchrome.so`
+    - class-descriptor drift `17 current-only / 0 baseline-only`
+- Blockers/risks:
+  - `CastOptionsProvider` is still declared via manifest metadata and kept by [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags), so cast bootstrap may be retained above the runtime feature gate.
+  - The splitinstall tail remains tied to stack unwinder / module installer.
+  - The listener experiment proved method cleanup alone is not enough and should not be retried without new evidence.
+- Next step:
+  - Inspect and likely adjust cast retention at the manifest / proguard / build boundary:
+    - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
+    - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
+    - [BUILD.gn](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn)
+  - Rebuild as `rerun158` after the next targeted change and recompute drift.
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this `2026-04-01 20:11` entry
+  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
+  - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
+  - [BrowserMediaRouter.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java)
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun157.log 2>&1"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... parse dex class descriptors and compare current vs baseline ... PY"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... sha256 current vs baseline zip entries ... PY"`
+- Tool purpose:
+  - Preserve a buildable APK while narrowing the remaining APK delta.
+- Tool state:
+  - No build currently running.
+- Expected resume command:
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun158.log 2>&1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
+  - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
+  - [BrowserMediaRouter.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java)
+  - [CafBaseMediaRouteProvider.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CafBaseMediaRouteProvider.java)
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
+  - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
+  - [BrowserMediaRouter.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - `rerun158` packages successfully and reduces the `17` current-only class bucket
+- Expected failure signal:
+  - drift remains `17/0` or the packaged build breaks
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun157.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the tree buildable for testing instead of blocking everything on exact baseline matching.
+  - Treat listener cleanup as a rejected hypothesis for the remaining class-set drift.
+- Rejected approaches:
+  - keeping the unsuccessful `CafBaseMediaRouteProvider` listener edits
+  - restarting with a broad repo rescan
+- Stop point classification:
+  - build passed and APK emitted; remaining work is reproducibility analysis
+- What is done but unverified:
+  - whether removing or gating `CastOptionsProvider` retention will shrink the cast bucket cleanly
+- What is verified:
+  - current source builds a testable APK
+  - latest packaged build is `rerun157`
+  - current APK drift is `17 current-only / 0 baseline-only`
+- External prerequisite:
+  - WSL/ext4 checkout and Android/Chromium deps remain required
+- Secret required but not stored:
+  - None for debug APK assembly
+
+## [2026-04-02 02:02]
+- Phase:
+  - Phase 7 - Validation / real-device smoke test
+- Objective:
+  - Run the current OneTabTube APK on device `R9TRC00GA2E`, remove the remaining external-intent crash, and verify the core allowlist behavior on hardware.
+- Done:
+  - Read the latest desk-state snapshot instead of re-scanning the repo.
+  - Targeted only the PiP-related files from the recorded working set:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - Disabled PiP for OneTabTube in the runtime path:
+    - `onUserLeaveHint`
+    - direct PiP request helpers
+    - PiP support checks
+  - Hid and short-circuited the PiP toolbar button for OneTabTube.
+  - Synced Windows changes into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
+  - Rebuilt successfully as `rerun200`.
+  - Installed the new APK on `R9TRC00GA2E`.
+  - Verified on device:
+    - normal cold launch stays alive and top-resumed
+    - `VIEW https://youtu.be/dQw4w9WgXcQ` opens in-app on `m.youtube.com/watch?v=dQw4w9WgXcQ`
+    - `VIEW https://google.com` no longer crashes and ends on `m.youtube.com`
+    - toolbar UI dump no longer shows the PiP button
+- In progress:
+  - Core device smoke test is done.
+  - Remaining work is broader validation and documentation, not crash triage.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `tools/sync_changed_files_to_wsl.ps1`
+- Build/test status:
+  - Build passed:
+    - `rerun200`
+  - Latest APK SHA-256:
+    - `08c34f11821d3fe1245a5a02c2aa27453a1debc71ea9c6f1a220aabc557ac33d`
+  - Real-device smoke result:
+    - pass for normal launch
+    - pass for allowlisted `youtu.be`
+    - pass for off-scope `google.com` by redirecting back into the allowed YouTube scope
+- Blockers/risks:
+  - Sign-in/consent/account-selection paths are not yet revalidated after the latest runtime cleanup.
+  - Shields/adblock behavior still needs longer manual playback sanity, not just launch/navigation checks.
+  - Some earlier runtime/build fixes still exist directly in ext4 and must be reality-checked on future resumes.
+- Next step:
+  - Expand device smoke coverage to additional YouTube and required Google auth paths.
+  - Update `docs/testing.md` and `docs/patch-summary.md` with the verified device behavior and PiP removal rationale.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-02 02:02` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://google.com" com.onetabtube.browser_default`
+- Tool purpose:
+  - Keep the APK buildable and validate the AGENTS.md product policy on a real device.
+- Tool state:
+  - No build currently running.
+  - Device `R9TRC00GA2E` is connected and the latest APK is installed.
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -c`
+  - rerun the next manual smoke case or rebuild from the same target if code changes are needed
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - runtime PiP disable for OneTabTube
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` - PiP button hidden and blocked
+  - `tools/sync_changed_files_to_wsl.ps1` - Windows/ext4 sync
+  - `docs/current-status.md` - current desk state
+  - `docs/progress-log.md` - append-only handoff history
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - WSL/ext4 checkout reachable
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - device `R9TRC00GA2E` authorized in `adb devices`
+  - sync Windows edits to ext4 before rebuilding
+- Expected success signal:
+  - app stays top-resumed
+  - `adb logcat -b crash -d` remains empty
+  - off-scope URLs redirect/block instead of loading arbitrary pages
+- Expected failure signal:
+  - crash buffer shows a new fatal
+  - app leaves `com.onetabtube.browser_default`
+  - off-scope URL remains on a non-YouTube page
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Cut PiP because it is out of scope for OneTabTube and was the last crash source.
+  - Prefer redirecting off-scope links back to YouTube scope instead of preserving optional media behavior.
+- Rejected approaches:
+  - Keeping PiP and continuing to debug it
+  - Reopening optional product surfaces just to preserve prior behavior
+  - Re-scanning the whole repo instead of following desk state
+- Stop point classification:
+  - build passed, APK installed, core device smoke-tested and passing
+- What is done but unverified:
+  - broader auth/consent path coverage
+  - longer adblock/shields playback sanity
+  - docs updates outside the status files
+- What is verified:
+  - latest tree builds
+  - latest APK installs
+  - normal launch is stable on device
+  - allowlisted `youtu.be` deep link stays in-app
+  - off-scope `google.com` no longer crashes and lands on `m.youtube.com`
+  - PiP toolbar button is absent in the captured UI dump
+- External prerequisite:
+  - WSL/ext4 checkout and Android/Chromium deps remain required
+  - physical device `R9TRC00GA2E` must remain connected for further validation
+- Secret required but not stored:
+  - None for debug APK assembly
+
+## [2026-04-02 02:02]
+- Phase:
+  - Phase 7 - Validation / real-device smoke test
+- Objective:
+  - Run the current OneTabTube APK on device `R9TRC00GA2E`, remove the remaining external-intent crash, and verify the core allowlist behavior on hardware.
+- Done:
+  - Read the latest desk-state snapshot instead of re-scanning the repo.
+  - Targeted only the PiP-related files from the recorded working set:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - Disabled PiP for OneTabTube in the runtime path:
+    - `onUserLeaveHint`
+    - direct PiP request helpers
+    - PiP support checks
+  - Hid and short-circuited the PiP toolbar button for OneTabTube.
+  - Synced Windows changes into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
+  - Rebuilt successfully as `rerun200`.
+  - Installed the new APK on `R9TRC00GA2E`.
+  - Verified on device:
+    - normal cold launch stays alive and top-resumed
+    - `VIEW https://youtu.be/dQw4w9WgXcQ` opens in-app on `m.youtube.com/watch?v=dQw4w9WgXcQ`
+    - `VIEW https://google.com` no longer crashes and ends on `m.youtube.com`
+    - toolbar UI dump no longer shows the PiP button
+- In progress:
+  - Core device smoke test is done.
+  - Remaining work is broader validation and documentation, not crash triage.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `tools/sync_changed_files_to_wsl.ps1`
+- Build/test status:
+  - Build passed:
+    - `rerun200`
+  - Latest APK SHA-256:
+    - `08c34f11821d3fe1245a5a02c2aa27453a1debc71ea9c6f1a220aabc557ac33d`
+  - Real-device smoke result:
+    - pass for normal launch
+    - pass for allowlisted `youtu.be`
+    - pass for off-scope `google.com` by redirecting back into the allowed YouTube scope
+- Blockers/risks:
+  - Sign-in/consent/account-selection paths are not yet revalidated after the latest runtime cleanup.
+  - Shields/adblock behavior still needs longer manual playback sanity, not just launch/navigation checks.
+  - Some earlier runtime/build fixes still exist directly in ext4 and must be reality-checked on future resumes.
+- Next step:
+  - Expand device smoke coverage to additional YouTube and required Google auth paths.
+  - Update `docs/testing.md` and `docs/patch-summary.md` with the verified device behavior and PiP removal rationale.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-02 02:02` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://google.com" com.onetabtube.browser_default`
+- Tool purpose:
+  - Keep the APK buildable and validate the AGENTS.md product policy on a real device.
+- Tool state:
+  - No build currently running.
+  - Device `R9TRC00GA2E` is connected and the latest APK is installed.
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -c`
+  - rerun the next manual smoke case or rebuild from the same target if code changes are needed
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - runtime PiP disable for OneTabTube
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` - PiP button hidden and blocked
+  - `tools/sync_changed_files_to_wsl.ps1` - Windows/ext4 sync
+  - `docs/current-status.md` - current desk state
+  - `docs/progress-log.md` - append-only handoff history
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - WSL/ext4 checkout reachable
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - device `R9TRC00GA2E` authorized in `adb devices`
+  - sync Windows edits to ext4 before rebuilding
+- Expected success signal:
+  - app stays top-resumed
+  - `adb logcat -b crash -d` remains empty
+  - off-scope URLs redirect/block instead of loading arbitrary pages
+- Expected failure signal:
+  - crash buffer shows a new fatal
+  - app leaves `com.onetabtube.browser_default`
+  - off-scope URL remains on a non-YouTube page
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Cut PiP because it is out of scope for OneTabTube and was the last crash source.
+  - Prefer redirecting off-scope links back to YouTube scope instead of preserving optional media behavior.
+- Rejected approaches:
+  - Keeping PiP and continuing to debug it
+  - Reopening optional product surfaces just to preserve prior behavior
+  - Re-scanning the whole repo instead of following desk state
+- Stop point classification:
+  - build passed, APK installed, core device smoke-tested and passing
+- What is done but unverified:
+  - broader auth/consent path coverage
+  - longer adblock/shields playback sanity
+  - docs updates outside the status files
+- What is verified:
+  - latest tree builds
+  - latest APK installs
+  - normal launch is stable on device
+  - allowlisted `youtu.be` deep link stays in-app
+  - off-scope `google.com` no longer crashes and lands on `m.youtube.com`
+  - PiP toolbar button is absent in the captured UI dump
+- External prerequisite:
+  - WSL/ext4 checkout and Android/Chromium deps remain required
+  - physical device `R9TRC00GA2E` must remain connected for further validation
+- Secret required but not stored:
+  - None for debug APK assembly
+
+## [2026-04-02 00:24]
+- Phase:
+  - Phase 7 - Validation / AGENTS-aligned surface pruning
+- Objective:
+  - Remove the last non-required OneTabTube blocker surfaces from the packaging path and return to a buildable APK without reintroducing disallowed product baggage.
+- Done:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry first, then checked actual ext4 code/build state instead of trusting the stale `rerun173` snapshot.
+  - Confirmed the real stop point was `rerun187`, where R8 was failing only on:
+    - `org.chromium.chrome.browser.data_import.DataImporterServiceImpl`
+    - `org.chromium.chrome.browser.test_dummy.TestDummyActivity`
+  - Patched `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn` to remove `java/src/org/chromium/chrome/browser/data_import/DataImporterService.java` from the OneTabTube base-module source list.
+  - Patched `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml` to remove:
+    - `org.chromium.chrome.browser.data_import.DataImporterService`
+    - `org.chromium.chrome.browser.test_dummy.TestDummyActivity`
+  - Rebuilt successfully through `rerun188`.
+  - Verified current APK SHA-256:
+    - `79be837655cb8f1234b864cd923e3ebc1811bcd149eaedf5267c1e54d26b7cc7`
+  - Verified saved baseline SHA-256:
+    - `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
+  - Verified current APK descriptor probes are all zero for:
+    - `com/google/android/gms/internal/cast`
+    - `com/google/android/play/core/splitinstall`
+    - `org/chromium/chrome/browser/brave_leo`
+    - `org/chromium/chrome/browser/playlist`
+    - `org/chromium/chrome/browser/data_import`
+    - `org/chromium/chrome/browser/test_dummy`
+  - Checked `adb devices`; no hardware/emulator is currently attached.
+- In progress:
+  - Local packaging/pruning work is at a stable stop point.
+  - The next useful step is runtime validation on device/emulator rather than more speculative build-graph churn.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
+- Build/test status:
+  - Latest verified successful packaged build:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log 2>&1"`
+  - Latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
+  - Latest artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `adb devices` output:
+    - empty device list
+- Blockers/risks:
+  - Runtime/device validation is blocked until a device or emulator is available.
+  - The build is intentionally no longer baseline-identical because AGENTS.md-driven pruning removed disallowed baggage from the APK.
+- Next step:
+  - Connect/start a device or emulator.
+  - Install `OneTabTube.apk`.
+  - Run the manual YouTube-only / one-tab / non-allowlist smoke test.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-02 00:24` entry
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... count descriptor probes across dex files ... PY"`
+  - `adb devices`
+- Tool purpose:
+  - Validate that the OneTabTube tree still builds after removing disallowed `data_import` and `test_dummy` surfaces.
+- Tool state:
+  - No build is running.
+  - No device is attached.
+- Expected resume command:
+  - `adb devices`
+  - then `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - WSL/ext4 checkout reachable
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - attach an Android device or start an emulator before install
+- Expected success signal:
+  - install succeeds and smoke test confirms YouTube-only one-tab behavior
+- Expected failure signal:
+  - no attached device/emulator
+  - install failure
+  - runtime navigation escapes product policy
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Remove disallowed surfaces directly at the build/manifest boundary when that is the fastest safe fix.
+  - Treat ext4 build evidence as source of truth over stale docs snapshots.
+- Rejected approaches:
+  - silencing R8 warnings without actually removing the unused surface
+  - keeping `DataImporterService` or `TestDummyActivity` around for baseline matching
+- Stop point classification:
+  - build passed and APK emitted; runtime smoke test blocked by missing device/emulator
+- What is done but unverified:
+  - runtime behavior of the `rerun188` APK
+- What is verified:
+  - `rerun188` packages successfully
+  - cast/splitinstall/leo/playlist/data_import/test_dummy probes are all zero in the APK
+  - no connected device is currently available
+- External prerequisite:
+  - Android device or emulator for the next validation step
+- Secret required but not stored:
+  - None for debug APK assembly or install
+
+## [2026-04-01 21:20]
+- Phase:
+  - Phase 7 - Validation / APK reproducibility
+- Objective:
+  - Keep the OneTabTube tree buildable while removing surfaces that AGENTS.md marks as non-essential for a YouTube-only one-tab product.
+- Done:
+  - Read the stale `rerun157` desk state, compared it with the actual code/build state, and treated the verified buildable source as the source of truth.
+  - Removed OneTabTube-specific AI/Leo re-enable paths from GN/build wiring:
+    - [renderer/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/renderer/BUILD.gn)
+    - [renderer/sources.gni](C:/Users/Master/Desktop/GO_PLAY/renderer/sources.gni)
+    - [build/android/config.gni](C:/Users/Master/Desktop/GO_PLAY/build/android/config.gni)
+    - [browser/sources.gni](C:/Users/Master/Desktop/GO_PLAY/browser/sources.gni)
+    - [components/brave_mobile_subscription/renderer/android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/BUILD.gn)
+    - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
+    - [renderer/brave_content_renderer_client.cc](C:/Users/Master/Desktop/GO_PLAY/renderer/brave_content_renderer_client.cc)
+  - Added Leo stub-srcjar generation for OneTabTube:
+    - [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn)
+    - [tools/create_onetabyt_leo_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_leo_stub_srcjar.py)
+  - Removed OneTabTube-specific AI branches from:
+    - [subscription_render_frame_observer.h](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.h)
+    - [subscription_render_frame_observer.cc](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.cc)
+  - Removed disallowed playlist / Leo activities and services from [android/java/AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml).
+  - Removed the cast options provider keep rule from [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags).
+  - Patched the ext4 manifest copy at `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml` to remove `com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME`.
+  - Rebuilt successfully through:
+    - `rerun163`
+    - `rerun165`
+    - `rerun167`
+  - Verified current APK facts after `rerun167`:
+    - current hash `87310bdfe06110752b35400ed7c33a7d2e5917bb756d3e67f7b5afe6c2e166aa`
+    - baseline hash `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
+    - remaining zip drift:
+      - `AndroidManifest.xml`
+      - `classes.dex`
+      - `classes2.dex`
+      - `lib/arm64-v8a/libai_chat_common.cr.so`
+      - `lib/arm64-v8a/libchrome.so`
+    - current APK no longer contains `org/chromium/chrome/browser/brave_leo/*` probe strings
+    - current APK no longer contains `org/chromium/chrome/browser/playlist/*` probe strings
+    - current APK no longer contains `lib/arm64-v8a/libai_chat_common.cr.so`
+    - current dex probe strings still show:
+      - `com/google/android/gms/internal/cast` -> `14`
+      - `com/google/android/play/core/splitinstall` -> `7`
+  - Tried removing the full `//components/media_router/browser/android:java` dependency from ext4 `chrome/android/BUILD.gn`; `rerun166` failed because [ChromeMediaRouterClient.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\router\ChromeMediaRouterClient.java) still depends on `org.chromium.components.media_router.MediaRouterClient`.
+  - Reverted that over-broad media-router removal before `rerun167`.
+- In progress:
+  - Inspecting the smaller `stack_unwinder / splitinstall` path as the next fastest cut that still fits the OneTabTube requirements.
+- Files touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn)
+  - [tools/create_onetabyt_leo_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_leo_stub_srcjar.py)
+  - [android/java/AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml)
+  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
+  - [build/android/config.gni](C:/Users/Master/Desktop/GO_PLAY/build/android/config.gni)
+  - [renderer/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/renderer/BUILD.gn)
+  - [renderer/sources.gni](C:/Users/Master/Desktop/GO_PLAY/renderer/sources.gni)
+  - [renderer/brave_content_renderer_client.cc](C:/Users/Master/Desktop/GO_PLAY/renderer/brave_content_renderer_client.cc)
+  - [subscription_render_frame_observer.h](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.h)
+  - [subscription_render_frame_observer.cc](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.cc)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+- Build/test status:
+  - Latest verified successful packaged build:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun167.log 2>&1"`
+  - Latest failed experiment:
+    - `rerun166` after removing the whole media-router Java target
+  - Current APK remains device-testable.
+- Blockers/risks:
+  - `cast/media_router` still cannot be removed wholesale without breaking compile-time dependencies.
+  - `splitinstall` likely flows through stack unwinder / module installer and needs a smaller cut.
+  - Manifest drift is now partly intentional because AGENTS.md prioritizes removing disallowed surfaces over byte-for-byte baseline matching.
+- Next step:
+  - Inspect ext4 `chrome/android/BUILD.gn` plus stack unwinder provider targets, then try the smallest OneTabTube-only subtraction of `//chrome/android/modules/stack_unwinder/provider:java`.
+  - Rebuild as `rerun168`.
+  - Recompute APK hash, zip-entry drift, and cast/splitinstall probe counts.
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this `2026-04-01 21:20` entry
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\modules\stack_unwinder\provider\BUILD.gn`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun167.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun167.log 2>&1"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... compare current vs baseline zip entries ... PY"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... count cast/splitinstall/leo/playlist descriptor strings in dex ... PY"`
+- Tool purpose:
+  - Keep a testable APK build while cutting every surface that is not needed by the AGENTS.md OneTabTube definition.
+- Tool state:
+  - No build currently running.
+- Expected resume command:
+  - patch stack unwinder/provider deps in ext4 `chrome/android/BUILD.gn`
+  - then run `rerun168`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\modules\stack_unwinder\provider\BUILD.gn`
+  - [android/java/AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml)
+  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
+  - [tools/create_onetabyt_leo_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_leo_stub_srcjar.py)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\modules\stack_unwinder\provider\BUILD.gn`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - sync Windows changes to ext4 before rebuilding
+- Expected success signal:
+  - `rerun168` passes and lowers the splitinstall probe count without bringing Leo/playlist back
+- Expected failure signal:
+  - missing stack unwinder references at compile time or no measurable reduction in splitinstall drift
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun167.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Follow AGENTS.md strictly for product-surface pruning rather than preserving disallowed surfaces just to mimic the old APK.
+  - Prefer the smallest valid OneTabTube-specific cuts instead of broad subsystem removal.
+- Rejected approaches:
+  - keeping any `|| is_onetabyt` path that re-enables Leo/AI
+  - keeping playlist / Leo manifest surfaces
+  - removing the whole media-router Java target
+- Stop point classification:
+  - build passed and APK emitted; pruning work continues from a verified buildable state
+- What is done but unverified:
+  - whether stack unwinder / splitinstall can be dropped cleanly for OneTabTube
+- What is verified:
+  - current tree builds a testable APK
+  - latest verified buildable state is `rerun167`
+  - Leo/playlist are absent from the current APK
+  - `libai_chat_common.cr.so` is absent from the current APK
+- External prerequisite:
+  - WSL/ext4 checkout and Android/Chromium deps remain required
+- Secret required but not stored:
+  - None for debug APK assembly
+
+## [2026-04-01 22:12]
+- Phase:
+  - Phase 7 - Validation / APK reproducibility
+- Objective:
+  - Keep the current OneTabTube tree buildable while pruning non-essential surfaces using the AGENTS.md product definition rather than preserving old baseline-only baggage.
+- Done:
+  - Updated the desk-state files to reflect the real buildable source instead of the stale `rerun157` snapshot.
+  - Added a generated stub target for `LanguageSplitInstaller`:
+    - [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn)
+    - [tools/create_onetabyt_language_split_installer_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_language_split_installer_stub_srcjar.py)
+  - Synced Windows changes to ext4 with:
+    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - Patched ext4 `chrome/browser/language/android/BUILD.gn` to swap in the OneTabTube `LanguageSplitInstaller` stub and remove the direct source file for `is_onetabyt`.
+  - Patched ext4 `chrome/android/BUILD.gn` to remove `//chrome/android/modules/stack_unwinder/provider:java` for OneTabTube from `chrome_java` and `base_module_java`.
+  - Tried lifecycle-level `ModuleUtil` gating in:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\ChromeApplicationImpl.java`
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\base\SplitCompatApplication.java`
+  - `rerun169` failed because `SplitCompatApplication` could not see `BraveConfig` from `base_module_java`; reverted the `ModuleUtil` guard attempt instead of widening GN deps.
+  - Removed OneTabTube-only Play Core appupdate/install/review and rate-dialog keep rules from [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags).
+  - Rebuilt successfully through:
+    - `rerun168`
+    - `rerun171`
+    - `rerun172`
+    - `rerun173`
+  - Verified after `rerun173`:
+    - current APK hash `9c718a64d561d8fa8ffe26b780874d521e9b456d4714dee2350dd71e767572a0`
+    - remaining zip drift still exactly:
+      - `AndroidManifest.xml`
+      - `classes.dex`
+      - `classes2.dex`
+      - `lib/arm64-v8a/libai_chat_common.cr.so`
+      - `lib/arm64-v8a/libchrome.so`
+    - dex probe strings still:
+      - `com/google/android/gms/internal/cast` -> `14`
+      - `com/google/android/play/core/splitinstall` -> `7`
+      - `org/chromium/chrome/browser/brave_leo` -> `0`
+      - `org/chromium/chrome/browser/playlist` -> `0`
+    - `com/google/android/play/core/review` -> `0`
+    - `com/google/android/play/core/appupdate` -> `0`
+- In progress:
+  - Splitinstall-focused reductions have stopped producing measurable wins, so the next pass is pivoting to the cast/media-router source boundary.
+- Files touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn)
+  - [tools/create_onetabyt_language_split_installer_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_language_split_installer_stub_srcjar.py)
+  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\browser\language\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\ChromeApplicationImpl.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\base\SplitCompatApplication.java`
+- Build/test status:
+  - Latest verified successful packaged build:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log 2>&1"`
+  - Latest failed experiment:
+    - `rerun169` failed due to missing `BraveConfig` visibility from `base_module_java`
+  - Current APK remains testable and buildable.
+- Blockers/risks:
+  - The remaining `splitinstall` tail did not shrink after stack unwinder removal, language split stubbing, or Play Core keep-rule pruning.
+  - The remaining `cast` tail still cannot be removed by dropping the whole `media_router:java` target because `ChromeMediaRouterClient` depends on it.
+- Next step:
+  - Inspect `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn` and related CAF sources to find a smaller source-level cast cut for OneTabTube.
+  - Rebuild as `rerun174`.
+  - Recompute hash, zip drift, and cast/splitinstall probes.
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this `2026-04-01 22:12` entry
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CastOptionsProvider.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log 2>&1"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... compare current vs baseline zip entries ... PY"`
+  - `wsl.exe bash -lc "python3 - <<'PY' ... count cast/splitinstall/leo/playlist probe strings in dex ... PY"`
+- Tool purpose:
+  - Keep a device-testable APK while pruning disallowed surfaces in the simplest safe order.
+- Tool state:
+  - No build currently running.
+- Expected resume command:
+  - inspect and patch `components/media_router/browser/android/BUILD.gn`
+  - then run `rerun174`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CastOptionsProvider.java`
+  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
+  - [android/java/AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - sync Windows changes to ext4 before rebuilding
+- Expected success signal:
+  - `rerun174` passes and lowers the cast probe count below `14` without bringing back Leo/playlist
+- Expected failure signal:
+  - missing media-router compile symbols or unchanged cast probes after the edit
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Stop preserving non-essential Play Core keep rules now that the goal is the AGENTS.md product surface, not the old APK baggage.
+  - Stop repeating splitinstall-focused cuts that do not move the APK probe counts.
+- Rejected approaches:
+  - widening `base_module_java` GN deps just to let `BraveConfig` flow into `SplitCompatApplication`
+  - assuming stack unwinder or language split changes alone would remove the `splitinstall` tail
+- Stop point classification:
+  - build passed and APK emitted; next work is source-boundary pruning of cast/media-router
+- What is done but unverified:
+  - whether cast can be reduced cleanly at the `components/media_router/browser/android` boundary
+- What is verified:
+  - current tree builds a testable APK
+  - latest verified buildable state is `rerun173`
+  - Leo/playlist probes remain absent
+  - review/appupdate probes are now absent
+- External prerequisite:
+  - WSL/ext4 checkout and Android/Chromium deps remain required
+- Secret required but not stored:
+  - None for debug APK assembly
+
+## [2026-04-02 02:02]
+- Phase:
+  - Phase 7 - Validation / real-device smoke test
+- Objective:
+  - Run the current OneTabTube APK on device `R9TRC00GA2E`, remove the remaining external-intent crash, and verify the core allowlist behavior on hardware.
+- Done:
+  - Disabled PiP for OneTabTube in `BraveActivity.java` and `BraveToolbarLayoutImpl.java`.
+  - Synced Windows changes into ext4.
+  - Rebuilt successfully as `rerun200`.
+  - Installed the new APK on `R9TRC00GA2E`.
+  - Verified normal launch is stable.
+  - Verified `VIEW https://youtu.be/dQw4w9WgXcQ` opens in-app at `m.youtube.com/watch?v=dQw4w9WgXcQ`.
+  - Verified `VIEW https://google.com` no longer crashes and lands on `m.youtube.com`.
+  - Verified the PiP button is absent in the captured toolbar UI dump.
+- In progress:
+  - Core device smoke test is done; broader validation remains.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+- Build/test status:
+  - `rerun200` passed
+  - APK SHA-256: `08c34f11821d3fe1245a5a02c2aa27453a1debc71ea9c6f1a220aabc557ac33d`
+  - Device smoke: pass for normal launch, `youtu.be`, and off-scope `google.com` redirect
+- Blockers/risks:
+  - Sign-in/consent/account-selection paths still need validation.
+  - Shields/adblock still need longer playback sanity checks.
+- Next step:
+  - Expand device smoke coverage to more YouTube and required Google auth paths.
+  - Update `docs/testing.md` and `docs/patch-summary.md`.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-02 02:02` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log 2>&1"`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://google.com" com.onetabtube.browser_default`
+- Tool purpose:
+  - Validate the AGENTS.md product policy on a real device.
+- Tool state:
+  - No build currently running; latest APK installed on `R9TRC00GA2E`.
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -c`
+  - rerun the next manual smoke case or rebuild from the same target if code changes are needed
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `main`
+- Base commit / HEAD seen:
+  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
+- Prerequisites before command:
+  - WSL/ext4 checkout reachable
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - device `R9TRC00GA2E` authorized in `adb devices`
+- Expected success signal:
+  - app stays top-resumed
+  - `adb logcat -b crash -d` remains empty
+  - off-scope URLs redirect/block instead of loading arbitrary pages
+- Expected failure signal:
+  - crash buffer shows a new fatal
+  - app leaves `com.onetabtube.browser_default`
+  - off-scope URL remains on a non-YouTube page
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Cut PiP because it is out of scope for OneTabTube and was the last crash source.
+  - Prefer redirecting off-scope links back to YouTube scope instead of preserving optional media behavior.
+- Rejected approaches:
+  - Keeping PiP and continuing to debug it
+  - Reopening optional product surfaces just to preserve prior behavior
+- Stop point classification:
+  - build passed, APK installed, core device smoke-tested and passing
+- What is done but unverified:
+  - broader auth/consent path coverage
+  - longer adblock/shields playback sanity
+- What is verified:
+  - latest tree builds
+  - latest APK installs
+  - normal launch is stable on device
+  - allowlisted `youtu.be` deep link stays in-app
+  - off-scope `google.com` no longer crashes and lands on `m.youtube.com`
+  - PiP toolbar button is absent in the captured UI dump
+- External prerequisite:
+  - WSL/ext4 checkout and Android/Chromium deps remain required
+  - physical device `R9TRC00GA2E` must remain connected for further validation
+- Secret required but not stored:
+  - None for debug APK assembly

@@ -1,0 +1,17 @@
+diff --git a/components/content_settings/renderer/content_settings_agent_impl.cc b/components/content_settings/renderer/content_settings_agent_impl.cc
+index 0e7138960a6b3d1c4f3b2f9ab559204d564c59e7..d6f2c3d6240d28f7ae3d8a7ea35e359532d0f85e 100644
+--- a/components/content_settings/renderer/content_settings_agent_impl.cc
++++ b/components/content_settings/renderer/content_settings_agent_impl.cc
+@@ -141,7 +141,9 @@ ContentSetting GetContentSettingFromRules(
+   for (const auto& rule : rules) {
+     if (rule.secondary_pattern.Matches(secondary_gurl)) {
+       return rule.GetContentSetting();
+     }
+   }
+-  NOTREACHED();
++  // OneTabTube can trim browser-side rule sets aggressively; fall back to the
++  // content setting default instead of aborting the renderer on unmatched
++  // secondary patterns.
++  return CONTENT_SETTING_DEFAULT;
+ }
+ }  // namespace

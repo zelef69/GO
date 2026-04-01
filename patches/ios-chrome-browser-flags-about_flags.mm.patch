@@ -1,0 +1,12 @@
+diff --git a/ios/chrome/browser/flags/about_flags.mm b/ios/chrome/browser/flags/about_flags.mm
+index 87ba7b6198f83ab89b6a564ff454778a71af1ac4..8ff099576b565f3e042eabe1adb3bc4dc24d9abc 100644
+--- a/ios/chrome/browser/flags/about_flags.mm
++++ b/ios/chrome/browser/flags/about_flags.mm
+@@ -1402,6 +1402,7 @@ const FeatureEntry::FeatureVariation kPageActionMenuIconVariations[] = {
+ //
+ // When adding a new choice, add it to the end of the list.
+ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
++    BRAVE_ABOUT_FLAGS_FEATURE_ENTRIES
+     {"in-product-help-demo-mode-choice",
+      flag_descriptions::kInProductHelpDemoModeName,
+      flag_descriptions::kInProductHelpDemoModeDescription, flags_ui::kOsIos,
