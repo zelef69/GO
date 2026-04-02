@@ -1,32 +1,29 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-02 21:33:39 +07:00
+  - 2026-04-02 21:38:08 +07:00
 - Current phase:
-  - Phase 7 - Validation complete for the lockscreen-return PiP issue; publishing the verified snapshot
+  - Phase 7 - Validation complete for the lockscreen-return PiP issue; verified snapshot published
 - Current objective:
-  - Sync the verified `rerun236` PiP-unlock-good build into tracked repo state and publish it to the user's GitHub repository.
+  - Keep the repo aligned to the verified `rerun236` PiP-unlock-good snapshot that has already been committed and pushed.
 - Completed since last update:
-  - Re-read the latest desk-state and confirmed the recorded snapshot was stale relative to the latest device truth.
-  - Confirmed `rerun236` is the current known-good build for this issue:
-    - build passed
-    - install passed on `R9TRC00GA2E`
-    - warm launch passed
-    - manual post-unlock PiP truth-check passed per device-owner verification
-  - Confirmed the last tracked repo gap before publishing is the missing mirror of the live ext4 controller change in:
-    - `chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java`
-  - Confirmed the publish target repo is:
-    - `https://github.com/zelef69/GO_PLAY.git`
-    - current local `origin` still points elsewhere and should not be used for this publish step
+  - Recorded the final device-owner verdict that `rerun236` returns from the lock screen with PiP still usable.
+  - Added the tracked controller mirror patch:
+    - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+  - Updated `docs/testing.md` and `docs/patch-summary.md` so the repo explicitly states that this version no longer reproduces the earlier lockscreen-return PiP issue.
+  - Committed the verified snapshot as:
+    - `78cd58a92efd317099d3ab9512d4f60161b0b122`
+    - `fix(android): stabilize PiP after lockscreen unlock`
+  - Pushed the branch:
+    - `publish/go_play-sync-20260402`
+    - to `https://github.com/zelef69/GO_PLAY.git`
 - In progress now:
-  - Updating docs/testing/patch summary to explicitly record that this version can return from the lock screen with PiP still usable.
-  - Mirroring the ext4 controller fix into a tracked patch file so the pushed repo matches the buildable/runtime-good state more closely.
-  - Preparing the commit/push for the verified snapshot.
+  - No active code change is in progress for this issue.
+  - The repo is parked on the published `rerun236`-verified snapshot.
 - Files/modules touched:
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
   - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
   - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
   - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
   - `docs/current-status.md`
   - `docs/progress-log.md`
@@ -42,91 +39,74 @@
     - warm launch passed
     - manual lock -> unlock PiP verification: passed
     - user-reported outcome: after returning from the lock screen, PiP is usable normally and the earlier unlock-time PiP issue is no longer reproduced on this version
+  - publish status:
+    - commit `78cd58a92efd317099d3ab9512d4f60161b0b122` pushed to `https://github.com/zelef69/GO_PLAY.git`
+    - branch `publish/go_play-sync-20260402`
 - Blockers/risks:
-  - The active Chromium controller fix lives in ext4 and must be mirrored into tracked repo state before publishing, otherwise the pushed repo under-documents the real working runtime path.
-  - The current local `origin` remote points to `https://github.com/zelef69/GO.git`, not `GO_PLAY`; publish must target `https://github.com/zelef69/GO_PLAY.git` explicitly.
-  - Numerous local evidence files remain intentionally untracked and should not be swept into the publish commit by accident.
+  - The local workspace still contains many untracked evidence files, but they were intentionally kept out of the published branch.
+  - The configured local `origin` remote still points to `https://github.com/zelef69/GO.git`; future publishes for this project should continue targeting `https://github.com/zelef69/GO_PLAY.git` explicitly unless remotes are cleaned up.
 - Next concrete step:
-  - Add the tracked controller mirror patch file.
-  - Update `docs/patch-summary.md` and `docs/testing.md` with the verified `rerun236` unlock-success note.
-  - Append a fresh `docs/progress-log.md` entry for the verified-good publish snapshot.
-  - Stage only the tracked PiP/runtime/docs files, commit them, and push the current branch to `https://github.com/zelef69/GO_PLAY.git`.
+  - If work resumes, start from commit `78cd58a92efd317099d3ab9512d4f60161b0b122` on branch `publish/go_play-sync-20260402` and only reopen PiP work if a new regression is reproduced on-device.
 - Expected resume inspection scope:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
   - `docs/testing.md`
   - `docs/patch-summary.md`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
 - Current tool(s):
-  - `shell_command`
-  - `apply_patch`
   - `git`
 - Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-  - expected publish command:
-    - `git push https://github.com/zelef69/GO_PLAY.git HEAD:publish/go_play-sync-20260402`
-- Tool purpose:
-  - Preserve the verified runtime-good PiP unlock state in tracked repo files and publish that exact snapshot to GitHub.
-- Tool state:
-  - No build or device capture is currently running.
-  - `rerun236` is the latest installed and verified-good build for this issue.
-- Expected resume command:
-  - `git status --short`
-  - `git diff --stat -- <tracked PiP files>`
+  - `git commit -m "fix(android): stabilize PiP after lockscreen unlock" -m "Record rerun236 as the verified-good OneTabTube snapshot where returning from the lock screen no longer reproduces the PiP issue. Also mirror the live Chromium PiP controller change into tracked repo state and update testing/patch docs accordingly."`
   - `git push https://github.com/zelef69/GO_PLAY.git HEAD:publish/go_play-sync-20260402`
+- Tool purpose:
+  - Publish the verified-good PiP unlock snapshot to the user's GitHub repository.
+- Tool state:
+  - No build, capture, or publish command is currently running.
+  - The verified snapshot is already committed and pushed.
+- Expected resume command:
+  - `git show --stat 78cd58a92efd317099d3ab9512d4f60161b0b122`
+  - `git ls-remote https://github.com/zelef69/GO_PLAY.git publish/go_play-sync-20260402`
 - Expected output/artifact path:
   - build log:
     - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
   - APK:
     - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - last key evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun235_live.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun235_live.png`
+  - published branch:
+    - `https://github.com/zelef69/GO_PLAY/tree/publish/go_play-sync-20260402`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
+  - `78cd58a92efd317099d3ab9512d4f60161b0b122`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    - last tracked source change that removed the fullscreen-script timeout bottleneck before the successful `rerun236`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-    - tracked mirror that must represent the live ext4 controller fix used by the good APK
-  - `docs/testing.md`
-    - needs the explicit note that this version returns from the lock screen with PiP still usable
-  - `docs/patch-summary.md`
-    - needs the final product-facing summary of the verified-good PiP unlock state
+  - `docs/current-status.md`
+    - final handoff state for the published snapshot
   - `docs/progress-log.md`
-    - append-only handoff record for the successful `rerun236` truth-check
+    - append-only audit trail through the publish step
+  - `docs/testing.md`
+    - records that this version returns from the lock screen with PiP still usable
+  - `docs/patch-summary.md`
+    - summarizes why this snapshot is the verified-good PiP unlock version
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+    - tracked mirror of the live ext4 controller change used by the working APK
 - Files to inspect first after resume:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
   - `docs/testing.md`
   - `docs/patch-summary.md`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
 - Prerequisites before command:
-  - local working tree still contains the tracked PiP/runtime/doc edits
-  - `https://github.com/zelef69/GO_PLAY.git` remains reachable
-  - no accidental staging of local evidence dumps or secrets
+  - local checkout should stay on `publish/go_play-sync-20260402`
+  - future publishes should keep excluding local evidence dumps and secrets
 - Expected success signal:
-  - tracked repo includes the ext4 controller mirror patch plus the updated docs
-  - commit succeeds
-  - push to `GO_PLAY` succeeds
+  - branch `publish/go_play-sync-20260402` on `GO_PLAY` points at commit `78cd58a92efd317099d3ab9512d4f60161b0b122`
   - repo history clearly records that this version can leave the lock screen and keep PiP usable
 - Expected failure signal:
-  - missing controller mirror patch
-  - accidental inclusion of evidence dumps in the commit
-  - push goes to the wrong remote or branch
+  - future work starts from a different branch/commit and assumes the PiP fix is included when it is not
 - Last known log location:
   - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
 - Last known artifact path:
@@ -136,23 +116,24 @@
   - Stop iterating on PiP behavior for now and publish the verified-good state instead of risking a regression.
   - Mirror the ext4-only controller change into tracked repo state rather than pretending the tracked tree is already complete.
 - Rejected approaches:
-  - chasing additional PiP tweaks after the user already verified the fix
+  - continuing to tweak PiP after the device owner already verified the fix
   - publishing to the current `origin` remote even though it points to the wrong repository
   - staging the large pile of local evidence artifacts
 - Stop point classification:
-  - verified-good build exists; repo sync/doc update/commit/push in progress
+  - verified-good build recorded, committed, and pushed
 - What is done but unverified:
-  - GitHub publish step for this exact snapshot
+  - Nothing open for this specific PiP unlock issue.
 - What is verified:
   - `rerun236` builds
   - `rerun236` installs
   - `rerun236` launches
   - on `R9TRC00GA2E`, returning from the lock screen no longer breaks PiP usability on this version
+  - commit `78cd58a92efd317099d3ab9512d4f60161b0b122` is pushed to `https://github.com/zelef69/GO_PLAY.git` on branch `publish/go_play-sync-20260402`
 - External prerequisite:
-  - GitHub network access for push
+  - none for this closed issue beyond normal repo access
 - Secret required but not stored:
-  - GitHub credentials or token, if the local git environment needs them at push time
+  - GitHub credentials remain intentionally unstored
 - Actual code state after resume:
-  - The recorded desk-state was stale before the final manual truth-check. The actual working state is `rerun236`, with the successful runtime fix coming from tracked injector-side changes plus an ext4-only Chromium controller adjustment that still needs a tracked mirror patch.
+  - The repo now matches the published `rerun236` snapshot closely enough for handoff: tracked injector-side fixes are committed, the ext4 controller change is mirrored as a tracked patch file, and docs explicitly record the successful lockscreen-return PiP result.
 - Chosen direction:
-  - Publish `rerun236` as the verified-good PiP unlock snapshot, and make the tracked repo state honest about the live controller change before pushing.
+  - Hold this branch as the current good baseline for the lockscreen-return PiP issue and only reopen it if a new regression is reproduced.

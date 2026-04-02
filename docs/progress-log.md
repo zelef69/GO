@@ -2459,6 +2459,97 @@
 - Secret required but not stored:
   - GitHub credentials/token if required by the local git environment
 
+## [2026-04-02 21:38]
+- Phase:
+  - Phase 7 - Validation complete for the lockscreen-return PiP issue; verified snapshot published
+- Objective:
+  - Freeze the verified `rerun236` PiP-unlock-good state as the current published baseline.
+- Done:
+  - Committed the tracked PiP/runtime/docs snapshot as:
+    - `78cd58a92efd317099d3ab9512d4f60161b0b122`
+    - `fix(android): stabilize PiP after lockscreen unlock`
+  - Pushed `HEAD` to:
+    - `https://github.com/zelef69/GO_PLAY.git`
+    - branch `publish/go_play-sync-20260402`
+  - Confirmed the repo now includes:
+    - updated docs stating that this version can return from the lock screen with PiP still usable
+    - the tracked controller mirror patch
+- In progress:
+  - No active work remains for this specific issue.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `rerun236` remains the latest verified-good build for this issue
+  - commit/push: passed
+- Blockers/risks:
+  - local evidence files remain untracked in the workspace and should stay out of future commits unless intentionally curated
+  - local `origin` still points to `GO`, not `GO_PLAY`
+- Next step:
+  - If the team resumes, start from commit `78cd58a92efd317099d3ab9512d4f60161b0b122` on branch `publish/go_play-sync-20260402`
+  - Only reopen PiP work if a new device regression is reproduced
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-02 21:38` entry
+  - `docs/testing.md`
+  - `docs/patch-summary.md`
+- Current tool(s):
+  - `git`
+- Exact command(s):
+  - `git commit -m "fix(android): stabilize PiP after lockscreen unlock" ...`
+  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:publish/go_play-sync-20260402`
+- Tool purpose:
+  - Publish the verified runtime-good snapshot.
+- Tool state:
+  - finished successfully
+- Expected resume command:
+  - `git show --stat 78cd58a92efd317099d3ab9512d4f60161b0b122`
+- Expected output/artifact path:
+  - branch `publish/go_play-sync-20260402` on `GO_PLAY`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `78cd58a92efd317099d3ab9512d4f60161b0b122`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `docs/current-status.md` - final handoff state
+  - `docs/progress-log.md` - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none for this closed issue beyond normal repo access
+- Expected success signal:
+  - branch and commit match the published snapshot
+- Expected failure signal:
+  - someone resumes from a different branch/commit and assumes the PiP fix is included when it is not
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - treat `rerun236` as the current good baseline
+  - stop here instead of risking a new PiP regression
+- Rejected approaches:
+  - continuing to iterate after the device-owner verified the fix
+  - pushing to the wrong remote
+- Stop point classification:
+  - changes committed and pushed; issue parked on a verified-good snapshot
+- What is done but unverified:
+  - none for this issue
+- What is verified:
+  - this version can return from the lock screen and keep PiP usable on `R9TRC00GA2E`
+  - commit `78cd58a92efd317099d3ab9512d4f60161b0b122` is published on branch `publish/go_play-sync-20260402`
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - GitHub credentials remain intentionally unstored
+
 ## [2026-04-02 19:09]
 - Phase:
   - Phase 7 - Validation / research-backed PiP content-bounds fix planning
