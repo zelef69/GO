@@ -1,0 +1,148 @@
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java b/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java
+--- a/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java
+@@
+ import org.chromium.chrome.browser.infobar.InfoBarContainer;
+ import org.chromium.chrome.browser.notifications.NotificationIntentInterceptor;
+ import org.chromium.chrome.browser.tab.EmptyTabObserver;
+ import org.chromium.chrome.browser.tab.Tab;
++import org.chromium.chrome.browser.youtube_script_injector.BraveYouTubeScriptInjectorNativeHelper;
+ import org.chromium.chrome.browser.util.AndroidTaskUtils;
+@@
+     public void onStart() {
++        if (mActivity.isInPictureInPictureMode()) {
++            final WebContents webContents = getWebContents();
++            if (webContents != null && webContents.hasActiveEffectivelyFullscreenVideo()) {
++                Log.i(TAG, "onStart while still in PiP with active fullscreen video; refreshing PiP params.");
++                refreshPictureInPictureParamsForCurrentVideo();
++            } else {
++                Log.i(TAG, "onStart while still in PiP without active fullscreen video; skipping PiP params refresh.");
++            }
++        }
++
+         // If we deferred dismissing pip because the screen was off, then dismiss it now if we can.
+         if (mDismissPending) {
+             dismissActivityIfNeeded(mActivity, MetricsEndReason.START);
+@@
+     public void onResume() {
++        if (mActivity.isInPictureInPictureMode()) {
++            final WebContents webContents = getWebContents();
++            if (webContents != null && webContents.hasActiveEffectivelyFullscreenVideo()) {
++                Log.i(TAG, "onResume while still in PiP with active fullscreen video; refreshing PiP params.");
++                refreshPictureInPictureParamsForCurrentVideo();
++            } else {
++                Log.i(TAG, "onResume while still in PiP without active fullscreen video; skipping PiP params refresh.");
++            }
++            Log.i(TAG, "Ignore onResume while activity remains in picture in picture.");
++            return;
++        }
++
+         // Unconditionally dismiss pip, because the activity has been resumed. This can happen if
+         // we get out of sync; we rely on exiting fullscreen to exit pip, and sometimes that just
+         // doesn't happen. This exits pip if the user starts chrome again while in pip.
+@@
+     private static @Nullable Rect getVideoBounds(WebContents webContents, Activity activity) {
+         Rect rect = webContents.getFullscreenVideoSize();
+-        if (rect == null || rect.width() == 0 || rect.height() == 0) return null;
++        if (rect == null) {
++            Log.i(TAG, "getVideoBounds: fullscreen video size is null.");
++            return null;
++        }
++        if (rect.width() == 0 || rect.height() == 0) {
++            Log.i(TAG, "getVideoBounds: fullscreen video size invalid=%s", rect);
++            return null;
++        }
+@@
+-        return new Rect(left, top, left + width, top + height);
++        Rect bounds = new Rect(left, top, left + width, top + height);
++        Log.i(
++                TAG,
++                "getVideoBounds: fullscreen=%s window=%dx%d computed=%s",
++                rect,
++                windowWidth,
++                windowHeight,
++                bounds);
++        return bounds;
++    }
++
++    /**
++     * Refreshes the framework PiP params from the current video bounds, if those bounds are
++     * available. Unlike auto-enter updates, this does not overwrite the framework state with an
++     * empty builder when video bounds are temporarily unavailable.
++     */
++    @SuppressLint("PictureInPictureIssue")
++    public void refreshPictureInPictureParamsForCurrentVideo() {
++        final WebContents webContents = getWebContents();
++        if (webContents == null) {
++            Log.i(TAG, "refreshPictureInPictureParamsForCurrentVideo: no WebContents.");
++            return;
++        }
++
++        if (!webContents.hasActiveEffectivelyFullscreenVideo()) {
++            Log.i(TAG, "refreshPictureInPictureParamsForCurrentVideo: skip without active fullscreen video.");
++            return;
++        }
++
++        Log.i(
++                TAG,
++                "refreshPictureInPictureParamsForCurrentVideo: inPip=%b activeFullscreen=%b pipAllowed=%b autoEnterAllowed=%b",
++                mActivity.isInPictureInPictureMode(),
++                webContents.hasActiveEffectivelyFullscreenVideo(),
++                webContents.isPictureInPictureAllowedForFullscreenVideo(),
++                mIsAutoEnterAllowed);
++
++        final Rect bounds = getVideoBounds(webContents, mActivity);
++        if (bounds == null) {
++            Log.i(TAG, "Skip PiP params refresh without video bounds.");
++            return;
++        }
++
++        PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
++        if (sUseSourceRectHint) {
++            builder.setAspectRatio(new Rational(bounds.width(), bounds.height()));
++            builder.setSourceRectHint(bounds);
++        }
++        if (ENABLE_AUTO_ENTER) {
++            builder.setAutoEnterEnabled(mIsAutoEnterAllowed);
++        }
++
++        try {
++            mActivity.setPictureInPictureParams(builder.build());
++            Log.i(TAG, "Applied PiP params refresh with bounds=%s", bounds);
++        } catch (Exception e) {
++            Log.e(TAG, "Error setting PiP params from current video bounds", e);
++        }
+     }
+@@
+     private void dismissActivityIfNeeded(Activity activity, @MetricsEndReason int reason) {
+         Log.i(TAG, "Dismiss activity with reason " + reason);
++
++        // Some devices transiently report fullscreen loss after unlock while the PiP session
++        // and media playback are still alive. Do not immediately tear down PiP in that case.
++        if ((reason == MetricsEndReason.LEFT_FULLSCREEN
++                        || reason == MetricsEndReason.WEB_CONTENTS_LEFT_FULLSCREEN)
++                && activity.isInPictureInPictureMode()
++                && mIsPlaying) {
++            final WebContents webContents = getWebContents();
++            final boolean activeFullscreen =
++                    webContents != null && webContents.hasActiveEffectivelyFullscreenVideo();
++            final boolean fullscreenRequested =
++                    webContents != null
++                            && BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
++                                    webContents);
++            Log.i(
++                    TAG,
++                    "Pinned fullscreen-loss while playing: activeFullscreen=%b requested=%b",
++                    activeFullscreen,
++                    fullscreenRequested);
++            if (webContents != null && !activeFullscreen && !fullscreenRequested) {
++                Log.i(TAG, "Re-requesting fullscreen to keep PiP video-focused.");
++                BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
++            }
++            mDismissPending = false;
++            Log.i(TAG, "Ignoring fullscreen-loss dismiss while PiP media is still playing.");
++            return;
++        }
+ 
+         // Something interesting happened -- make sure we've updated our preference for auto-PiP
+         // with the framework, if applicable.

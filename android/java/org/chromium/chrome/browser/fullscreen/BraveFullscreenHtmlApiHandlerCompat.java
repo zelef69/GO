@@ -8,7 +8,6 @@ package org.chromium.chrome.browser.fullscreen;
 import android.app.Activity;
 
 import org.chromium.base.supplier.NonNullObservableSupplier;
-import org.chromium.chrome.browser.app.BraveActivity;
 import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 
 public class BraveFullscreenHtmlApiHandlerCompat extends FullscreenHtmlApiHandlerCompat {
@@ -32,9 +31,7 @@ public class BraveFullscreenHtmlApiHandlerCompat extends FullscreenHtmlApiHandle
 
     @Override
     public void exitPersistentFullscreenMode() {
-        boolean suppressPictureInPictureStopCleanup =
-                BraveActivity.shouldSuppressPictureInPictureStopCleanup(mActivity);
-        if ((!mActivity.isInPictureInPictureMode() && !suppressPictureInPictureStopCleanup)
+        if (!mActivity.isInPictureInPictureMode()
                 || BraveFullscreenHtmlApiHandlerBase.class.cast(this).mTabHiddenByChangedTabs) {
             super.exitPersistentFullscreenMode();
         }

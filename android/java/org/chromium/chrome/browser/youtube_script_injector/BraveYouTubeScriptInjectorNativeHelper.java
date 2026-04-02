@@ -6,6 +6,7 @@
 package org.chromium.chrome.browser.youtube_script_injector;
 
 import android.app.Activity;
+import android.app.PictureInPictureParams;
 
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
@@ -34,11 +35,6 @@ public class BraveYouTubeScriptInjectorNativeHelper {
                 .hasFullscreenBeenRequested(webContents);
     }
 
-    public static boolean hasRecentEffectivelyFullscreenVideo(WebContents webContents) {
-        return BraveYouTubeScriptInjectorNativeHelperJni.get()
-                .hasRecentEffectivelyFullscreenVideo(webContents);
-    }
-
     public static boolean isPictureInPictureAvailable(WebContents webContents) {
         return BraveYouTubeScriptInjectorNativeHelperJni.get()
                 .isPictureInPictureAvailable(webContents);
@@ -58,9 +54,25 @@ public class BraveYouTubeScriptInjectorNativeHelper {
                 return;
             }
             if (activity instanceof final BraveActivity braveActivity) {
+                // Resume the media session when the transition completes.
+                Log.i(
+                        TAG,
+                        "enterPictureInPicture helper available=%b requested=%b active_fullscreen=%b in_pip=%b",
+                        isPictureInPictureAvailable(webContents),
+                        hasFullscreenBeenRequested(webContents),
+                        webContents.hasActiveEffectivelyFullscreenVideo(),
+                        braveActivity.isInPictureInPictureMode());
+                if (braveActivity.isInPictureInPictureMode()) {
+                    braveActivity.refreshPictureInPictureParamsForCurrentVideo();
+                    Log.i(TAG, "Skip enterPictureInPicture because activity is already in PiP.");
+                    return;
+                }
+                braveActivity.resumeMediaSession(true);
+                braveActivity.refreshPictureInPictureParamsForCurrentVideo();
                 try {
-                    braveActivity.requestSystemPictureInPictureForCurrentVideo("youtube_helper");
-                } catch (RuntimeException e) {
+                    braveActivity.enterPictureInPictureMode(
+                            new PictureInPictureParams.Builder().build());
+                } catch (IllegalStateException | IllegalArgumentException e) {
                     Log.e(TAG, "Error entering picture in picture mode.", e);
                     braveActivity.resumeMediaSession(false);
                 }
@@ -76,8 +88,6 @@ public class BraveYouTubeScriptInjectorNativeHelper {
         void setFullscreen(WebContents webContents);
 
         boolean hasFullscreenBeenRequested(WebContents webContents);
-
-        boolean hasRecentEffectivelyFullscreenVideo(WebContents webContents);
 
         boolean isPictureInPictureAvailable(WebContents webContents);
     }

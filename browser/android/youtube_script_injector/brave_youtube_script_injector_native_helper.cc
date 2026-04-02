@@ -45,23 +45,6 @@ jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_HasFullscreenBeenRequested(
 }
 
 // static
-jboolean
-JNI_BraveYouTubeScriptInjectorNativeHelper_HasRecentEffectivelyFullscreenVideo(
-    JNIEnv* env,
-    const base::android::JavaRef<jobject>& jweb_contents) {
-  content::WebContents* web_contents =
-      content::WebContents::FromJavaWebContents(jweb_contents);
-
-  YouTubeScriptInjectorTabHelper* helper =
-      YouTubeScriptInjectorTabHelper::FromWebContents(web_contents);
-  if (!helper) {
-    return false;
-  }
-
-  return helper->HasRecentEffectivelyFullscreenVideo();
-}
-
-// static
 jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_IsPictureInPictureAvailable(
     JNIEnv* env,
     const base::android::JavaRef<jobject>& jweb_contents) {

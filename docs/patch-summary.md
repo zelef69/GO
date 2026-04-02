@@ -4,6 +4,124 @@
 
 This pass is the Brave-level player UX follow-up. It consolidates prior playback, autoplay, playability, PiP, and evidence work into a clearer player-focused package instead of leaving the repo documented mainly as adblock work plus scattered perf notes.
 
+## April 2, 2026 PiP Restore Follow-Up
+
+This follow-up specifically restores the full Brave-derived PiP path for OneTabTube after the earlier `rerun200` device fix had hard-disabled it.
+
+Main product-level change:
+
+- remove the OneTabTube-only PiP hard-disable gates instead of replacing the underlying Brave PiP implementation
+
+Files changed for that restore:
+
+- `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+
+What changed in practice:
+
+- `BraveActivity` now allows the normal PiP request path, user-leave PiP entry path, and PiP support checks to run for OneTabTube again
+- the OneTabTube debug PiP action now routes into the normal system PiP request path instead of clearing PiP state
+- `BraveToolbarLayoutImpl` no longer force-hides the PiP button purely because OneTabTube mode is enabled
+
+Why this approach was chosen:
+
+- the full PiP, playback continuity, and restore machinery was still present in the Brave base
+- only a thin product gate had been suppressing it
+- lifting that gate is safer and faster than forking a custom PiP implementation
+
+Device-backed outcome from `rerun201`:
+
+- the PiP button is visible again on the YouTube watch page
+- tapping the PiP button and pressing Home enters pinned PiP mode
+- playback continues while pinned
+- screen-off preserve / restore markers fire during the pinned session
+
+Remaining risk:
+
+- Samsung launcher handoff after power / unlock is still noisy, so one cleaner foreground-return validation pass is still worth doing even though PiP entry and continuity are working again
+
+## April 2, 2026 PiP Direct-Tap Wiring Fix
+
+Problem this follow-up fixed:
+
+- the earlier PiP restore brought the feature back, but the visible toolbar button still depended on the old fullscreen/JS timing path
+- that meant the prior `rerun201` evidence proved "PiP can still happen" and "Home-assisted entry works" but did not honestly prove "tap the button and PiP enters immediately"
+
+Files changed:
+
+- `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+
+What changed:
+
+- added an Android-side immediate PiP request path in `BraveActivity`
+- kept the existing Brave PiP machinery instead of inventing a separate OneTabTube flow
+- changed the toolbar PiP button to call the immediate PiP path directly
+- kept one delayed retry so the button still has a second chance if the first request lands slightly before the player is fully ready
+
+Why this was the right change:
+
+- it keeps the implementation inside the existing Brave activity/lifecycle architecture
+- it fixes the actual user-facing behavior instead of only making the debug or fullscreen callback path look healthy
+- it is smaller and safer than rewriting PiP around the YouTube injector or inventing a custom player shell path
+
+Evidence:
+
+- build passed as `rerun204`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun204.log`
+- direct tap evidence on `R9TRC00GA2E`
+  - `tmp_toolbar_pip_logcat.txt`
+  - `tmp_toolbar_pip_dumpsys.txt`
+  - `window_dump_pip_verify.xml`
+- key signals now observed after the real button tap:
+  - `event=pip_enter_request:toolbar_button`
+  - `event=pip_immediate_request:toolbar_button:entered=true`
+  - `event=pip_mode_changed:true`
+  - `mode=pinned`
+  - `mLastReportedPictureInPictureMode=true`
+
+## April 2, 2026 Brave-Upstream PiP Alignment
+
+Why this pass happened:
+
+- the `rerun204` immediate-entry workaround proved that the user-facing tap path could work
+- but the user explicitly asked for a more stable fix based on the real Brave GitHub code instead of a local guess
+
+Files changed:
+
+- `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+- `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+- `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+
+Brave sources used directly:
+
+- `https://github.com/brave/brave-core/blob/master/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+- `https://github.com/brave/brave-core/blob/master/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+- `https://github.com/brave/brave-core/blob/master/android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- `https://github.com/brave/brave-core/blob/master/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+
+What changed:
+
+- restored the helper-side Brave behavior where the native callback calls `enterPictureInPictureMode(...)` directly
+- restored the toolbar-side Brave behavior where the PiP button only triggers `setFullscreen(...)`
+- removed the now-unused local immediate-entry helper from `BraveActivity`
+
+What this proved:
+
+- the Brave-upstream entry wiring still works in OneTabTube on real hardware
+- direct toolbar PiP entry still succeeds with the upstream path
+- the pinned task survives in recents across a power/off -> wake cycle
+
+What this did not solve yet:
+
+- launcher relaunch after wake still spawned a new fullscreen task instead of reusing the pinned task
+- so the remaining problem is now clearly the post-wake relaunch / task-reuse path, not the PiP entry path itself
+
+Follow-up reality check after more reruns:
+
+- repeated Samsung validation showed that the upstream-aligned path is still flaky in this shell
+- that means the next patch should not abandon the Brave baseline, but it probably does need one narrow OneTabTube-specific stability layer on top
+
 ## Modules Touched
 
 ### `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
@@ -140,3 +258,132 @@ As of March 30, 2026:
 - transition performance is improved but still not at the `<= 3000 ms` finish line
 - lifecycle evidence is now closed for this pass, but CDP attach churn remains a maintenance risk worth watching in future cold-start or reconnect-heavy runs
 - media pipeline churn remains a real risk area for perceived polish, especially when returning from background or during heavy watch-page changes
+
+## April 2, 2026 Post-Unlock Crash Fix
+
+After the later Samsung reruns, the real blocker was no longer "does PiP enter?" but "does the app crash when fullscreen drops while pinned or after unlock?".
+
+What changed:
+
+- `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - restored to the Brave-upstream minimal wrapper
+  - removed the stale OneTabTube-only reflection logic that had started probing private controller internals such as `getWebContents()`
+- `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
+  - removed the `dismissActivityIfNeeded` owner redirect that forced the runtime path through the reflection-heavy Brave wrapper
+- `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java`
+  - took ownership of the `START` / `RESUME` `mDismissPending` clear directly in the controller so the desired Brave behavior survives without reflection
+
+Why this was necessary:
+
+- the real device crash logs showed `Effective video fullscreen change: false` immediately followed by:
+  - `BraveReflectionUtil` `NoSuchMethodException` for `getWebContents()`
+  - then later the same reflection failure for `dismissActivityIfNeeded(Activity,int)`
+  - followed by `AssertionError` and a fatal app crash
+- this meant the old wrapper/adapter combination was no longer safe in the current build pipeline, even though the PiP entry path itself was working
+
+Observed result on `rerun208`:
+
+- build: passed
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun208.log`
+- APK SHA-256:
+  - `d44788f94f8f731f78715a623ac622eb93157eb62bfafc8bdfe0be23b4f4b939`
+- direct toolbar-button PiP:
+  - still enters `mode=pinned`
+- old crash signature:
+  - not observed in direct PiP -> launcher testing
+  - not observed in the latest power/wake run either
+
+Remaining gap:
+
+- the Samsung secure keyguard still blocks a final clean post-unlock verification run, so the wake/unlock UX is not yet marked fully verified
+
+## April 2, 2026 Brave GitHub PiP Realignment (`rerun226`)
+
+After the device owner clarified that "เหมือนของ Brave" means the behavior from the public Brave GitHub repo, the active PiP runtime path was pivoted back toward Brave GitHub instead of continuing the local Samsung-specific unlock-bounce graph.
+
+What changed:
+
+- `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - restored the Brave-style direct PiP entry from the YouTube helper:
+    - `resumeMediaSession(true)`
+    - `enterPictureInPictureMode(new PictureInPictureParams.Builder().build())`
+  - removed the local controller/recent-fullscreen recovery chain from the active path
+- `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - restored the shorter recent-fullscreen grace (`1500ms`)
+  - removed the stale fullscreen re-arm logic in `MaybeSetFullscreen()`
+  - removed the immediate PiP recovery call from `OnFullscreenScriptComplete(...)`
+  - restored the visible-tab/fullscreen-trigger behavior in `MediaEffectivelyFullscreenChanged(...)`
+- `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
+  - restored Brave GitHub’s `dismissActivityIfNeeded(...)` owner redirect to the Brave wrapper
+- `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - removed the active screen on/off receiver registration from `onStartWithNative()`
+  - removed the extra PiP restore/repair work from:
+    - `onResume()`
+    - `onWindowFocusChanged(...)`
+    - `onTopResumedActivityChanged(...)`
+    - `onUserLeaveHint()`
+    - `onPictureInPictureUiStateChanged(...)`
+    - `onPause()`
+    - `onStop()`
+  - simplified `onPictureInPictureModeChanged(...)` back toward Brave’s mode-change behavior
+
+What did not change:
+
+- OneTabTube product pruning and UI cleanup remain in place
+- Brave Shields/adblock integration remains intact
+- the source still contains some older local PiP helper code in `BraveActivity.java`, but it is no longer meant to drive the primary runtime path
+
+Build/install result:
+
+- build: passed
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun226.log`
+- APK SHA-256:
+  - `0a18ecfafc9218457383a1f8c17e90990fceb08eef9f4ead84556f2019411d35`
+- install on `R9TRC00GA2E`: passed
+- warm launch smoke:
+  - passed via `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+
+Honest remaining gap:
+
+- `rerun226` still needs a real manual PiP -> lock -> unlock validation pass on device before claiming that the Brave-GitHub-aligned path is better, worse, or equivalent on this Samsung phone
+
+## April 2, 2026 Verified Lockscreen-Return PiP Snapshot (`rerun236`)
+
+This is the publish snapshot for the specific issue where PiP used to break after returning from the lock screen.
+
+What changed in the final working path:
+
+- `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - added a direct Fullscreen API fallback so the unlock-time recovery path no longer stalls waiting only for the fullscreen button to reappear
+  - loosened the stale hidden-document gate so post-unlock visibility restoration is less likely to dead-end
+- `chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java`
+  - retained PiP while pinned if the device reports transient fullscreen loss after unlock
+  - stopped refreshing PiP params from a non-fullscreen state
+  - re-requests fullscreen before letting the PiP session degrade into page-state content
+  - the tracked mirror for this live controller change is:
+    - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+
+Why this version matters:
+
+- this is the first known-good build where the device owner confirmed that returning from the lock screen no longer leaves PiP broken for the issue being debugged here
+- repository note:
+  - this version can leave the lock screen and continue using PiP without reproducing the earlier unlock-time PiP problem
+
+Observed result on `R9TRC00GA2E`:
+
+- build: passed
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
+- APK SHA-256:
+  - `d1a38475750ab77154aaca6d52d8fff3c1bc20f22de4b9dba8a9f79fd8d1e71f`
+- install:
+  - passed
+- warm launch:
+  - passed
+- lockscreen -> unlock -> PiP usability:
+  - passed by manual device-owner verification
+  - reported outcome: after returning from the lock screen, PiP is usable normally on this version
+
+Honest scope note:
+
+- this documents the verified-good snapshot for the investigated bug on the connected Samsung test device
+- it does not claim that all future upstream YouTube / Android / OEM changes can never affect PiP behavior again

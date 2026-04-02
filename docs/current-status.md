@@ -1,162 +1,158 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-02 02:40:48 +07:00
+  - 2026-04-02 21:33:39 +07:00
 - Current phase:
-  - Phase 7 - Validation / real-device smoke test
+  - Phase 7 - Validation complete for the lockscreen-return PiP issue; publishing the verified snapshot
 - Current objective:
-  - Keep the local repo and the published GitHub branch aligned after the successful safe publish of the device-validated OneTabTube snapshot.
+  - Sync the verified `rerun236` PiP-unlock-good build into tracked repo state and publish it to the user's GitHub repository.
 - Completed since last update:
-  - Audited git remotes and confirmed the requested publish target is `https://github.com/zelef69/GO_PLAY`, while the configured `origin` still points to `https://github.com/zelef69/GO.git`.
-  - Verified the Windows repo was still missing ext4/device-tested fixes in `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`.
-  - Added the missing omnibox null-guard/product-skip logic to `BraveDropdownItemViewInfoListBuilder.java`.
-  - Added `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch` so the Windows tree now also carries the ext4 fallback that returns `CONTENT_SETTING_DEFAULT` instead of aborting in the unmatched secondary-pattern path.
-  - Re-synced the updated Windows tree into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
-  - Created a full local snapshot commit on `main`: `2d1de86a3` (`Add OneTabTube product wiring and device-validated fixes`).
-  - Fetched `https://github.com/zelef69/GO_PLAY.git main` and created a publish branch from the remote tip to avoid force-pushing over the user's existing `main` history.
+  - Re-read the latest desk-state and confirmed the recorded snapshot was stale relative to the latest device truth.
+  - Confirmed `rerun236` is the current known-good build for this issue:
+    - build passed
+    - install passed on `R9TRC00GA2E`
+    - warm launch passed
+    - manual post-unlock PiP truth-check passed per device-owner verification
+  - Confirmed the last tracked repo gap before publishing is the missing mirror of the live ext4 controller change in:
+    - `chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java`
+  - Confirmed the publish target repo is:
+    - `https://github.com/zelef69/GO_PLAY.git`
+    - current local `origin` still points elsewhere and should not be used for this publish step
 - In progress now:
-  - The safe publish branch flow is complete.
-  - The local working branch `publish/go_play-sync-20260402` now matches the published remote branch `codex/onetabtube-sync-20260402`.
+  - Updating docs/testing/patch summary to explicitly record that this version can return from the lock screen with PiP still usable.
+  - Mirroring the ext4 controller fix into a tracked patch file so the pushed repo matches the buildable/runtime-good state more closely.
+  - Preparing the commit/push for the verified snapshot.
 - Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
   - `docs/current-status.md`
   - `docs/progress-log.md`
-  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
-  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
-  - `tools/sync_changed_files_to_wsl.ps1`
-  - `.git` branch state for `main` and `publish/go_play-sync-20260402`
+  - `docs/patch-summary.md`
+  - `docs/testing.md`
 - Build/test status:
-  - Latest verified successful packaged build remains `rerun200`:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log 2>&1"`
-  - Latest APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Latest APK SHA-256:
-    - `08c34f11821d3fe1245a5a02c2aa27453a1debc71ea9c6f1a220aabc557ac33d`
-  - Device runtime validation on `R9TRC00GA2E` is still the last verified runtime evidence:
-    - normal launch: pass
-    - `VIEW https://youtu.be/dQw4w9WgXcQ`: pass
-    - `VIEW https://google.com`: pass by redirecting back into `m.youtube.com`
-    - crash buffer after these runs: no new crash output observed from `adb logcat -b crash -d`
-  - Git publish status:
-    - local snapshot commit created on `main`: pass (`2d1de86a3`)
-    - direct push of that history to `GO_PLAY`: fail (`remote unpack failed: index-pack failed`)
-    - safe branch rebase/import path onto remote `GO_PLAY/main`: pass
-    - published commit on safe branch: `e2250064b`
-    - remote branch created successfully:
-      - `codex/onetabtube-sync-20260402`
-      - PR URL hint: `https://github.com/zelef69/GO_PLAY/pull/new/codex/onetabtube-sync-20260402`
+  - `rerun236`
+    - build passed
+    - build log: `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
+    - APK path: `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+    - APK SHA-256: `d1a38475750ab77154aaca6d52d8fff3c1bc20f22de4b9dba8a9f79fd8d1e71f`
+    - install passed on `R9TRC00GA2E`
+    - warm launch passed
+    - manual lock -> unlock PiP verification: passed
+    - user-reported outcome: after returning from the lock screen, PiP is usable normally and the earlier unlock-time PiP issue is no longer reproduced on this version
 - Blockers/risks:
-  - `GO_PLAY/main` has its own existing history, so pushing local `main` directly would be unsafe without explicit confirmation to overwrite or reconcile remote commits.
-  - Untracked local artifacts/logs still exist in large numbers and must stay excluded from the publish commit unless explicitly requested.
+  - The active Chromium controller fix lives in ext4 and must be mirrored into tracked repo state before publishing, otherwise the pushed repo under-documents the real working runtime path.
+  - The current local `origin` remote points to `https://github.com/zelef69/GO.git`, not `GO_PLAY`; publish must target `https://github.com/zelef69/GO_PLAY.git` explicitly.
+  - Numerous local evidence files remain intentionally untracked and should not be swept into the publish commit by accident.
 - Next concrete step:
-  - Keep working on `publish/go_play-sync-20260402` if more changes are needed so local history stays on top of the published safe branch.
-  - If the user wants GitHub `main` updated, open or merge a PR from `codex/onetabtube-sync-20260402` instead of force-pushing.
+  - Add the tracked controller mirror patch file.
+  - Update `docs/patch-summary.md` and `docs/testing.md` with the verified `rerun236` unlock-success note.
+  - Append a fresh `docs/progress-log.md` entry for the verified-good publish snapshot.
+  - Stage only the tracked PiP/runtime/docs files, commit them, and push the current branch to `https://github.com/zelef69/GO_PLAY.git`.
 - Expected resume inspection scope:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
-  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
-  - `git status --short`
-  - `git log --oneline --decorate -n 5 --all`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/testing.md`
+  - `docs/patch-summary.md`
 - Current tool(s):
   - `shell_command`
   - `apply_patch`
   - `git`
 - Exact command(s):
-  - `git status --short`
-  - `git remote -v`
-  - `git ls-remote https://github.com/zelef69/GO_PLAY.git`
-  - `git fetch https://github.com/zelef69/GO_PLAY.git main`
-  - `git switch -c publish/go_play-sync-20260402 FETCH_HEAD`
-  - `git checkout 2d1de86a3 -- AGENTS.md README.md android app base browser build chromium_src components docs patches renderer tools/check-cipd-match.sh tools/check_luci.py tools/create_onetabyt_browser_media_router_stub_srcjar.py tools/create_onetabyt_language_split_installer_stub_srcjar.py tools/create_onetabyt_leo_stub_srcjar.py tools/create_onetabyt_module_installer_stub_srcjar.py tools/create_onetabyt_playcore_update_stub_srcjar.py tools/create_onetabyt_rate_stub_srcjar.py tools/create_onetabyt_rate_stub_srcjar.pydeps tools/create_onetabyt_xr_stub_srcjar.py tools/fix-shebang-crlf.sh tools/install-android-cipd-deps.ps1 tools/install-android-cipd-full.py tools/monitor_brave_apk_build.sh tools/normalize-vendor-depot-tools-lfs.sh tools/parse-android-cipd.py tools/print-build-config.mjs tools/run_brave_apk_build.sh tools/show-chromium-sync-progress.ps1 tools/sync_changed_files_to_wsl.ps1`
   - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - previous failed direct push attempt:
-    - `git push --progress https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - expected publish command:
+    - `git push https://github.com/zelef69/GO_PLAY.git HEAD:publish/go_play-sync-20260402`
 - Tool purpose:
-  - Align repo state with the ext4/device-validated OneTabTube source snapshot and publish it safely to the user's GitHub repo without rewriting remote history.
+  - Preserve the verified runtime-good PiP unlock state in tracked repo files and publish that exact snapshot to GitHub.
 - Tool state:
-  - No build or device test is currently running.
-  - No git command is running.
-  - The publish branch is committed and pushed.
+  - No build or device capture is currently running.
+  - `rerun236` is the latest installed and verified-good build for this issue.
 - Expected resume command:
   - `git status --short`
-  - `git log --oneline --decorate -n 5 --all`
-  - continue working from `publish/go_play-sync-20260402`, then `git push https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402` for follow-up updates
+  - `git diff --stat -- <tracked PiP files>`
+  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:publish/go_play-sync-20260402`
 - Expected output/artifact path:
-  - Git branch ref on remote:
-    - `refs/heads/codex/onetabtube-sync-20260402`
-  - GitHub compare / PR entry:
-    - `https://github.com/zelef69/GO_PLAY/pull/new/codex/onetabtube-sync-20260402`
-  - Build artifact preserved in repo history/context:
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
+  - APK:
     - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - last key evidence:
+    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun235_live.txt`
+    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun235_live.png`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - remote `GO_PLAY/main`: `a47b5b9232566c5cbf9aea557e72a8f9221f9cdc`
-  - local full snapshot commit on `main`: `2d1de86a3`
-  - published safe-branch commit: `e2250064b`
+  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
-  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java` - Windows repo was missing ext4/device-tested null guards; now aligned
-  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch` - carries the ext4 renderer fallback into the tracked patch set
-  - `tools/sync_changed_files_to_wsl.ps1` - keeps Windows and ext4 trees aligned before any future rebuild
-  - `docs/current-status.md` - latest desk-state source of truth for the publish operation
-  - `docs/progress-log.md` - append-only audit trail for publish attempts and outcomes
-  - `.git` branch state (`main`, `publish/go_play-sync-20260402`) - determines safe push path
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - last tracked source change that removed the fullscreen-script timeout bottleneck before the successful `rerun236`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+    - tracked mirror that must represent the live ext4 controller fix used by the good APK
+  - `docs/testing.md`
+    - needs the explicit note that this version returns from the lock screen with PiP still usable
+  - `docs/patch-summary.md`
+    - needs the final product-facing summary of the verified-good PiP unlock state
+  - `docs/progress-log.md`
+    - append-only handoff record for the successful `rerun236` truth-check
 - Files to inspect first after resume:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
-  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
-  - `git status --short`
-  - `git log --oneline --decorate -n 5 --all`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+  - `docs/testing.md`
+  - `docs/patch-summary.md`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root `/home/master/src_ext4`
 - Prerequisites before command:
-  - remote GitHub repo `https://github.com/zelef69/GO_PLAY.git` reachable
-  - local git credentials usable for that repo
-  - staged snapshot on `publish/go_play-sync-20260402` remains intact until committed
+  - local working tree still contains the tracked PiP/runtime/doc edits
+  - `https://github.com/zelef69/GO_PLAY.git` remains reachable
+  - no accidental staging of local evidence dumps or secrets
 - Expected success signal:
-  - `git ls-remote https://github.com/zelef69/GO_PLAY.git refs/heads/codex/onetabtube-sync-20260402` returns `e2250064b`
+  - tracked repo includes the ext4 controller mirror patch plus the updated docs
+  - commit succeeds
+  - push to `GO_PLAY` succeeds
+  - repo history clearly records that this version can leave the lock screen and keep PiP usable
 - Expected failure signal:
-  - local branch drifts without a matching follow-up push
+  - missing controller mirror patch
+  - accidental inclusion of evidence dumps in the commit
+  - push goes to the wrong remote or branch
 - Last known log location:
-  - successful push output ended with:
-    - `* [new branch]          HEAD -> codex/onetabtube-sync-20260402`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
 - Last known artifact path:
-  - local snapshot commit:
-    - `2d1de86a3`
-  - intended remote branch:
-    - `codex/onetabtube-sync-20260402`
-  - published safe-branch commit:
-    - `e2250064b`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Recent decisions:
-  - Use the ext4/device-tested source state as the source of truth, then backfill missing fixes into the tracked Windows repo before publishing.
-  - Do not push local `main` directly into `GO_PLAY/main` because the remote already has user commits on top of a different history.
-  - Publish on a safe branch first, then let the user decide how to merge it upstream.
+  - Treat the device-owner verdict on `rerun236` as the source of truth for this issue.
+  - Stop iterating on PiP behavior for now and publish the verified-good state instead of risking a regression.
+  - Mirror the ext4-only controller change into tracked repo state rather than pretending the tracked tree is already complete.
 - Rejected approaches:
-  - Force-pushing over `GO_PLAY/main`
-  - Trusting the Windows repo blindly without checking ext4-only/device-tested fixes
-  - Publishing untracked local logs and artifacts together with source changes
+  - chasing additional PiP tweaks after the user already verified the fix
+  - publishing to the current `origin` remote even though it points to the wrong repository
+  - staging the large pile of local evidence artifacts
 - Stop point classification:
-  - publish branch committed and pushed successfully; waiting for user direction on PR/merge/follow-up work
+  - verified-good build exists; repo sync/doc update/commit/push in progress
 - What is done but unverified:
-  - whether the user wants this branch merged into GitHub `main`
+  - GitHub publish step for this exact snapshot
 - What is verified:
-  - latest tree previously built and ran on `R9TRC00GA2E`
-  - local commit `2d1de86a3` captures the intended OneTabTube snapshot on `main`
-  - remote `GO_PLAY/main` is reachable and fetchable
-  - the publish branch now sits on the remote base instead of the Brave-derived local history
-  - remote branch `codex/onetabtube-sync-20260402` now exists on GitHub
+  - `rerun236` builds
+  - `rerun236` installs
+  - `rerun236` launches
+  - on `R9TRC00GA2E`, returning from the lock screen no longer breaks PiP usability on this version
 - External prerequisite:
-  - GitHub access to `https://github.com/zelef69/GO_PLAY.git` remains required for push
+  - GitHub network access for push
 - Secret required but not stored:
-  - Any GitHub credential/token used by local git is intentionally not stored in the repo
+  - GitHub credentials or token, if the local git environment needs them at push time
 - Actual code state after resume:
-  - The working tree is on `publish/go_play-sync-20260402`.
-  - The repo contains the missing ext4-alignment fixes for omnibox suggestion handling and the renderer content-settings fallback.
-  - The remote publish branch is in sync with the current committed state.
+  - The recorded desk-state was stale before the final manual truth-check. The actual working state is `rerun236`, with the successful runtime fix coming from tracked injector-side changes plus an ext4-only Chromium controller adjustment that still needs a tracked mirror patch.
 - Chosen direction:
-  - Keep the safe-branch publishing strategy as the default and avoid destructive updates to `GO_PLAY/main`.
+  - Publish `rerun236` as the verified-good PiP unlock snapshot, and make the tracked repo state honest about the live controller change before pushing.

@@ -6,6 +6,7 @@
 package org.chromium.chrome.browser.app;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.KeyguardManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -161,6 +162,7 @@ import org.chromium.chrome.browser.informers.BraveSyncAccountDeletedInformer;
 import org.chromium.chrome.browser.lifetime.ApplicationLifetime;
 import org.chromium.chrome.browser.misc_metrics.MiscAndroidMetricsConnectionErrorHandler;
 import org.chromium.chrome.browser.misc_metrics.MiscAndroidMetricsFactory;
+import org.chromium.chrome.browser.media.FullscreenVideoPictureInPictureController;
 import org.chromium.chrome.browser.multiwindow.BraveMultiWindowUtils;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
@@ -303,10 +305,6 @@ public abstract class BraveActivity extends ChromeActivity
             "https://github.com/brave/brave-browser/wiki/Web-compatibility-reports";
     private static final String KEY_RESUME_MEDIA_SESSION =
             "org.chromium.chrome.browser.app.KEY_RESUME_MEDIA_SESSION";
-    private static final String KEY_RESTORE_PICTURE_IN_PICTURE_ON_RESUME =
-            "org.chromium.chrome.browser.app.KEY_RESTORE_PICTURE_IN_PICTURE_ON_RESUME";
-    private static final String KEY_WAS_IN_PICTURE_IN_PICTURE_MODE =
-            "org.chromium.chrome.browser.app.KEY_WAS_IN_PICTURE_IN_PICTURE_MODE";
 
     private static final int DAYS_4 = 4;
     private static final int DAYS_7 = 7;
@@ -335,24 +333,8 @@ public abstract class BraveActivity extends ChromeActivity
             Arrays.asList("AM", "AZ", "BY", "KG", "KZ", "MD", "RU", "TJ", "TM", "UZ");
 
     private static final int PIP_UPDATE_DELAY_MS = 500;
-    private static final int PIP_RESTORE_MAX_ATTEMPTS = 6;
-    private static final long PIP_RESTORE_RETRY_DELAY_MS = 700;
-    private static final long PIP_BACKGROUND_TRANSITION_GRACE_MS = 2500;
-    private static final long PIP_POST_UNLOCK_STABILITY_MS = 2000;
-    private static final long PIP_GLOBAL_PRESERVE_GRACE_MS = 15000;
-    private static final long PIP_ENTER_REQUEST_GRACE_MS = 5000;
-    private static final int PIP_ENTER_RETRY_MAX_ATTEMPTS = 4;
-    private static final long PIP_ENTER_RETRY_DELAY_MS = 200;
-    private static final long PIP_ENTER_FULLSCREEN_WAIT_TIMEOUT_MS = 1500;
-    private static final long PIP_FULLSCREEN_LOSS_TRANSIENT_GRACE_MS = 2500;
-    private static final int PIP_FULLSCREEN_REPAIR_MAX_ATTEMPTS = 4;
-    private static final long PIP_FULLSCREEN_REPAIR_RETRY_DELAY_MS = 400;
-    private static final String ACTION_OTB_DEBUG_REQUEST_YOUTUBE_PIP =
-            "org.chromium.chrome.browser.app.action.OTB_DEBUG_REQUEST_YOUTUBE_PIP";
     private static final String OTB_PERF_TAG = "OneTabTubePerf";
     private static final String OTB_DEVTOOLS_SOCKET_PREFIX = "chrome";
-    private static volatile boolean sGlobalPictureInPictureSessionActive;
-    private static volatile long sGlobalPictureInPicturePreserveUntilElapsedMs;
     private boolean mIsVerification;
     public boolean mIsDeepLink;
     private BraveWalletService mBraveWalletService;
@@ -383,22 +365,6 @@ public abstract class BraveActivity extends ChromeActivity
     // Boolean flag that indicates if the media session must be resumed
     // when switching in picture-in-picture mode.
     private boolean mResumeMediaSession;
-    // Keeps PiP alive across lockscreen transitions instead of treating them like dismissal.
-    private boolean mRestorePictureInPictureOnResume;
-    private boolean mWasInPictureInPictureMode;
-    private boolean mPictureInPictureRestoreScheduled;
-    private int mPictureInPictureRestoreAttemptCount;
-    private long mLastPictureInPictureExitElapsedMs;
-    private long mLastPictureInPictureBackgroundTransitionElapsedMs;
-    private long mLastPictureInPictureUnlockResumeElapsedMs;
-    private long mLastPictureInPictureEnterRequestElapsedMs;
-    private boolean mPictureInPictureEntryRetryScheduled;
-    private int mPictureInPictureEntryRetryAttemptCount;
-    private boolean mPictureInPictureFullscreenRepairScheduled;
-    private int mPictureInPictureFullscreenRepairAttemptCount;
-    private long mLastPictureInPictureEnteredElapsedMs;
-    @Nullable private BroadcastReceiver mPictureInPictureScreenStateReceiver;
-    private boolean mPictureInPictureScreenStateReceiverRegistered;
 
     private View mQuickSearchEnginesView;
 
@@ -416,234 +382,12 @@ public abstract class BraveActivity extends ChromeActivity
 
     public BraveActivity() {}
 
-    private void logOneTabPerf(String event) {
-        if (!OneTabYouTubeMode.isEnabled()) {
-            return;
-        }
-
-        WebContents webContents = getCurrentWebContents();
-        String url = "none";
-        boolean hasMediaSession = false;
-        if (webContents != null) {
-            GURL lastCommittedUrl = webContents.getLastCommittedUrl();
-            if (lastCommittedUrl != null && lastCommittedUrl.isValid()) {
-                url = lastCommittedUrl.getSpec();
-            }
-            hasMediaSession = MediaSession.fromWebContents(webContents) != null;
-        }
-
-        Log.i(
-                OTB_PERF_TAG,
-                "event=%s pip=%b resume_media=%b has_media_session=%b url=%s",
-                event,
-                isInPictureInPictureMode(),
-                mResumeMediaSession,
-                hasMediaSession,
-                url);
-    }
-
-    private void logPictureInPictureAttemptState(String reason) {
-        if (!OneTabYouTubeMode.isEnabled()) {
-            return;
-        }
-
-        WebContents webContents = getCurrentWebContents();
-        boolean recentFullscreenVideo =
-                webContents != null
-                        && BraveYouTubeScriptInjectorNativeHelper
-                                .hasRecentEffectivelyFullscreenVideo(webContents);
-        boolean fullscreenRequested =
-                webContents != null
-                        && BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
-                                webContents);
-        boolean hasFeature =
-                getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);
-        boolean contentAvailable =
-                webContents != null
-                        && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
-                                webContents);
-        boolean hasFullscreenVideo =
-                webContents != null && webContents.hasActiveEffectivelyFullscreenVideo();
-        boolean pipAllowed =
-                webContents != null && webContents.isPictureInPictureAllowedForFullscreenVideo();
-        logOneTabPerf(
-                String.format(
-                        Locale.US,
-                        "pip_attempt_state:%s feature=%b content=%b fullscreen=%b recent_fullscreen=%b requested=%b allowed=%b changing=%b finishing=%b destroyed=%b",
-                        reason,
-                        hasFeature,
-                        contentAvailable,
-                        hasFullscreenVideo,
-                        recentFullscreenVideo,
-                        fullscreenRequested,
-                        pipAllowed,
-                        isChangingConfigurations(),
-                        isFinishing(),
-                        isDestroyed()));
-    }
-
-    private boolean hasRecentPictureInPictureFullscreenVideo() {
-        WebContents webContents = getCurrentWebContents();
-        return webContents != null
-                && BraveYouTubeScriptInjectorNativeHelper.hasRecentEffectivelyFullscreenVideo(
-                        webContents);
-    }
-
-    private boolean shouldUseRecentFullscreenPictureInPictureFallback() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O
-                || isFinishing()
-                || isDestroyed()
-                || isInPictureInPictureMode()) {
-            return false;
-        }
-        WebContents webContents = getCurrentWebContents();
-        return webContents != null
-                && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(webContents)
-                && !webContents.hasActiveEffectivelyFullscreenVideo()
-                && BraveYouTubeScriptInjectorNativeHelper.hasRecentEffectivelyFullscreenVideo(
-                        webContents);
-    }
-
-    public boolean requestDirectPictureInPictureUsingRecentFullscreen(String reason) {
-        if (OneTabYouTubeMode.isEnabled()) {
-            disablePictureInPictureForOneTab(reason);
-            return false;
-        }
-        if (!shouldUseRecentFullscreenPictureInPictureFallback()) {
-            return false;
-        }
-        try {
-            PictureInPictureParams params = buildPictureInPictureParams();
-            setPictureInPictureParams(params);
-            boolean entered = enterPictureInPictureMode(params);
-            logOneTabPerf(
-                    "pip_direct_request:"
-                            + reason
-                            + ":entered="
-                            + entered
-                            + ":recent_fullscreen=true");
-            if (entered) {
-                mResumeMediaSession = true;
-                return true;
-            }
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            logOneTabPerf(
-                    "pip_direct_request_failed:"
-                            + reason
-                            + ":"
-                            + e.getClass().getSimpleName());
-        }
-        return false;
-    }
-
-    private boolean isWithinTransientPictureInPictureFullscreenLossGrace() {
-        if (mLastPictureInPictureEnteredElapsedMs == 0) {
-            return false;
-        }
-        return SystemClock.elapsedRealtime() - mLastPictureInPictureEnteredElapsedMs
-                <= PIP_FULLSCREEN_LOSS_TRANSIENT_GRACE_MS;
-    }
-
-    public boolean shouldTreatPictureInPictureFullscreenLossAsTransient(
-            @Nullable WebContents webContents, int reason) {
-        if (reason != 6 /*MetricsEndReason.LEFT_FULLSCREEN*/
-                && reason != 7 /*MetricsEndReason.WEB_CONTENTS_LEFT_FULLSCREEN*/) {
-            return false;
-        }
-        if (webContents == null) {
-            return false;
-        }
-        boolean transitionActive =
-                isInPictureInPictureMode()
-                        || isAwaitingPictureInPictureEntry()
-                        || shouldPreservePictureInPictureOnSystemTransition()
-                        || isWithinTransientPictureInPictureFullscreenLossGrace();
-        if (!transitionActive) {
-            return false;
-        }
-        boolean recentFullscreenVideo =
-                BraveYouTubeScriptInjectorNativeHelper.hasRecentEffectivelyFullscreenVideo(
-                        webContents);
-        boolean fullscreenRequested =
-                BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(webContents);
-        if (!recentFullscreenVideo && !fullscreenRequested) {
-            return false;
-        }
-        logOneTabPerf(
-                String.format(
-                        Locale.US,
-                        "pip_transient_fullscreen_loss_candidate:%d requested=%b recent_fullscreen=%b",
-                        reason,
-                        fullscreenRequested,
-                        recentFullscreenVideo));
-        return true;
-    }
-
-    public void handleTransientPictureInPictureFullscreenLoss(int reason) {
-        logOneTabPerf("pip_transient_fullscreen_loss_suppressed:" + reason);
-        if (shouldContinueFullscreenRepair()) {
-            schedulePictureInPictureFullscreenRepair("transient_" + reason);
-        }
-    }
-
-    private boolean isLossTriggeredPictureInPictureFullscreenRepairReason(String reason) {
-        return reason.startsWith("lost_") || reason.startsWith("transient_");
-    }
-
-    private boolean shouldSuppressProactivePictureInPictureFullscreenRepair(
-            String reason, @Nullable WebContents webContents) {
-        if (webContents == null
-                || isLossTriggeredPictureInPictureFullscreenRepairReason(reason)) {
-            return false;
-        }
-        if (webContents.hasActiveEffectivelyFullscreenVideo()) {
-            logOneTabPerf("pip_fullscreen_repair_suppressed:" + reason + ":active_fullscreen");
-            return true;
-        }
-        boolean recentFullscreenVideo =
-                BraveYouTubeScriptInjectorNativeHelper.hasRecentEffectivelyFullscreenVideo(
-                        webContents);
-        boolean fullscreenRequested =
-                BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(webContents);
-        if (!isInPictureInPictureMode() || !recentFullscreenVideo || !fullscreenRequested) {
-            return false;
-        }
-        logOneTabPerf(
-                String.format(
-                        Locale.US,
-                        "pip_fullscreen_repair_suppressed:%s:recent_fullscreen requested=%b recent_fullscreen=%b",
-                        reason,
-                        fullscreenRequested,
-                        recentFullscreenVideo));
-        return true;
-    }
-
-    private boolean ensurePictureInPictureFullscreenState(String reason) {
-        WebContents webContents = getCurrentWebContents();
-        if (webContents == null) {
-            return false;
-        }
-        boolean hasFullscreenVideo = webContents.hasActiveEffectivelyFullscreenVideo();
-        if (!hasFullscreenVideo
-                && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
-                        webContents)) {
-            logOneTabPerf("pip_force_fullscreen:" + reason);
-            BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
-        }
-        return hasFullscreenVideo;
-    }
-
     @Override
     protected void onPostCreate() {
         super.onPostCreate();
         final Bundle savedInstanceState = getSavedInstanceState();
         if (savedInstanceState != null) {
             mResumeMediaSession = savedInstanceState.getBoolean(KEY_RESUME_MEDIA_SESSION, false);
-            mRestorePictureInPictureOnResume =
-                    savedInstanceState.getBoolean(
-                            KEY_RESTORE_PICTURE_IN_PICTURE_ON_RESUME, false);
-            mWasInPictureInPictureMode =
-                    savedInstanceState.getBoolean(KEY_WAS_IN_PICTURE_IN_PICTURE_MODE, false);
         }
     }
 
@@ -651,9 +395,6 @@ public abstract class BraveActivity extends ChromeActivity
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putBoolean(KEY_RESUME_MEDIA_SESSION, mResumeMediaSession);
-        outState.putBoolean(
-                KEY_RESTORE_PICTURE_IN_PICTURE_ON_RESUME, mRestorePictureInPictureOnResume);
-        outState.putBoolean(KEY_WAS_IN_PICTURE_IN_PICTURE_MODE, mWasInPictureInPictureMode);
     }
 
     @Override
@@ -875,12 +616,6 @@ public abstract class BraveActivity extends ChromeActivity
         if (mAppUpdateManager != null) {
             mAppUpdateManager.unregisterListener(mInstallStateUpdatedListener);
         }
-        if (mPictureInPictureScreenStateReceiverRegistered
-                && mPictureInPictureScreenStateReceiver != null) {
-            unregisterReceiver(mPictureInPictureScreenStateReceiver);
-            mPictureInPictureScreenStateReceiverRegistered = false;
-            mPictureInPictureScreenStateReceiver = null;
-        }
         super.onDestroyInternal();
         cleanUpWalletNativeServices();
         cleanUpMiscAndroidMetrics();
@@ -889,32 +624,6 @@ public abstract class BraveActivity extends ChromeActivity
     @Override
     public void onPictureInPictureModeChanged(boolean inPicture, Configuration newConfig) {
         super.onPictureInPictureModeChanged(inPicture, newConfig);
-        logOneTabPerf("pip_mode_changed:" + inPicture);
-        syncOneTabCleanModeUi();
-        if (inPicture) {
-            mLastPictureInPictureEnteredElapsedMs = SystemClock.elapsedRealtime();
-            armGlobalPictureInPicturePreserve("entered");
-            mWasInPictureInPictureMode = true;
-            mLastPictureInPictureExitElapsedMs = 0;
-            mLastPictureInPictureBackgroundTransitionElapsedMs = 0;
-            clearPictureInPictureEntryRetryState("entered");
-            clearPictureInPictureEnterRequestState("entered");
-            clearPictureInPictureRestoreState("entered");
-            schedulePictureInPictureFullscreenRepair("entered");
-        } else {
-            mLastPictureInPictureEnteredElapsedMs = 0;
-            clearPictureInPictureFullscreenRepairState("left_pip");
-            mLastPictureInPictureExitElapsedMs = SystemClock.elapsedRealtime();
-            if (mWasInPictureInPictureMode && shouldPreservePictureInPictureOnSystemTransition()) {
-                armGlobalPictureInPicturePreserve("mode_changed_false");
-                armPictureInPictureRestore("mode_changed_false");
-                maybeRestorePictureInPictureOnResume();
-            } else {
-                clearGlobalPictureInPicturePreserve("dismissed");
-                clearPictureInPictureRestoreState("dismissed");
-            }
-            clearPictureInPictureEnterRequestState("left_pip");
-        }
         if (mResumeMediaSession) {
             mResumeMediaSession = false;
             MediaSession mediaSession = MediaSession.fromWebContents(getCurrentWebContents());
@@ -930,18 +639,8 @@ public abstract class BraveActivity extends ChromeActivity
             // wrong part of the screen and partially clipped before snapping to its normal place.
             PostTask.postDelayedTask(
                     TaskTraits.UI_BEST_EFFORT,
-                    (Runnable) () -> setPictureInPictureParams(buildPictureInPictureParams()),
+                    (Runnable) this::refreshPictureInPictureParamsForCurrentVideo,
                     PIP_UPDATE_DELAY_MS);
-        }
-        if (!inPicture && mRestorePictureInPictureOnResume) {
-            logOneTabPerf("pip_restore_skip_cleanup");
-            return;
-        }
-        mWasInPictureInPictureMode = false;
-        if (!inPicture && shouldKeepFullscreenPlayerAfterPictureInPictureExit()) {
-            logOneTabPerf("pip_exit_keep_fullscreen_player");
-            schedulePictureInPictureFullscreenRepair("exit_to_fullscreen_player");
-            return;
         }
         if (!inPicture
                 && getCurrentWebContents() != null
@@ -1397,7 +1096,6 @@ public abstract class BraveActivity extends ChromeActivity
     @Override
     public void onResume() {
         super.onResume();
-        logOneTabPerf("activity_resume");
         mIsProcessingPendingDappsTxRequest = false;
 
         PostTask.postTask(
@@ -1419,98 +1117,6 @@ public abstract class BraveActivity extends ChromeActivity
             PostTask.postTask(TaskTraits.UI_DEFAULT, this::enforceOneTabYouTubeMode);
         }
         syncOneTabCleanModeUi();
-        maybeApplyPictureInPictureParams();
-        maybeRestorePictureInPictureOnResume();
-        if (shouldContinueFullscreenRepair()) {
-            schedulePictureInPictureFullscreenRepair("resume");
-        }
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        logOneTabPerf("window_focus:" + hasFocus);
-        if (hasFocus) {
-            syncOneTabCleanModeUi();
-            maybeRestorePictureInPictureOnResume();
-            if (shouldContinueFullscreenRepair()) {
-                schedulePictureInPictureFullscreenRepair("window_focus");
-            }
-        }
-    }
-
-    @Override
-    public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
-        super.onTopResumedActivityChanged(isTopResumedActivity);
-        logOneTabPerf("top_resumed:" + isTopResumedActivity);
-        if (isTopResumedActivity) {
-            syncOneTabCleanModeUi();
-            maybeRestorePictureInPictureOnResume();
-            if (shouldContinueFullscreenRepair()) {
-                schedulePictureInPictureFullscreenRepair("top_resumed");
-            }
-        }
-    }
-
-    @Override
-    public void onUserLeaveHint() {
-        if (OneTabYouTubeMode.isEnabled()) {
-            disablePictureInPictureForOneTab("user_leave_hint");
-            super.onUserLeaveHint();
-            logOneTabPerf("user_leave_hint:pip_disabled");
-            return;
-        }
-        boolean pipSupported = isPictureInPictureSupportedForCurrentContent();
-        if (pipSupported) {
-            notePictureInPictureEnterRequested("user_leave_hint");
-            ensurePictureInPictureFullscreenState("user_leave_hint");
-            maybeApplyPictureInPictureParams();
-            requestDirectPictureInPictureUsingRecentFullscreen("user_leave_hint");
-        }
-        logPictureInPictureAttemptState("before_user_leave_hint");
-        super.onUserLeaveHint();
-        logOneTabPerf("user_leave_hint");
-        logPictureInPictureAttemptState("after_user_leave_hint");
-        if (pipSupported && !isInPictureInPictureMode() && isAwaitingPictureInPictureEntry()) {
-            schedulePictureInPictureEntryRetry("user_leave_hint");
-        }
-    }
-
-    @Override
-    public void onPictureInPictureUiStateChanged(PictureInPictureUiState pipState) {
-        super.onPictureInPictureUiStateChanged(pipState);
-        boolean isStashed =
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && pipState.isStashed();
-        logOneTabPerf("pip_ui_state:stashed=" + isStashed);
-        if (!isStashed && shouldContinueFullscreenRepair()) {
-            schedulePictureInPictureFullscreenRepair("ui_visible");
-        }
-    }
-
-    @Override
-    public void onPause() {
-        if (mWasInPictureInPictureMode || isInPictureInPictureMode()) {
-            armGlobalPictureInPicturePreserve("pause");
-            mLastPictureInPictureBackgroundTransitionElapsedMs = SystemClock.elapsedRealtime();
-            if (isLockscreenPictureInPictureTransition()) {
-                armPictureInPictureRestore("pause");
-            }
-        }
-        logOneTabPerf("activity_pause");
-        super.onPause();
-    }
-
-    @Override
-    public void onStop() {
-        if (mWasInPictureInPictureMode || isInPictureInPictureMode()) {
-            armGlobalPictureInPicturePreserve("stop");
-            mLastPictureInPictureBackgroundTransitionElapsedMs = SystemClock.elapsedRealtime();
-            if (isLockscreenPictureInPictureTransition()) {
-                armPictureInPictureRestore("stop");
-            }
-        }
-        logOneTabPerf("activity_stop");
-        super.onStop();
     }
 
     @Override
@@ -1530,7 +1136,6 @@ public abstract class BraveActivity extends ChromeActivity
         }
 
         super.onStartWithNative();
-        ensurePictureInPictureScreenStateReceiverRegistered();
         ensureOneTabDevToolsServerStarted();
         syncOneTabCleanModeUi();
     }
@@ -1560,38 +1165,6 @@ public abstract class BraveActivity extends ChromeActivity
         }
     }
 
-    private void ensurePictureInPictureScreenStateReceiverRegistered() {
-        if (mPictureInPictureScreenStateReceiverRegistered) {
-            return;
-        }
-        mPictureInPictureScreenStateReceiver =
-                new BroadcastReceiver() {
-                    @Override
-                    public void onReceive(Context context, Intent intent) {
-                        String action = intent.getAction();
-                        if (Intent.ACTION_SCREEN_OFF.equals(action)) {
-                            logOneTabPerf("screen_off");
-                            if (isInPictureInPictureMode() || wasRecentlyInPictureInPicture()) {
-                                armGlobalPictureInPicturePreserve("screen_off");
-                                armPictureInPictureRestore("screen_off");
-                            }
-                        } else if (Intent.ACTION_USER_PRESENT.equals(action)) {
-                            logOneTabPerf("user_present");
-                            maybeRestorePictureInPictureOnResume();
-                        } else if (ACTION_OTB_DEBUG_REQUEST_YOUTUBE_PIP.equals(action)) {
-                            requestDebugYouTubePictureInPicture();
-                        }
-                    }
-                };
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(Intent.ACTION_USER_PRESENT);
-        filter.addAction(ACTION_OTB_DEBUG_REQUEST_YOUTUBE_PIP);
-        ContextUtils.registerProtectedBroadcastReceiver(
-                this, mPictureInPictureScreenStateReceiver, filter);
-        mPictureInPictureScreenStateReceiverRegistered = true;
-    }
-
     private void ensureOneTabDevToolsServerStarted() {
         if (!OneTabYouTubeMode.isEnabled()) {
             return;
@@ -1612,7 +1185,6 @@ public abstract class BraveActivity extends ChromeActivity
      * detects when the foreground session ends (when all activities are stopped).
      */
     private void onApplicationStateChange(@ApplicationState int newState) {
-        logOneTabPerf("application_state:" + newState);
         if (newState == ApplicationState.HAS_STOPPED_ACTIVITIES) {
             onForegroundSessionEnds();
         }
@@ -2915,522 +2487,20 @@ public abstract class BraveActivity extends ChromeActivity
         mResumeMediaSession = resume;
     }
 
-    public boolean shouldPreservePictureInPictureOnSystemTransition() {
-        return mRestorePictureInPictureOnResume
-                || isLockscreenPictureInPictureTransition()
-                || wasRecentlyBackgroundedFromPictureInPicture();
-    }
+    public void refreshPictureInPictureParamsForCurrentVideo() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
 
-    public boolean shouldSuppressPictureInPictureStopCleanup() {
-        return isInPictureInPictureMode()
-                || mWasInPictureInPictureMode
-                || mRestorePictureInPictureOnResume
-                || shouldGloballyPreservePictureInPicture()
-                || shouldPreservePictureInPictureOnSystemTransition()
-                || wasRecentlyInPictureInPicture();
-    }
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_refresh_bridge in_pip=%b has_webcontents=%b",
+                isInPictureInPictureMode(),
+                getCurrentWebContents() != null);
 
-    public static boolean shouldSuppressPictureInPictureStopCleanup(Activity activity) {
-        if (shouldGloballyPreservePictureInPicture()) {
-            return true;
+        FullscreenVideoPictureInPictureController controller =
+                ensureFullscreenVideoPictureInPictureController();
+        if (controller != null) {
+            controller.refreshPictureInPictureParamsForCurrentVideo();
         }
-        BraveActivity braveActivity = findBraveActivityForPictureInPicture(activity);
-        return braveActivity != null && braveActivity.shouldSuppressPictureInPictureStopCleanup();
-    }
-
-    private static boolean shouldGloballyPreservePictureInPicture() {
-        if (sGlobalPictureInPictureSessionActive) {
-            return true;
-        }
-        if (sGlobalPictureInPicturePreserveUntilElapsedMs == 0) {
-            return false;
-        }
-        return SystemClock.elapsedRealtime() <= sGlobalPictureInPicturePreserveUntilElapsedMs;
-    }
-
-    private static void armGlobalPictureInPicturePreserve(String reason) {
-        long until = SystemClock.elapsedRealtime() + PIP_GLOBAL_PRESERVE_GRACE_MS;
-        sGlobalPictureInPictureSessionActive = true;
-        if (until > sGlobalPictureInPicturePreserveUntilElapsedMs) {
-            sGlobalPictureInPicturePreserveUntilElapsedMs = until;
-        }
-        if (OneTabYouTubeMode.isEnabled()) {
-            Log.i(
-                    OTB_PERF_TAG,
-                    "event=pip_global_preserve_armed:%s until=%d",
-                    reason,
-                    sGlobalPictureInPicturePreserveUntilElapsedMs);
-        }
-    }
-
-    private static void clearGlobalPictureInPicturePreserve(String reason) {
-        boolean hadState =
-                sGlobalPictureInPictureSessionActive
-                        || sGlobalPictureInPicturePreserveUntilElapsedMs != 0;
-        sGlobalPictureInPictureSessionActive = false;
-        sGlobalPictureInPicturePreserveUntilElapsedMs = 0;
-        if (hadState && OneTabYouTubeMode.isEnabled()) {
-            Log.i(OTB_PERF_TAG, "event=pip_global_preserve_cleared:%s", reason);
-        }
-    }
-
-    private static BraveActivity findBraveActivityForPictureInPicture(Activity activity) {
-        if (activity instanceof BraveActivity braveActivity) {
-            return braveActivity;
-        }
-
-        int taskId = activity != null ? activity.getTaskId() : -1;
-        BraveActivity fallback = null;
-        for (Activity ref : ApplicationStatus.getRunningActivities()) {
-            if (!(ref instanceof BraveActivity braveActivity)) {
-                continue;
-            }
-            if (taskId != -1 && ref.getTaskId() == taskId) {
-                return braveActivity;
-            }
-            if (fallback == null && braveActivity.shouldSuppressPictureInPictureStopCleanup()) {
-                fallback = braveActivity;
-            }
-        }
-        return fallback;
-    }
-
-    public PictureInPictureParams buildPictureInPictureParams() {
-        PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            builder.setAutoEnterEnabled(true);
-            builder.setSeamlessResizeEnabled(true);
-        }
-        return builder.build();
-    }
-
-    public void maybeApplyPictureInPictureParams() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            return;
-        }
-        if (!isInPictureInPictureMode()
-                && !mWasInPictureInPictureMode
-                && !isPictureInPictureSupportedForCurrentContent()) {
-            return;
-        }
-        try {
-            setPictureInPictureParams(buildPictureInPictureParams());
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            logOneTabPerf("pip_params_apply_failed:" + e.getClass().getSimpleName());
-        }
-    }
-
-    private void requestDebugYouTubePictureInPicture() {
-        if (!OneTabYouTubeMode.isEnabled()) {
-            return;
-        }
-        disablePictureInPictureForOneTab("debug_broadcast");
-        logOneTabPerf("debug_request_youtube_pip:disabled");
-        return;
-    }
-
-    private void disablePictureInPictureForOneTab(String reason) {
-        clearPictureInPictureEnterRequestState("onetab_disabled:" + reason);
-        clearPictureInPictureRestoreState("onetab_disabled:" + reason);
-        clearPictureInPictureFullscreenRepairState("onetab_disabled:" + reason);
-        clearGlobalPictureInPicturePreserve("onetab_disabled:" + reason);
-        mWasInPictureInPictureMode = false;
-        mLastPictureInPictureEnteredElapsedMs = 0;
-        mLastPictureInPictureExitElapsedMs = 0;
-        mLastPictureInPictureBackgroundTransitionElapsedMs = 0;
-    }
-
-    private boolean isPictureInPictureSupportedForCurrentContent() {
-        if (OneTabYouTubeMode.isEnabled()) {
-            return false;
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            return false;
-        }
-        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
-            return false;
-        }
-        WebContents webContents = getCurrentWebContents();
-        return webContents != null
-                && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(webContents);
-    }
-
-    private boolean isLockscreenPictureInPictureTransition() {
-        KeyguardManager keyguardManager =
-                (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-        boolean keyguardLocked = keyguardManager != null && keyguardManager.isKeyguardLocked();
-        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        boolean screenInteractive = powerManager == null || powerManager.isInteractive();
-        return keyguardLocked || !screenInteractive;
-    }
-
-    private boolean wasRecentlyBackgroundedFromPictureInPicture() {
-        if (mLastPictureInPictureBackgroundTransitionElapsedMs == 0) {
-            return false;
-        }
-        return SystemClock.elapsedRealtime() - mLastPictureInPictureBackgroundTransitionElapsedMs
-                <= PIP_BACKGROUND_TRANSITION_GRACE_MS;
-    }
-
-    private boolean wasRecentlyInPictureInPicture() {
-        if (mWasInPictureInPictureMode || isInPictureInPictureMode()) {
-            return true;
-        }
-        if (mLastPictureInPictureExitElapsedMs == 0) {
-            return false;
-        }
-        return SystemClock.elapsedRealtime() - mLastPictureInPictureExitElapsedMs
-                <= PIP_BACKGROUND_TRANSITION_GRACE_MS;
-    }
-
-    private boolean isAwaitingPictureInPictureEntry() {
-        if (mLastPictureInPictureEnterRequestElapsedMs == 0) {
-            return false;
-        }
-        return SystemClock.elapsedRealtime() - mLastPictureInPictureEnterRequestElapsedMs
-                <= PIP_ENTER_REQUEST_GRACE_MS;
-    }
-
-    private void clearPictureInPictureEntryRetryState(String reason) {
-        if (mPictureInPictureEntryRetryScheduled || mPictureInPictureEntryRetryAttemptCount != 0) {
-            logOneTabPerf("pip_entry_retry_cleared:" + reason);
-        }
-        mPictureInPictureEntryRetryScheduled = false;
-        mPictureInPictureEntryRetryAttemptCount = 0;
-    }
-
-    private boolean canRetryPictureInPictureEntry() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            return false;
-        }
-        if (isFinishing() || isDestroyed() || isInPictureInPictureMode()) {
-            return false;
-        }
-        if (!isAwaitingPictureInPictureEntry()) {
-            return false;
-        }
-        WebContents webContents = getCurrentWebContents();
-        return webContents != null
-                && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(webContents);
-    }
-
-    private void schedulePictureInPictureEntryRetry(String reason) {
-        if (!canRetryPictureInPictureEntry()) {
-            clearPictureInPictureEntryRetryState("unsupported:" + reason);
-            return;
-        }
-        if (mPictureInPictureEntryRetryScheduled) {
-            return;
-        }
-        if (mPictureInPictureEntryRetryAttemptCount >= PIP_ENTER_RETRY_MAX_ATTEMPTS) {
-            clearPictureInPictureEntryRetryState("retry_exhausted:" + reason);
-            return;
-        }
-        mPictureInPictureEntryRetryScheduled = true;
-        logOneTabPerf("pip_entry_retry_scheduled:" + reason);
-        PostTask.postDelayedTask(
-                TaskTraits.UI_DEFAULT,
-                () -> {
-                    mPictureInPictureEntryRetryScheduled = false;
-                    if (!canRetryPictureInPictureEntry()) {
-                        clearPictureInPictureEntryRetryState("aborted:" + reason);
-                        return;
-                    }
-                    boolean recentFullscreenVideo = hasRecentPictureInPictureFullscreenVideo();
-                    if (!ensurePictureInPictureFullscreenState("retry_" + reason)
-                            && !recentFullscreenVideo) {
-                        if (mLastPictureInPictureEnterRequestElapsedMs != 0
-                                && SystemClock.elapsedRealtime()
-                                                - mLastPictureInPictureEnterRequestElapsedMs
-                                        > PIP_ENTER_FULLSCREEN_WAIT_TIMEOUT_MS) {
-                            clearPictureInPictureEnterRequestState(
-                                    "fullscreen_wait_timeout:" + reason);
-                            return;
-                        }
-                        logPictureInPictureAttemptState("retry_wait_fullscreen_" + reason);
-                        schedulePictureInPictureEntryRetry("await_fullscreen_" + reason);
-                        return;
-                    }
-                    mPictureInPictureEntryRetryAttemptCount++;
-                    maybeApplyPictureInPictureParams();
-                    logPictureInPictureAttemptState(
-                            recentFullscreenVideo
-                                    ? "retry_recent_fullscreen_" + reason
-                                    : "retry_" + reason);
-                    logOneTabPerf(
-                            "pip_entry_retry_requested:"
-                                    + reason
-                                    + ":attempt="
-                                    + mPictureInPictureEntryRetryAttemptCount);
-                    ensureFullscreenVideoPictureInPictureController().attemptPictureInPicture();
-                    if (!isInPictureInPictureMode() && isAwaitingPictureInPictureEntry()) {
-                        schedulePictureInPictureEntryRetry("followup_" + reason);
-                    }
-                },
-                PIP_ENTER_RETRY_DELAY_MS);
-    }
-
-    private void clearPictureInPictureEnterRequestState(String reason) {
-        if (mLastPictureInPictureEnterRequestElapsedMs != 0) {
-            logOneTabPerf("pip_enter_request_cleared:" + reason);
-        }
-        clearPictureInPictureEntryRetryState("enter_request_cleared:" + reason);
-        mLastPictureInPictureEnterRequestElapsedMs = 0;
-    }
-
-    public void notePictureInPictureEnterRequested(String reason) {
-        clearPictureInPictureEntryRetryState("new_request:" + reason);
-        mLastPictureInPictureEnterRequestElapsedMs = SystemClock.elapsedRealtime();
-        armGlobalPictureInPicturePreserve("enter_request_" + reason);
-        logOneTabPerf("pip_enter_request:" + reason);
-    }
-
-    public void requestSystemPictureInPictureForCurrentVideo(String reason) {
-        if (OneTabYouTubeMode.isEnabled()) {
-            disablePictureInPictureForOneTab(reason);
-            logOneTabPerf("pip_request_skipped:onetab_disabled:" + reason);
-            return;
-        }
-        notePictureInPictureEnterRequested(reason);
-        maybeApplyPictureInPictureParams();
-        resumeMediaSession(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            ensureFullscreenVideoPictureInPictureController().attemptPictureInPicture();
-            schedulePictureInPictureEntryRetry(reason);
-            return;
-        }
-        try {
-            PictureInPictureParams params = buildPictureInPictureParams();
-            setPictureInPictureParams(params);
-            if (!enterPictureInPictureMode(params)) {
-                resumeMediaSession(false);
-            }
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            resumeMediaSession(false);
-            logOneTabPerf("pip_request_failed:" + e.getClass().getSimpleName());
-        }
-    }
-
-    private void clearPictureInPictureFullscreenRepairState(String reason) {
-        if (mPictureInPictureFullscreenRepairScheduled
-                || mPictureInPictureFullscreenRepairAttemptCount != 0) {
-            logOneTabPerf("pip_fullscreen_repair_cleared:" + reason);
-        }
-        mPictureInPictureFullscreenRepairScheduled = false;
-        mPictureInPictureFullscreenRepairAttemptCount = 0;
-    }
-
-    private boolean canRepairPictureInPictureFullscreen() {
-        if (isFinishing() || isDestroyed()) {
-            return false;
-        }
-        WebContents webContents = getCurrentWebContents();
-        return webContents != null
-                && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(webContents);
-    }
-
-    private boolean shouldContinueFullscreenRepair() {
-        return canRepairPictureInPictureFullscreen()
-                && (isInPictureInPictureMode()
-                        || isAwaitingPictureInPictureEntry()
-                        || shouldKeepFullscreenPlayerAfterPictureInPictureExit()
-                        || wasRecentlyInPictureInPicture());
-    }
-
-    private void schedulePictureInPictureFullscreenRepair(String reason) {
-        if (!shouldContinueFullscreenRepair()) {
-            clearPictureInPictureFullscreenRepairState("unsupported:" + reason);
-            return;
-        }
-        WebContents currentWebContents = getCurrentWebContents();
-        if (shouldSuppressProactivePictureInPictureFullscreenRepair(reason, currentWebContents)) {
-            clearPictureInPictureFullscreenRepairState("suppressed:" + reason);
-            return;
-        }
-        if (mPictureInPictureFullscreenRepairScheduled) {
-            return;
-        }
-        if (mPictureInPictureFullscreenRepairAttemptCount >= PIP_FULLSCREEN_REPAIR_MAX_ATTEMPTS) {
-            clearPictureInPictureFullscreenRepairState("retry_exhausted:" + reason);
-            return;
-        }
-        mPictureInPictureFullscreenRepairScheduled = true;
-        logOneTabPerf("pip_fullscreen_repair_scheduled:" + reason);
-        PostTask.postDelayedTask(
-                TaskTraits.UI_DEFAULT,
-                () -> {
-                    mPictureInPictureFullscreenRepairScheduled = false;
-                    if (!shouldContinueFullscreenRepair()) {
-                        return;
-                    }
-                    WebContents webContents = getCurrentWebContents();
-                    if (webContents == null) {
-                        return;
-                    }
-                    if (shouldSuppressProactivePictureInPictureFullscreenRepair(reason, webContents)) {
-                        clearPictureInPictureFullscreenRepairState("suppressed:" + reason);
-                        return;
-                    }
-                    mPictureInPictureFullscreenRepairAttemptCount++;
-                    logOneTabPerf(
-                            "pip_fullscreen_repair_requested:"
-                                    + reason
-                                    + ":attempt="
-                                    + mPictureInPictureFullscreenRepairAttemptCount
-                                    + ":pip="
-                                    + isInPictureInPictureMode());
-                    BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
-                    if (!isInPictureInPictureMode() && isAwaitingPictureInPictureEntry()) {
-                        schedulePictureInPictureEntryRetry("fullscreen_repair_" + reason);
-                    }
-                    if (mPictureInPictureFullscreenRepairAttemptCount
-                            < PIP_FULLSCREEN_REPAIR_MAX_ATTEMPTS) {
-                        schedulePictureInPictureFullscreenRepair("followup_" + reason);
-                    }
-                },
-                PIP_FULLSCREEN_REPAIR_RETRY_DELAY_MS);
-    }
-
-    private boolean shouldKeepFullscreenPlayerAfterPictureInPictureExit() {
-        if (mRestorePictureInPictureOnResume || shouldPreservePictureInPictureOnSystemTransition()) {
-            return false;
-        }
-        if (!canRepairPictureInPictureFullscreen()) {
-            return false;
-        }
-        int activityState = ApplicationStatus.getStateForActivity(this);
-        return activityState == ActivityState.RESUMED || activityState == ActivityState.PAUSED;
-    }
-
-    public boolean shouldRepairFullscreenAfterPictureInPictureLoss() {
-        return shouldContinueFullscreenRepair()
-                || isInPictureInPictureMode()
-                || isAwaitingPictureInPictureEntry()
-                || shouldKeepFullscreenPlayerAfterPictureInPictureExit()
-                || shouldPreservePictureInPictureOnSystemTransition();
-    }
-
-    public void onPictureInPictureFullscreenLost(int reason) {
-        if (!shouldRepairFullscreenAfterPictureInPictureLoss()) {
-            logOneTabPerf("pip_fullscreen_lost_ignored:" + reason);
-            return;
-        }
-        if (!isInPictureInPictureMode() && isAwaitingPictureInPictureEntry()) {
-            notePictureInPictureEnterRequested("repair_" + reason);
-        }
-        logOneTabPerf("pip_fullscreen_lost:" + reason);
-        schedulePictureInPictureFullscreenRepair("lost_" + reason);
-    }
-
-    private void armPictureInPictureRestore(String reason) {
-        mWasInPictureInPictureMode = true;
-        mLastPictureInPictureUnlockResumeElapsedMs = 0;
-        if (!mRestorePictureInPictureOnResume) {
-            logOneTabPerf("pip_restore_armed:" + reason);
-        }
-        mRestorePictureInPictureOnResume = true;
-    }
-
-    private void clearPictureInPictureRestoreState(String reason) {
-        if (mRestorePictureInPictureOnResume || mPictureInPictureRestoreScheduled) {
-            logOneTabPerf("pip_restore_cleared:" + reason);
-        }
-        mRestorePictureInPictureOnResume = false;
-        mPictureInPictureRestoreScheduled = false;
-        mPictureInPictureRestoreAttemptCount = 0;
-        mLastPictureInPictureUnlockResumeElapsedMs = 0;
-    }
-
-    private void maybeRestorePictureInPictureOnResume() {
-        if (!mRestorePictureInPictureOnResume || mPictureInPictureRestoreScheduled) {
-            return;
-        }
-        if (isInPictureInPictureMode()) {
-            if (mLastPictureInPictureUnlockResumeElapsedMs == 0) {
-                mLastPictureInPictureUnlockResumeElapsedMs = SystemClock.elapsedRealtime();
-                logOneTabPerf("pip_restore_wait_for_unlock_outcome");
-            }
-            if (SystemClock.elapsedRealtime() - mLastPictureInPictureUnlockResumeElapsedMs
-                    < PIP_POST_UNLOCK_STABILITY_MS) {
-                schedulePictureInPictureRestoreRetry("await_unlock_outcome");
-                return;
-            }
-            clearPictureInPictureRestoreState("stable_in_pip_after_unlock");
-            return;
-        }
-        mPictureInPictureRestoreScheduled = true;
-        PostTask.postDelayedTask(
-                TaskTraits.UI_DEFAULT,
-                () -> {
-                    mPictureInPictureRestoreScheduled = false;
-                    if (!mRestorePictureInPictureOnResume) {
-                        return;
-                    }
-                    if (isFinishing() || isDestroyed()) {
-                        clearPictureInPictureRestoreState("activity_finishing");
-                        return;
-                    }
-                    if (isInPictureInPictureMode()) {
-                        if (mLastPictureInPictureUnlockResumeElapsedMs == 0) {
-                            mLastPictureInPictureUnlockResumeElapsedMs =
-                                    SystemClock.elapsedRealtime();
-                            logOneTabPerf("pip_restore_wait_for_unlock_outcome");
-                        }
-                        if (SystemClock.elapsedRealtime()
-                                        - mLastPictureInPictureUnlockResumeElapsedMs
-                                < PIP_POST_UNLOCK_STABILITY_MS) {
-                            schedulePictureInPictureRestoreRetry("await_unlock_outcome");
-                            return;
-                        }
-                        clearPictureInPictureRestoreState("stable_in_pip_after_unlock");
-                        return;
-                    }
-                    if (!isPictureInPictureSupportedForCurrentContent()) {
-                        schedulePictureInPictureRestoreRetry("unsupported_after_resume");
-                        return;
-                    }
-                    mPictureInPictureRestoreAttemptCount++;
-                    logOneTabPerf(
-                            "pip_restore_attempt:" + mPictureInPictureRestoreAttemptCount);
-                    mResumeMediaSession = true;
-                    try {
-                        PictureInPictureParams params = buildPictureInPictureParams();
-                        setPictureInPictureParams(params);
-                        if (enterPictureInPictureMode(params)) {
-                            logOneTabPerf("pip_restore_requested");
-                        } else {
-                            mResumeMediaSession = false;
-                            schedulePictureInPictureRestoreRetry("request_rejected");
-                        }
-                    } catch (IllegalStateException | IllegalArgumentException e) {
-                        mResumeMediaSession = false;
-                        schedulePictureInPictureRestoreRetry(
-                                "failed:" + e.getClass().getSimpleName());
-                    }
-                },
-                PIP_UPDATE_DELAY_MS);
-    }
-
-    private void schedulePictureInPictureRestoreRetry(String reason) {
-        if (!mRestorePictureInPictureOnResume) {
-            return;
-        }
-        if (mPictureInPictureRestoreAttemptCount >= PIP_RESTORE_MAX_ATTEMPTS) {
-            clearPictureInPictureRestoreState("retry_exhausted:" + reason);
-            return;
-        }
-        if (mPictureInPictureRestoreScheduled) {
-            return;
-        }
-        logOneTabPerf("pip_restore_retry:" + reason);
-        mPictureInPictureRestoreScheduled = true;
-        PostTask.postDelayedTask(
-                TaskTraits.UI_DEFAULT,
-                () -> {
-                    mPictureInPictureRestoreScheduled = false;
-                    maybeRestorePictureInPictureOnResume();
-                },
-                PIP_RESTORE_RETRY_DELAY_MS);
     }
 
     public static ChromeTabbedActivity getChromeTabbedActivity() {

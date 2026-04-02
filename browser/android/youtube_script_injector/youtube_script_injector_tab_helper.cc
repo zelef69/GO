@@ -11,7 +11,6 @@
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/supports_user_data.h"
-#include "base/time/time.h"
 #include "brave/browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.h"
 #include "brave/browser/android/youtube_script_injector/features.h"
 #include "brave/components/brave_shields/content/browser/brave_shields_util.h"
@@ -30,33 +29,22 @@
 #include "url/url_util.h"
 
 namespace {
-constexpr base::TimeDelta kRecentEffectiveFullscreenGrace =
-    base::Milliseconds(1500);
-
 constexpr char16_t kYoutubeBackgroundPlayback[] =
     uR"(
 (function() {
   if (document._addEventListener === undefined) {
-    document._addEventListener = document.addEventListener.bind(document);
-  }
-  if (document._removeEventListener === undefined) {
-    document._removeEventListener = document.removeEventListener.bind(document);
+    document._addEventListener = document.addEventListener;
+    document.addEventListener = function(a, b, c) {
+      if (a != 'visibilitychange') {
+        document._addEventListener(a, b, c);
+      }
+    };
   }
 
   // Override document.visibilityState to always return 'visible'
   Object.defineProperty(document, 'visibilityState', {
     configurable: true,
     get: function() { return 'visible'; }
-  });
-
-  Object.defineProperty(document, 'hidden', {
-    configurable: true,
-    get: function() { return false; }
-  });
-
-  Object.defineProperty(document, 'webkitHidden', {
-    configurable: true,
-    get: function() { return false; }
   });
 }());
 )";
@@ -108,7 +96,7 @@ constexpr char16_t kYoutubePictureInPictureSupport[] =
 }());
 )";
 
-constexpr char16_t kYoutubeAdRequestGuard[] =
+[[maybe_unused]] constexpr char16_t kYoutubeAdRequestGuard[] =
     uR"(
 (function() {
   if (window.__onetabtubeAdGuardInstalled) {
@@ -195,7 +183,7 @@ constexpr char16_t kYoutubeAdRequestGuard[] =
 }());
 )";
 
-constexpr char16_t kYoutubePlaybackStability[] =
+[[maybe_unused]] constexpr char16_t kYoutubePlaybackStability[] =
     uR"OTBPLAY(
 (function() {
   if (window.__onetabtubePlaybackGuardInstalled) {
@@ -3535,6 +3523,79 @@ constexpr char16_t kYoutubeFullscreen[] =
   return new Promise((resolve) => {
     const videoPlaySelector = "video.html5-main-video";
     const fullscreenSelector = "button.fullscreen-icon";
+    function hasFullscreenPresentation(videoPlayer) {
+      return !!document.fullscreenElement
+          || !!document.webkitFullscreenElement
+          || !!(videoPlayer && videoPlayer.webkitDisplayingFullscreen);
+    }
+    function startWaitingForFullscreenButton(playerContainer, resolve, videoPlayer) {
+      let observerTimeout;
+      const observer = new MutationObserver(
+      (_mutationsList, observer) => {
+        var fullscreenBtn = document.querySelector(fullscreenSelector);
+        var videoPlayer = document.querySelector(videoPlaySelector);
+        if (fullscreenBtn && videoPlayer) {
+          clearTimeout(observerTimeout);
+          observer.disconnect()
+          requestFullscreen(fullscreenBtn, resolve, videoPlayer);
+        }
+      });
+      observerTimeout = setTimeout(() => {
+        observer.disconnect();
+        resolve('timeout');
+      }, 30000);
+      observer.observe(playerContainer, {
+        childList: true, subtree: true
+      });
+      videoPlayer.click();
+    }
+    function tryDirectFullscreen(playerContainer, videoPlayer, resolve) {
+      const target =
+          playerContainer || videoPlayer?.closest?.('#player, #player-container-id')
+          || videoPlayer;
+      if (!target) {
+        return false;
+      }
+      const requestFullscreenApi =
+          target.requestFullscreen
+          || target.webkitRequestFullscreen
+          || videoPlayer?.requestFullscreen
+          || videoPlayer?.webkitRequestFullscreen
+          || videoPlayer?.webkitEnterFullscreen;
+      if (!requestFullscreenApi) {
+        return false;
+      }
+      const invokeTarget =
+          requestFullscreenApi === videoPlayer?.requestFullscreen
+          || requestFullscreenApi === videoPlayer?.webkitRequestFullscreen
+          || requestFullscreenApi === videoPlayer?.webkitEnterFullscreen
+              ? videoPlayer
+              : target;
+      const finishCheck = () => {
+        if (hasFullscreenPresentation(videoPlayer)) {
+          resolve('fullscreen_triggered');
+        } else if (playerContainer && videoPlayer) {
+          startWaitingForFullscreenButton(playerContainer, resolve, videoPlayer);
+        } else {
+          resolve('requestFullscreen_failed');
+        }
+      };
+      try {
+        const maybePromise = requestFullscreenApi.call(invokeTarget);
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          maybePromise.then(() => {
+            setTimeout(finishCheck, 250);
+          }).catch(() => {
+            finishCheck();
+          });
+        } else {
+          setTimeout(finishCheck, 250);
+        }
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
     function triggerFullscreen() {
       // Check if the video is not in fullscreen mode already.
       if (!document.fullscreenElement) {
@@ -3548,30 +3609,9 @@ constexpr char16_t kYoutubeFullscreen[] =
           // clicking the movie player resume the UI.
           var playerContainer = document.getElementById("player-container-id");
           if (videoPlayer && playerContainer) {
-            let observerTimeout;
-            // Create a MutationObserver to watch for changes in the DOM.
-            const observer = new MutationObserver(
-            (_mutationsList, observer) => {
-              var fullscreenBtn = document.querySelector(fullscreenSelector);
-              var videoPlayer = document.querySelector(videoPlaySelector);
-              if (fullscreenBtn && videoPlayer) {
-                clearTimeout(observerTimeout);
-                observer.disconnect()
-                requestFullscreen(fullscreenBtn, resolve, videoPlayer);
-              }
-            });
-            // Auto-disconnect the observer after 30 seconds,
-            // a reasonable duration picked after some testing.
-            observerTimeout = setTimeout(() => {
-              observer.disconnect();
-              resolve('timeout');
-            }, 30000);
-            // Start observing the DOM.
-            observer.observe(playerContainer, {
-              childList: true, subtree: true
-            });
-            // Make sure the player is in focus or responsive.
-            videoPlayer.click();
+            if (!tryDirectFullscreen(playerContainer, videoPlayer, resolve)) {
+              startWaitingForFullscreenButton(playerContainer, resolve, videoPlayer);
+            }
           } else {
             // No fullscreen elements found, resolve immediately
             resolve('no_elements');
@@ -3597,7 +3637,9 @@ constexpr char16_t kYoutubeFullscreen[] =
       }
     }
     function clickFullscreenButton(fullscreenBtn, resolve) {
-      if (fullscreenBtn && !document.hidden) {
+      const effectivelyHidden =
+          document.hidden && document.visibilityState === 'hidden';
+      if (fullscreenBtn && !effectivelyHidden) {
         fullscreenBtn.click();
         resolve('fullscreen_triggered');
       } else {
@@ -3637,7 +3679,6 @@ YouTubeScriptInjectorTabHelper::~YouTubeScriptInjectorTabHelper() {}
 void YouTubeScriptInjectorTabHelper::PrimaryPageChanged(content::Page& page) {
   script_injector_remote_.reset();
   bound_rfh_id_ = {};
-  last_effective_fullscreen_enter_time_ = base::TimeTicks();
   SetFullscreenRequested(false);
 }
 
@@ -3646,7 +3687,6 @@ void YouTubeScriptInjectorTabHelper::RenderFrameDeleted(
   if (rfh->GetGlobalId() == bound_rfh_id_) {
     script_injector_remote_.reset();
     bound_rfh_id_ = {};
-    last_effective_fullscreen_enter_time_ = base::TimeTicks();
     SetFullscreenRequested(false);
   }
 }
@@ -3655,7 +3695,6 @@ void YouTubeScriptInjectorTabHelper::DidFinishNavigation(
     content::NavigationHandle* navigation_handle) {
   if (navigation_handle->IsSameDocument() &&
       navigation_handle->IsInMainFrame() && navigation_handle->HasCommitted()) {
-    last_effective_fullscreen_enter_time_ = base::TimeTicks();
     SetFullscreenRequested(false);
   }
 }
@@ -3672,10 +3711,6 @@ void YouTubeScriptInjectorTabHelper::PrimaryMainDocumentElementAvailable() {
     contents->GetPrimaryMainFrame()->ExecuteJavaScript(
         kYoutubeBackgroundPlayback, base::NullCallback());
   }
-  contents->GetPrimaryMainFrame()->ExecuteJavaScript(
-      kYoutubePlaybackStability, base::NullCallback());
-  contents->GetPrimaryMainFrame()->ExecuteJavaScript(kYoutubeAdRequestGuard,
-                                                     base::NullCallback());
   if (base::FeatureList::IsEnabled(
           ::preferences::features::kBravePictureInPictureForYouTubeVideos)) {
     contents->GetPrimaryMainFrame()->ExecuteJavaScript(
@@ -3685,12 +3720,14 @@ void YouTubeScriptInjectorTabHelper::PrimaryMainDocumentElementAvailable() {
 
 void YouTubeScriptInjectorTabHelper::MediaEffectivelyFullscreenChanged(
     bool is_fullscreen) {
-  if (is_fullscreen) {
-    last_effective_fullscreen_enter_time_ = base::TimeTicks::Now();
-  }
+  LOG(INFO) << "OTB_PIP event=media_effectively_fullscreen_changed"
+            << " fullscreen=" << is_fullscreen
+            << " requested=" << HasFullscreenBeenRequested()
+            << " visibility=" << static_cast<int>(web_contents()->GetVisibility());
   if (is_fullscreen && HasFullscreenBeenRequested()) {
     SetFullscreenRequested(false);
     if (web_contents()->GetVisibility() == content::Visibility::VISIBLE) {
+      LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_from_fullscreen";
       ::youtube_script_injector::EnterPictureInPicture(web_contents());
     }
   }
@@ -3787,14 +3824,6 @@ bool YouTubeScriptInjectorTabHelper::HasFullscreenBeenRequested() const {
   return data && data->fullscreen_requested();
 }
 
-bool YouTubeScriptInjectorTabHelper::HasRecentEffectivelyFullscreenVideo() const {
-  if (last_effective_fullscreen_enter_time_.is_null()) {
-    return false;
-  }
-  return base::TimeTicks::Now() - last_effective_fullscreen_enter_time_ <=
-         kRecentEffectiveFullscreenGrace;
-}
-
 void YouTubeScriptInjectorTabHelper::SetFullscreenRequested(bool requested) {
   content::NavigationEntry* entry =
       web_contents()->GetController().GetLastCommittedEntry();
@@ -3816,23 +3845,17 @@ void YouTubeScriptInjectorTabHelper::SetFullscreenRequested(bool requested) {
 void YouTubeScriptInjectorTabHelper::OnFullscreenScriptComplete(
     content::GlobalRenderFrameHostToken token,
     base::Value value) {
-  const std::string result =
-      value.is_string() ? value.GetString() : value.DebugString();
-  LOG(INFO) << "OTB_PERF event=fullscreen_script_result"
+  std::string result =
+      value.is_string() ? value.GetString() : std::string("<non-string>");
+  LOG(INFO) << "OTB_PIP event=fullscreen_script_complete"
             << " result=" << result
-            << " visible="
-            << (web_contents()->GetVisibility() == content::Visibility::VISIBLE)
-            << " requested=" << HasFullscreenBeenRequested()
-            << " recent_fullscreen=" << HasRecentEffectivelyFullscreenVideo();
-
-  // Treat both a fresh fullscreen trigger and an already-fullscreen result as
-  // successful fullscreen confirmation for the current main frame. Keeping the
-  // request state armed through this transition helps PiP/lifecycle code ignore
-  // brief fullscreen false-negatives while the surface is being resized.
+            << " visibility=" << static_cast<int>(web_contents()->GetVisibility());
+  // If the tab is visible, the script result indicates fullscreen was
+  // triggered, and the callback is for the current main frame, return early
+  // without resetting the fullscreen state. This prevents unnecessary state
+  // changes when fullscreen was successfully entered.
   if (web_contents()->GetVisibility() == content::Visibility::VISIBLE &&
-      value.is_string() &&
-      (value.GetString() == "fullscreen_triggered" ||
-       value.GetString() == "already_fullscreen") &&
+      value.is_string() && value.GetString() == "fullscreen_triggered" &&
       token == web_contents()->GetPrimaryMainFrame()->GetGlobalFrameToken()) {
     return;
   }
