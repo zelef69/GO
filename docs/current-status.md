@@ -1,26 +1,19 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-04 02:59:46 +07:00
+  - 2026-04-04 03:05:21 +07:00
 - Current phase:
-  - Phase 5 / beta1 stabilization snapshot
+  - Phase 5 / beta1 published snapshot
 - Current objective:
-  - Freeze and publish the verified-good OneTabTube beta1 baseline for onetab + PiP + control + lifecycle.
+  - Keep the verified beta1 baseline aligned between source, docs, and the published repo state.
 - Completed since last update:
-  - Re-read `docs/current-status.md` and the latest entry in `docs/progress-log.md`.
-  - Performed targeted code reality checks on:
-    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-    - `docs/patch-summary.md`
-  - Confirmed the active PiP-entry fix is still present in code:
-    - fullscreen path no longer depends on the direct `videoPlayer.click()` toggle
-    - playback-resume helpers are invoked after fullscreen is triggered
-  - Confirmed the active Java helper still contains the split retry policy for first-entry vs. re-entry PiP.
-  - User manually verified on device that PiP entry/exit now works normally:
-    - reported outcome: `เข้า/ออก PiP 3 รอบได้ปกติ`
-  - Chosen to publish this exact runtime state as the beta1 baseline.
+  - Updated `docs/current-status.md`, `docs/progress-log.md`, and `docs/patch-summary.md` to reflect the verified-good beta1 runtime.
+  - Committed the matching source/docs snapshot with message:
+    - `beta1 fix onetab+pip+control+lifecycle`
+  - Pushed branch `publish/go_play-sync-20260402` to `origin`.
 - In progress now:
-  - Updating docs to match the verified runtime state, then committing and pushing the beta1 snapshot to the user repository.
+  - No active code change in flight.
+  - Waiting for the next user-directed task on top of the published beta1 baseline.
 - Files/modules touched:
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
   - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
@@ -45,20 +38,19 @@
   - install status:
     - install passed on `R9TRC00GA2E`
   - runtime verification:
-    - user verified PiP entry/exit works normally for 3 manual rounds
-  - verified in this snapshot:
-    - build artifact identity is known
-    - source fix is present in code
-    - device-owner manual PiP verification passed
-  - not verified in this snapshot:
-    - no new build was run after this status-only sync step
+    - user verified PiP entry/exit works normally for 3 rounds
+  - repo publication:
+    - commit `dee4a07b0` pushed to `origin/publish/go_play-sync-20260402`
+  - pull request entrypoint:
+    - `https://github.com/zelef69/GO/pull/new/publish/go_play-sync-20260402`
 - Blockers/risks:
-  - The working tree still contains many untracked evidence/log artifacts; they must not be pushed with the source snapshot.
-  - The beta1 label reflects a verified-good baseline on the current Samsung test device, not a permanent guarantee against upstream YouTube/OEM changes.
+  - Local workspace still contains many untracked evidence/log artifacts that were intentionally not pushed.
+  - Two local paths remain dirty outside the published snapshot and were intentionally left out because they were not part of the verified beta1 source set:
+    - `android/java/AndroidManifest.xml`
+    - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.h`
+  - The beta1 label applies to the currently verified Samsung-device baseline and is not a permanent guarantee against future upstream YouTube/OEM changes.
 - Next concrete step:
-  - Commit the source/docs snapshot with message:
-    - `beta1 fix onetab+pip+control+lifecycle`
-  - Push branch `publish/go_play-sync-20260402` to `origin`.
+  - If work resumes, start from this beta1 baseline and handle the next user-reported issue without reopening the already verified PiP path unnecessarily.
 - Expected resume inspection scope:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
@@ -71,17 +63,13 @@
   - `git`
 - Exact command(s):
   - `git status --short`
-  - `git diff --stat`
-  - `Get-Content -Path 'docs/current-status.md'`
-  - `Get-Content -Path 'docs/progress-log.md' -Tail 120`
-  - `Get-Content -Path 'docs/patch-summary.md' -Tail 120`
-  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc' | Select-String -Pattern 'requestPlaybackResume|videoPlayer.click|__onetabtubeEnsurePlayback' -Context 2,8`
-  - `Get-Content -Path 'android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java' | Select-String -Pattern 'INITIAL_PIP_RETRY_MS|REENTRY_PIP_RETRY_MS|enterPictureInPicture' -Context 2,6`
+  - `git commit -m "beta1 fix onetab+pip+control+lifecycle"`
+  - `git push origin publish/go_play-sync-20260402`
 - Tool purpose:
-  - Sync status/docs to the verified beta1 runtime and publish the matching source snapshot to the user repository.
+  - Publish the verified beta1 source/docs snapshot and record the final handoff state.
 - Tool state:
+  - push completed
   - no build currently running
-  - repo is ready for a source/docs snapshot commit after docs are synchronized
 - Expected resume command:
   - `git status --short`
 - Expected output/artifact path:
@@ -91,22 +79,22 @@
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `da0888199`
+  - `dee4a07b0`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    - active fullscreen-to-PiP playback-resume fix that stabilized first PiP entry
+    - active fullscreen-to-PiP playback-resume fix used by the verified beta1 runtime
   - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-    - split retry policy for first PiP entry vs. re-entry
+    - active Java helper for first-entry vs. re-entry PiP retries
   - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
     - active PiP/watch-page lifecycle behavior
   - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
-    - current control action wiring for notification/PiP controls
+    - notification/PiP control action wiring
   - `android/java/org/chromium/chrome/browser/toolbar/BraveToolbarManager.java`
-    - one-tab/bottom-toolbar pruning path
+    - one-tab surface pruning path
   - `android/java/org/chromium/chrome/browser/toolbar/bottom/BottomToolbarConfiguration.java`
-    - bottom toolbar hard-disable path for OneTabTube
+    - bottom-toolbar hard-disable path
 - Files to inspect first after resume:
   - `docs/current-status.md`
   - latest `docs/progress-log.md` entry
@@ -115,37 +103,36 @@
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - git working tree available
-  - remote `origin` reachable
-  - do not stage evidence/log artifacts
+  - remote access via local git config if another push is needed
+  - avoid staging evidence/log artifacts
 - Expected success signal:
-  - source/docs snapshot is committed and pushed with the beta1 message
+  - repo already contains the beta1 snapshot and the next task can start from this state
 - Expected failure signal:
-  - push rejected
-  - accidental staging of evidence files
+  - future work accidentally reopens the verified PiP path without a new confirmed regression
 - Last known log location:
   - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_fullscreen_play_resume_fix.log`
 - Last known artifact path:
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Recent decisions:
-  - Treat the user’s manual 3-round PiP verification as the release-quality signal for this beta1 snapshot.
-  - Publish the current verified source state instead of reopening PiP work that is now stable on device.
+  - Freeze the verified runtime as beta1 and publish the matching source/docs snapshot.
+  - Leave large evidence artifacts local instead of polluting the repo snapshot.
 - Rejected approaches:
-  - re-running a new build just for docs sync
-  - pushing the large untracked evidence set
+  - bulk-adding the whole worktree
+  - rerunning a new build just to refresh docs
 - Stop point classification:
-  - verified source/runtime baseline ready for docs sync, commit, and push
+  - source/docs committed and pushed; beta1 handoff recorded
 - What is done but unverified:
-  - the repo push itself
+  - none in the published beta1 snapshot
 - What is verified:
-  - active code fix is present
+  - source fix is present
   - build identity is known
-  - user-verified PiP enter/exit works normally for 3 rounds
+  - user-verified PiP enter/exit x3 passed
+  - repo push succeeded
 - External prerequisite:
-  - GitHub remote access via configured `origin`
+  - none for the published snapshot
 - Secret required but not stored:
-  - no secrets stored in repo; remote auth uses the local git configuration only
+  - no secrets stored in docs; remote auth relies on local git configuration only
 - Actual code state after resume:
-  - The repo contains the OneTabTube onetab + PiP + control + lifecycle changes, and the latest verified PiP-entry stabilization is in `youtube_script_injector_tab_helper.cc`.
+  - Repo and docs are now aligned to the published beta1 baseline centered on OneTab + PiP + control + lifecycle stabilization.
 - Chosen direction:
-  - Freeze this exact verified-good runtime as `beta1`, synchronize docs, and publish it without dragging unrelated artifacts into the commit.
+  - Preserve this beta1 baseline as the current source of truth and layer future fixes on top of it only when a new verified issue appears.

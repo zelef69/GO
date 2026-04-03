@@ -386,6 +386,104 @@
   - GitHub remote availability
 - Secret required but not stored:
   - no tokens or credentials stored in docs
+
+## 2026-04-04 03:05:21 +07:00
+
+- Current phase:
+  - Phase 5 / beta1 published snapshot
+- Current objective:
+  - Finish the handoff by recording the completed beta1 repo publication state.
+- Completed since last update:
+  - Updated `docs/current-status.md`, `docs/progress-log.md`, and `docs/patch-summary.md` to match the verified-good beta1 runtime.
+  - Committed the matching source/docs snapshot:
+    - `dee4a07b0`
+    - `beta1 fix onetab+pip+control+lifecycle`
+  - Pushed branch:
+    - `origin/publish/go_play-sync-20260402`
+  - Captured the PR creation entrypoint returned by GitHub:
+    - `https://github.com/zelef69/GO/pull/new/publish/go_play-sync-20260402`
+- In progress:
+  - No active implementation step in progress.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `docs/patch-summary.md`
+- Build/test status:
+  - latest verified build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_fullscreen_play_resume_fix.log`
+  - latest verified APK SHA-256:
+    - `18c01e6f21d837fb0ef2f557326cd3f47f0a19cc6b8a76c0fa98fa479491233b`
+  - runtime verification:
+    - user confirmed PiP enter/exit works normally for 3 rounds
+  - publication:
+    - push succeeded
+- Blockers/risks:
+  - Local workspace still contains untracked evidence/log artifacts and two unstaged local paths outside the published snapshot.
+- Next concrete step:
+  - Resume from the published beta1 baseline when the next user-reported issue arrives.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `docs/patch-summary.md`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `git`
+- Exact command(s):
+  - `git commit -m "beta1 fix onetab+pip+control+lifecycle"`
+  - `git push origin publish/go_play-sync-20260402`
+- Tool purpose:
+  - publish the verified beta1 snapshot and close the loop with an accurate desk-state record
+- Tool state:
+  - publish completed
+- Expected resume command:
+  - `git status --short`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `dee4a07b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `docs/patch-summary.md`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `docs/patch-summary.md`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - local git auth valid for `origin`
+- Expected success signal:
+  - commit reachable on the pushed branch and docs reflect the published state
+- Expected failure signal:
+  - docs still claim commit/push is pending
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_fullscreen_play_resume_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - add a final docs-only follow-up commit so repo state and handoff state are identical
+- Rejected approaches:
+  - leaving docs stuck at the pre-push state
+- Stop point classification:
+  - publish finished; final docs sync committed next
+- What is done but unverified:
+  - none
+- What is verified:
+  - beta1 source/docs snapshot committed
+  - branch push succeeded
+  - runtime verification remained the source of truth
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
 - Timestamp:
   - 2026-04-04 00:57:20 +07:00
 - Current phase:
