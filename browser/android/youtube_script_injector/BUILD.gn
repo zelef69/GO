@@ -10,6 +10,8 @@ source_set("youtube_script_injector") {
   sources = [
     "brave_youtube_script_injector_native_helper.cc",
     "brave_youtube_script_injector_native_helper.h",
+    "youtube_native_tab_bridge.cc",
+    "youtube_native_tab_bridge.h",
     "youtube_script_injector_tab_helper.cc",
     "youtube_script_injector_tab_helper.h",
   ]

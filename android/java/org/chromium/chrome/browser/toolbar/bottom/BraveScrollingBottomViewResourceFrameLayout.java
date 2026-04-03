@@ -13,6 +13,7 @@ import android.view.View;
 
 import org.chromium.base.CallbackController;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.OneTabYouTubeMode;
 import org.chromium.components.browser_ui.widget.gesture.SwipeGestureListener;
 import org.chromium.components.browser_ui.widget.gesture.SwipeGestureListener.SwipeHandler;
 
@@ -34,6 +35,7 @@ public class BraveScrollingBottomViewResourceFrameLayout
 
         @Override
         public boolean shouldRecognizeSwipe(MotionEvent e1, MotionEvent e2) {
+            if (mBottomToolbar == null) return false;
             int x = Math.round(e1.getX());
             int y = Math.round(e1.getY());
             if (x > mBottomToolbar.getLeft() && x < mBottomToolbar.getRight()
@@ -56,10 +58,23 @@ public class BraveScrollingBottomViewResourceFrameLayout
         super.onFinishInflate();
 
         mBottomToolbar = findViewById(R.id.bottom_toolbar);
-        assert mBottomToolbar != null : "Something has changed in upstream!";
-
         mBottomContainerSlot = findViewById(R.id.bottom_container_slot);
         assert mBottomContainerSlot != null : "Something has changed in upstream!";
+        if (OneTabYouTubeMode.isEnabled()) {
+            View bottomControlsWrapper = findViewById(R.id.bottom_controls_wrapper);
+            if (bottomControlsWrapper != null) {
+                bottomControlsWrapper.setVisibility(View.GONE);
+            }
+            if (mBottomToolbar != null) {
+                mBottomToolbar.setVisibility(View.GONE);
+            }
+            if (mBottomContainerSlot != null) {
+                mBottomContainerSlot.setVisibility(View.GONE);
+            }
+            setVisibility(View.GONE);
+            return;
+        }
+        assert mBottomToolbar != null : "Something has changed in upstream!";
         if (mBottomContainerSlot != null
                 && BottomToolbarConfiguration.isBraveBottomControlsEnabled()) {
             mBottomContainerSlot.setVisibility(View.GONE);
@@ -98,6 +113,7 @@ public class BraveScrollingBottomViewResourceFrameLayout
 
     public void setBottomControlsCoordinatorSupplier(
             Supplier<BottomControlsCoordinator> bottomControlsCoordinatorSupplier) {
+        if (OneTabYouTubeMode.isEnabled()) return;
         if (mBottomControlsCoordinatorSupplier != null) {
             assert false : "BottomControlsCoordinatorSupplier should be set once.";
             return;

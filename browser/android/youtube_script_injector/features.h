@@ -13,6 +13,7 @@ namespace features {
 
 BASE_DECLARE_FEATURE(kBraveBackgroundVideoPlayback);
 BASE_DECLARE_FEATURE(kBravePictureInPictureForYouTubeVideos);
+BASE_DECLARE_FEATURE(kBraveYouTubeNativeTabBridge);
 
 }  // namespace features
 }  // namespace preferences

@@ -17,5 +17,8 @@ BASE_FEATURE(kBraveBackgroundVideoPlayback,
 BASE_FEATURE(kBravePictureInPictureForYouTubeVideos,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kBraveYouTubeNativeTabBridge,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 }  // namespace features
 }  // namespace preferences

@@ -336,6 +336,7 @@ public abstract class BraveActivity extends ChromeActivity
     private static final int PIP_UPDATE_DELAY_MS = 500;
     private static final int PIP_EXIT_TO_WATCH_PAGE_DELAY_MS = 250;
     private static final int PIP_EXIT_TO_WATCH_PAGE_MAX_AGE_MS = 3000;
+    private static final int PIP_RECENT_WATCH_PAGE_RETURN_GRACE_MS = 5000;
     private static final String OTB_PERF_TAG = "OneTabTubePerf";
     private static final String OTB_DEVTOOLS_SOCKET_PREFIX = "chrome";
     private boolean mIsVerification;
@@ -370,6 +371,7 @@ public abstract class BraveActivity extends ChromeActivity
     private boolean mResumeMediaSession;
     private boolean mPendingReturnToWatchPageAfterPictureInPictureExit;
     private long mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs;
+    private long mLastReturnToWatchPageAfterPictureInPictureExitElapsedMs;
 
     private View mQuickSearchEnginesView;
 
@@ -643,6 +645,9 @@ public abstract class BraveActivity extends ChromeActivity
     @Override
     public void onPictureInPictureModeChanged(boolean inPicture, Configuration newConfig) {
         super.onPictureInPictureModeChanged(inPicture, newConfig);
+        if (inPicture) {
+            clearPendingReturnToWatchPageAfterPictureInPictureExit("entered_pip");
+        }
         WebContents currentWebContents = getCurrentWebContents();
         if (mResumeMediaSession) {
             mResumeMediaSession = false;
@@ -2631,6 +2636,22 @@ public abstract class BraveActivity extends ChromeActivity
         mResumeMediaSession = resume;
     }
 
+    public void onManualPictureInPictureEntryRequested() {
+        clearPendingReturnToWatchPageAfterPictureInPictureExit("manual_pip_entry_requested");
+    }
+
+    public boolean wasRecentlyReturnedToWatchPageAfterPictureInPictureExit() {
+        if (mLastReturnToWatchPageAfterPictureInPictureExitElapsedMs <= 0L) {
+            return false;
+        }
+        long ageMs =
+                SystemClock.elapsedRealtime()
+                        - mLastReturnToWatchPageAfterPictureInPictureExitElapsedMs;
+        boolean recent = ageMs >= 0L && ageMs <= PIP_RECENT_WATCH_PAGE_RETURN_GRACE_MS;
+        Log.i(OTB_PERF_TAG, "event=pip_recent_watch_page_return recent=%b age_ms=%d", recent, ageMs);
+        return recent;
+    }
+
     private void armReturnToWatchPageAfterPictureInPictureExit() {
         mPendingReturnToWatchPageAfterPictureInPictureExit = true;
         mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs = SystemClock.elapsedRealtime();
@@ -2706,6 +2727,7 @@ public abstract class BraveActivity extends ChromeActivity
             }
         }
         clearPendingReturnToWatchPageAfterPictureInPictureExit("apply_" + reason);
+        mLastReturnToWatchPageAfterPictureInPictureExitElapsedMs = SystemClock.elapsedRealtime();
         Log.i(OTB_PERF_TAG, "event=pip_exit_to_watch_page_apply reason=%s", reason);
         fullscreenManager.exitPersistentFullscreenMode();
     }
@@ -2728,6 +2750,16 @@ public abstract class BraveActivity extends ChromeActivity
                 ensureFullscreenVideoPictureInPictureController();
         if (controller != null) {
             controller.refreshPictureInPictureParamsForCurrentVideo();
+        }
+    }
+
+    public void attemptPictureInPictureForCurrentVideo() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+
+        FullscreenVideoPictureInPictureController controller =
+                ensureFullscreenVideoPictureInPictureController();
+        if (controller != null) {
+            controller.attemptPictureInPicture();
         }
     }
 

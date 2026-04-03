@@ -311,6 +311,17 @@ public class BraveToolbarManager extends ToolbarManager
     @Override
     public void enableBottomControls() {
         assert (mActivity instanceof ChromeActivity);
+        if (OneTabYouTubeMode.isEnabled()) {
+            View bottomControls = mActivity.findViewById(R.id.bottom_controls);
+            if (bottomControls != null) {
+                bottomControls.setVisibility(View.GONE);
+            }
+            View bottomToolbar = mActivity.findViewById(R.id.bottom_toolbar);
+            if (bottomToolbar != null) {
+                bottomToolbar.setVisibility(View.GONE);
+            }
+            return;
+        }
         synchronized (mLock) {
             if (mBottomControlsEnabled) {
                 return;

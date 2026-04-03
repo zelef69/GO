@@ -12,6 +12,7 @@ import android.view.Display;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.BravePreferenceKeys;
 import org.chromium.base.ContextUtils;
+import org.chromium.chrome.browser.OneTabYouTubeMode;
 import org.chromium.chrome.browser.app.ChromeActivity;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.toolbar.settings.AddressBarPreference;
@@ -22,6 +23,9 @@ public class BottomToolbarConfiguration {
     private static final int SMALL_SCREEN_HEIGHT = 640;
 
     public static boolean isBraveBottomControlsEnabled() {
+        if (OneTabYouTubeMode.isEnabled()) {
+            return false;
+        }
         // We do not use the bottom controls on tablets.
         if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(
                 ContextUtils.getApplicationContext())) {
@@ -67,6 +71,9 @@ public class BottomToolbarConfiguration {
     }
 
     public static boolean isToolbarTopAnchored() {
+        if (OneTabYouTubeMode.isEnabled()) {
+            return true;
+        }
         return AddressBarPreference.isToolbarConfiguredToShowOnTop();
     }
 

@@ -403,3 +403,33 @@ Honest scope note:
 
 - this documents the verified-good snapshot for the investigated bug on the connected Samsung test device
 - it does not claim that all future upstream YouTube / Android / OEM changes can never affect PiP behavior again
+
+## April 4, 2026 beta1 fix onetab+pip+control+lifecycle
+
+This is the beta1 publish snapshot requested after the device-owner verification pass.
+
+What this beta1 snapshot includes:
+
+- One-tab product behavior remains enforced in the active app surface
+- PiP entry/exit lifecycle is stabilized enough for repeated manual use on the current Samsung test device
+- PiP expand returns to the YouTube watch page instead of crashing or forcing fullscreen
+- notification and PiP controls are wired into the current OneTabTube playback path
+- bottom toolbar / multi-tab regression pruning remains in the shipped source snapshot
+
+Latest verified build tied to this note:
+
+- build log:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_fullscreen_play_resume_fix.log`
+- APK SHA-256:
+  - `18c01e6f21d837fb0ef2f557326cd3f47f0a19cc6b8a76c0fa98fa479491233b`
+
+Manual verification recorded for this beta1 note:
+
+- device: `R9TRC00GA2E`
+- result:
+  - user verified that entering/exiting PiP works normally for 3 rounds
+
+Honest scope note:
+
+- this beta1 note records the currently verified source/runtime snapshot only
+- actual behavior can still vary later if upstream YouTube, Chromium, Android, or OEM behavior changes

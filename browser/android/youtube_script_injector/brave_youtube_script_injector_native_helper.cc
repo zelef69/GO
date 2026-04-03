@@ -76,6 +76,89 @@ jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_IsPictureInPictureAvailable(
 }
 
 // static
+jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_Play(
+    JNIEnv* env,
+    const base::android::JavaRef<jobject>& jweb_contents) {
+  content::WebContents* web_contents =
+      content::WebContents::FromJavaWebContents(jweb_contents);
+
+  YouTubeScriptInjectorTabHelper* helper =
+      YouTubeScriptInjectorTabHelper::FromWebContents(web_contents);
+  if (helper) {
+    return helper->MaybePlayVideo();
+  }
+
+  return false;
+}
+
+// static
+jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_Pause(
+    JNIEnv* env,
+    const base::android::JavaRef<jobject>& jweb_contents) {
+  content::WebContents* web_contents =
+      content::WebContents::FromJavaWebContents(jweb_contents);
+
+  YouTubeScriptInjectorTabHelper* helper =
+      YouTubeScriptInjectorTabHelper::FromWebContents(web_contents);
+  if (helper) {
+    return helper->MaybePauseVideo();
+  }
+
+  return false;
+}
+
+// static
+jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_SeekBy(
+    JNIEnv* env,
+    const base::android::JavaRef<jobject>& jweb_contents,
+    jint offset_seconds) {
+  content::WebContents* web_contents =
+      content::WebContents::FromJavaWebContents(jweb_contents);
+
+  YouTubeScriptInjectorTabHelper* helper =
+      YouTubeScriptInjectorTabHelper::FromWebContents(web_contents);
+  if (helper) {
+    return helper->MaybeSeekBy(offset_seconds);
+  }
+
+  return false;
+}
+
+// static
+jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_Next(
+    JNIEnv* env,
+    const base::android::JavaRef<jobject>& jweb_contents,
+    jboolean preserve_video_presentation) {
+  content::WebContents* web_contents =
+      content::WebContents::FromJavaWebContents(jweb_contents);
+
+  YouTubeScriptInjectorTabHelper* helper =
+      YouTubeScriptInjectorTabHelper::FromWebContents(web_contents);
+  if (helper) {
+    return helper->MaybeNextTrack(preserve_video_presentation);
+  }
+
+  return false;
+}
+
+// static
+jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_Previous(
+    JNIEnv* env,
+    const base::android::JavaRef<jobject>& jweb_contents,
+    jboolean preserve_video_presentation) {
+  content::WebContents* web_contents =
+      content::WebContents::FromJavaWebContents(jweb_contents);
+
+  YouTubeScriptInjectorTabHelper* helper =
+      YouTubeScriptInjectorTabHelper::FromWebContents(web_contents);
+  if (helper) {
+    return helper->MaybePreviousTrack(preserve_video_presentation);
+  }
+
+  return false;
+}
+
+// static
 void EnterPictureInPicture(content::WebContents* web_contents) {
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_BraveYouTubeScriptInjectorNativeHelper_enterPictureInPicture(

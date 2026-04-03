@@ -6,6 +6,8 @@
 #ifndef BRAVE_BROWSER_ANDROID_YOUTUBE_SCRIPT_INJECTOR_YOUTUBE_SCRIPT_INJECTOR_TAB_HELPER_H_
 #define BRAVE_BROWSER_ANDROID_YOUTUBE_SCRIPT_INJECTOR_YOUTUBE_SCRIPT_INJECTOR_TAB_HELPER_H_
 
+#include <string>
+
 #include "base/memory/weak_ptr.h"
 #include "base/supports_user_data.h"
 #include "base/values.h"
@@ -29,6 +31,11 @@ class YouTubeScriptInjectorTabHelper
   bool IsYouTubeVideo(bool mobileOnly = false) const;
   void MaybeSetFullscreen();
   void MaybeExitFullscreen();
+  bool MaybePlayVideo();
+  bool MaybePauseVideo();
+  bool MaybeSeekBy(int offset_seconds);
+  bool MaybeNextTrack(bool preserve_video_presentation = false);
+  bool MaybePreviousTrack(bool preserve_video_presentation = false);
 
   // Fullscreen state management using PageUserData
   bool HasFullscreenBeenRequested() const;
@@ -51,8 +58,12 @@ class YouTubeScriptInjectorTabHelper
   // Callback for when the fullscreen script completes.
   void OnFullscreenScriptComplete(content::GlobalRenderFrameHostToken token,
                                   base::Value value);
+  void MaybeEnterPictureInPictureAfterFullscreenRequest(
+      content::GlobalRenderFrameHostToken token);
   void OnExitFullscreenScriptComplete(content::GlobalRenderFrameHostToken token,
                                       base::Value value);
+  void OnNativeTabBridgeCommandComplete(const std::string& command_name,
+                                        base::Value value);
 
   void EnsureBound(content::RenderFrameHost* rfh);
 
@@ -60,6 +71,8 @@ class YouTubeScriptInjectorTabHelper
   mojo::AssociatedRemote<script_injector::mojom::ScriptInjector>
       script_injector_remote_;
   content::GlobalRenderFrameHostId bound_rfh_id_;
+  bool restore_video_presentation_after_track_navigation_ = false;
+  bool fullscreen_request_retry_pending_ = false;
 
   base::WeakPtrFactory<YouTubeScriptInjectorTabHelper> weak_factory_{this};
 };

@@ -20,6 +20,7 @@ import org.chromium.chrome.browser.BraveRelaunchUtils;
 import org.chromium.chrome.browser.BraveRewardsNativeWorker;
 import org.chromium.chrome.browser.BraveRewardsObserver;
 import org.chromium.chrome.browser.BraveRewardsPolicy;
+import org.chromium.chrome.browser.OneTabYouTubeMode;
 import org.chromium.chrome.browser.appearance.settings.AppearanceSettingsFragment;
 import org.chromium.chrome.browser.brave_leo.BraveLeoPrefUtils;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -64,6 +65,11 @@ public class AppearancePreferences extends AppearanceSettingsFragment
 
         SettingsUtils.addPreferencesFromResource(this, R.xml.brave_appearance_preferences);
 
+        if (OneTabYouTubeMode.isEnabled()) {
+            removePreferenceIfPresent(BravePreferenceKeys.BRAVE_BOTTOM_TOOLBAR_ENABLED_KEY);
+            removePreferenceIfPresent(PREF_ADDRESS_BAR);
+        }
+
         // Forward the custom menu item keys from appearance to custom menu item preference screen.
         CustomizeBraveMenu.propagateMenuItemExtras(
                 findPreference(PREF_BRAVE_CUSTOMIZE_MENU), getArguments());
@@ -84,7 +90,9 @@ public class AppearancePreferences extends AppearanceSettingsFragment
             removePreferenceIfPresent(PREF_ENABLE_MULTI_WINDOWS);
         }
 
-        if (!ToolbarPositionController.isToolbarPositionCustomizationEnabled(getContext(), false)) {
+        if (!OneTabYouTubeMode.isEnabled()
+                && !ToolbarPositionController.isToolbarPositionCustomizationEnabled(
+                        getContext(), false)) {
             removePreferenceIfPresent(PREF_ADDRESS_BAR);
         }
 
