@@ -138,6 +138,18 @@
     *** createMediaSessionObserver(...);
 }
 
+-keep class org.chromium.chrome.browser.youtube_script_injector.BraveYouTubeScriptInjectorNativeHelper {
+    *;
+}
+
+-keep class org.chromium.components.browser_ui.media.BraveMediaSessionHelper {
+    *;
+}
+
+-keep class org.chromium.chrome.browser.media.ui.BraveMediaSessionTabHelper {
+    *;
+}
+
 -keep class org.chromium.components.media_router.BrowserMediaRouter { *; }
 
 -keepnames class org.chromium.chrome.browser.notifications.channels.SiteChannelsManager

@@ -660,6 +660,7 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
                         }
                     }
                 };
+        updateOneTabTabSwitcherVisibility();
     }
 
     private void showYouTubePipIcon(@NonNull final Tab tab) {
@@ -1236,7 +1237,8 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
                     hideYouTubePipIcon();
                     return;
                 }
-                BraveYouTubeScriptInjectorNativeHelper.setFullscreen(currentTab.getWebContents());
+                BraveYouTubeScriptInjectorNativeHelper.setFullscreen(
+                        currentTab.getWebContents());
             }
         }
     }
@@ -1615,12 +1617,28 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
         if (BraveReflectionUtil.equalTypes(this.getClass(), ToolbarPhone.class)
                 && getMenuButtonCoordinator() != null) {
             getMenuButtonCoordinator().setVisibility(!isVisible);
-            ToggleTabStackButton toggleTabStackButton = findViewById(R.id.tab_switcher_button);
-            if (toggleTabStackButton != null) {
-                toggleTabStackButton.setVisibility(
-                        isTabSwitcherOnBottomControls() ? GONE : VISIBLE);
-            }
+            updateOneTabTabSwitcherVisibility();
         }
+    }
+
+    private void updateOneTabTabSwitcherVisibility() {
+        View tabSwitcherButton = findViewById(R.id.tab_switcher_button);
+        if (tabSwitcherButton == null) {
+            return;
+        }
+
+        if (OneTabYouTubeMode.isEnabled()) {
+            tabSwitcherButton.setVisibility(GONE);
+            tabSwitcherButton.setEnabled(false);
+            tabSwitcherButton.setClickable(false);
+            tabSwitcherButton.setLongClickable(false);
+            return;
+        }
+
+        tabSwitcherButton.setEnabled(true);
+        tabSwitcherButton.setClickable(true);
+        tabSwitcherButton.setLongClickable(true);
+        tabSwitcherButton.setVisibility(isTabSwitcherOnBottomControls() ? GONE : VISIBLE);
     }
 
     private void updateShieldsLayoutBackground(boolean rounded) {

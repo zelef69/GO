@@ -208,6 +208,7 @@ import org.chromium.chrome.browser.tabbed_mode.BraveTabbedAppMenuPropertiesDeleg
 import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
+import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.toolbar.BraveToolbarManager;
 import org.chromium.chrome.browser.toolbar.bottom.BottomToolbarConfiguration;
@@ -333,6 +334,8 @@ public abstract class BraveActivity extends ChromeActivity
             Arrays.asList("AM", "AZ", "BY", "KG", "KZ", "MD", "RU", "TJ", "TM", "UZ");
 
     private static final int PIP_UPDATE_DELAY_MS = 500;
+    private static final int PIP_EXIT_TO_WATCH_PAGE_DELAY_MS = 250;
+    private static final int PIP_EXIT_TO_WATCH_PAGE_MAX_AGE_MS = 3000;
     private static final String OTB_PERF_TAG = "OneTabTubePerf";
     private static final String OTB_DEVTOOLS_SOCKET_PREFIX = "chrome";
     private boolean mIsVerification;
@@ -365,6 +368,8 @@ public abstract class BraveActivity extends ChromeActivity
     // Boolean flag that indicates if the media session must be resumed
     // when switching in picture-in-picture mode.
     private boolean mResumeMediaSession;
+    private boolean mPendingReturnToWatchPageAfterPictureInPictureExit;
+    private long mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs;
 
     private View mQuickSearchEnginesView;
 
@@ -388,6 +393,14 @@ public abstract class BraveActivity extends ChromeActivity
         final Bundle savedInstanceState = getSavedInstanceState();
         if (savedInstanceState != null) {
             mResumeMediaSession = savedInstanceState.getBoolean(KEY_RESUME_MEDIA_SESSION, false);
+            mPendingReturnToWatchPageAfterPictureInPictureExit =
+                    savedInstanceState.getBoolean(
+                            "org.chromium.chrome.browser.app.KEY_PENDING_RETURN_TO_WATCH_PAGE",
+                            false);
+            mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs =
+                    savedInstanceState.getLong(
+                            "org.chromium.chrome.browser.app.KEY_PENDING_RETURN_TO_WATCH_PAGE_TS",
+                            0L);
         }
     }
 
@@ -395,6 +408,12 @@ public abstract class BraveActivity extends ChromeActivity
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putBoolean(KEY_RESUME_MEDIA_SESSION, mResumeMediaSession);
+        outState.putBoolean(
+                "org.chromium.chrome.browser.app.KEY_PENDING_RETURN_TO_WATCH_PAGE",
+                mPendingReturnToWatchPageAfterPictureInPictureExit);
+        outState.putLong(
+                "org.chromium.chrome.browser.app.KEY_PENDING_RETURN_TO_WATCH_PAGE_TS",
+                mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs);
     }
 
     @Override
@@ -624,9 +643,10 @@ public abstract class BraveActivity extends ChromeActivity
     @Override
     public void onPictureInPictureModeChanged(boolean inPicture, Configuration newConfig) {
         super.onPictureInPictureModeChanged(inPicture, newConfig);
+        WebContents currentWebContents = getCurrentWebContents();
         if (mResumeMediaSession) {
             mResumeMediaSession = false;
-            MediaSession mediaSession = MediaSession.fromWebContents(getCurrentWebContents());
+            MediaSession mediaSession = MediaSession.fromWebContents(currentWebContents);
             if (mediaSession != null) {
                 mediaSession.resume();
             }
@@ -643,15 +663,39 @@ public abstract class BraveActivity extends ChromeActivity
                     PIP_UPDATE_DELAY_MS);
         }
         if (!inPicture
-                && getCurrentWebContents() != null
+                && currentWebContents != null
                 && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
-                        getCurrentWebContents())) {
+                        currentWebContents)) {
+            boolean activeFullscreen = currentWebContents.hasActiveEffectivelyFullscreenVideo();
+            boolean fullscreenRequested =
+                    BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
+                            currentWebContents);
+            FullscreenManager fullscreenManager = getFullscreenManager();
+            if ((activeFullscreen || fullscreenRequested)
+                    && shouldReturnToWatchPageAfterPictureInPictureExit()) {
+                Log.i(
+                        OTB_PERF_TAG,
+                        "event=pip_exit_to_watch_page_armed active_fullscreen=%b requested=%b state=%d",
+                        activeFullscreen,
+                        fullscreenRequested,
+                        ApplicationStatus.getStateForActivity(this));
+                armReturnToWatchPageAfterPictureInPictureExit();
+                maybeScheduleReturnToWatchPageAfterPictureInPictureExit("pip_exit_callback");
+                return;
+            }
+            if (activeFullscreen || fullscreenRequested) {
+                Log.i(
+                        OTB_PERF_TAG,
+                        "event=pip_exit_cleanup_skipped active_fullscreen=%b requested=%b",
+                        activeFullscreen,
+                        fullscreenRequested);
+                return;
+            }
             // PiP has been dismissed when watching a YT video, then pause it.
-            MediaSession mediaSession = MediaSession.fromWebContents(getCurrentWebContents());
+            MediaSession mediaSession = MediaSession.fromWebContents(currentWebContents);
             if (mediaSession != null) {
                 mediaSession.suspend();
             }
-            FullscreenManager fullscreenManager = getFullscreenManager();
             if (fullscreenManager.getPersistentFullscreenMode()) {
                 fullscreenManager.exitPersistentFullscreenMode();
             }
@@ -1116,6 +1160,7 @@ public abstract class BraveActivity extends ChromeActivity
         if (OneTabYouTubeMode.isEnabled()) {
             PostTask.postTask(TaskTraits.UI_DEFAULT, this::enforceOneTabYouTubeMode);
         }
+        maybeScheduleReturnToWatchPageAfterPictureInPictureExit("on_resume");
         syncOneTabCleanModeUi();
     }
 
@@ -2226,19 +2271,118 @@ public abstract class BraveActivity extends ChromeActivity
         return getTabCreator(false).launchUrl(allowedUrl, TabLaunchType.FROM_CHROME_UI);
     }
 
+    private void closeIncognitoTabsForOneTabMode(@Nullable TabModelSelector selector) {
+        if (selector == null) {
+            return;
+        }
+
+        closeAllTabsInModel(selector.getModel(true));
+    }
+
+    private void closeAllTabsInModel(@Nullable TabModel tabModel) {
+        if (tabModel == null) {
+            return;
+        }
+
+        for (int i = tabModel.getCount() - 1; i >= 0; i--) {
+            Tab tab = tabModel.getTabAt(i);
+            if (tab == null) {
+                continue;
+            }
+            tab.setClosing(true);
+            tabModel.getTabRemover()
+                    .closeTabs(TabClosureParams.closeTab(tab).allowUndo(false).build(), false);
+        }
+    }
+
+    @Nullable
+    private Tab getOneTabKeepCandidate(@Nullable TabModel regularModel) {
+        Tab currentTab = getActivityTab();
+        if (currentTab != null && !currentTab.isIncognito()) {
+            return currentTab;
+        }
+
+        if (regularModel == null || regularModel.getCount() == 0) {
+            return null;
+        }
+
+        return regularModel.getTabAt(0);
+    }
+
+    private void closeExtraTabsForOneTabMode(@Nullable TabModel regularModel, int keepTabId) {
+        if (regularModel == null) {
+            return;
+        }
+
+        for (int i = regularModel.getCount() - 1; i >= 0; i--) {
+            Tab tab = regularModel.getTabAt(i);
+            if (tab == null || tab.getId() == keepTabId) {
+                continue;
+            }
+
+            tab.setClosing(true);
+            regularModel.getTabRemover()
+                    .closeTabs(TabClosureParams.closeTab(tab).allowUndo(false).build(), false);
+        }
+    }
+
+    private int getTabIndexById(@Nullable TabModel tabModel, int tabId) {
+        if (tabModel == null) {
+            return TabModel.INVALID_TAB_INDEX;
+        }
+
+        for (int i = 0; i < tabModel.getCount(); i++) {
+            Tab tab = tabModel.getTabAt(i);
+            if (tab != null && tab.getId() == tabId) {
+                return i;
+            }
+        }
+
+        return TabModel.INVALID_TAB_INDEX;
+    }
+
     private void enforceOneTabYouTubeMode() {
         if (!OneTabYouTubeMode.isEnabled() || isFinishing() || isDestroyed()) {
             return;
         }
 
-        Tab currentTab = getActivityTab();
-        if (currentTab == null || currentTab.isIncognito()) {
+        TabModelSelector selector = getTabModelSelector();
+        if (selector == null) {
             return;
         }
 
-        if (!OneTabYouTubeMode.isAllowedUrl(currentTab.getUrl().getSpec())) {
-            currentTab.loadUrl(new LoadUrlParams(OneTabYouTubeMode.getDefaultHomepageUrl()));
+        TabModelUtils.runOnTabStateInitialized(
+                selector,
+                initializedSelector -> enforceOneTabYouTubeModeOnInitializedState(
+                        initializedSelector));
+    }
+
+    private void enforceOneTabYouTubeModeOnInitializedState(@Nullable TabModelSelector selector) {
+        if (!OneTabYouTubeMode.isEnabled() || isFinishing() || isDestroyed() || selector == null) {
+            return;
         }
+
+        closeIncognitoTabsForOneTabMode(selector);
+
+        TabModel regularModel = selector.getModel(false);
+        Tab keepTab = getOneTabKeepCandidate(regularModel);
+        if (keepTab == null) {
+            loadUrlInSingleTab(OneTabYouTubeMode.getDefaultHomepageUrl(), false);
+            return;
+        }
+
+        closeExtraTabsForOneTabMode(regularModel, keepTab.getId());
+
+        int keepTabIndex = getTabIndexById(regularModel, keepTab.getId());
+        if (keepTabIndex != TabModel.INVALID_TAB_INDEX) {
+            regularModel.setIndex(keepTabIndex, TabSelectionType.FROM_USER);
+        }
+
+        if (!OneTabYouTubeMode.isAllowedUrl(keepTab.getUrl().getSpec())) {
+            keepTab.loadUrl(new LoadUrlParams(OneTabYouTubeMode.getDefaultHomepageUrl()));
+        }
+
+        syncOneTabCleanModeUi();
     }
 
     private void clearWalletModelServices() {
@@ -2485,6 +2629,90 @@ public abstract class BraveActivity extends ChromeActivity
      */
     public void resumeMediaSession(final boolean resume) {
         mResumeMediaSession = resume;
+    }
+
+    private void armReturnToWatchPageAfterPictureInPictureExit() {
+        mPendingReturnToWatchPageAfterPictureInPictureExit = true;
+        mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs = SystemClock.elapsedRealtime();
+    }
+
+    private void clearPendingReturnToWatchPageAfterPictureInPictureExit(String reason) {
+        if (mPendingReturnToWatchPageAfterPictureInPictureExit) {
+            Log.i(OTB_PERF_TAG, "event=pip_exit_to_watch_page_cleared reason=%s", reason);
+        }
+        mPendingReturnToWatchPageAfterPictureInPictureExit = false;
+        mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs = 0L;
+    }
+
+    private void maybeScheduleReturnToWatchPageAfterPictureInPictureExit(String reason) {
+        if (!mPendingReturnToWatchPageAfterPictureInPictureExit) {
+            return;
+        }
+        Log.i(OTB_PERF_TAG, "event=pip_exit_to_watch_page_schedule reason=%s", reason);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () -> maybeReturnToWatchPageAfterPictureInPictureExit(reason),
+                PIP_EXIT_TO_WATCH_PAGE_DELAY_MS);
+    }
+
+    private void maybeReturnToWatchPageAfterPictureInPictureExit(String reason) {
+        if (!mPendingReturnToWatchPageAfterPictureInPictureExit) {
+            return;
+        }
+        long ageMs =
+                SystemClock.elapsedRealtime()
+                        - mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs;
+        if (ageMs > PIP_EXIT_TO_WATCH_PAGE_MAX_AGE_MS) {
+            clearPendingReturnToWatchPageAfterPictureInPictureExit("stale_" + reason);
+            return;
+        }
+        if (isInPictureInPictureMode()) {
+            Log.i(OTB_PERF_TAG, "event=pip_exit_to_watch_page_wait reason=%s state=in_pip", reason);
+            return;
+        }
+        int activityState = ApplicationStatus.getStateForActivity(this);
+        if (activityState != ActivityState.RESUMED) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_exit_to_watch_page_wait reason=%s state=%d",
+                    reason,
+                    activityState);
+            return;
+        }
+        FullscreenManager fullscreenManager = getFullscreenManager();
+        if (!fullscreenManager.getPersistentFullscreenMode()) {
+            clearPendingReturnToWatchPageAfterPictureInPictureExit("fullscreen_already_cleared");
+            return;
+        }
+        WebContents currentWebContents = getCurrentWebContents();
+        if (currentWebContents != null
+                && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
+                        currentWebContents)) {
+            boolean activeFullscreen = currentWebContents.hasActiveEffectivelyFullscreenVideo();
+            boolean fullscreenRequested =
+                    BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
+                            currentWebContents);
+            if (activeFullscreen || fullscreenRequested) {
+                Log.i(
+                        OTB_PERF_TAG,
+                        "event=pip_exit_to_watch_page_wait_for_page_exit reason=%s active_fullscreen=%b requested=%b",
+                        reason,
+                        activeFullscreen,
+                        fullscreenRequested);
+                BraveYouTubeScriptInjectorNativeHelper.exitFullscreen(currentWebContents);
+                maybeScheduleReturnToWatchPageAfterPictureInPictureExit(
+                        "await_page_exit_" + reason);
+                return;
+            }
+        }
+        clearPendingReturnToWatchPageAfterPictureInPictureExit("apply_" + reason);
+        Log.i(OTB_PERF_TAG, "event=pip_exit_to_watch_page_apply reason=%s", reason);
+        fullscreenManager.exitPersistentFullscreenMode();
+    }
+
+    private boolean shouldReturnToWatchPageAfterPictureInPictureExit() {
+        int activityState = ApplicationStatus.getStateForActivity(this);
+        return activityState == ActivityState.RESUMED || activityState == ActivityState.PAUSED;
     }
 
     public void refreshPictureInPictureParamsForCurrentVideo() {

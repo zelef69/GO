@@ -1,139 +1,211 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-02 21:38:08 +07:00
+  - 2026-04-03 16:30:56 +07:00
 - Current phase:
-  - Phase 7 - Validation complete for the lockscreen-return PiP issue; verified snapshot published
+  - Phase 3 - One-tab enforcement hardening / runtime validation
 - Current objective:
-  - Keep the repo aligned to the verified `rerun236` PiP-unlock-good snapshot that has already been committed and pushed.
+  - Remove multi-tab behavior permanently for OneTabTube by pruning restored tabs down to a single regular tab and hiding the landscape tab switcher UI that still showed `ดู 27 แท็บ`.
 - Completed since last update:
-  - Recorded the final device-owner verdict that `rerun236` returns from the lock screen with PiP still usable.
-  - Added the tracked controller mirror patch:
-    - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-  - Updated `docs/testing.md` and `docs/patch-summary.md` so the repo explicitly states that this version no longer reproduces the earlier lockscreen-return PiP issue.
-  - Committed the verified snapshot as:
-    - `78cd58a92efd317099d3ab9512d4f60161b0b122`
-    - `fix(android): stabilize PiP after lockscreen unlock`
-  - Pushed the branch:
-    - `publish/go_play-sync-20260402`
-    - to `https://github.com/zelef69/GO_PLAY.git`
+  - Read the previous desk-state and resumed from the verified `PiP -> expand -> watch page` baseline.
+  - Captured fresh device evidence for the new regression:
+    - screenshot at `C:\Users\Master\Desktop\GO_PLAY\tmp_tabs_landscape.png`
+    - UI dump at `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs.xml`
+  - Confirmed from the UI dump that landscape still exposed:
+    - `com.onetabtube.browser_default:id/tab_switcher_button`
+    - content description `ดู 27 แท็บ`
+  - Inspected the targeted OneTab code paths and confirmed:
+    - `BraveActivity.enforceOneTabYouTubeMode()` only redirected disallowed URLs and did not prune extra tabs.
+    - `BraveToolbarLayoutImpl.onBottomControlsVisibilityChanged()` still made the top `tab_switcher_button` visible in landscape.
+  - Patched [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java):
+    - added single-tab pruning helpers for regular/incognito models
+    - hardened `enforceOneTabYouTubeMode()` so it runs through `TabModelUtils.runOnTabStateInitialized(...)` before mutating tab models
+    - closes incognito tabs for OneTab mode
+    - keeps exactly one regular tab and redirects that remaining tab back to the allowed YouTube homepage if needed
+  - Patched [BraveToolbarLayoutImpl.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java):
+    - added `updateOneTabTabSwitcherVisibility()`
+    - hides and disables `tab_switcher_button` permanently when `OneTabYouTubeMode` is enabled
+    - refreshes that visibility in `setTabModelSelector(...)` and `onBottomControlsVisibilityChanged(...)`
+  - First validation build (`single_tab_hard_disable`) compiled and installed, but crashed on resume because tab pruning ran too early.
+  - Captured the real crash root cause from `adb logcat -b crash`:
+    - `java.lang.NullPointerException: Attempt to invoke interface method 'int qtd.v0(org.chromium.chrome.browser.tab.Tab)' on a null object reference`
+    - posted from `BraveActivity.onResume`
+  - Reworked the pruning path to wait for initialized tab state via `TabModelUtils.runOnTabStateInitialized(...)`.
+  - Synced the revised patch into `/home/master/src_ext4/brave`.
+  - Rebuilt successfully with:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+  - Installed the rebuilt APK on `R9TRC00GA2E`.
+  - Relaunched directly to a YouTube watch page with no crash buffer output.
+  - Forced a landscape validation pass and captured fresh evidence:
+    - UI dump at `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+    - screenshot at `C:\Users\Master\Desktop\GO_PLAY\tmp_tabs_landscape_after_rerun2.png`
+  - Verified from `window_dump_tabs_after_rerun2.xml` that:
+    - `tab_switcher_button` is gone
+    - no `ดู 27 แท็บ` label remains
+    - the toolbar only shows URL bar + PiP + Shields in landscape
+  - Performed a targeted runtime/storage reality check for the user's resource concern:
+    - `adb shell dumpsys activity activities` now reports the app task as `sz=1`
+    - repeated external `youtube.com` / `youtu.be` intents did not grow the active task count
+    - `run-as com.onetabtube.browser_default ls app_tabs/0` still shows `149` legacy tab-state files (`flatbufferv1_tab*` / `tab_state*`) on disk
+    - repeating three external YouTube intents kept that on-disk tab-state file count stable at `149`
+  - Conclusion from the reality check:
+    - active runtime is currently single-task/single-tab
+    - hidden tab growth is not continuing in the current flow
+    - old persisted tab snapshot files from the pre-fix multi-tab era are still present on disk and have not been cleaned yet
 - In progress now:
-  - No active code change is in progress for this issue.
-  - The repo is parked on the published `rerun236`-verified snapshot.
+  - The repo is on the `rerun2` single-tab hard-disable baseline.
+  - The new build is installed on `R9TRC00GA2E`.
+  - OneTab mode now both hides the tab switcher UI and prunes tab models only after tab state is initialized.
+  - Runtime looks single-tab now, but storage cleanup for old `app_tabs/0` snapshots has not been implemented yet.
 - Files/modules touched:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
   - `docs/current-status.md`
   - `docs/progress-log.md`
-  - `docs/patch-summary.md`
-  - `docs/testing.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs.xml`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
 - Build/test status:
-  - `rerun236`
+  - first attempt:
     - build passed
-    - build log: `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
-    - APK path: `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-    - APK SHA-256: `d1a38475750ab77154aaca6d52d8fff3c1bc20f22de4b9dba8a9f79fd8d1e71f`
-    - install passed on `R9TRC00GA2E`
-    - warm launch passed
-    - manual lock -> unlock PiP verification: passed
-    - user-reported outcome: after returning from the lock screen, PiP is usable normally and the earlier unlock-time PiP issue is no longer reproduced on this version
-  - publish status:
-    - commit `78cd58a92efd317099d3ab9512d4f60161b0b122` pushed to `https://github.com/zelef69/GO_PLAY.git`
-    - branch `publish/go_play-sync-20260402`
+    - build log:
+      - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable.log`
+    - install passed
+    - runtime failed on resume with a posted-task NPE during early tab pruning
+  - current validated build:
+    - build passed
+    - build log:
+      - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+    - APK path:
+      - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+    - APK SHA-256:
+      - `F22D0767A0241591974CF48135CF4A6A571CC65AF7D08F9662CBDE52DEA16A0F`
+    - install status:
+      - install passed on `R9TRC00GA2E`
+    - runtime status:
+      - cold launch to `https://youtu.be/dQw4w9WgXcQ?autoplay=1` succeeded
+      - `adb logcat -d -b crash` returned empty after relaunch
+      - landscape UI dump no longer contains `tab_switcher_button` or any tab-count label
+  - non-blocking note:
+    - build tail still reports background static-analysis failures for `//chrome/browser/xsurface_provider:dependency_provider_impl_java`, but the APK creation target completed successfully
 - Blockers/risks:
-  - The local workspace still contains many untracked evidence files, but they were intentionally kept out of the published branch.
-  - The configured local `origin` remote still points to `https://github.com/zelef69/GO.git`; future publishes for this project should continue targeting `https://github.com/zelef69/GO_PLAY.git` explicitly unless remotes are cleaned up.
+  - The UI-level multi-tab regression is fixed in the validated landscape dump, and repeated external intents did not grow active/runtime tab state, but legacy tab snapshot files from older builds still remain on disk.
+  - If the product goal is to eliminate even stale multi-tab storage overhead, a one-time cleanup/migration step is still needed.
+  - Future edits around toolbar visibility must preserve the OneTab hard-hide of `tab_switcher_button`.
 - Next concrete step:
-  - If work resumes, start from commit `78cd58a92efd317099d3ab9512d4f60161b0b122` on branch `publish/go_play-sync-20260402` and only reopen PiP work if a new regression is reproduced on-device.
+  - Add a one-time cleanup step for stale legacy tab-state files under `app_tabs/0` so the storage footprint also matches the one-tab product model.
+  - After that cleanup, rerun:
+    - repeated external `youtube.com` / `youtu.be` intents
+    - app relaunch / restore flow
+    - `run-as ... ls app_tabs/0` counting
+  - Confirm both runtime and persisted storage stay consistent with a true single-tab product.
 - Expected resume inspection scope:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs.xml`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
 - Current tool(s):
-  - `git`
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
 - Exact command(s):
-  - `git commit -m "fix(android): stabilize PiP after lockscreen unlock" -m "Record rerun236 as the verified-good OneTabTube snapshot where returning from the lock screen no longer reproduces the PiP issue. Also mirror the live Chromium PiP controller change into tracked repo state and update testing/patch docs accordingly."`
-  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:publish/go_play-sync-20260402`
+  - `adb -s R9TRC00GA2E exec-out screencap -p > C:\Users\Master\Desktop\GO_PLAY\tmp_tabs_landscape.png`
+  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/window_dump_tabs.xml`
+  - `adb -s R9TRC00GA2E pull /sdcard/window_dump_tabs.xml C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs.xml`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell settings put system accelerometer_rotation 0`
+  - `adb -s R9TRC00GA2E shell settings put system user_rotation 1`
+  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/window_dump_tabs_after_rerun2.xml`
+  - `adb -s R9TRC00GA2E pull /sdcard/window_dump_tabs_after_rerun2.xml C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+  - `adb -s R9TRC00GA2E exec-out screencap -p > C:\Users\Master\Desktop\GO_PLAY\tmp_tabs_landscape_after_rerun2.png`
+  - `adb -s R9TRC00GA2E shell settings put system accelerometer_rotation 1`
+  - `adb -s R9TRC00GA2E shell settings put system user_rotation 0`
 - Tool purpose:
-  - Publish the verified-good PiP unlock snapshot to the user's GitHub repository.
+  - Hard-disable multi-tab behavior, validate the landscape toolbar state on device, and confirm the app no longer exposes a tab-count affordance.
 - Tool state:
-  - No build, capture, or publish command is currently running.
-  - The verified snapshot is already committed and pushed.
+  - No build currently running.
+  - Latest `rerun2` build is installed on `R9TRC00GA2E`.
+  - Device rotation settings were restored after the validation pass.
 - Expected resume command:
-  - `git show --stat 78cd58a92efd317099d3ab9512d4f60161b0b122`
-  - `git ls-remote https://github.com/zelef69/GO_PLAY.git publish/go_play-sync-20260402`
+  - Reuse the same build/install flow only if a remaining single-tab regression is found; otherwise start with runtime smoke tests for relaunch/external-intent reuse on the installed build.
 - Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - published branch:
-    - `https://github.com/zelef69/GO_PLAY/tree/publish/go_play-sync-20260402`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+  - `C:\Users\Master\Desktop\GO_PLAY\tmp_tabs_landscape_after_rerun2.png`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `78cd58a92efd317099d3ab9512d4f60161b0b122`
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
-  - `docs/current-status.md`
-    - final handoff state for the published snapshot
-  - `docs/progress-log.md`
-    - append-only audit trail through the publish step
-  - `docs/testing.md`
-    - records that this version returns from the lock screen with PiP still usable
-  - `docs/patch-summary.md`
-    - summarizes why this snapshot is the verified-good PiP unlock version
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-    - tracked mirror of the live ext4 controller change used by the working APK
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - OneTab tab-model pruning and keep-tab selection after tab-state initialization
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` - permanent hard-hide of `tab_switcher_button` in OneTab mode
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs.xml` - evidence that the old landscape UI still exposed `ดู 27 แท็บ`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml` - evidence that the tab switcher is gone in landscape
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log` - build proof for the installed APK
 - Files to inspect first after resume:
   - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
+  - latest progress entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
 - Prerequisites before command:
-  - local checkout should stay on `publish/go_play-sync-20260402`
-  - future publishes should keep excluding local evidence dumps and secrets
+  - `R9TRC00GA2E` connected and authorized
+  - ext4 checkout reachable at `/home/master/src_ext4`
+  - `PYTHONPATH=/home/master/src_ext4/brave/script` preserved for builds
 - Expected success signal:
-  - branch `publish/go_play-sync-20260402` on `GO_PLAY` points at commit `78cd58a92efd317099d3ab9512d4f60161b0b122`
-  - repo history clearly records that this version can leave the lock screen and keep PiP usable
+  - landscape UI dump contains no `tab_switcher_button`
+  - no `ดู <n> แท็บ` label remains
+  - app launches without the early on-resume crash
 - Expected failure signal:
-  - future work starts from a different branch/commit and assumes the PiP fix is included when it is not
+  - runtime crash during `enforceOneTabYouTubeMode`
+  - landscape still shows tab switcher or tab count
 - Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
 - Last known artifact path:
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Recent decisions:
-  - Treat the device-owner verdict on `rerun236` as the source of truth for this issue.
-  - Stop iterating on PiP behavior for now and publish the verified-good state instead of risking a regression.
-  - Mirror the ext4-only controller change into tracked repo state rather than pretending the tracked tree is already complete.
+  - Fix the real multi-tab issue in two layers: model pruning plus permanent toolbar hiding.
+  - Keep the verified PiP expand baseline untouched while addressing single-tab enforcement.
+  - Use `TabModelUtils.runOnTabStateInitialized(...)` instead of pruning directly from `onResume`.
 - Rejected approaches:
-  - continuing to tweak PiP after the device owner already verified the fix
-  - publishing to the current `origin` remote even though it points to the wrong repository
-  - staging the large pile of local evidence artifacts
+  - hiding the button only without pruning restored tabs
+  - pruning tabs immediately in `onResume` before tab state initialization
+  - reopening broad repo exploration instead of staying inside the recorded working set
 - Stop point classification:
-  - verified-good build recorded, committed, and pushed
+  - code edited, synced, built, installed, and runtime-validated for the landscape multi-tab regression
 - What is done but unverified:
-  - Nothing open for this specific PiP unlock issue.
+  - one-time cleanup of old persisted tab-state files
 - What is verified:
-  - `rerun236` builds
-  - `rerun236` installs
-  - `rerun236` launches
-  - on `R9TRC00GA2E`, returning from the lock screen no longer breaks PiP usability on this version
-  - commit `78cd58a92efd317099d3ab9512d4f60161b0b122` is pushed to `https://github.com/zelef69/GO_PLAY.git` on branch `publish/go_play-sync-20260402`
+  - the new patch compiles
+  - the APK installs
+  - the app launches on device without the earlier on-resume crash
+  - landscape UI no longer exposes `tab_switcher_button`
+  - landscape UI no longer shows `ดู 27 แท็บ`
+  - active task state is `sz=1`
+  - repeated external YouTube intents did not increase the current `app_tabs/0` tab-state file count beyond `149`
 - External prerequisite:
-  - none for this closed issue beyond normal repo access
+  - physical device interaction is still required for follow-up runtime smoke tests
 - Secret required but not stored:
-  - GitHub credentials remain intentionally unstored
+  - none for debug APK assembly
 - Actual code state after resume:
-  - The repo now matches the published `rerun236` snapshot closely enough for handoff: tracked injector-side fixes are committed, the ext4 controller change is mirrored as a tracked patch file, and docs explicitly record the successful lockscreen-return PiP result.
+  - OneTab enforcement now waits for initialized tab state before pruning, closes incognito tabs, keeps only one regular tab, and hard-hides the top tab switcher button.
 - Chosen direction:
-  - Hold this branch as the current good baseline for the lockscreen-return PiP issue and only reopen it if a new regression is reproduced.
+  - Keep this `rerun2` single-tab baseline and widen runtime smoke coverage rather than changing the enforcement logic again unless a new regression appears.

@@ -1,5 +1,21 @@
 # Patch Summary
 
+## fix onetab+pip+outwatchpage
+
+This repo state matches the current OneTabTube debug APK that was last rebuilt and installed for the OneTab/PiP/watch-page baseline.
+
+What this integrated fix set covers:
+
+- OneTab enforcement hardened so restored tab state is pruned back to a single regular tab after tab state initialization
+- top tab switcher affordance removed in OneTab mode so landscape no longer shows a live tab-count button
+- PiP restore path kept stable
+- PiP expand now returns to the YouTube watch page instead of crashing or falling back into fullscreen
+
+Current validated APK:
+
+- `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- SHA-256 `F22D0767A0241591974CF48135CF4A6A571CC65AF7D08F9662CBDE52DEA16A0F`
+
 ## Scope Of This Pass
 
 This pass is the Brave-level player UX follow-up. It consolidates prior playback, autoplay, playability, PiP, and evidence work into a clearer player-focused package instead of leaving the repo documented mainly as adblock work plus scattered perf notes.

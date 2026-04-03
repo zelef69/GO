@@ -1,7703 +1,2347 @@
-﻿# Progress Log
+# Progress Log
 
-## [2026-04-01 08:03]
-- Phase: Phase 7 - Validation / APK reproducibility
-- Objective: Keep the package build green while converging the emitted OneTabTube APK back to the saved device baseline.
-- Done:
-  - Replaced the temporary full Brave proguard injection with `android/java/onetabtube_repro.proguard.flags`.
-  - Patched live ext4 `chrome/android/BUILD.gn` to use the minimal keep file only for `is_onetabyt`.
-  - Ran `rerun81`; APK still differed in 4 entries, but dex sizes moved materially closer to baseline than the full-proguard attempt.
-  - Compared extracted `libchrome.so` files and proved the missing baseline-only block was the NTP background / new-tab-takeover graph.
-  - Re-enabled NTP background / new-tab-takeover Android deps in `browser/sources.gni` and `browser/ui/config.gni`.
-  - Restored branded wallpaper / sponsored background behavior in `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc` and `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc`.
-  - Fixed the broken `GetClockFormat()` body while restoring the NTP handler.
-  - Ran `rerun82`; APK packaging still succeeds.
-- In progress:
-  - Inspecting the remaining 4-entry APK diff after `rerun82`.
-  - Need to identify the residual `libchrome.so` / dex drift now that the NTP graph is back.
-- Files touched:
-  - `android/java/onetabtube_repro.proguard.flags`
-  - `patches/chrome-android-BUILD.gn.patch`
-  - `browser/sources.gni`
-  - `browser/ui/config.gni`
-  - `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc`
-  - `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - Latest successful build log: `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log`
-  - Current APK hash: `5965ce8af3063c3eb30759549ea0ede8a728dfd8aa7aaad5d200095290fac085`
-  - Baseline APK hash: `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
-  - Current remaining zip-entry diffs:
-    - `classes.dex`
-    - `classes2.dex`
-    - `lib/arm64-v8a/libai_chat_common.cr.so`
-    - `lib/arm64-v8a/libchrome.so`
-- Blockers/risks:
-  - Exact reproducibility is still blocked by the last 4 entry diffs.
-  - `libai_chat_common.cr.so` still differs with no obvious printable-string-set delta.
-  - Residual dex/lib drift may now be dominated by wallet/Leo retention or Android/JNI wiring.
-- Next step:
-  - Diff `rerun82` current vs baseline dex/lib contents again and identify the next smallest source change that materially reduces the remaining 4-entry diff.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this latest progress entry
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `browser/sources.gni`
-  - `browser/ui/config.gni`
-  - `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc`
-  - `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `gn gen`
-  - `autoninja`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/gn gen out/android_Component_arm64 > out/android_Component_arm64/codex_onetabtube_gn_gen_rerun82.log 2>&1 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log 2>&1"`
-- Tool purpose:
-  - Rebuild the Android package and compare the result against the saved baseline APK after each targeted graph correction.
-- Tool state:
-  - No active build at snapshot time.
-  - `rerun82` completed successfully.
-- Expected resume command:
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun83.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/onetabtube_repro.proguard.flags` - minimal keep rules
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn` - live build truth for `chrome_public_apk`
-  - `browser/sources.gni` - Android browser deps
-  - `browser/ui/config.gni` - circular-include allowance for `new_tab_takeover`
-  - `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc` - NTP sponsored background handler
-  - `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc` - NTP branded wallpaper prefs/messages
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` - current artifact
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk` - baseline artifact
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log`
-  - `browser/sources.gni`
-  - `browser/ui/config.gni`
-  - `browser/ui/webui/brave_new_tab_page_refresh/new_tab_page_handler.cc`
-  - `browser/ui/webui/new_tab_page/brave_new_tab_message_handler.cc`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 reachable
-  - sync helper run immediately before build
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-- Expected success signal:
-  - 4-entry diff count drops or final APK hash matches baseline
-- Expected failure signal:
-  - compile/link regression or no measurable movement after the next targeted fix
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun82.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Replace full Brave proguard injection with a minimal site-settings keep file
-  - Re-enable NTP/new-tab-takeover because baseline evidence showed those symbols must exist
-- Rejected approaches:
-  - keeping NTP graph disabled for `is_onetabyt`
-  - stopping at “APK builds” instead of matching the saved device artifact
-- Stop point classification:
-  - Build passed, fresh APK emitted, but exact baseline reproduction still not achieved
-- What is done but unverified:
-  - how much rerun82 reduced the remaining `libchrome.so` delta beyond restoring the known NTP strings
-- What is verified:
-  - `resources.pak` and `libcontent.cr.so` match baseline
-  - build stays green
-  - current APK still differs in only 4 entries
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium deps
-- Secret required but not stored:
-  - None
-
-## [2026-04-01 03:30]
-- Phase: Phase 7 - Validation / APK reproducibility
-- Objective: Restore source-tree buildability first, then reduce the emitted APK back toward the saved device baseline.
-- Done:
-  - Re-read stale desk-state files and confirmed they were behind reality.
-  - Re-synced and hash-verified the current working set between Windows and ext4, including proving again that the sync helper can miss critical files.
-  - Reopened `enable_brave_wallet`, `enable_brave_vpn`, and `enable_ai_chat` for `is_onetabyt` to unblock the compile graph.
-  - Advanced builds through:
-    - `rerun52` Java wallet/vpn dependency failure
-    - `rerun53` Leo Java package failure
-    - `rerun54` `BRAVE_AI_CHAT` enum switch failure
-    - `rerun55` missing `ChromeAutocompleteProviderClient` Leo methods at final link
-  - Patched ext4 build-source files directly:
-    - `/home/master/src_ext4/components/browsing_data/core/browsing_data_utils.cc`
-    - `/home/master/src_ext4/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc`
-  - `rerun56` succeeded and emitted a fresh APK.
-- In progress:
-  - Comparing the fresh APK against `OneTabTube.baseline_saved.apk` to remove feature-graph drift without losing buildability.
-- Files touched:
-  - `components/brave_wallet/common/buildflags/buildflags.gni`
-  - `components/brave_vpn/common/buildflags/buildflags.gni`
-  - `components/ai_chat/core/common/buildflags/buildflags.gni`
-  - `android/brave_java_sources.gni`
-  - `build/android/config.gni`
-  - `components/brave_wallet/common/BUILD.gn`
-  - `components/brave_mobile_subscription/renderer/android/BUILD.gn`
-  - `components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.cc`
-  - `components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.h`
-  - `renderer/BUILD.gn`
-  - `renderer/brave_content_renderer_client.cc`
-  - `chromium_src/chrome/browser/notifications/notification_handler.h`
-  - `chromium_src/chrome/browser/notifications/notification_handler.cc`
-  - `/home/master/src_ext4/components/browsing_data/core/browsing_data_utils.cc`
-  - `/home/master/src_ext4/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `gn gen` succeeded at `codex_onetabtube_gn_regen_rerun55.log`
-  - `autoninja` succeeded at `codex_onetabtube_build_repro_from_baseline_rerun56.log`
-  - fresh APK hash: `457f7b39bff50402e73ee919d5580aceaea49a18919123e47eafd991afa0051a`
-  - baseline saved hash: `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
-  - `AndroidManifest.xml` hashes match, but `classes.dex`, `classes2.dex`, `assets/resources.pak`, and `libchrome.so` differ
-- Blockers/risks:
-  - Buildability is restored, but exact baseline reproducibility is still blocked by reopened feature graphs.
-  - ext4-direct edits must be remembered during future sync/cleanup work.
-- Next step:
-  - Re-close AI/Leo for `is_onetabyt` while preserving the minimum Java/JNI compile surface, rebuild, and compare the next APK hash to baseline.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this latest progress entry
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun56.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `components/ai_chat/core/common/buildflags/buildflags.gni`
-  - `android/brave_java_sources.gni`
-  - `build/android/config.gni`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `gn gen`
-  - `autoninja`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - manual UNC copy for files missed by the sync helper
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/gn gen out/android_Component_arm64 > out/android_Component_arm64/codex_onetabtube_gn_regen_rerun55.log 2>&1"`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun56.log 2>&1"`
-- Tool purpose:
-  - Build the OneTabTube APK and compare the emitted binary against the saved baseline while preserving the desk-state workflow.
-- Tool state:
-  - No active build
-  - latest package build succeeded
-- Expected resume command:
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun57.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `components/ai_chat/core/common/buildflags/buildflags.gni`
-  - `android/brave_java_sources.gni`
-  - `build/android/config.gni`
-  - `/home/master/src_ext4/components/browsing_data/core/browsing_data_utils.cc`
-  - `/home/master/src_ext4/chrome/browser/autocomplete/chrome_autocomplete_provider_client.cc`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk`
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun56.log`
-  - `components/ai_chat/core/common/buildflags/buildflags.gni`
-  - `android/brave_java_sources.gni`
-  - `build/android/config.gni`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 reachable
-  - verify hashes for critical files
-  - keep `PYTHONPATH=/home/master/src_ext4/brave/script`
-- Expected success signal:
-  - emitted APK hash moves toward or matches `70df...`
-- Expected failure signal:
-  - build regresses into compile/link failure, or emitted hash remains far from baseline after the next graph reduction
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun56.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - accept temporary feature-graph reopening to restore buildability
-  - treat reproducibility drift as the new primary blocker once the package build passed
-- Rejected approaches:
-  - stopping immediately after build success
-  - trusting the sync helper alone for critical files
-- Stop point classification:
-  - fresh APK created successfully, but exact baseline hash still not reproduced
-- What is done but unverified:
-  - AI/Leo graph reduction path back toward baseline
-- What is verified:
-  - source tree can build a fresh `OneTabTube.apk`
-  - fresh artifact differs from baseline in code/resource payload, not manifest bytes
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium dependencies
-- Secret required but not stored:
-  - None
-
-> Note: Earlier same-day entries below `21:51` are reconstructed from console evidence after an accidental overwrite of this untracked log during the 2026-03-31 handoff update. There is no repo-tracked copy in `HEAD` to restore from.
-
-## [2026-03-31 20:11]
-- Phase: Phase 7 - Validation / APK assembly
-- Objective: Audit the pre-17:00 logs from `2026-03-31` and compare them against the current blocker family.
-- Done:
-  - Confirmed the pre-17 evidence lives under `/home/master/src_ext4/brave/artifacts/build/`, not under `/home/master/src_ext4/out/android_Component_arm64/`.
-  - Reconstructed the failure progression:
-    - `15:18` Java playlist symbols in `BraveToolbarLayoutImpl.java`
-    - `15:44` GN unresolved dependency `new_tab_takeover_generated_resources`
-    - `15:46` GN sync fixed that dependency
-    - `15:46` old `apks/OneTabTube.apk` file target already invalid
-    - `15:47` Python preprocessing failed on missing `brave_chromium_utils`
-    - `15:49` Java missing-symbol errors around `OneTabYouTubeMode`
-    - `15:58` native C++ failure in `brave_pref_service_bridge.cc` on `ENABLE_BRAVE_NEWS`
-- In progress:
-  - No build running.
-  - Plan remained to keep using the compile-capable `autoninja` path.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - Read-only log audit only.
-- Blockers/risks:
-  - Historical logs were evidence only and did not override the current blocker path.
-- Next step:
-  - Re-run sync verification and continue current `autoninja` blocker fixes instead of switching back to the old file target.
-
-## [2026-03-31 20:14]
-- Phase: Phase 7 - Validation / APK assembly
-- Objective: Make Windows-to-WSL sync trustworthy before the next compile rerun and confirm the current APK baseline.
-- Done:
-  - Verified the working-set hashes matched between `C:\Users\Master\Desktop\GO_PLAY` and `/home/master/src_ext4/brave`.
-  - Confirmed `.codex_build_sync_list.txt` was stale and missed multiple modified tracked files.
-  - Added and validated `tools/sync_changed_files_to_wsl.ps1` in both verify and copy modes.
-  - Confirmed the installed package `com.onetabtube.browser_default` on device `R9TRC00GA2E` matched `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` byte-for-byte.
-- In progress:
-  - No build running yet after the sync workflow change.
-- Files touched:
-  - `tools/sync_changed_files_to_wsl.ps1`
-  - `.codex_build_sync_list.txt`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - Sync helper passed.
-  - APK artifact existed but was stale relative to source edits.
-- Blockers/risks:
-  - Sync correctness could no longer rely on `.codex_build_sync_list.txt` alone.
-  - The source tree still was not proven to recreate the device-matching APK.
-- Next step:
-  - Run the sync helper before every rerun and keep unblocking the current `autoninja` path.
-
-## [2026-03-31 21:51]
-- Phase: Phase 7 - Validation / APK assembly
-- Objective: Keep advancing the current checkout until it can reproduce the device-matching OneTabTube APK baseline.
-- Done:
-  - Confirmed the device APK and `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` are still byte-identical:
-    - SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
-  - Used `artifacts/repro_baseline/` as the rollback/backup lane and iteratively reran the Android package build with synced Windows -> WSL sources.
-  - Removed or flattened multiple stale shim blockers so the build progressed through these layers:
-    - `chrome_browser_main`
-    - `chrome_browser_field_trials`
-    - `chrome_metrics_service_client`
-    - `chrome_content_browser_client`
-    - `device_info_sync_bridge`
-    - `host_port_pair`
-    - `AdBlockSubscriptionFiltersProvider`
-    - `wallet_http_client_impl`
-    - `component_installer`
-  - Latest rerun reached `stub_resolver_config_reader.o` as the new first blocker instead of the earlier browser-override failures.
-- In progress:
-  - No command is running.
-  - The next targeted fix should be in `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`.
-- Files touched:
-  - `browser/brave_browser_main_parts.h`
-  - `browser/brave_content_browser_client.cc`
-  - `chromium_src/chrome/browser/chrome_browser_main.h`
-  - `chromium_src/chrome/browser/chrome_browser_main.cc`
-  - `chromium_src/chrome/browser/chrome_browser_field_trials.h`
-  - `chromium_src/chrome/browser/chrome_browser_field_trials.cc`
-  - `chromium_src/chrome/browser/metrics/chrome_browser_main_extra_parts_metrics.h`
-  - `chromium_src/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.h`
-  - `chromium_src/chrome/browser/metrics/chrome_metrics_service_client.h`
-  - `chromium_src/chrome/browser/metrics/chrome_metrics_service_client.cc`
-  - `chromium_src/components/sync_device_info/device_info_sync_bridge.h`
-  - `chromium_src/components/component_updater/component_installer.h`
-  - `chromium_src/components/wallet/core/browser/network/wallet_http_client_impl.h`
-  - `chromium_src/net/base/host_port_pair.h`
-  - `components/brave_shields/content/browser/ad_block_subscription_filters_provider.h`
-  - `components/brave_shields/content/browser/ad_block_subscription_filters_provider.cc`
-  - `tools/sync_changed_files_to_wsl.ps1`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - Latest rerun command:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log 2>&1"`
-  - Latest first failure:
-    - `obj/chrome/browser/browser/stub_resolver_config_reader.o`
-    - `../../chrome/browser/net/stub_resolver_config_reader.cc:148:53: error: no member named 'kParentalControlsCheckDelay' in 'StubResolverConfigReader'`
-  - Earlier reruns worth keeping:
-    - `...rerun11.log` advanced into `component_installer` and component-updater-heavy compile paths
-    - `...rerun10.log` exposed `wallet_http_client_impl`
-    - `...rerun9.log` exposed `AdBlockSubscriptionFiltersProvider`
-    - `...rerun8.log` exposed `host_port_pair` linker drift
-    - `...rerun7.log` exposed `device_info_sync_bridge`
-- Blockers/risks:
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h` still defines a stale Brave subclass layout that no longer matches upstream.
-  - More stale shim headers may surface later even after this fix.
-  - No fresh APK has been emitted yet, so exact source-to-APK reproducibility remains unverified.
-- Next step:
-  - Compare `chromium_src/chrome/browser/net/stub_resolver_config_reader.h` with `/home/master/src_ext4/chrome/browser/net/stub_resolver_config_reader.h`.
-  - Flatten the Brave shim so it stops redefining the upstream class layout.
-  - Run the sync helper.
-  - Rerun build to `...rerun13.log`.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log`
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
-  - `/home/master/src_ext4/chrome/browser/net/stub_resolver_config_reader.h`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log 2>&1"`
-- Tool purpose:
-  - Sync changed sources into ext4 and drive the package build forward until a new APK can be compared against the baseline.
-- Tool state:
-  - Sync helper passed.
-  - Build stopped on `stub_resolver_config_reader.o`.
-- Expected resume command:
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun13.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
-  - `/home/master/src_ext4/chrome/browser/net/stub_resolver_config_reader.h`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log`
-  - `chromium_src/components/component_updater/component_installer.h`
-  - `chromium_src/components/wallet/core/browser/network/wallet_http_client_impl.h`
-  - `chromium_src/net/base/host_port_pair.h`
-  - `components/brave_shields/content/browser/ad_block_subscription_filters_provider.h`
-  - `tools/sync_changed_files_to_wsl.ps1`
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log`
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
-  - `/home/master/src_ext4/chrome/browser/net/stub_resolver_config_reader.h`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL ext4 checkout reachable through `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave`
-  - Sync helper run immediately before the build
-- Expected success signal:
-  - `stub_resolver_config_reader.o` compiles and the build moves deeper or emits a new APK.
-- Expected failure signal:
-  - The next log still fails in `stub_resolver_config_reader` or the next stale shim directly adjacent to it.
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun12.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Keep moving the current checkout toward the known-good binary instead of trying to guess a missing historical source snapshot.
-  - Flatten stale Brave shim headers when upstream already contains the Brave-aware declarations or behavior.
-  - Treat `tools/sync_changed_files_to_wsl.ps1` as mandatory before every rerun.
-- Rejected approaches:
-  - Old file-target `ninja.py ... apks/OneTabTube.apk`
-  - `.codex_build_sync_list.txt`-only sync
-  - Broad repo rescans after resume
-  - Vague rollback to “before 17:00” without an exact source snapshot
-- Stop point classification:
-  - Multiple compile reruns completed; latest build failed at `stub_resolver_config_reader.o`; no fresh APK emitted.
-- What is done but unverified:
-  - The latest shim-flattening fixes have not yet been followed by a successful full package build.
-  - Exact source reproduction of the device APK is not yet proven.
-- What is verified:
-  - The device-installed APK matches `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`.
-  - The sync helper continues to pass.
-  - The build path is now far beyond the original browser override blockers and into late component/network config compilation.
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium dependencies remain required.
-- Secret required but not stored:
-  - None.
-
-## [2026-04-01 13:32 +07:00]
+## [2026-04-03 15:31:26 +07:00]
 - Phase:
-  - Phase 7 - Validation / APK reproducibility
+  - Phase 7 - Validation / PiP expand-to-watch-page stabilization
 - Objective:
-  - Refresh the stale desk state to match `rerun119`, then keep shrinking the last dex/native drift until the rebuilt APK matches the saved baseline.
+  - Close the loop on `rerun4` by confirming whether the new two-phase exit path actually returns from PiP to the YouTube watch page on device.
 - Done:
-  - Read the stale `docs/current-status.md` and confirmed it stopped at `rerun110`, then checked the live tree and artifacts instead of trusting it.
-  - Verified the actual current APK is `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` with SHA-256 `5876c0ff7456cf97e99a88dade5225205f8ab95427304d6efb0993a4e74fcda5`.
-  - Verified `rerun119` is the latest successful build and that `res/xml/brave_main_preferences.xml` now matches the baseline again.
-  - Re-ran the tighter descriptor extraction over `classes.dex` and `classes2.dex` and confirmed the remaining current-only tail is only 5 descriptors:
-    - `com/google/android/material/bottomsheet/e`
-    - `com/google/android/material/bottomsheet/f`
-    - `java/time/chrono/ChronoLocalDateTime`
-    - `org/chromium/chrome/browser/omnibox/suggestions/l`
-    - `org/chromium/chrome/browser/omnibox/suggestions/m`
-  - Confirmed via the current mapping file that:
-    - `l` -> `BraveAutocompleteMediator`
-    - `m` -> `BraveAutocompleteMediatorBase`
-    - `e` -> `BottomSheetDialog`
-    - `f` -> `BottomSheetDialogFragment`
-  - Traced `ChronoLocalDateTime` back to Brave sync Java:
-    - [BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
-    - [BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
-    - [BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
+  - Received the real-device result for `rerun4` on `R9TRC00GA2E`.
+  - Confirmed that tapping the system PiP expand button now:
+    - returns to the YouTube watch page
+    - does not crash
+    - does not fall back to fullscreen
+  - Promoted `rerun4` to the current verified baseline for PiP expand behavior.
+  - Updated `docs/current-status.md` so resume work will not retry older expand/watch-page experiments.
 - In progress:
-  - Preparing the next patch set to replace the `LocalDateTime` flow with `Instant`/epoch-second handling so `ChronoLocalDateTime` can drop out without deleting the sync UI classes that still exist in the baseline APK.
-- Files touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
-  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
-- Build/test status:
-  - Latest successful sync command:
-    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - Latest successful build command:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log 2>&1"`
-  - Current APK artifact:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-    - SHA-256 `5876c0ff7456cf97e99a88dade5225205f8ab95427304d6efb0993a4e74fcda5`
-    - size `691473170`
-  - Baseline APK artifact:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk`
-    - SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
-    - size `691424018`
-  - Remaining zip-entry drift:
-    - `classes.dex`
-    - `classes2.dex`
-    - `lib/arm64-v8a/libai_chat_common.cr.so`
-    - `lib/arm64-v8a/libchrome.so`
-- Blockers/risks:
-  - Status docs were stale by 9 reruns; live artifacts are now the authoritative state.
-  - The ext4-root permission delegate source still contains a direct edit not yet mirrored into the repo patch workflow.
-  - The remaining dex tail is tiny enough that every change is high leverage; a sloppy patch can easily create new baseline-only drift.
-  - Native hashes are still unresolved and may remain even after dex parity improves.
-- Next step:
-  - Patch the Brave sync Java path from `LocalDateTime` to `Instant`, sync to ext4, then build `rerun120`.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this latest progress entry
-  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log 2>&1"`
-  - descriptor inspection:
-    - `wsl.exe bash -lc "python3 - <<'PY' ... compare filtered descriptor sets from both APKs ... PY"`
-- Tool purpose:
-  - Keep the repo mirrored into ext4, rebuild the Android package target, and verify whether each small Java patch reduces the final APK drift.
-- Tool state:
-  - No build currently running.
-  - Latest successful packaging run is `rerun119`.
-- Expected resume command:
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun120.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
-  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log`
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest `docs/progress-log.md` entry
-  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
-  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - sync helper run immediately before build
-  - `PYTHONPATH=/home/master/src_ext4/brave/script` still required
-- Expected success signal:
-  - `ChronoLocalDateTime` disappears and the current-only descriptor set shrinks below 5.
-- Expected failure signal:
-  - `ChronoLocalDateTime` survives after the sync patch, or new baseline-only descriptors appear.
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun119.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Use the live artifact/log state as the source of truth.
-  - Start with the smallest provable Java leak before touching native or broader bytecode paths again.
-- Rejected approaches:
-  - broad repo rescans
-  - reverting the successful permission/account pruning work
-  - guessing at obfuscated class meaning without mapping evidence
-- Stop point classification:
-  - build passed and fresh APK emitted; next Java parity patch identified but not applied yet
-- What is done but unverified:
-  - whether `Instant` conversion alone removes `ChronoLocalDateTime`
-  - whether the remaining omnibox pair should be removed by OneTab-specific bytecode gating
-- What is verified:
-  - `rerun119` packages successfully
-  - the remaining descriptor tail is only 5 entries
-  - account and permission descriptor tails are gone
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
-- Secret required but not stored:
-  - None
-
-## [2026-04-01 12:00:45 +07:00]
-- Phase: Phase 7 - Validation / APK reproducibility
-- Objective: Keep the OneTabTube tree buildable while converging the emitted APK back to the device-matching baseline exactly.
-- Done:
-  - Resumed from the stale `rerun90` handoff and verified the live source/build state had already advanced to `rerun105`.
-  - Tuned `android/java/onetabtube_repro.proguard.flags` across `rerun106`-`rerun110`.
-  - Confirmed the OneTabTube target uses `onetabtube_repro.proguard.flags` directly and does not inherit `android/java/proguard.flags`.
-  - Imported the exact Brave keep rules still reflected in the baseline for `Autocomplete*`, `EditUrlSuggestionProcessor`, `HubManagerImpl`, `MediaSessionHelper`, `SiteChannelsManager`, `TabCollectionTabModelImpl`, `UndoBarController`, `TabbedNavigationBarColorController`, and `ChromeTabbedActivity`.
-  - Reintroduced the package-level Play Core keep rules only after the exact-class-only attempt dropped appupdate/review internals that the baseline still contains.
-  - Used `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping` to resolve the remaining obfuscated current-only classes; the largest bucket maps to `com.google.android.gms.internal.cast.*`.
-  - Reduced raw descriptor drift from `baseline_only_count 21` down to `baseline_only_count 2` by `rerun110`.
-- In progress:
-  - Exact APK reproduction is still blocked by `classes.dex`, `classes2.dex`, `libai_chat_common.cr.so`, and `libchrome.so`.
-  - Java/dex drift is now concentrated in current-only retention, not missing baseline names.
-  - `BraveAccountPreference` is still retained because `BraveMainPreferencesBase.java` always inflates `brave_main_preferences.xml`, which directly references that class.
-  - `BravePermissionDialogDelegate` is still retained because the host-side bytecode rewriter always chains `BravePermissionDialogDelegateClassAdapter.java`.
-- Files touched:
-  - `android/java/onetabtube_repro.proguard.flags`
-  - `android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java`
-  - `android/java/brave-res/xml/brave_main_preferences.xml`
-  - `components/permissions/android/java_sources.gni`
-  - `components/permissions/android/BUILD.gn`
-  - `components/permissions/android/java/src/org/chromium/components/permissions/BravePermissionDialogDelegate.java`
-  - `components/permissions/android/java/src/org/chromium/components/permissions/BravePermissionDialogModel.java`
-  - `build/android/bytecode/BUILD.gn`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
-  - `build/android/bytecode/java/org/brave/bytecode/BravePermissionDialogDelegateClassAdapter.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - Latest successful sync command:
-    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - Latest successful build command:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log 2>&1"`
-  - Current APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-    - SHA-256 `47556ba523b88791d6031414ee7a5ed8b028a9839a5b7a7ac5908d644b054cb2`
-    - size `691505938`
-  - Baseline APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk`
-    - SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
-    - size `691424018`
-  - Remaining entry drift:
-    - `classes.dex` current `9748300` / `25ec1c0dd0f539d403bab824d66c91d1f63c80c9bfceb9c82cd5a94fc180c4d8`
-    - `classes.dex` baseline `9841076` / `ec4c4124b0facb309600548841c035d6d20f8c4c4dd11bd3fab18df0a178139b`
-    - `classes2.dex` current `3989552` / `73efa45329959c635b6d91cb335fd7d4ed6f9a952fe5e704ddbd850b5da48061`
-    - `classes2.dex` baseline `3824764` / `542766c632a715f06f74a524345f09b9a5d84b364bde8683bd2f145990871a44`
-    - `lib/arm64-v8a/libai_chat_common.cr.so` current `228808` / `f422f53fdf07e88a047e5b28eefe0272906f572c09cd8bd8497f5478ad0ae2d8`
-    - `lib/arm64-v8a/libai_chat_common.cr.so` baseline `228808` / `710c3f62e6c95fe03c995259f341175bff851e54c858c9bc1d48773c03d708c1`
-    - `lib/arm64-v8a/libchrome.so` current `71016592` / `c3241c3a217dd5fea5d67f1e2ba0679ed53708826e064f585b9a9960206410b5`
-    - `lib/arm64-v8a/libchrome.so` baseline `71015264` / `22679605b741f49143c7cde3fab88d632cb371f6be9b1978e6aec1b53988a21f`
-  - Latest descriptor drift:
-    - `baseline_only_count 2`
-    - `current_only_count 129`
-    - remaining `baseline_only` tokens:
-      - `1c`
-      - `Ra6LUb`
-    - remaining meaningful `current_only` descriptors:
-      - `org/chromium/chrome/browser/settings/BraveAccountPreference`
-      - `org/chromium/components/permissions/BravePermissionDialogDelegate`
-      - `java/time/chrono/ChronoLocalDateTime`
-      - `0/YM`
-- Blockers/risks:
-  - Remaining dex mismatch is now mostly retention/graph-shape drift rather than missing keep-rule names.
-  - `BraveAccountPreference` requires resource/build wiring changes, not runtime-only preference removal.
-  - `BravePermissionDialogDelegate` requires coordinated changes across source lists and the host bytecode rewriter if we try to remove it for OneTab.
-  - The remaining current-only obfuscated tail is dominated by `com.google.android.gms.internal.cast.*`, which may need a broader media-router/cast retention investigation.
-  - Native drift in `libai_chat_common.cr.so` and `libchrome.so` remains unchanged.
-- Next step:
-  - Create a OneTab-specific settings XML path and update `BraveMainPreferencesBase.java` to select it via compile-time `BraveConfig.IS_ONETABYT`, so the OneTab build stops referencing `<BraveAccountPreference>`.
-  - Rebuild as `rerun111` and verify whether `BraveAccountPreference` disappears from `classes2.dex`.
-  - Then decide whether the next higher-leverage fix is gating the permission override path or trimming the cast/media-router retention bucket.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this latest progress entry
-  - `android/java/onetabtube_repro.proguard.flags`
-  - `android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java`
-  - `android/java/brave-res/xml/brave_main_preferences.xml`
-  - `components/permissions/android/java_sources.gni`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log 2>&1"`
-  - mapping inspection against `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-- Tool purpose:
-  - Keep the Windows repo mirrored into ext4, rebuild the OneTabTube APK, and use artifact/mapping evidence to shrink the remaining dex drift.
-- Tool state:
-  - No build currently running.
-  - Latest successful packaging run is `rerun110`.
-- Expected resume command:
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun111.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/onetabtube_repro.proguard.flags`
-  - `android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java`
-  - `android/java/brave-res/xml/brave_main_preferences.xml`
-  - `components/permissions/android/java_sources.gni`
-  - `build/android/bytecode/BUILD.gn`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log`
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
-  - `android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java`
-  - `android/java/brave-res/xml/brave_main_preferences.xml`
-  - `components/permissions/android/java_sources.gni`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - sync helper run immediately before build
-  - `PYTHONPATH=/home/master/src_ext4/brave/script` still required on the build command
-- Expected success signal:
-  - `BraveAccountPreference` disappears from the packaged dex and the hash/entry drift moves closer to baseline without increasing `baseline_only_count`
-- Expected failure signal:
-  - OneTab-specific settings resource patch leaves the dex unchanged or regresses the nearly-clean descriptor diff
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun110.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Use R8 mapping to reason about obfuscated current-only classes instead of guessing from short residual names.
-  - Keep the `ChromeTabbedActivity` and `TabbedNavigationBarColorController` rules because they collapsed the baseline-only tail dramatically.
-  - Treat the settings XML/resource path as the first remaining user-surface cleanup because it directly matches a meaningful current-only class.
-- Rejected approaches:
-  - broad repo rescans
-  - reverting the working playlist/HLS/source-filtering path
-  - relying on runtime-only preference removal to prune XML-instantiated preference classes
-  - removing the permission override path without first checking the bytecode adapter wiring
-- Stop point classification:
-  - build passed and fresh APK emitted; exact reproduction not reached; next resource-pruning patch not started
-- What is done but unverified:
-  - whether a OneTab-specific settings XML path removes `BraveAccountPreference`
-  - whether `BravePermissionDialogDelegate` can be safely gated out for OneTab
-  - whether cast/media-router retention is the next dominant dex-size lever after the settings fix
-- What is verified:
-  - `rerun110` packages successfully
-  - OneTabTube uses `onetabtube_repro.proguard.flags` as its active keep-set
-  - `baseline_only_count` is down to 2
-  - `BraveAccountPreference` is retained through XML/resource wiring
-  - `BravePermissionDialogDelegate` is retained through the always-on bytecode adapter path
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
-- Secret required but not stored:
-  - None
-
-## [2026-04-01 09:09]
-- Phase:
-  - Phase 7 - Validation / APK reproducibility
-- Objective:
-  - Keep the source tree buildable while pushing the emitted OneTabTube APK back toward the saved device-matching baseline.
-- Done:
-  - Resumed from the stale desk state, verified the actual blocker had moved on to `BraveActivity` PiP methods, and recovered the missing method surface so `rerun86` built again.
-  - Confirmed the packaged APK still differs in 4 entries after `rerun86`, and proved the packaged `libchrome.so` no longer differed on the previously removed NTP sponsored WebUI source strings.
-  - Identified the remaining native drift as the ads-backed sponsored wallpaper path inside `ViewCounterService`.
-  - Patched [view_counter_service_factory.cc](C:/Users/Master/Desktop/GO_PLAY/browser/ntp_background/view_counter_service_factory.cc) and [view_counter_service.cc](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/view_counter_service.cc) to compile-gate the ads-backed sponsored wallpaper path for `is_onetabyt`, then added the missing build dep in [components/ntp_background_images/browser/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/BUILD.gn).
-  - Pushed through `rerun87`, `rerun88`, and `rerun89` fallout, then got `rerun90` green.
-  - Reduced packaged `libchrome.so` drift to one current-only printable string.
-- In progress:
-  - Exact reproduction is still blocked by the same 4 zip entries.
-  - Investigating the remaining dex drift by comparing live [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java) against the pre-restore snapshot in [artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java).
-- Files touched:
-  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [browser/ntp_background/view_counter_service_factory.cc](C:/Users/Master/Desktop/GO_PLAY/browser/ntp_background/view_counter_service_factory.cc)
-  - [components/ntp_background_images/browser/view_counter_service.cc](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/view_counter_service.cc)
-  - [components/ntp_background_images/browser/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/BUILD.gn)
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-- Build/test status:
-  - `rerun86` built successfully after recovering the missing PiP methods in `BraveActivity`.
-  - `rerun87`, `rerun88`, and `rerun89` failed while wiring the new `is_onetabyt` native gating.
-  - `rerun90` built successfully:
-    - command:
-      - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log 2>&1"`
-    - artifact hash:
-      - current `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` -> `944a0ea69abc3e15f41a1b73a7445faa142b5809f9f094ead96c4b72c8a3969c`
-      - baseline `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk` -> `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
-    - remaining diff entries:
-      - `classes.dex`
-      - `classes2.dex`
-      - `lib/arm64-v8a/libai_chat_common.cr.so`
-      - `lib/arm64-v8a/libchrome.so`
-- Blockers/risks:
-  - `BraveActivity` still under-matches the richer PiP / OneTab lifecycle block seen in the pre-restore snapshot, and baseline-only dex strings map strongly to that missing block.
-  - `libai_chat_common.cr.so` still differs byte-for-byte despite matching printable strings.
-  - `libchrome.so` is nearly aligned but still has one current-only printable string:
-    - `_ZN28KeyedServiceTemplatedFactoryI12KeyedServiceE20GetServiceForContextEPvb`
-- Next step:
-  - Start transplanting the missing PiP / OneTab lifecycle block from the pre-restore `BraveActivity` snapshot into the live `BraveActivity` in compile-safe chunks.
-  - Then rerun sync + build as `rerun91` and re-compare dex drift plus the final `libchrome.so` one-string delta.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this latest progress entry
-  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `gn gen`
-  - `autoninja`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/gn gen out/android_Component_arm64 > out/android_Component_arm64/codex_onetabtube_gn_gen_rerun89.log 2>&1 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun89.log 2>&1"`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log 2>&1"`
-- Tool purpose:
-  - Sync repo changes into ext4, build the Android package target, and compare the emitted APK against the saved baseline.
-- Tool state:
-  - No active build at snapshot time.
-  - Latest successful package build: `rerun90`.
-- Expected resume command:
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun91.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [browser/ntp_background/view_counter_service_factory.cc](C:/Users/Master/Desktop/GO_PLAY/browser/ntp_background/view_counter_service_factory.cc)
-  - [components/ntp_background_images/browser/view_counter_service.cc](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/view_counter_service.cc)
-  - [components/ntp_background_images/browser/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/components/ntp_background_images/browser/BUILD.gn)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest `docs/progress-log.md` entry
-  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/artifacts/repro_baseline/pre_restore_current_snapshot/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - sync helper run immediately before build
-  - `PYTHONPATH=/home/master/src_ext4/brave/script` still required for the build lane
-- Expected success signal:
-  - dex hashes / sizes move closer to baseline after the `BraveActivity` transplant
-  - or the emitted APK hash matches baseline exactly
-- Expected failure signal:
-  - `BraveActivity` compile fallout from missing PiP / OneTab dependencies
-  - or the same 4 entries remain unchanged after the next targeted patch
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun90.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Keep the build green and use artifact-driven fixes instead of broad rollback.
-  - Compile-gate the OneTabTube lane away from ads-backed sponsored wallpaper code instead of deleting `ViewCounterService` / bridge entirely.
-  - Use the pre-restore `BraveActivity` snapshot as the strongest local reference for the remaining dex mismatch.
-- Rejected approaches:
-  - broad repo rescans
-  - reverting the full NTP background stack
-  - assuming the minimal PiP recovery in `BraveActivity` was enough for dex parity
-- Stop point classification:
-  - build passed and fresh APK emitted, but exact APK reproduction is still incomplete
-- What is done but unverified:
-  - whether transplanting the larger `BraveActivity` PiP / OneTab lifecycle block will materially reduce dex drift
-  - whether the final `libchrome.so` one-string drift can be eliminated without reopening native build failures
-- What is verified:
-  - `rerun90` packages successfully
-  - packaged `libchrome.so` no longer contains the sponsored-ads strings that previously made it diverge from baseline
-  - exact APK reproduction still fails in exactly 4 entries
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
-- Secret required but not stored:
-  - None
-
-## [2026-03-31 23:35:25 +07:00]
-- Phase:
-  - Phase 7 - Validation / APK assembly
-- Objective:
-  - Keep driving the current tree toward a fresh build of the exact OneTabTube baseline APK.
-- Done:
-  - Restored the missing PiP entry/cleanup methods in `android/java/org/chromium/chrome/browser/app/BraveActivity.java`, which removed the late Java blocker from `BraveFullscreenVideoPictureInPictureController`, fullscreen handlers, and `BraveYouTubeScriptInjectorNativeHelper`.
-  - Confirmed `chrome_public_apk__lint` no longer fails when the build is run with `PYTHONPATH=/home/master/src_ext4/brave/script`.
-  - Flattened stale late translate wrappers so current upstream class layouts compile again:
-    - `translate_prefs`
-    - `translate_ui_delegate`
-    - `translate_language_list`
-  - Reworked `stub_resolver_config_reader` again after reaching late link and discovering the previous method-macro approach was still producing a phantom `_ChromiumImpl` virtual symbol.
-  - Converted `translate_script` to passthrough after confirming the current root source already contains Brave translate logic and the old class-rename wrapper was now manufacturing `ChromiumTranslateScript`.
-- In progress:
-  - No active build at snapshot time.
-  - Preparing rerun19 to validate the latest `stub_resolver_config_reader` subclass wrapper and `translate_script` passthrough at `libchrome.so` link.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.cc`
-  - `chromium_src/chrome/browser/preloading/prerender/prerender_manager.h`
-  - `chromium_src/chrome/browser/preloading/prerender/prerender_manager.cc`
-  - `chromium_src/components/translate/core/browser/translate_prefs.h`
-  - `chromium_src/components/translate/core/browser/translate_prefs.cc`
-  - `chromium_src/components/translate/core/browser/translate_ui_delegate.h`
-  - `chromium_src/components/translate/core/browser/translate_ui_delegate.cc`
-  - `chromium_src/components/translate/core/browser/translate_language_list.h`
-  - `chromium_src/components/translate/core/browser/translate_language_list.cc`
-  - `chromium_src/components/translate/core/browser/translate_script.h`
-  - `chromium_src/components/translate/core/browser/translate_script.cc`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - Sync helper keeps passing.
-  - `rerun16` proved the lint lane works with `PYTHONPATH=/home/master/src_ext4/brave/script`, and moved the build to `libchrome.so` link.
-  - `rerun17` removed the first `TranslatePrefs` / `TranslateUIDelegate` / `TranslateLanguageList` blockers but exposed more stale translate wrappers.
-  - `rerun18` compiled the translate family again and failed at final link with:
-    - `undefined symbol: StubResolverConfigReader::ShouldDisableDohForManaged_ChromiumImpl()`
-    - `undefined symbol: translate::ChromiumTranslateScript::ChromiumTranslateScript()`
-  - The APK in `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` is still the old baseline artifact, unchanged hash `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`.
-- Blockers/risks:
-  - Need one more rerun to validate the newest `stub_resolver_config_reader` and `translate_script` fixes.
-  - Additional late stale wrappers may still surface after `libchrome.so` links.
-  - Exact source-to-APK reproducibility is still not proven until a fresh APK is emitted and hashed.
-- Next step:
-  - Run sync helper.
-  - Run:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun19.log 2>&1"`
-  - Inspect whether `libchrome.so` now links or which next late blocker appears first.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this latest progress entry
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log`
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
-  - `chromium_src/components/translate/core/browser/translate_script.h`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log 2>&1"`
-- Tool purpose:
-  - Keep the Windows repo mirrored into ext4 and push the Android package build through final late-stage link blockers.
-- Tool state:
-  - Sync helper passed.
-  - No active build at snapshot time.
-- Expected resume command:
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun19.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.cc`
-  - `chromium_src/components/translate/core/browser/translate_script.h`
-  - `chromium_src/components/translate/core/browser/translate_script.cc`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log`
-  - `tools/sync_changed_files_to_wsl.ps1`
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log`
-  - `chromium_src/chrome/browser/net/stub_resolver_config_reader.h`
-  - `chromium_src/components/translate/core/browser/translate_script.h`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave` reachable
-  - sync helper run immediately before build
-  - `PYTHONPATH=/home/master/src_ext4/brave/script` still required for lint lane
-- Expected success signal:
-  - `libchrome.so` links and the build advances into final packaging/APK generation.
-- Expected failure signal:
-  - Late link still references `ChromiumTranslateScript` or `ShouldDisableDohForManaged_ChromiumImpl`, or reveals the next stale wrapper.
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun18.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Keep `PYTHONPATH` on the build command for now to preserve momentum through the lint lane.
-  - Prefer flattening stale wrappers to current upstream class layouts instead of subclassing when the upstream data members have drifted.
-  - Replace `translate_script` override with passthrough because the current root source already carries Brave translate logic.
-- Rejected approaches:
-  - broad repo rescans
-  - old `ninja.py ... apks/OneTabTube.apk` target
-  - `.codex_build_sync_list.txt`-only sync
-  - vague rollback without a precise source snapshot
-- Stop point classification:
-  - Code edited and multiple reruns completed; latest stop point is very late `libchrome.so` link failure; no fresh APK emitted yet.
-- What is done but unverified:
-  - Latest `stub_resolver_config_reader` wrapper rewrite
-  - Latest `translate_script` passthrough fix
-- What is verified:
-  - Existing baseline APK still matches the device APK hash.
-  - PiP Java blocker is gone.
-  - Translate compile blockers up to `translate_ui_delegate` and `translate_language_list` are gone.
-  - Sync helper passes repeatedly.
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium dependencies remain required.
-- Secret required but not stored:
-  - None.
-## [2026-04-01 15:31]
-- Phase:
-  - Phase 7 - Validation / APK reproducibility
-- Objective:
-  - Reconcile the stale `rerun119` desk state with the live repo/ext4 state, then restore repo/ext4 parity so the next APK build is compiling the intended Brave sync countdown code.
-- Done:
-  - Read the current desk-state files first and treated them only as a starting point.
-  - Verified that the Windows repo copy of [BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java) already uses `LocalDateTime`.
-  - Verified that the ext4 build-tree copy `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java` still uses `Instant`.
-  - Verified from `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log` that the active failure is:
-    - `Instant cannot be converted to LocalDateTime`
-    - at lines `1340` and `1385` in the ext4 copy of `BraveSyncScreensPreference.java`
-  - Reconfirmed the current APK artifact on disk at `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` hashes to `b83d8c1e0aebb6ae1bb61785e761c018f16a679dc6a071d269f1ef8343fa3f1f`.
-- In progress:
-  - Restoring ext4 parity with the current Windows repo before the next build rerun.
-- Files touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
-  - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java`
-  - [tools/sync_changed_files_to_wsl.ps1](C:/Users/Master/Desktop/GO_PLAY/tools/sync_changed_files_to_wsl.ps1)
-- Build/test status:
-  - No build currently running.
-  - Latest attempted build command:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log 2>&1"`
-  - Latest observed failure:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log`
-    - `../../brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java:1340: error: incompatible types: Instant cannot be converted to LocalDateTime`
-    - `../../brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java:1385: error: incompatible types: Instant cannot be converted to LocalDateTime`
-- Blockers/risks:
-  - The desk-state snapshot was stale and no longer matched the code/build tree.
-  - ext4 is not guaranteed to reflect Windows-side edits until the sync helper runs and is verified.
-  - `rerun120` left a current APK artifact on disk but its log does not end with a clean success marker, so the next rerun needs to re-establish clean build evidence.
-- Next step:
-  - Run `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`.
-  - Verify the ext4 copy of `BraveSyncScreensPreference.java` switched to the `LocalDateTime` signatures.
-  - Rebuild as `rerun122`.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this latest progress entry
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
-  - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-- Exact command(s):
-  - `rg -n "Instant notAfterTime|LocalDateTime notAfterTime|getNotAfterFromQrCodeString|setQrCountDown|setWordsCountDown" android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4/brave && rg -n 'Instant notAfterTime|LocalDateTime notAfterTime|getNotAfterFromQrCodeString|setQrCountDown|setWordsCountDown' android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... scan rerun121 log for FAILED/error/ninja stopped lines ... PY"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk"`
-- Tool purpose:
-  - Confirm repo/ext4 divergence, identify the active compile blocker, and prepare the exact next sync/build commands.
-- Tool state:
-  - Inspection complete.
-  - No build currently running.
-- Expected resume command:
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun122.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [android/java/org/chromium/chrome/browser/BraveSyncWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveSyncWorker.java) - repo-side sync timestamp producer
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncCodeCountdownFragment.java) - repo-side sync countdown consumer
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java) - repo-side caller now on `LocalDateTime`
-  - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java` - stale ext4 caller still on `Instant`
-  - [tools/sync_changed_files_to_wsl.ps1](C:/Users/Master/Desktop/GO_PLAY/tools/sync_changed_files_to_wsl.ps1) - required sync mechanism before rebuild
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log` - proof of the current blocker
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest `docs/progress-log.md` entry
-  - [android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java)
-  - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/settings/BraveSyncScreensPreference.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - sync helper run immediately before the next build
-  - `PYTHONPATH=/home/master/src_ext4/brave/script` preserved for the build command
-- Expected success signal:
-  - ext4 `BraveSyncScreensPreference.java` matches the repo-side `LocalDateTime` signatures
-  - `rerun122` compiles past the current `Instant`/`LocalDateTime` mismatch
-  - a fresh APK is emitted for renewed APK/hash/descriptor comparison
-- Expected failure signal:
-  - ext4 still shows `Instant` after sync
-  - `rerun122` fails with the same type mismatch
-  - or a new compile blocker appears in the same sync-countdown working set
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun121.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Use code/build reality as the source of truth over the stale `rerun119` handoff.
-  - Fix repo/ext4 parity before changing sync logic again.
-  - Keep the current repo-side `LocalDateTime` revision in place until a synced rebuild proves otherwise.
-- Rejected approaches:
-  - broad repo rescans
-  - assuming ext4 was already synced
-  - rewriting more sync logic before verifying the sync helper result
-- Stop point classification:
-  - blocker isolated and documented; docs updated; next action is sync plus rerun build
-- What is done but unverified:
-  - Whether the repo-side `LocalDateTime` path restores the baseline-only `java/time/LocalDateTime` and `java/time/ZoneOffset` descriptors without reintroducing `ChronoLocalDateTime`
-- What is verified:
-  - Repo and ext4 copies of `BraveSyncScreensPreference.java` diverge right now
-  - `rerun121` fails because ext4 still compiles the stale `Instant` signatures
-  - Current artifact hash is `b83d8c1e0aebb6ae1bb61785e761c018f16a679dc6a071d269f1ef8343fa3f1f`
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-02 02:35]
-- Phase:
-  - Phase 7 - Validation / publish handoff
-- Objective:
-  - Align the repo with the ext4/device-validated OneTabTube state and publish that snapshot safely to `https://github.com/zelef69/GO_PLAY`.
-- Done:
-  - Audited git remotes and confirmed `origin` still points to `https://github.com/zelef69/GO.git`, not the requested `GO_PLAY` repo.
-  - Verified missing ext4/device-tested fixes in the Windows tree.
-  - Added the missing omnibox null guards/product skip logic to `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`.
-  - Added `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch` to carry the renderer fallback into the tracked patch set.
-  - Re-synced the Windows tree into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
-  - Created local snapshot commit `2d1de86a3` on `main`.
-  - Fetched `https://github.com/zelef69/GO_PLAY.git main` and created `publish/go_play-sync-20260402` from the remote tip to avoid rewriting `GO_PLAY/main`.
-- In progress:
-  - The remote-base publish branch currently holds a large staged import from commit `2d1de86a3` and is waiting for commit/push verification.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
-  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
-  - `tools/sync_changed_files_to_wsl.ps1`
-- Build/test status:
-  - Latest verified build/runtime evidence is still `rerun200` on `R9TRC00GA2E`.
-  - Git publish evidence:
-    - local snapshot commit created: pass (`2d1de86a3`)
-    - direct push from local history: fail (`remote unpack failed: index-pack failed`)
-    - remote-base publish branch preparation: in progress
-- Blockers/risks:
-  - `GO_PLAY/main` has divergent user history and must not be force-updated without explicit approval.
-  - The staged snapshot is large; push may still fail and require a narrower import scope.
-  - Untracked logs/artifacts remain present locally and should stay excluded from the publish commit.
-- Next step:
-  - Commit the staged snapshot on `publish/go_play-sync-20260402`.
-  - Push to `https://github.com/zelef69/GO_PLAY.git` as `codex/onetabtube-sync-20260402`.
-  - If push fails again, reduce the staged scope and retry.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 02:35` entry
-  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
-  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
-  - `git status --short`
-  - `git log --oneline --decorate -n 5 --all`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `git`
-- Exact command(s):
-  - `git status --short`
-  - `git remote -v`
-  - `git ls-remote https://github.com/zelef69/GO_PLAY.git`
-  - `git fetch https://github.com/zelef69/GO_PLAY.git main`
-  - `git switch -c publish/go_play-sync-20260402 FETCH_HEAD`
-  - `git checkout 2d1de86a3 -- AGENTS.md README.md android app base browser build chromium_src components docs patches renderer tools/check-cipd-match.sh tools/check_luci.py tools/create_onetabyt_browser_media_router_stub_srcjar.py tools/create_onetabyt_language_split_installer_stub_srcjar.py tools/create_onetabyt_leo_stub_srcjar.py tools/create_onetabyt_module_installer_stub_srcjar.py tools/create_onetabyt_playcore_update_stub_srcjar.py tools/create_onetabyt_rate_stub_srcjar.py tools/create_onetabyt_rate_stub_srcjar.pydeps tools/create_onetabyt_xr_stub_srcjar.py tools/fix-shebang-crlf.sh tools/install-android-cipd-deps.ps1 tools/install-android-cipd-full.py tools/monitor_brave_apk_build.sh tools/normalize-vendor-depot-tools-lfs.sh tools/parse-android-cipd.py tools/print-build-config.mjs tools/run_brave_apk_build.sh tools/show-chromium-sync-progress.ps1 tools/sync_changed_files_to_wsl.ps1`
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - previous failed push:
-    - `git push --progress https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
-- Tool purpose:
-  - Publish the aligned OneTabTube source snapshot safely to the user's GitHub repo.
-- Tool state:
-  - No build/device command running.
-  - Publish branch staged, commit not yet created.
-- Expected resume command:
-  - `git status --short`
-  - `git commit -m "Import current OneTabTube workspace snapshot"`
-  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
-- Expected output/artifact path:
-  - Remote branch ref:
-    - `refs/heads/codex/onetabtube-sync-20260402`
-  - Last known build artifact:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - remote `GO_PLAY/main`: `a47b5b9232566c5cbf9aea557e72a8f9221f9cdc`
-  - local source snapshot: `2d1de86a3`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `browser/ui/android/omnibox/java/src/org/chromium/chrome/browser/omnibox/suggestions/BraveDropdownItemViewInfoListBuilder.java`
-  - `patches/components-content_settings-renderer-content_settings_agent_impl.cc.patch`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `.git` branch state
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - this `2026-04-02 02:35` entry
-  - `git status --short`
-  - `git log --oneline --decorate -n 5 --all`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Prerequisites before command:
-  - GitHub repo reachable
-  - local git credentials usable
-  - staged publish snapshot intact
-- Expected success signal:
-  - commit created on top of `a47b5b923...`
-  - push succeeds and remote branch becomes visible
-- Expected failure signal:
-  - `git push` returns another pack/unpack/index failure
-- Last known log location:
-  - previous failed push output ended with `remote unpack failed: index-pack failed`
-- Last known artifact path:
-  - local snapshot commit `2d1de86a3`
-- Recent decisions:
-  - Use ext4/device-tested state as source of truth, then backfill missing fixes into the tracked Windows repo.
-  - Publish on a safe branch first instead of rewriting `GO_PLAY/main`.
-- Rejected approaches:
-  - Force-pushing `GO_PLAY/main`
-  - Publishing untracked local evidence/log artifacts
-- Stop point classification:
-  - publish branch prepared and staged, commit/push not yet verified
-- What is done but unverified:
-  - successful remote push of the publish branch
-- What is verified:
-  - local snapshot commit exists
-  - remote `GO_PLAY/main` is fetchable
-  - publish branch is based on the remote tip
-- External prerequisite:
-  - GitHub access to `https://github.com/zelef69/GO_PLAY.git`
-- Secret required but not stored:
-  - any local GitHub credential/token used by git
-
-## [2026-04-02 02:40]
-- Phase:
-  - Phase 7 - Validation / publish handoff
-- Objective:
-  - Finish the safe publish flow by pushing the aligned OneTabTube snapshot to the user's GitHub repo.
-- Done:
-  - Committed the remote-base snapshot on `publish/go_play-sync-20260402` as `e2250064b` (`Import current OneTabTube workspace snapshot`).
-  - Pushed successfully to `https://github.com/zelef69/GO_PLAY.git`.
-  - Created remote branch `codex/onetabtube-sync-20260402`.
-- In progress:
-  - No active command running; waiting for user direction on PR/merge/follow-up work.
+  - No new code change is active in this micro-step.
+  - Waiting for the next user-priority runtime behavior to work on, while preserving the verified `rerun4` expand-return path.
 - Files touched:
   - `docs/current-status.md`
   - `docs/progress-log.md`
 - Build/test status:
-  - Build/runtime evidence remains `rerun200` on `R9TRC00GA2E`.
-  - Git publish status:
-    - safe-branch commit created: pass (`e2250064b`)
-    - safe-branch push: pass
-    - remote branch: `codex/onetabtube-sync-20260402`
-- Blockers/risks:
-  - `GO_PLAY/main` still has its own history; merging to `main` should go through PR/merge, not force-push.
-  - Local untracked logs/artifacts are still intentionally excluded.
-- Next step:
-  - If asked to update GitHub `main`, open or merge a PR from `codex/onetabtube-sync-20260402`.
-  - Otherwise continue future changes from `publish/go_play-sync-20260402` and push follow-up commits to the same remote branch.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 02:40` entry
-  - `git log --oneline --decorate -n 5 --all`
-  - `git ls-remote https://github.com/zelef69/GO_PLAY.git refs/heads/codex/onetabtube-sync-20260402`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `git`
-- Exact command(s):
-  - `git commit -m "Import current OneTabTube workspace snapshot"`
-  - `git push --progress https://github.com/zelef69/GO_PLAY.git HEAD:refs/heads/codex/onetabtube-sync-20260402`
-- Tool purpose:
-  - Publish the aligned OneTabTube workspace snapshot safely to GitHub.
-- Tool state:
-  - Commit and push both completed successfully.
-- Expected resume command:
-  - `git status --short`
-  - `git log --oneline --decorate -n 5 --all`
-- Expected output/artifact path:
-  - Remote branch:
-    - `refs/heads/codex/onetabtube-sync-20260402`
-  - PR entry:
-    - `https://github.com/zelef69/GO_PLAY/pull/new/codex/onetabtube-sync-20260402`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - remote `GO_PLAY/main`: `a47b5b9232566c5cbf9aea557e72a8f9221f9cdc`
-  - published safe-branch commit: `e2250064b`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `.git` branch state
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - this `2026-04-02 02:40` entry
-  - `git status --short`
-  - `git log --oneline --decorate -n 5 --all`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Prerequisites before command:
-  - GitHub repo reachable
-  - local git credentials usable
-- Expected success signal:
-  - `git ls-remote` shows `refs/heads/codex/onetabtube-sync-20260402`
-- Expected failure signal:
-  - future local commits diverge without a matching push
-- Last known log location:
-  - push output ended with `* [new branch]          HEAD -> codex/onetabtube-sync-20260402`
-- Last known artifact path:
-  - remote branch `codex/onetabtube-sync-20260402`
-- Recent decisions:
-  - Keep using the safe-branch strategy rather than rewriting GitHub `main`.
-- Rejected approaches:
-  - Force-pushing `GO_PLAY/main`
-- Stop point classification:
-  - publish branch committed and pushed successfully
-- What is done but unverified:
-  - whether the user wants this branch merged into GitHub `main`
-- What is verified:
-  - remote branch exists on GitHub
-  - local publish branch is committed
-- External prerequisite:
-  - GitHub access to `https://github.com/zelef69/GO_PLAY.git`
-- Secret required but not stored:
-  - any local GitHub credential/token used by git
-
-## [2026-04-02 01:48 +07:00]
-- Phase:
-  - Phase 7 - Validation / device smoke test on `R9TRC00GA2E`
-- Objective:
-  - Install the latest OneTabTube APK on a real device, remove startup/runtime blockers, and validate normal launch plus external intent behavior.
-- Done:
-  - Resumed from the stale `rerun188` desk state and used real build/device state as source of truth.
-  - Confirmed `adb devices` now shows `R9TRC00GA2E`.
-  - Installed current APK and captured the first real startup crash.
-  - Fixed Rewards JNI startup crash by gating Rewards for OneTabTube in:
-    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-    - `android/java/org/chromium/chrome/browser/BraveRewardsNativeWorker.java`
-  - Fixed missing `assets/brave_resources.pak` by patching:
-    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - Fixed omnibox startup NPE by null-guarding Brave suggestion processors in:
-    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\browser\ui\android\omnibox\java\src\org\chromium\chrome\browser\omnibox\suggestions\BraveDropdownItemViewInfoListBuilder.java`
-  - Fixed renderer abort on autoplay rule mismatch by returning `CONTENT_SETTING_DEFAULT` instead of aborting in:
-    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\content_settings\renderer\content_settings_agent_impl.cc`
-  - Fixed `jni_zero` failure to find `org/chromium/components/media_router/BrowserMediaRouter` by adding a keep rule in:
-    - `android/java/onetabtube_repro.proguard.flags`
-  - Rebuilt successfully through `rerun192`, `rerun193`, `rerun195`, `rerun197`, `rerun198`, and `rerun199`.
-  - Reinstalled `rerun199` and verified normal launch stays alive on device for more than 35 seconds.
-  - Captured a stable UI dump showing `m.youtube.com/watch?v=IOd9r5bYwOQ` in the URL bar while the app remained top-resumed.
-- In progress:
-  - External `VIEW` intent smoke testing is the only remaining runtime blocker in this pass.
-- Files touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [BraveToolbarLayoutImpl.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java)
-  - [BraveRewardsNativeWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveRewardsNativeWorker.java)
-  - [onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\browser\ui\android\omnibox\java\src\org\chromium\chrome\browser\omnibox\suggestions\BraveDropdownItemViewInfoListBuilder.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\content_settings\renderer\content_settings_agent_impl.cc`
-- Build/test status:
-  - Latest successful build:
-    - `rerun199`
-  - Latest APK SHA-256:
-    - `809f16b18eaaa488e3dde14a9cf1969c7e8676544bc9aa259b0aae016a04d316`
-  - Verified normal startup on device:
-    - yes
-  - Verified external intent handling:
-    - not yet
-- Blockers/risks:
-  - External `VIEW` intents still crash the main process after transition.
-  - Latest fatal path is no longer Rewards/omnibox/media-router startup.
-  - Latest crash evidence points to:
-    - `content::MediaWebContentsObserver::IsPictureInPictureAllowedForFullscreenVideo()`
-    - around `IntentDispatcher` / `onUserLeaveHint`
-  - PiP is optional for this product and currently looks like the fastest thing to disable.
-- Next step:
-  - Disable PiP for OneTabTube in the runtime path reached during external intent transitions.
-  - Build `rerun200`.
-  - Reinstall on `R9TRC00GA2E`.
-  - Re-test:
-    - normal launch
-    - `VIEW https://youtu.be/dQw4w9WgXcQ`
-    - `VIEW https://google.com`
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this entry
-  - [onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\toolbar\top\BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun199.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun199.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-  - `adb -s R9TRC00GA2E logcat -b crash -d`
-  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/onetabtube_ok.xml`
-- Tool purpose:
-  - Build, install, and validate the debug APK on a real device while trimming out-of-scope surfaces.
-- Tool state:
-  - No build currently running.
-  - Device is attached and authorized.
-  - Latest APK is installed.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - patch PiP disable path
-  - run `rerun200`
-  - rerun the three smoke tests above
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - [BraveRewardsNativeWorker.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveRewardsNativeWorker.java)
-  - [BraveToolbarLayoutImpl.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\browser\ui\android\omnibox\java\src\org\chromium\chrome\browser\omnibox\suggestions\BraveDropdownItemViewInfoListBuilder.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\content_settings\renderer\content_settings_agent_impl.cc`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java`
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun199.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` connected
-- Expected success signal:
-  - app stays alive for normal launch and both external intents
-- Expected failure signal:
-  - crash buffer shows PiP/media-session fatal again
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun199.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Disable or stub out non-required surfaces instead of restoring full product areas.
-  - Keep only the media-router class that JNI still requires, rather than restoring cast UX.
-  - Trust device crash signatures over stale desk-state notes.
-- Rejected approaches:
-  - preserving the old APK exactly instead of meeting AGENTS.md runtime goals
-  - reopening Rewards or Cast surface area fully
-- Stop point classification:
-  - build passed, APK installed, normal launch verified, external intent runtime still failing
-- What is done but unverified:
-  - whether fully disabling PiP resolves external intent crashes
-- What is verified:
-  - device connection
-  - successful build through `rerun199`
-  - successful install
-  - stable normal launch into YouTube on device
-- External prerequisite:
-  - physical device `R9TRC00GA2E`
-  - WSL/ext4 checkout
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-01 16:48]
-- Phase: Phase 7 - Validation / APK reproducibility
-- Objective:
-  - Reconcile the stale `rerun121` desk state with the live best-known `rerun130` build state, then continue narrowing the final APK delta from that stronger baseline.
-- Done:
-  - Re-read the desk-state files first, then verified they were stale relative to the live repo/build outputs.
-  - Reconfirmed the current best APK artifact on disk is `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` with SHA-256 `c9b7af413e9dfaad58c073115c9273cc5ac578391e72e989e041c7ada8ff58fa`.
-  - Reconfirmed the baseline APK remains `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk` with SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`.
-  - Reconfirmed `rerun130` is the best-known successful package build by tailing `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`.
-  - Revalidated the live working set:
-    - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
-    - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
-    - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-    - [android/java/onetabtube_bottomsheet_apply.mapping](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_bottomsheet_apply.mapping)
-  - Recomputed the current APK zip-entry hashes:
-    - `classes.dex` `e82538b985f404bfc7034ae8c84f204a871ed0c8f36582265b34be123132bc96`
-    - `classes2.dex` `efe15d6d531a8fe7d0a0a64634dbdd4de34eb8805adeb8dec2e7ca6cb4aeb0f7`
-    - `lib/arm64-v8a/libai_chat_common.cr.so` `f422f53fdf07e88a047e5b28eefe0272906f572c09cd8bd8497f5478ad0ae2d8`
-    - `lib/arm64-v8a/libchrome.so` `7c81d361b2be7f0719c10e88afaaa14d9580d2f7cb67a43307cc0f4898469388`
-  - Recomputed the class-descriptor set diff from `classes.dex` + `classes2.dex`:
-    - current-only count `30`
-    - baseline-only count `2`
-  - Mapped the current-only descriptor bucket from the current R8 mapping:
-    - `com.google.android.gms.internal.cast.zzye` ... `zzzu`
-    - `com.google.android.gms.location.zzz`
-    - `com.google.android.play.core.splitinstall.internal.zzz`
-    - `com.google.android.play.core.splitinstall.testing.zzz`
-  - Reconfirmed the only baseline-only descriptors are:
-    - `Lorg/chromium/chrome/browser/omnibox/suggestions/j;`
-    - `Lorg/chromium/chrome/browser/omnibox/suggestions/k;`
-  - Verified the raw dex string markers for `splitinstall`, `com/google/android/gms/internal/cast`, and `CastOptionsProvider` still exist in both current and baseline, which suggests the residual drift is subtle retention/layout drift rather than an obviously missing whole subsystem.
-  - Updated [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md) to the live `rerun130` state.
-- In progress:
-  - Investigating whether the Brave media-session rewrite path is the narrowest remaining OneTab-specific lever for removing the external cast/play-core descriptor bucket.
-- Files touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
-  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
-  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - [android/java/onetabtube_bottomsheet_apply.mapping](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_bottomsheet_apply.mapping)
-  - [components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java](C:/Users/Master/Desktop/GO_PLAY/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java)
-  - [android/java/org/chromium/chrome/browser/media/ui/BraveMediaSessionTabHelper.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/media/ui/BraveMediaSessionTabHelper.java)
-- Build/test status:
-  - No build currently running.
-  - Latest verified successful build command:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log 2>&1"`
-  - Latest verified success evidence:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`
-    - final actions include `chrome_public_apk__final_dex__r8`, `chrome_public_apk__final_dex`, and `chrome_public_apk__create`
-- Blockers/risks:
-  - Remaining Java drift is now small and easy to worsen accidentally.
-  - The remaining native drift may or may not share the same root cause as the residual Java bucket.
-  - Any change that regresses the current best hash or reintroduces the earlier omnibox/bottomsheet/media-notification drift should be reverted immediately.
-- Next step:
-  - Gate `BraveMediaSessionHelperClassAdapter` and `BraveMediaSessionTabHelperClassAdapter` behind `!sIsOneTabYT` in [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java).
-  - Sync to ext4.
-  - Rebuild as `rerun131`.
-  - Compare:
-    - APK SHA-256
-    - entry hashes
-    - class-descriptor diff
-  - Keep the experiment only if it improves on `c9b7af...`.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this latest progress entry
-  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
-  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-- Exact command(s):
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk"`
-  - `wsl.exe bash -lc "tail -n 40 /home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... parse dex class descriptors and compare current vs baseline ... PY"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... inspect OneTabTube.apk.mapping for ahj/bhj/... and media-session classes ... PY"`
-  - expected sync:
-    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - expected build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun131.log 2>&1"`
-- Tool purpose:
-  - Validate the current best-known APK state and run the next narrow experiment against the remaining descriptor/native drift.
-- Tool state:
-  - Inspection complete.
-  - No build currently running.
-- Expected resume command:
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun131.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
-  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
-  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - [android/java/onetabtube_bottomsheet_apply.mapping](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_bottomsheet_apply.mapping)
-  - [components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java](C:/Users/Master/Desktop/GO_PLAY/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java)
-  - [android/java/org/chromium/chrome/browser/media/ui/BraveMediaSessionTabHelper.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/media/ui/BraveMediaSessionTabHelper.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md) entry
-  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - sync helper run immediately before the next build
-  - `PYTHONPATH=/home/master/src_ext4/brave/script` preserved for the build command
-- Expected success signal:
-  - `rerun131` packages successfully and reduces the descriptor delta or improves the APK hash
-- Expected failure signal:
-  - `rerun131` fails or worsens the descriptor/native diff
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun130.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Keep the `rerun130` state as the source of truth.
-  - Continue with the narrowest remaining OneTab-specific experiment first.
-- Rejected approaches:
-  - falling back to the stale `rerun121` blocker narrative
-  - reviving the failed middle-ground omnibox experiment
-  - broad repo rescans
-- Stop point classification:
-  - best-known state revalidated; docs updated; next step is code edit plus rebuild experiment
-- What is done but unverified:
-  - whether the media-session gating experiment improves the APK match
-- What is verified:
-  - `rerun130` remains the current best build
-  - current best APK size matches baseline exactly
-  - residual Java drift is `30 current-only / 2 baseline-only`
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-01 17:58]
-- Phase: Phase 7 - Validation / APK reproducibility
-- Objective: Reconcile the stale `rerun130` desk state with the live `rerun139` build and repair the late-stage rate-dialog regression without losing the proven `rerun137` improvements.
-- Done:
-  - Re-read `docs/current-status.md` and the latest progress entry per the desk-state workflow.
-  - Verified the recorded `rerun130` state is stale relative to the live repo and ext4 output.
-  - Reconfirmed the latest successful packaged build is `rerun139`.
-  - Reconfirmed current APK SHA-256 `4fcdeb4f7bc339119a414561bd6ab065e0a7b7cb61eae48b71c506f29dd556ae`.
-  - Reconfirmed baseline APK SHA-256 `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`.
-  - Recomputed current zip-entry hashes:
-    - `classes.dex` `989ab0ce650fde55cc8472ecedf8aafc134a1dff164542d030372eece6c55de9`
-    - `classes2.dex` `59a2c9d6a476a78474a210666b8b131a9ae8631b8e7cdbd94e4cef90c9967097`
-    - `lib/arm64-v8a/libai_chat_common.cr.so` `f422f53fdf07e88a047e5b28eefe0272906f572c09cd8bd8497f5478ad0ae2d8`
-    - `lib/arm64-v8a/libchrome.so` `f1f35b6257dcfa0966f1257ad7980db5fa32870f774b6438603ad340b2a51d1a`
-  - Recomputed descriptor drift for `rerun139`:
-    - current-only: 17
-    - baseline-only: 3
-  - Mapped the current-only obfuscated descriptors back to:
-    - `com.google.android.gms.internal.cast.zzz`
-    - `com.google.android.gms.internal.cast.zzza`
-    - `com.google.android.gms.internal.cast.zzzd`
-    - `com.google.android.gms.internal.cast.zzze`
-    - `com.google.android.gms.internal.cast.zzzg`
-    - `com.google.android.gms.internal.cast.zzzk`
-    - `com.google.android.gms.internal.cast.zzzl`
-    - `com.google.android.gms.internal.cast.zzzm`
-    - `com.google.android.gms.internal.cast.zzzn`
-    - `com.google.android.gms.internal.cast.zzzo`
-    - `com.google.android.gms.internal.cast.zzzp`
-    - `com.google.android.gms.internal.cast.zzzq`
-    - `com.google.android.gms.internal.cast.zzzr`
-    - `com.google.android.gms.internal.cast.zzzs`
-    - `com.google.android.gms.internal.cast.zzzu`
-    - `com.google.android.play.core.splitinstall.internal.zzz`
-    - `com.google.android.play.core.splitinstall.testing.zzz`
-  - Reconfirmed the 3 baseline-only classes are:
-    - `BraveAskPlayStoreRatingDialog`
-    - `BraveRateDialogFragment`
-    - `BraveRateThanksFeedbackDialog`
-  - Verified the source of the regression: `android/brave_java_sources.gni` currently excludes the three rate-dialog classes for `is_onetabyt`.
-  - Updated `docs/current-status.md` to the live `rerun139` state.
-- In progress:
-  - Preparing the next narrow experiment: restore the rate-dialog classes to the APK while stripping their Play Core review compile-time retention path.
-- Files touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
-  - [android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java)
-  - [android/java/org/chromium/chrome/browser/rate/BraveRateDialogFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateDialogFragment.java)
-  - [android/java/org/chromium/chrome/browser/rate/BraveRateThanksFeedbackDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateThanksFeedbackDialog.java)
-  - [android/java/org/chromium/chrome/browser/rate/BraveRateDialogLauncher.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateDialogLauncher.java)
-  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - [android/java/onetabtube_bottomsheet_apply.mapping](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_bottomsheet_apply.mapping)
-  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [android/java/org/chromium/chrome/browser/BraveApplicationImplBase.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/BraveApplicationImplBase.java)
-  - [android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/settings/BraveMainPreferencesBase.java)
-  - [android/java/org/chromium/chrome/browser/brave_news/CardBuilderFeedCard.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/brave_news/CardBuilderFeedCard.java)
-  - [browser/brave_profile_prefs.cc](C:/Users/Master/Desktop/GO_PLAY/browser/brave_profile_prefs.cc)
-  - [chromium_src/chrome/browser/media/router/media_router_feature.cc](C:/Users/Master/Desktop/GO_PLAY/chromium_src/chrome/browser/media/router/media_router_feature.cc)
-  - [build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java](C:/Users/Master/Desktop/GO_PLAY/build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java)
-- Build/test status:
-  - No build currently running.
-  - Latest verified successful build command:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log 2>&1"`
-  - Latest verified success evidence:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
-- Blockers/risks:
-  - The `rerun139` improvement is not yet a net win because it swapped the previous `location/splitinstall` drift for three missing baseline rate classes.
-  - The rate-dialog classes still contain direct Play Core review imports, and the OneTab repro keep file still explicitly keeps `com.google.android.play.core.review.*`.
-  - Any edit that disturbs the already-proven media-router, app-update, or media-session improvements should be reverted immediately.
-- Next step:
-  - Remove the three rate-dialog source-filter patterns from `android/brave_java_sources.gni`.
-  - Refactor `BraveAskPlayStoreRatingDialog.java` to replace direct Play Core review imports with reflection so the class can stay present without dragging the splitinstall tail.
-  - Remove the OneTab-specific keep rules for `com.google.android.play.core.review.*` from `android/java/onetabtube_repro.proguard.flags` if the reflection refactor makes them unnecessary.
-  - Sync to ext4 and rebuild as `rerun140`.
-  - Compare APK hash, entry hashes, and descriptor drift against `rerun139`.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this `2026-04-01 17:58` progress entry
-  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
-  - [android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java)
-  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-- Exact command(s):
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk"`
-  - `wsl.exe bash -lc "tail -n 40 /home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... parse dex class descriptors and compare current vs baseline ... PY"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... map ahj..zgj back to original names from OneTabTube.apk.mapping ... PY"`
-  - expected sync:
-    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - expected build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun140.log 2>&1"`
-- Tool purpose:
-  - Repair the `rerun139` regression without giving back the proven late-stage improvements.
-- Tool state:
-  - Inspection complete.
-  - No build currently running.
-- Expected resume command:
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun140.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
-  - [android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java)
-  - [android/java/org/chromium/chrome/browser/rate/BraveRateDialogFragment.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateDialogFragment.java)
-  - [android/java/org/chromium/chrome/browser/rate/BraveRateThanksFeedbackDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateThanksFeedbackDialog.java)
-  - [android/java/org/chromium/chrome/browser/rate/BraveRateDialogLauncher.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveRateDialogLauncher.java)
-  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md) entry
-  - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
-  - [android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/rate/BraveAskPlayStoreRatingDialog.java)
-  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - sync helper run immediately before the next build
-  - `PYTHONPATH=/home/master/src_ext4/brave/script` preserved for the build command
-- Expected success signal:
-  - `rerun140` packages successfully and restores baseline-only to `0` without growing the 17-class current-only bucket
-- Expected failure signal:
-  - `rerun140` fails or reintroduces the removed location/splitinstall drift while keeping baseline-only above `0`
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun139.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Treat `rerun139` as the actual source/build truth.
-  - Repair the regression locally instead of rolling the whole tree back.
-- Rejected approaches:
-  - broad repo rescans
-  - keeping the OneTab rate source filters despite the baseline-only regression
-- Stop point classification:
-  - desk state reconciled; next step is a code edit plus rebuild experiment
-- What is done but unverified:
-  - whether reflective review wiring plus restored rate classes will preserve the `rerun139` improvement without the regression
-- What is verified:
-  - `rerun139` is the current latest successful build
-  - current APK drift is `17 current-only / 3 baseline-only`
-  - the regression source is the rate-dialog source filter
-- External prerequisite:
-  - WSL/ext4 checkout plus Android/Chromium dependencies remain required
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-01 20:11]
-- Phase:
-  - Phase 7 - Validation / APK reproducibility
-- Objective:
-  - Keep the source tree buildable for device testing and continue shrinking the last APK drift against the saved device APK.
-- Done:
-  - Removed the temporary `-whyareyoukeeping` diagnostics from [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags) and restored a clean build path.
-  - Rebuilt successfully through `rerun150`, then explored the remaining `17/0` drift with targeted media-router and stack-unwinder inspection.
-  - Confirmed the splitinstall tail still points at stack unwinder / module installer.
-  - Confirmed the remaining class-set drift is exactly `15` `com.google.android.gms.internal.cast.*` classes plus `2` `com.google.android.play.core.splitinstall.*` classes.
-  - Tried removing `removeSessionManagerListener()` and then both listener registration calls from [CafBaseMediaRouteProvider.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CafBaseMediaRouteProvider.java); both builds passed (`rerun155`, `rerun156`) but the drift stayed `17/0`.
-  - Reverted that experiment and rebuilt successfully again as `rerun157`.
-  - Verified the latest testable APK hash is `7ee1bde092c7202a4b33fd0e7b6a3a71ed1178564e7cc341d49eabd5f762d532`.
-- In progress:
-  - Tracing cast retention to bootstrap points such as manifest metadata and keep rules instead of listener cleanup code.
-- Files touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
-  - [CafBaseMediaRouteProvider.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CafBaseMediaRouteProvider.java)
-  - [BrowserMediaRouter.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java)
-  - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
-- Build/test status:
-  - Latest verified successful packaged build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun157.log 2>&1"`
-  - Current APK is buildable and suitable for device testing.
-  - Remaining reproducibility drift:
-    - zip-entry drift in `classes.dex`, `classes2.dex`, `libai_chat_common.cr.so`, `libchrome.so`
-    - class-descriptor drift `17 current-only / 0 baseline-only`
-- Blockers/risks:
-  - `CastOptionsProvider` is still declared via manifest metadata and kept by [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags), so cast bootstrap may be retained above the runtime feature gate.
-  - The splitinstall tail remains tied to stack unwinder / module installer.
-  - The listener experiment proved method cleanup alone is not enough and should not be retried without new evidence.
-- Next step:
-  - Inspect and likely adjust cast retention at the manifest / proguard / build boundary:
-    - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
-    - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
-    - [BUILD.gn](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn)
-  - Rebuild as `rerun158` after the next targeted change and recompute drift.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this `2026-04-01 20:11` entry
-  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
-  - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
-  - [BrowserMediaRouter.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java)
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-- Exact command(s):
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun157.log 2>&1"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... parse dex class descriptors and compare current vs baseline ... PY"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... sha256 current vs baseline zip entries ... PY"`
-- Tool purpose:
-  - Preserve a buildable APK while narrowing the remaining APK delta.
-- Tool state:
-  - No build currently running.
-- Expected resume command:
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun158.log 2>&1"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
-  - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
-  - [BrowserMediaRouter.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java)
-  - [CafBaseMediaRouteProvider.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CafBaseMediaRouteProvider.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk.mapping`
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
-  - [AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
-  - [BrowserMediaRouter.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java)
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-- Expected success signal:
-  - `rerun158` packages successfully and reduces the `17` current-only class bucket
-- Expected failure signal:
-  - drift remains `17/0` or the packaged build breaks
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun157.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Keep the tree buildable for testing instead of blocking everything on exact baseline matching.
-  - Treat listener cleanup as a rejected hypothesis for the remaining class-set drift.
-- Rejected approaches:
-  - keeping the unsuccessful `CafBaseMediaRouteProvider` listener edits
-  - restarting with a broad repo rescan
-- Stop point classification:
-  - build passed and APK emitted; remaining work is reproducibility analysis
-- What is done but unverified:
-  - whether removing or gating `CastOptionsProvider` retention will shrink the cast bucket cleanly
-- What is verified:
-  - current source builds a testable APK
-  - latest packaged build is `rerun157`
-  - current APK drift is `17 current-only / 0 baseline-only`
-- External prerequisite:
-  - WSL/ext4 checkout and Android/Chromium deps remain required
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-02 20:14]
-- Phase:
-  - Phase 7 - Validation / PiP unlock restore fidelity on hardware
-- Objective:
-  - Stop the post-unlock PiP page-state corruption by fixing the fullscreen-loss seam instead of reviving the old bounce-based restore flow.
-- Done:
-  - Read the last desk-state snapshot and resumed from the recorded `rerun232`/`rerun233` working set.
-  - Verified `rerun233` evidence from:
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_manual_20260402_195356.png`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun233_manual_20260402_195356.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun233_manual_20260402_195356.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun233_full_20260402_195356.txt`
-  - Confirmed the previous filtered capture missed the active path because the real Chromium tags were `cr_VideoPersist`, `cr_OneTabTubePerf`, and `cr_YouTubeNativeHelper`.
-  - Confirmed the runtime sequence on `rerun233`:
-    - PiP enters successfully
-    - after unlock, app task becomes visible again
-    - `media_effectively_fullscreen_changed fullscreen=0`
-    - local fullscreen-loss suppression keeps PiP alive
-    - PiP then shows page/inline-player state instead of fullscreen video state
-  - Pulled Brave upstream files from GitHub and compared them directly with local code:
-    - `tmp_upstream_brave_youtube_script_injector_tab_helper.cc`
-    - `tmp_upstream_BraveYouTubeScriptInjectorNativeHelper.java`
-    - `tmp_upstream_BraveActivity.java`
-    - `tmp_upstream_chromium_FullscreenVideoPictureInPictureController.java`
-  - Verified `BraveFullscreenHtmlApiHandlerCompat.java` and `BraveFullscreenHtmlApiHandlerLegacy.java` already match Brave upstream.
-  - Patched:
-    - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - Synced Windows changes into ext4.
-  - Built `rerun234` successfully.
-  - Installed `rerun234` on `R9TRC00GA2E`.
-  - Warm-launched the installed APK successfully.
-- In progress:
-  - Waiting on the next manual hardware truth-check for `rerun234`.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun234`
-    - build passed
-    - APK SHA-256: `3c90946d33338da6b686e1b666b351804bb8d667e07c436a328850d596a252ea`
-    - install passed on `R9TRC00GA2E`
-    - warm launch passed
-    - manual lock/unlock truth-check not yet run
-- Blockers/risks:
-  - Samsung keyguard still requires manual unlock.
-  - The new fullscreen re-arm seam is evidence-driven but still unverified on hardware.
-- Next step:
-  - Run the standard manual flow on `rerun234`, then capture the corrected `cr_*` tags if the bug persists.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 20:14` entry
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun233_full_20260402_195356.txt`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun234.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-- Tool purpose:
-  - Keep the repo, ext4 build tree, and device install aligned while debugging the PiP unlock path.
-- Tool state:
-  - No active build or log capture; latest APK is installed.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - reproduce once on `rerun234`
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_BravePipWrapper:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I cr_VideoPersist:I chromium:I ActivityTaskManager:I AndroidRuntime:E *:S`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun234.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-    - intercepts fullscreen-loss while pinned and re-requests fullscreen
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-    - avoids redundant PiP re-entry when already pinned
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun233_full_20260402_195356.txt`
-    - evidence for the root-cause hypothesis
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for manual lock/unlock
-- Expected success signal:
-  - after unlock, PiP stays pinned and the video remains video-focused/fullscreen inside PiP
-- Expected failure signal:
-  - after unlock, PiP still shows mostly black or page/inline-player state
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun234.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Fix the fullscreen-loss seam instead of rebuilding the old restore graph.
-  - Use Brave/Chromium upstream files as the reference before patching.
-  - Treat `cr_*` tags as the authoritative capture filter for the next runtime round.
-- Rejected approaches:
-  - bringing back the old bounce/retry ladder in `BraveActivity`
-  - widening the patch into fullscreen handlers that already match Brave upstream
-- Stop point classification:
-  - code edited, synced, built, installed, and warm-launched; waiting on runtime truth-check
-- What is done but unverified:
-  - the `rerun234` fullscreen re-arm seam on real hardware
-- What is verified:
-  - `rerun234` build/install/launch
-  - `rerun233` root-cause evidence points at fullscreen-loss while PiP remains pinned
-- External prerequisite:
-  - physical device `R9TRC00GA2E`
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 20:50]
-- Phase:
-  - Phase 7 - Validation / PiP unlock restore fidelity on hardware
-- Objective:
-  - Fix the active controller path so post-unlock PiP stays full/video-focused instead of remaining pinned with partial page-state content.
-- Done:
-  - Read the latest desk-state and resumed from `rerun234` evidence instead of re-scanning the repo.
-  - Inspected:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun234_postunlock.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun234_postunlock.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun234_postunlock.txt`
-  - Confirmed `rerun234` still keeps PiP pinned after unlock but does not keep video content full:
-    - `cr_VideoPersist` logs show `refreshPictureInPictureParamsForCurrentVideo(... activeFullscreen=false ...)` during `onStart/onResume`
-    - later `OTB_PIP event=media_effectively_fullscreen_changed fullscreen=0`
-    - controller ignores dismiss and leaves the session pinned
-  - Verified the final APK was not using the Brave wrapper seam as the active runtime path:
-    - no `cr_BravePipWrapper` logs in `rerun234`
-    - final dex lacked `BravePipWrapper` / `BraveFullscreenVideoPictureInPictureController` strings
-    - intermediate rewrite jar still had `FullscreenVideoPictureInPictureController -> BraveFullscreenVideoPictureInPictureController`, so runtime evidence was used as source of truth
-  - Patched the actual ext4 controller source:
-    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - The controller patch:
-    - skips PiP params refresh during `onStart/onResume` if there is no active fullscreen video
-    - skips `refreshPictureInPictureParamsForCurrentVideo()` entirely when `activeFullscreen=false`
-    - handles fullscreen-loss while pinned before `updateAutoPictureInPictureStatusIfNeeded()`
-    - re-requests fullscreen through `BraveYouTubeScriptInjectorNativeHelper.setFullscreen(...)` when needed
-  - Built `rerun235`.
-  - Verified the new artifact contains the new controller strings:
-    - `Re-requesting fullscreen to keep PiP video-focused.`
-    - `refreshPictureInPictureParamsForCurrentVideo: skip without active fullscreen video.`
-    - `onResume while still in PiP without active fullscreen video; skipping PiP params refresh.`
-  - Installed the new APK on `R9TRC00GA2E`.
-  - Verified warm launch still succeeds after install.
-- In progress:
-  - Waiting for the first real-device lock/unlock truth-check on `rerun235`.
-- Files touched:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun235`
-    - APK SHA-256: `d2dee26af3ceeb3edf70fa7905ebc45477119674d5cdbdd1effed6d01f51637a`
-    - install passed on `R9TRC00GA2E`
-    - warm launch passed
-    - build log: `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun235.log`
-    - note: the log still contains lint stdout warnings after `chrome_public_apk__create`, but the APK artifact was emitted and installed successfully
-- Blockers/risks:
-  - Manual lock/unlock testing is still required on the physical Samsung device.
-  - The active controller source is patched directly in ext4; there is no tracked repo mirror source file for that class, so future Windows->WSL sync could overwrite it if not mirrored deliberately later.
-- Next step:
-  - Run the standard manual flow on `rerun235`, then capture:
-    - `adb -s R9TRC00GA2E logcat -c`
-    - reproduce once
-    - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_VideoPersist:I cr_OneTabTubePerf:I cr_YouTubeNativeHelper:I chromium:I ActivityTaskManager:I AndroidRuntime:E *:S`
-    - activity/window dumps if needed
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 20:50` entry
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun235.log`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun234_postunlock.txt`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun235.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-- Tool purpose:
-  - Patch the actual runtime PiP controller path, then emit/install an APK for the next hardware truth-check.
-- Tool state:
-  - No build or log capture is currently running.
-  - `rerun235` is installed on `R9TRC00GA2E`.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - reproduce once on `rerun235`
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_VideoPersist:I cr_OneTabTubePerf:I cr_YouTubeNativeHelper:I chromium:I ActivityTaskManager:I AndroidRuntime:E *:S`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun235.log`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - active runtime PiP controller path
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - bridge into controller refresh path
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - fullscreen / PiP helper bridge
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun234_postunlock.txt` - source of truth for the latest broken runtime path
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun235.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to lock/unlock the device
-- Expected success signal:
-  - after unlock, PiP remains pinned and the video fills the PiP window correctly
-- Expected failure signal:
-  - after unlock, PiP remains pinned but still shows partial / page-state content
-  - or a new crash / dismissal appears
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun235.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Runtime evidence overrode the earlier wrapper assumption.
-  - The active controller path is now the source of truth for this bug.
-  - PiP params refresh should not run from a non-fullscreen state.
-- Rejected approaches:
-  - more Brave wrapper-only changes without runtime proof they execute
-  - restoring the old multi-step unlock bounce path
-- Stop point classification:
-  - code edited, artifact emitted, installed, warm-launched; runtime truth-check pending
-- What is done but unverified:
-  - whether `rerun235` fixes the post-unlock partial-content PiP bug
-- What is verified:
-  - `rerun234` remained pinned but still rendered broken PiP content
-  - `rerun235` APK contains the new controller strings
-  - `rerun235` installs and warm-launches
-- External prerequisite:
-  - physical device `R9TRC00GA2E`
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 21:12]
-- Phase:
-  - Phase 7 - Validation / PiP unlock restore fidelity on hardware
-- Objective:
-  - Eliminate the remaining fullscreen re-entry timeout after unlock so pinned PiP returns to a full/video-focused state.
-- Done:
-  - Captured live `rerun235` evidence from the current broken state:
-    - `tmp_toolbar_pip_logcat_rerun235_live.txt`
-    - `tmp_toolbar_pip_activities_rerun235_live.txt`
-    - `tmp_toolbar_pip_windows_rerun235_live.txt`
-    - `pip_after_unlock_rerun235_live.png`
-  - Verified the `rerun235` controller patch is active and working:
-    - skips PiP refresh during `onStart/onResume` while `activeFullscreen=false`
-    - re-requests fullscreen when pinned PiP loses fullscreen state
-  - Confirmed the remaining blocker from real logs is:
-    - after the controller re-request, `fullscreen_script_complete result=timeout`
-  - Inspected `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` and found the current fullscreen script still waits for the fullscreen button to reappear and can sit in the observer path for 30 seconds.
-  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`:
-    - adds `hasFullscreenPresentation(...)`
-    - adds `tryDirectFullscreen(...)`
-    - keeps the button-click path for normal behavior
-    - falls back to the existing observer wait only if direct fullscreen does not establish fullscreen
-    - relaxes the stale `document.hidden` gate in the button path
-  - Synced the tracked repo into ext4.
-  - Built `rerun236`.
-  - Installed `rerun236` on `R9TRC00GA2E`.
-  - Verified warm launch succeeds.
-- In progress:
-  - Waiting for the first manual truth-check on `rerun236`.
-- Files touched:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun236`
-    - build passed
-    - APK SHA-256: `d1a38475750ab77154aaca6d52d8fff3c1bc20f22de4b9dba8a9f79fd8d1e71f`
-    - install passed on `R9TRC00GA2E`
-    - warm launch passed
-- Blockers/risks:
-  - Manual lock/unlock is still required on the physical device.
-  - If the direct Fullscreen API fallback is still not accepted by the page/player after unlock, the script could still fail and drop back to partial-content PiP.
-- Next step:
-  - Run the standard lock/unlock PiP flow on `rerun236`, then capture filtered logs with the same `cr_VideoPersist` / `cr_YouTubeNativeHelper` / `chromium` tags.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 21:12` entry
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `tmp_toolbar_pip_logcat_rerun235_live.txt`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-- Tool purpose:
-  - Patch the remaining fullscreen script timeout bottleneck and deploy the new build to device.
-- Tool state:
-  - No build or log capture is currently running.
-  - `rerun236` is installed on `R9TRC00GA2E`.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - reproduce once on `rerun236`
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_VideoPersist:I cr_OneTabTubePerf:I cr_YouTubeNativeHelper:I chromium:I ActivityTaskManager:I AndroidRuntime:E *:S`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - fullscreen script path
-  - `tmp_toolbar_pip_logcat_rerun235_live.txt` - source of truth for the script timeout failure
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - already-fixed controller path
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to lock/unlock the device
-- Expected success signal:
-  - after unlock, PiP remains pinned and the video returns full without a fullscreen timeout
-- Expected failure signal:
-  - after unlock, PiP remains pinned but the fullscreen script still times out or the content remains partial
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Keep the controller fix from `rerun235`.
-  - Move the next fix into the fullscreen script path because the logs proved that is the remaining bottleneck.
-- Rejected approaches:
-  - undoing the controller fix
-  - adding more lifecycle hacks before addressing the script timeout
-- Stop point classification:
-  - code edited, synced, built, installed, warm-launched; runtime truth-check pending
-- What is done but unverified:
-  - whether the direct Fullscreen API fallback removes the post-unlock partial-content PiP issue
-- What is verified:
-  - `rerun235` controller fix executes and narrows the bug to a fullscreen script timeout
-  - `rerun236` builds, installs, and launches
-- External prerequisite:
-  - physical device `R9TRC00GA2E`
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 21:33]
-- Phase:
-  - Phase 7 - Validation complete for the lockscreen-return PiP issue; publishing the verified snapshot
-- Objective:
-  - Record the verified-good `rerun236` result, mirror the ext4 controller fix into tracked repo state, and push the working version to the user's `GO_PLAY` repository.
-- Done:
-  - Re-read `docs/current-status.md` and the latest progress log entry instead of re-scanning the repo.
-  - Confirmed the recorded desk-state was stale relative to the latest device truth.
-  - Confirmed `rerun236` is the current good snapshot for this issue:
-    - build passed
-    - install passed on `R9TRC00GA2E`
-    - warm launch passed
-    - user verified that after returning from the lock screen, PiP is usable normally
-  - Confirmed the tracked repo still lacked the mirror patch for the live ext4 controller fix in:
-    - `chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java`
-  - Confirmed the publish target repo is `https://github.com/zelef69/GO_PLAY.git`.
-- In progress:
-  - Updating docs so the repo clearly states that this version no longer reproduces the earlier lockscreen-return PiP issue.
-  - Adding the tracked controller mirror patch before commit/push.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `docs/patch-summary.md`
-  - `docs/testing.md`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-- Build/test status:
-  - `rerun236`
-    - build passed
-    - install passed
-    - warm launch passed
-    - manual lock -> unlock PiP verification passed on `R9TRC00GA2E`
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
-  - APK SHA-256:
-    - `d1a38475750ab77154aaca6d52d8fff3c1bc20f22de4b9dba8a9f79fd8d1e71f`
-- Blockers/risks:
-  - current local `origin` points to `https://github.com/zelef69/GO.git`, not `GO_PLAY`
-  - local evidence dumps remain untracked and must stay out of the publish commit
-  - the live controller fix is ext4-only unless mirrored into tracked repo state
-- Next step:
-  - Stage the tracked PiP/runtime/docs files only
-  - Commit with an explicit note that this version returns from the lock screen without the PiP issue
-  - Push the branch to `https://github.com/zelef69/GO_PLAY.git`
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 21:33` entry
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `git`
-- Exact command(s):
-  - `git status --short`
-  - `git diff --stat -- <tracked PiP files>`
-  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:publish/go_play-sync-20260402`
-- Tool purpose:
-  - Publish the verified-good PiP unlock snapshot instead of continuing to churn on already-fixed behavior.
-- Tool state:
-  - no build running
-  - `rerun236` APK already verified on device
-- Expected resume command:
-  - `git status --short`
-  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:publish/go_play-sync-20260402`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - last tracked unlock-recovery source fix before the good build
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch` - tracked mirror of the live controller fix
-  - `docs/testing.md` - records the final verified result
-  - `docs/patch-summary.md` - product-facing summary of the final working state
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Prerequisites before command:
-  - correct GitHub repo URL for `GO_PLAY`
-  - no accidental staging of evidence dumps
-- Expected success signal:
-  - pushed branch contains the working PiP unlock snapshot and documentation explicitly notes that this version returns from the lock screen without the earlier PiP issue
-- Expected failure signal:
-  - push goes to the wrong repo
-  - tracked controller mirror is still missing
-  - untracked artifacts get staged by accident
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - treat the device-owner verdict on `rerun236` as source of truth
-  - stop editing PiP behavior further and publish the verified-good state
-  - mirror the ext4 controller change via a tracked patch instead of leaving the repo incomplete
-- Rejected approaches:
-  - pushing to `origin`
-  - continuing to tweak PiP despite the confirmed success
-  - staging the untracked evidence corpus
-- Stop point classification:
-  - verified-good runtime state recorded; commit/push in progress
-- What is done but unverified:
-  - final GitHub push for this snapshot
-- What is verified:
-  - `rerun236` is the latest verified-good build for the lockscreen-return PiP issue
-- External prerequisite:
-  - GitHub connectivity
-- Secret required but not stored:
-  - GitHub credentials/token if required by the local git environment
-
-## [2026-04-02 21:38]
-- Phase:
-  - Phase 7 - Validation complete for the lockscreen-return PiP issue; verified snapshot published
-- Objective:
-  - Freeze the verified `rerun236` PiP-unlock-good state as the current published baseline.
-- Done:
-  - Committed the tracked PiP/runtime/docs snapshot as:
-    - `78cd58a92efd317099d3ab9512d4f60161b0b122`
-    - `fix(android): stabilize PiP after lockscreen unlock`
-  - Pushed `HEAD` to:
-    - `https://github.com/zelef69/GO_PLAY.git`
-    - branch `publish/go_play-sync-20260402`
-  - Confirmed the repo now includes:
-    - updated docs stating that this version can return from the lock screen with PiP still usable
-    - the tracked controller mirror patch
-- In progress:
-  - No active work remains for this specific issue.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun236` remains the latest verified-good build for this issue
-  - commit/push: passed
-- Blockers/risks:
-  - local evidence files remain untracked in the workspace and should stay out of future commits unless intentionally curated
-  - local `origin` still points to `GO`, not `GO_PLAY`
-- Next step:
-  - If the team resumes, start from commit `78cd58a92efd317099d3ab9512d4f60161b0b122` on branch `publish/go_play-sync-20260402`
-  - Only reopen PiP work if a new device regression is reproduced
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 21:38` entry
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
-- Current tool(s):
-  - `git`
-- Exact command(s):
-  - `git commit -m "fix(android): stabilize PiP after lockscreen unlock" ...`
-  - `git push https://github.com/zelef69/GO_PLAY.git HEAD:publish/go_play-sync-20260402`
-- Tool purpose:
-  - Publish the verified runtime-good snapshot.
-- Tool state:
-  - finished successfully
-- Expected resume command:
-  - `git show --stat 78cd58a92efd317099d3ab9512d4f60161b0b122`
-- Expected output/artifact path:
-  - branch `publish/go_play-sync-20260402` on `GO_PLAY`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `78cd58a92efd317099d3ab9512d4f60161b0b122`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `docs/current-status.md` - final handoff state
-  - `docs/progress-log.md` - append-only audit trail
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Prerequisites before command:
-  - none for this closed issue beyond normal repo access
-- Expected success signal:
-  - branch and commit match the published snapshot
-- Expected failure signal:
-  - someone resumes from a different branch/commit and assumes the PiP fix is included when it is not
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun236.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - treat `rerun236` as the current good baseline
-  - stop here instead of risking a new PiP regression
-- Rejected approaches:
-  - continuing to iterate after the device-owner verified the fix
-  - pushing to the wrong remote
-- Stop point classification:
-  - changes committed and pushed; issue parked on a verified-good snapshot
-- What is done but unverified:
-  - none for this issue
-- What is verified:
-  - this version can return from the lock screen and keep PiP usable on `R9TRC00GA2E`
-  - commit `78cd58a92efd317099d3ab9512d4f60161b0b122` is published on branch `publish/go_play-sync-20260402`
-- External prerequisite:
-  - none
-- Secret required but not stored:
-  - GitHub credentials remain intentionally unstored
-
-## [2026-04-02 19:09]
-- Phase:
-  - Phase 7 - Validation / research-backed PiP content-bounds fix planning
-- Objective:
-  - Study Brave GitHub PiP logic and Android PiP documentation before the next fix for the remaining post-unlock PiP visual bug.
-- Done:
-  - Resumed from `docs/current-status.md` and compared it with the latest append-only log state.
-  - Reconfirmed that `rerun231` fixes the disappearance bug:
-    - PiP stays `mode=pinned`
-    - `mLastReportedPictureInPictureMode=true`
-    - no immediate `moveTaskToBack` follows `fullscreen=0`
-  - Confirmed the remaining user-visible symptom:
-    - after unlock, PiP survives but it looks like the whole YouTube page is stuffed into the PiP window
-  - Studied Brave GitHub PiP flow directly:
-    - Brave helper enters PiP with `enterPictureInPictureMode(new PictureInPictureParams.Builder().build())` after resuming media session
-    - Brave wrapper only suppresses dismiss for `START` and `RESUME`
-    - BraveActivity documents that a wrong PiP transition rectangle can make the PiP window move to the wrong place and look partially clipped before snapping back
-  - Studied Android PiP documentation directly:
-    - Android recommends keeping `PictureInPictureParams` up to date
-    - Android recommends providing a proper `sourceRectHint` and aspect ratio for smoother PiP transitions
-  - Narrowed the next likely culprit in local code:
-    - controller path uses video bounds + `setAspectRatio()` + `setSourceRectHint()`
-    - `BraveActivity.onPictureInPictureModeChanged()` still posts `setPictureInPictureParams(new PictureInPictureParams.Builder().build())` with no bounds
-- In progress:
-  - Converting the research into a targeted patch plan that refreshes PiP from video/fullscreen bounds instead of relying on an empty-builder refresh at the wrong time.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun231.png`
-- Build/test status:
-  - No new build in this snapshot.
-  - `rerun231` remains the active tested build.
-  - APK SHA-256: `b536521c217ea1dcac8ee68e84074cd20d03a121d54d87da6415e200ba7b0e64`
-  - Runtime truth-check status:
-    - disappearance bug fixed
-    - visual PiP content bug still open
-- Blockers/risks:
-  - Samsung secure keyguard still requires manual unlock for every truth-check.
-  - The active `rerun231` controller fix is still ext4-only and has not been mirrored into tracked repo state yet.
-  - The next change must not reintroduce the old multi-step restore/bounce graph.
-- Next step:
-  - Keep the `rerun231` dismissal guard.
-  - Patch the post-unlock PiP param refresh path so it reuses the actual video/fullscreen bounds model from the controller instead of an empty activity-level builder.
-  - Rebuild as the next rerun, reinstall, and verify whether PiP returns with a video-focused surface instead of a whole-page snapshot.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 19:09` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-- Current tool(s):
-  - `shell_command`
-  - `web.open`
-  - `web.find`
-  - `apply_patch`
-- Exact command(s):
-  - `Get-Content docs/current-status.md`
-  - `Get-Content docs/progress-log.md -Tail 120`
-  - `rg -n "setPictureInPictureParams|PictureInPictureParams|sourceRect|enterPictureInPictureMode|onPictureInPictureModeChanged" android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `rg -n "sourceRect|PictureInPictureParams|dismissActivityIfNeeded|setHasPersistentVideo|enterPictureInPictureMode" \\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `web.open https://raw.githubusercontent.com/brave/brave-core/master/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `web.open https://raw.githubusercontent.com/brave/brave-core/master/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `web.open https://raw.githubusercontent.com/brave/brave-core/master/build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-  - `web.open https://developer.android.com/develop/ui/views/picture-in-picture`
-  - `web.open https://developer.android.com/reference/android/app/PictureInPictureParams.Builder`
-- Tool purpose:
-  - Ground the next PiP fix in Brave GitHub and Android PiP documentation instead of another timing guess.
-- Tool state:
-  - No build currently running.
-  - Research completed; no new runtime capture started in this snapshot.
-- Expected resume command:
-  - inspect `BraveActivity.onPictureInPictureModeChanged()` and the controller's rect-aware PiP param path, then patch the refresh path before the next rebuild
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun231.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun231.png`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-    - contains the delayed empty-builder `setPictureInPictureParams()` refresh that now looks suspicious
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-    - contains the rect-aware PiP entry/update path and the active `rerun231` dismiss guard
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-    - confirms PiP survives unlock and shifts the problem from dismissal to content rendering
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - this `2026-04-02 19:09` progress entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - network reachable for Brave GitHub and Android documentation
-  - device `R9TRC00GA2E` available for the next truth-check after patching
-- Expected success signal:
-  - next patch keeps PiP pinned after unlock and restores a video-focused PiP surface without stuffing the whole page into the PiP window
-- Expected failure signal:
-  - PiP still shows a full-page snapshot, stale layout, or another post-unlock rendering regression
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun231.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Keep the `rerun231` controller dismiss guard.
-  - Treat the remaining bug as content-bounds/transition quality, not PiP dismissal.
-  - Use Brave GitHub and Android PiP docs as the model before changing code again.
-- Rejected approaches:
-  - reviving the old unlock restore/bounce graph
-  - guessing another timing-only workaround without grounding it in Brave/Android PiP behavior
-- Stop point classification:
-  - research completed, docs updated, no new code patch started yet
-- What is done but unverified:
-  - the next content-bounds patch
-  - mirroring the ext4-only `rerun231` fix back into tracked repo state
-- What is verified:
-  - `rerun231` builds, installs, and launches
-  - PiP no longer disappears after unlock
-  - the remaining bug is specifically visual/content-related after unlock
-- External prerequisite:
-  - physical device `R9TRC00GA2E` required for the next real unlock/PiP truth-check
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 19:36]
-- Phase:
-  - Phase 7 - Validation / `rerun232` screenshot evidence
-- Objective:
-  - Capture live evidence for the `rerun232` post-unlock PiP state after the rect-aware refresh patch.
-- Done:
-  - Received the device truth-check result for `rerun232`: still wrong after unlock.
-  - Captured a fresh screenshot from the live device state:
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun232.png`
-  - Captured fresh dumpsys evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun232.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun232.txt`
-  - Verified from the screenshot that the symptom is more precise than “whole page in PiP”:
-    - the PiP window remains visible in the lower-right corner
-    - most of the PiP window is black
-    - only a small rendered region is visible inside the PiP window
-  - Verified from dumpsys that the session is still alive:
-    - OneTabTube task `#604` is still `mode=pinned`
-    - `mLastReportedPictureInPictureMode=true`
-    - the app window still has `mHasSurface=true isReadyForDisplay()=true`
-- In progress:
-  - Reframing the remaining issue as an in-window content transform/crop bug, not a PiP dismissal bug.
-- Files touched:
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun232.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun232.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun232.txt`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - No new build in this snapshot.
-  - Active tested build remains `rerun232`.
-  - PiP survival after unlock: pass
-  - PiP visual correctness after unlock: fail
-- Blockers/risks:
-  - The rect-aware refresh patch was not sufficient by itself.
-  - The next step needs focused runtime logging or instrumentation before another code change.
-- Next step:
-  - Start focused logging for the `rerun232` refresh path and reproduce the issue once more.
-  - Verify whether the new refresh path runs after unlock and whether valid video bounds are available at that time.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 19:36` entry
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun232.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun232.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun232.txt`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-- Current tool(s):
-  - `shell_command`
-  - `view_image`
-  - `apply_patch`
-- Exact command(s):
-  - `adb -s R9TRC00GA2E shell dumpsys activity activities > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun232.txt`
-  - `adb -s R9TRC00GA2E shell dumpsys window windows > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun232.txt`
-  - `adb -s R9TRC00GA2E shell "screencap -p /data/local/tmp/pip_after_unlock_rerun232.png && ls -l /data/local/tmp/pip_after_unlock_rerun232.png"`
-  - `adb -s R9TRC00GA2E pull /data/local/tmp/pip_after_unlock_rerun232.png C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun232.png`
-- Tool purpose:
-  - Capture the exact visual shape of the remaining PiP bug and confirm the live pinned/window state.
-- Tool state:
-  - Runtime evidence captured; no new build running.
-- Expected resume command:
-  - begin focused `adb logcat` capture for the rect-aware refresh path before the next manual lock/unlock repro
-- Expected output/artifact path:
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun232.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun232.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun232.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun232.png`
-    - proves the PiP window is mostly black with only a small content region
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun232.txt`
-    - proves the task is still pinned
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun232.txt`
-    - proves the app window still has a surface
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - this `2026-04-02 19:36` entry
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun232.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun232.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun232.txt`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Prerequisites before command:
-  - device `R9TRC00GA2E` connected and already in the failure state
-- Expected success signal:
-  - captured evidence clearly separates session survival from content-render failure
-- Expected failure signal:
-  - evidence missing or captured after the state changed
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun232.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Treat screenshot evidence as the runtime truth for `rerun232`.
-  - Do not patch again until the new refresh path is observed under focused logging.
-- Rejected approaches:
-  - assuming the rect-aware refresh fixed the issue without a live screenshot
-  - going back to lifecycle bounce logic
-- Stop point classification:
-  - runtime-tested with screenshot evidence captured; waiting on focused logging before next code patch
-- What is done but unverified:
-  - whether the new refresh path actually runs with valid bounds after unlock
-- What is verified:
-  - `rerun232` keeps PiP alive after unlock
-  - `rerun232` still renders PiP incorrectly after unlock
-- External prerequisite:
-  - physical device `R9TRC00GA2E` required for the next focused logging pass
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 19:18]
-- Phase:
-  - Phase 7 - Validation / research-backed PiP content-bounds fix
-- Objective:
-  - Replace the empty-builder PiP refresh path with a rect-aware refresh from real video bounds and validate it on device.
-- Done:
-  - Re-read the latest desk state and kept the scope narrow to `BraveActivity`, the YouTube PiP helper, and the live Chromium PiP controller in ext4.
-  - Confirmed from code that the controller has a rect-aware PiP params path while `BraveActivity.onPictureInPictureModeChanged()` was still posting `setPictureInPictureParams(new PictureInPictureParams.Builder().build())`.
-  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java`:
-    - replaced the delayed empty-builder refresh with `refreshPictureInPictureParamsForCurrentVideo()`
-    - added a bridge into the controller-backed PiP params refresh path
-  - Patched `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`:
-    - refreshes PiP params from current video bounds before calling `enterPictureInPictureMode(...)`
-  - Patched `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`:
-    - added `refreshPictureInPictureParamsForCurrentVideo()`
-    - refreshes PiP params on `onStart()` and `onResume()` while still in PiP
-    - skips overwriting framework PiP params when no video bounds are available
-  - Synced the Windows tree into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
-  - Built `rerun232` successfully.
-  - Installed `rerun232` on `R9TRC00GA2E`.
-  - Verified warm launch succeeds.
-- In progress:
-  - Waiting on the manual lock/unlock PiP truth-check for `rerun232`.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun232` passed
-  - APK SHA-256: `568dc524edaca2b94ce00c10e37db2e75fe13dd1b7c8d02d1d761e4002ae6e52`
-  - install passed on `R9TRC00GA2E`
-  - warm launch passed
-  - post-unlock PiP truth-check pending
-- Blockers/risks:
-  - Samsung secure keyguard still requires manual unlock.
-  - The controller patch is still ext4-only and not mirrored into a tracked patch artifact yet.
-  - Runtime correctness after lock/unlock remains unverified until the next device pass.
-- Next step:
-  - Run the manual `video -> PiP -> lock -> unlock` truth-check on `rerun232`.
-  - If still wrong, capture focused runtime evidence from `rerun232` and inspect whether the new rect-aware refresh path ran and whether bounds were available.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 19:18` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun232.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-  - `web.open`
-  - `web.find`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun232.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-- Tool purpose:
-  - Apply the research-backed PiP params refresh fix and get to the next on-device truth-check.
-- Tool state:
-  - No build currently running.
-  - `rerun232` is installed on `R9TRC00GA2E`.
-- Expected resume command:
-  - start focused `adb logcat` capture for `rerun232`, then ask for the lock/unlock truth-check if no user result has arrived yet
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun232.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-    - now routes the delayed PiP refresh through the controller-backed rect-aware path
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-    - now refreshes PiP params before entering PiP
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-    - now owns the rect-aware refresh helper plus the existing `rerun231` dismiss guard
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - this `2026-04-02 19:18` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for manual unlock
-- Expected success signal:
-  - after unlock, PiP remains visible and returns directly in a usable video-focused state
-- Expected failure signal:
-  - PiP still shows a full-page snapshot, black window, stale layout, or disappears again
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun232.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Keep the `rerun231` dismiss guard.
-  - Move the PiP params refresh onto the rect-aware controller path.
-  - Preserve the last good PiP params if video bounds are temporarily unavailable instead of overwriting them with an empty builder.
-- Rejected approaches:
-  - reviving the old unlock restore/bounce graph
-  - adding another timing-only workaround before trying the rect-aware refresh path
-- Stop point classification:
-  - code edited, synced, built, installed, and launch-checked; waiting on the runtime truth-check
-- What is done but unverified:
-  - runtime result of the new rect-aware PiP params refresh after lock/unlock
-  - tracked patch mirror for the ext4-only controller change
-- What is verified:
-  - `rerun232` builds
-  - `rerun232` installs
-  - `rerun232` warm-launches
-- External prerequisite:
-  - physical device `R9TRC00GA2E` required for the next truth-check
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 18:32]
-- Phase:
-  - Phase 7 - Validation / Brave GitHub PiP alignment
-- Objective:
-  - Strip the active YouTube helper path back toward Brave GitHub after `rerun229` proved PiP is being dismissed after fullscreen-loss on unlock.
-- Done:
-  - Read the fresh `rerun229` runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun229.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun229.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun229.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun229.png`
-  - Verified the critical runtime sequence in `tmp_toolbar_pip_logcat_rerun229.txt`:
-    - `OTB_PIP event=media_effectively_fullscreen_changed fullscreen=0 requested=0 visibility=2`
-    - immediately followed by `ActivityTaskManager: moveTaskToBack: Task{... mode=pinned ...}`
-  - Verified there were still no `BravePipWrapper` logs in the same repro, so the strongest current signal is fullscreen-loss before PiP dismissal.
-  - Compared the local helper against `C:\Users\Master\Desktop\GO_PLAY\tmp_github_youtube_script_injector_tab_helper.cc` and confirmed the active local path was still injecting large non-upstream lifecycle/adguard scripts that Brave GitHub does not inject.
-  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` to:
-    - restore `kYoutubeBackgroundPlayback` to the Brave GitHub form
-    - stop injecting `kYoutubePlaybackStability`
-    - stop injecting `kYoutubeAdRequestGuard`
-    - mark both dormant script blobs `[[maybe_unused]]` so the repro build stays clean
-  - Synced the helper changes into ext4.
-  - Built `rerun230`, installed it on `R9TRC00GA2E`, and verified warm launch still passes.
-- In progress:
-  - Waiting on a manual lock/unlock PiP repro on `rerun230` to see whether the cleaner Brave-GitHub-like helper path changes the failure.
-- Files touched:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_github_youtube_script_injector_tab_helper.cc`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun229.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun229.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun229.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun229.png`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun230.log`
-- Build/test status:
-  - `rerun229`
-    - runtime repro confirms fullscreen-loss immediately precedes PiP dismissal after unlock
-  - `rerun230`
-    - build passed
-    - APK SHA-256: `afc5a48e11ad1fcb2e53d82ee5cc9cbcb090f7681508feefe8fbe9893697e213`
-    - install passed on `R9TRC00GA2E`
-    - warm launch passed via `adb shell am start -W`
-    - runtime PiP repro not run yet
-- Blockers/risks:
-  - Secure Samsung keyguard still requires manual unlock for each truth-check.
-  - The Brave wrapper seam still has no direct log evidence in this target.
-  - The local helper still contains dormant custom code even though it is no longer injected by the active path.
-- Next step:
-  - Ask the user to run the usual flow on `rerun230`:
-    - open a watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-    - stop at the resulting state
-  - Then capture:
-    - `adb -s R9TRC00GA2E logcat -d -v threadtime BravePipWrapper:I VideoPersist:I chromium:I ActivityTaskManager:I WindowManager:I AndroidRuntime:E DEBUG:E *:S > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun230.txt`
-    - `adb -s R9TRC00GA2E shell dumpsys activity activities > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun230.txt`
-    - `adb -s R9TRC00GA2E shell dumpsys window windows > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun230.txt`
-    - `adb -s R9TRC00GA2E exec-out screencap -p > C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun230.png`
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 18:32` entry
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_github_youtube_script_injector_tab_helper.cc`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun229.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun230.txt` if it exists
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun230.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun230.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-- Tool purpose:
-  - Re-test the PiP unlock path with the active helper path pruned back toward Brave GitHub.
-- Tool state:
-  - No build currently running.
-  - `rerun230` is installed on `R9TRC00GA2E`.
-- Expected resume command:
-  - wait for the user to complete the manual `rerun230` repro
-  - then run the capture commands listed above
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun230.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - next runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun230.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun230.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun230.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun230.png`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    - active YouTube fullscreen/PiP helper; now pruned back toward Brave GitHub
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_github_youtube_script_injector_tab_helper.cc`
-    - Brave GitHub reference
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun229.txt`
-    - proves fullscreen-loss before PiP dismissal
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun229.txt`
-    - proves launcher resumed after PiP disappeared
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun229.txt`
-    - proves app window persists while PiP reporting is gone
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_github_youtube_script_injector_tab_helper.cc`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun230.txt` if it exists
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun229.txt`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for one manual lock/unlock truth-check
-- Expected success signal:
-  - `rerun230` keeps PiP alive after unlock or clearly changes the failure class
-- Expected failure signal:
-  - `rerun230` still shows fullscreen-loss followed by `moveTaskToBack`
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun230.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Treat `fullscreen=0` before `moveTaskToBack` as the strongest source of truth.
-  - Move the active helper path closer to Brave GitHub before attempting any new PiP restore logic.
-  - Stop injecting the local playback-stability and ad-request-guard scripts during PiP debugging.
-- Rejected approaches:
-  - Reviving the old unlock restore/bounce graph
-  - Adding another PiP repair chain on top of the custom helper
-  - Keeping the non-upstream helper injections active while judging Brave parity
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime repro
-- What is done but unverified:
-  - whether the cleaner helper path fixes or materially improves post-unlock PiP behavior
-- What is verified:
-  - `rerun229` shows fullscreen-loss immediately before PiP dismissal
-  - `rerun230` builds
-  - `rerun230` installs
-  - `rerun230` launches
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked for the next truth-check
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 18:48]
-- Phase:
-  - Phase 7 - Validation / controller-side PiP dismissal fix
-- Objective:
-  - Stop the post-unlock PiP disappearance by fixing the exact fullscreen-loss dismissal path proven in `rerun230`.
-- Done:
-  - Captured the real `rerun230` runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun230.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun230.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun230.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun230.png`
-  - Verified `rerun230` still fails with the same critical transition:
-    - `OTB_PIP event=media_effectively_fullscreen_changed fullscreen=0 requested=0 visibility=2`
-    - followed immediately by `ActivityTaskManager: moveTaskToBack: Task{... mode=pinned ...}`
-  - Verified the installed APK still exposes Chromium controller strings (`Dismiss activity with reason`, `Ignore onResume while activity remains in picture in picture.`) and still does not contain `BravePipWrapper`.
-  - Verified the build artifact hierarchy directly:
-    - `chrome_java.javac.jar`: `FullscreenVideoPictureInPictureController -> java/lang/Object`
-    - `chrome_java.bytecode-rewritten.jar`: `FullscreenVideoPictureInPictureController -> BraveFullscreenVideoPictureInPictureController`
-    - `chrome_java.rewritten.jar`: `FullscreenVideoPictureInPictureController -> java/lang/Object`
-  - Concluded the next practical fix should target the real controller path instead of waiting on the wrapper seam.
-  - Patched the ext4 controller directly:
-    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-    - new behavior: when the dismiss reason is `LEFT_FULLSCREEN` or `WEB_CONTENTS_LEFT_FULLSCREEN`, and the activity is still in PiP and media is still playing, ignore the dismiss instead of immediately calling `moveTaskToBack`.
-  - Built `rerun231`, installed it on `R9TRC00GA2E`, and verified warm/hot launch still passes.
-- In progress:
-  - Waiting on one manual `rerun231` PiP -> lock -> unlock truth-check.
-- Files touched:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun230.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun230.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun230.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun230.png`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun231.log`
-- Build/test status:
-  - `rerun230`
-    - runtime repro confirms immediate dismissal after fullscreen-loss on unlock
-  - `rerun231`
-    - build passed
-    - APK SHA-256: `b536521c217ea1dcac8ee68e84074cd20d03a121d54d87da6415e200ba7b0e64`
-    - install passed on `R9TRC00GA2E`
-    - warm/hot launch passed via `adb shell am start -W`
-    - runtime PiP repro not run yet
-- Blockers/risks:
-  - Secure Samsung keyguard still requires manual unlock for each truth-check.
-  - The `rerun231` controller patch is ext4-only for now and still needs a tracked mirror plan.
-  - If PiP survives but goes black again, the dismissal is fixed but surface binding still needs another round.
-- Next step:
-  - Ask the user to run the usual flow on `rerun231`:
-    - open a watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-    - stop at the resulting state
-  - Then capture:
-    - `adb -s R9TRC00GA2E logcat -d -v threadtime BravePipWrapper:I VideoPersist:I chromium:I ActivityTaskManager:I WindowManager:I AndroidRuntime:E DEBUG:E *:S > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231.txt`
-    - `adb -s R9TRC00GA2E shell dumpsys activity activities > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-    - `adb -s R9TRC00GA2E shell dumpsys window windows > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-    - `adb -s R9TRC00GA2E exec-out screencap -p > C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun231.png`
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 18:48` entry
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun230.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231.txt` if it exists
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun231.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - ext4 direct edit:
-    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun231.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-- Tool purpose:
-  - Validate the controller-side fix for transient fullscreen-loss dismissal.
-- Tool state:
-  - No build currently running.
-  - `rerun231` is installed on `R9TRC00GA2E`.
-- Expected resume command:
-  - wait for the user to complete the manual `rerun231` repro
-  - then run the capture commands listed above
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun231.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - next runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun231.png`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-    - real controller dismiss path; now guards against transient unlock-induced fullscreen-loss while PiP media is still playing
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    - active YouTube helper still kept close to Brave GitHub
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun230.txt`
-    - proves fullscreen-loss before `moveTaskToBack`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun230.txt`
-    - proves launcher resumed after PiP disappeared
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun230.txt`
-    - proves PiP reporting is gone after unlock
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231.txt` if it exists
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun230.txt`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for one manual lock/unlock truth-check
-- Expected success signal:
-  - `rerun231` remains in PiP after unlock and no immediate `moveTaskToBack` is logged
-- Expected failure signal:
-  - `rerun231` still logs fullscreen-loss immediately followed by `moveTaskToBack`
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun231.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Stop treating the Brave wrapper seam as the next dependency for progress.
-  - Patch the exact Chromium dismiss path proven by logs.
-  - Keep the YouTube helper path close to Brave GitHub while testing controller changes.
-- Rejected approaches:
-  - Reviving the old restore/bounce graph
-  - Adding another multi-stage unlock recovery path
-  - Waiting for wrapper/bytecode parity before fixing the proven dismiss path
-- Stop point classification:
-  - ext4 controller edited, build passed, APK installed, waiting on manual runtime repro
-- What is done but unverified:
-  - whether the controller guard alone keeps PiP alive after unlock
-- What is verified:
-  - `rerun230` dismissal is triggered immediately after fullscreen-loss
-  - `rerun231` builds
-  - `rerun231` installs
-  - `rerun231` launches
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked for the next truth-check
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 18:56]
-- Phase:
-  - Phase 7 - Validation / controller-side PiP fix
-- Objective:
-  - Verify whether `rerun231` actually stops PiP from disappearing after unlock on the real device.
-- Done:
-  - Ran a focused 1-minute log capture window for the manual `rerun231` repro:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.err.txt`
-  - Captured the post-repro state:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun231.png`
-  - Verified the key runtime delta from previous failing rounds:
-    - `OTB_PIP event=media_effectively_fullscreen_changed fullscreen=0 requested=0 visibility=2` still appears after unlock
-    - but there is no immediate `moveTaskToBack` afterward
-  - Verified from `tmp_toolbar_pip_activities_rerun231.txt` that OneTabTube remains pinned:
-    - task `#603`
-    - `visible=true visibleRequested=true mode=pinned`
-    - `mLastReportedPictureInPictureMode=true`
-  - Verified from `tmp_toolbar_pip_windows_rerun231.txt` that the app surface remains alive:
-    - `Window{7f4a794 ... com.onetabtube.browser_default/...}`
-    - `mHasSurface=true isReadyForDisplay()=true`
-  - Confirmed launcher is resumed/focused while OneTabTube stays pinned, which is expected for Android PiP.
-- In progress:
-  - Functional survival is fixed; waiting on explicit visual-quality confirmation from the user and then repo mirroring of the ext4-only controller change.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.err.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun231.png`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-- Build/test status:
-  - `rerun231`
-    - build/install/launch already passed before this capture
-    - runtime survival verified
-    - no immediate `moveTaskToBack` after unlock-time fullscreen-loss
-- Blockers/risks:
-  - Visual correctness and smoothness still need user confirmation.
-  - Controller fix still exists only in ext4, not yet mirrored into tracked repo state.
-  - Secure keyguard still requires manual unlock for further truth-checks.
-- Next step:
-  - Ask the user whether the surviving PiP window after unlock was visually correct and smooth.
-  - If yes, mirror the controller change into tracked repo state and update patch/testing docs.
-  - If not, classify the remaining issue as black/stale content vs transition smoothness and capture targeted evidence.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 18:56` entry
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun231.png`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `adb`
-- Exact command(s):
-  - `adb -s R9TRC00GA2E logcat -c`
-  - `adb -s R9TRC00GA2E logcat -v threadtime BravePipWrapper:I VideoPersist:I chromium:I ActivityTaskManager:I WindowManager:I AndroidRuntime:E DEBUG:E *:S`
-  - `adb -s R9TRC00GA2E shell dumpsys activity activities`
-  - `adb -s R9TRC00GA2E shell dumpsys window windows`
-  - `adb -s R9TRC00GA2E exec-out screencap -p`
-- Tool purpose:
-  - Verify the real-device post-unlock PiP desk state on `rerun231`.
-- Tool state:
-  - No build currently running.
-  - Latest runtime evidence already captured.
-- Expected resume command:
-  - inspect the captured evidence first
-  - then either mirror the ext4 controller fix or capture another visual-quality pass
-- Expected output/artifact path:
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun231.png`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-    - controller dismiss path fix
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-    - shows fullscreen-loss without immediate dismissal
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-    - shows task still pinned and PiP mode still reported
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-    - shows surface still alive
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun231.png`
-    - post-unlock visual snapshot
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun231.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun231.txt`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Prerequisites before command:
-  - device `R9TRC00GA2E` connected and manually unlockable
-- Expected success signal:
-  - OneTabTube remains in pinned mode after unlock and user reports the PiP window is usable
-- Expected failure signal:
-  - PiP remains pinned but the user reports black/stale content or another rendering regression
-- Last known log location:
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun231_1m_20260402_185506.txt`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Treat `rerun231` as the first functional fix for the disappearance bug.
-  - Shift focus from survival to visual quality and tracked-repo mirroring.
-- Rejected approaches:
-  - reviving the old restore graph
-  - adding another multi-stage recovery flow before confirming the new desk state
-- Stop point classification:
-  - runtime survival verified; waiting on visual-quality confirmation and repo mirroring
-- What is done but unverified:
-  - visual quality / smoothness
-  - tracked repo mirror of the ext4-only controller fix
-- What is verified:
-  - PiP no longer disappears after unlock in `rerun231`
-  - task remains pinned
-  - PiP mode remains reported
-  - surface remains alive
-- External prerequisite:
-  - physical device `R9TRC00GA2E` for any more truth-checks
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 18:20]
-- Phase:
-  - Phase 7 - Validation / Brave GitHub PiP alignment
-- Objective:
-  - Capture the exact reason PiP disappears after unlock on the Brave-aligned path instead of guessing between wrapper failure and fullscreen-loss dismissal.
-- Done:
-  - Collected fresh `rerun228` runtime evidence after clearing logcat first:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun228_repro2.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun228_repro2.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun228_repro2.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun228_repro2.png`
-  - Confirmed the failure mode is real PiP dismissal, not just a black PiP surface:
-    - `moveTaskToBack` hits task `#595` while it is still `mode=pinned`
-    - launcher becomes `ResumedActivity`
-    - OneTabTube drops back to fullscreen hidden with `mLastReportedPictureInPictureMode=false`
-  - Added narrow instrumentation:
-    - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-      - wrapper logs entry, suppression, and forward path with tag `BravePipWrapper`
-    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-      - logs fullscreen-script completion
-      - logs `MediaEffectivelyFullscreenChanged(...)`
-  - Synced Windows -> WSL.
-  - Built `rerun229`.
-  - Installed `rerun229` on `R9TRC00GA2E`.
-  - Verified warm launch passes on `rerun229`.
-- In progress:
-  - Waiting on one manual PiP -> lock -> unlock pass on `rerun229` so the new logs can reveal the actual dismiss reason.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun228_repro2.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun228_repro2.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun228_repro2.txt`
-- Build/test status:
-  - `rerun229` passed
-  - APK SHA-256: `c156dad2827e9b2b3a795a322b6ac4203a8131ae0e41e5cca890097d5aede320`
-  - install passed on `R9TRC00GA2E`
-  - warm launch passed
-  - runtime repro on `rerun229` not yet run
-- Blockers/risks:
-  - still need a manual secure-keyguard unlock for the next repro
-  - current proof of failure comes from `rerun228`; exact reason code still awaits `rerun229` instrumentation logs
-  - large custom YouTube helper scripts still differ from Brave GitHub and may contribute to fullscreen-loss timing
-- Next step:
-  - Ask the user to run the same PiP -> lock -> unlock flow on `rerun229`
-  - then capture:
-    - `adb -s R9TRC00GA2E logcat -d -v threadtime BravePipWrapper:I VideoPersist:I chromium:I ActivityTaskManager:I WindowManager:I AndroidRuntime:E DEBUG:E *:S > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun229.txt`
-    - `adb -s R9TRC00GA2E shell dumpsys activity activities > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun229.txt`
-    - `adb -s R9TRC00GA2E shell dumpsys window windows > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun229.txt`
-    - `adb -s R9TRC00GA2E exec-out screencap -p > C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun229.png`
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 18:20` entry
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun228_repro2.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun229.txt` if present
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun229.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-- Tool purpose:
-  - instrument the Brave-aligned PiP path and ship a debug build that can reveal the real dismiss reason on device
-- Tool state:
-  - no build currently running
-  - `rerun229` installed and ready for manual repro
-- Expected resume command:
-  - wait for the user to finish the `rerun229` repro
-  - then run the capture commands listed in Next step
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun229.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun229.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` - wrapper seam logging
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - fullscreen-loss logging
-  - `tmp_toolbar_pip_logcat_rerun228_repro2.txt` - proves `moveTaskToBack` after unlock while pinned
-  - `tmp_toolbar_pip_activities_rerun228_repro2.txt` - proves launcher resumed and PiP dropped
-  - `tmp_toolbar_pip_windows_rerun228_repro2.txt` - proves stale pinned bounds only survive in last-reported config
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `tmp_toolbar_pip_logcat_rerun229.txt` if available
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 reachable
-  - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for one manual lock/unlock cycle
-- Expected success signal:
-  - `rerun229` logs explicitly show whether the wrapper suppresses or forwards the dismiss path
-- Expected failure signal:
-  - no wrapper/helper logs appear, forcing bytecode-seam investigation first
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun229.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - keep the Brave-GitHub-aligned active path intact
-  - use instrumentation before adding any new recovery behavior
-  - treat `moveTaskToBack` on a pinned task as the authoritative failure signature
-- Rejected approaches:
-  - reviving the old unlock restore graph without new proof
-  - assuming the failure is purely a visual black-surface issue
-  - assuming `START/RESUME` suppression is working without direct logs
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting for manual runtime repro with new instrumentation
-- What is done but unverified:
-  - whether `BravePipWrapper` logs appear in the built target
-  - whether the next dismiss reason is `0/8`, `6/7`, or absent due to transform issues
-- What is verified:
-  - `rerun228` failure reproduces on device
-  - the failure includes `moveTaskToBack` while task `#595` is still pinned
-  - `rerun229` builds, installs, and launches
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually unlocked for repro
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 17:14]
-- Phase:
-  - Phase 7 - Validation / Brave GitHub PiP alignment
-- Objective:
-  - Stop following the local PiP unlock-bounce/timing graph and align the active PiP/lifecycle/playback runtime path back toward Brave GitHub behavior before the next device truth-check.
-- Done:
-  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before changing direction.
-  - Confirmed the recorded `rerun225` desk state was still centered on local unlock timing tweaks, which no longer matched the user’s explicit request to follow Brave GitHub behavior.
-  - Compared the active PiP working set against Brave GitHub/upstream snapshots:
-    - `tmp_upstream_BraveYouTubeScriptInjectorNativeHelper.java`
-    - `tmp_upstream_BraveFullscreenVideoPictureInPictureController.java`
-    - `tmp_upstream_BraveActivity.java`
-  - Restored the main helper/runtime seams toward Brave:
-    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-      - direct `enterPictureInPictureMode(new PictureInPictureParams.Builder().build())`
-      - no local controller/recent-fullscreen recovery chain first
-    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-      - reverted recent fullscreen grace from `3000ms` back to `1500ms`
-      - removed the stale fullscreen re-arm logic in `MaybeSetFullscreen()`
-      - removed the immediate PiP request from `OnFullscreenScriptComplete(...)`
-      - restored the visible-tab/fullscreen-trigger gate in `MediaEffectivelyFullscreenChanged(...)`
-    - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-      - restored `changeMethodOwner(..., "dismissActivityIfNeeded", ...)` so the upstream Brave wrapper seam is active again
-  - Confirmed `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` already matches the local Brave GitHub snapshot again, so no new source edit was needed there.
-  - Reduced the active local lifecycle graph in `android/java/org/chromium/chrome/browser/app/BraveActivity.java`:
-    - removed the active `ensurePictureInPictureScreenStateReceiverRegistered()` registration call from `onStartWithNative()`
-    - simplified `onPictureInPictureModeChanged(...)` back toward Brave behavior
-    - removed the extra PiP restore/repair calls from `onResume()`
-    - removed the active overrides for:
-      - `onWindowFocusChanged(...)`
-      - `onTopResumedActivityChanged(...)`
-      - `onUserLeaveHint()`
-      - `onPictureInPictureUiStateChanged(...)`
-      - `onPause()`
-      - `onStop()`
-  - Synced Windows -> WSL with the standard sync script.
-  - Rebuilt successfully as `rerun226`.
-  - Verified APK SHA-256:
-    - `0a18ecfafc9218457383a1f8c17e90990fceb08eef9f4ead84556f2019411d35`
-  - Installed `rerun226` on `R9TRC00GA2E`.
-  - Cleared device logcat.
-  - Verified warm launch:
-    - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-- In progress:
-  - Waiting for a real manual PiP -> lock -> unlock validation pass on the newly Brave-aligned `rerun226`.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun226` passed
+  - build used:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun4.log`
   - APK path:
     - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun226.log`
-  - Install status:
-    - pass on `R9TRC00GA2E`
-  - Launch smoke:
-    - pass
-  - Runtime PiP lock/unlock validation:
-    - not yet run for `rerun226`
+  - APK SHA-256:
+    - `30728098e9c1177e07af0e038a96cdf0e382f136c69c786f4859dd3f7484ff23`
+  - runtime result:
+    - `PiP -> expand -> watch page` verified on `R9TRC00GA2E`
 - Blockers/risks:
-  - Samsung secure keyguard still blocks adb from doing a truthful unlock test automatically.
-  - `BraveActivity.java` still contains dead local PiP helper code/fields that may need deletion if runtime still diverges after this alignment pass.
-  - Re-activating Brave’s `dismissActivityIfNeeded(...)` seam may expose a new crash or dismissal case only visible during real unlock timing.
+  - No blocker remains for the expand-return path itself.
+  - Future fullscreen/PiP edits can regress this behavior if they bypass the two-phase exit sequencing.
 - Next step:
-  - Have the user run the normal PiP -> lock -> unlock flow on `rerun226`.
-  - If the result still fails, collect fresh `rerun226` evidence before touching the code again:
-    - screenshot
-    - crash buffer
-    - filtered logcat
-    - `dumpsys activity activities`
-    - `dumpsys window windows`
+  - Keep `rerun4` as the baseline.
+  - If work continues, choose the next user-priority PiP/runtime behavior and validate it without disturbing the verified expand-return flow.
 - Expected resume inspection scope:
   - `docs/current-status.md`
-  - this `2026-04-02 17:14` entry
+  - this `2026-04-03 15:31:26 +07:00` entry
   - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun226.log`
 - Current tool(s):
   - `shell_command`
   - `apply_patch`
-  - `autoninja`
-  - `adb`
-  - `web`
 - Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun226.log 2>&1"`
-  - `wsl.exe bash -lc "tail -n 40 /home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun226.log"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - none in this micro-step beyond desk-state updates
 - Tool purpose:
-  - Rebuild and install a Brave-GitHub-aligned PiP runtime baseline before the next manual device validation.
+  - Record the verified result and lock the current baseline for future resume work.
 - Tool state:
-  - No build currently running.
-  - `rerun226` installed and launch-smoke-verified on `R9TRC00GA2E`.
+  - No build or test currently running.
 - Expected resume command:
-  - run the real-device PiP -> lock -> unlock flow on `rerun226`
-  - if it fails, capture `rerun226` runtime evidence immediately
+  - Start from the next requested runtime behavior; do not rerun the expand-return investigation unless a new regression is reported.
 - Expected output/artifact path:
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun226.log`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - removed active local PiP lifecycle overrides
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - restored direct Brave-style PiP entry
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - removed local unlock/PiP recovery hooks
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java` - restored upstream Brave bytecode redirect seam
-  - `tmp_upstream_BraveActivity.java` - local upstream snapshot used for alignment
-  - `tmp_upstream_BraveYouTubeScriptInjectorNativeHelper.java` - local upstream snapshot used for alignment
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
 - Files to inspect first after resume:
   - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
+  - this entry
   - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
 - Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to perform one real PiP lock/unlock cycle
+  - none for the desk-state update itself
 - Expected success signal:
-  - `rerun226` PiP behavior feels closer to Brave and does not walk through multiple visible stages after unlock
+  - resume work clearly sees that `rerun4` is the verified PiP expand baseline
 - Expected failure signal:
-  - still black PiP
-  - still visible page/fullscreen bouncing
-  - or new crash/dismiss on unlock
+  - desk-state still suggests the expand path is unverified
 - Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun226.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun4.log`
 - Last known artifact path:
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Recent decisions:
-  - Use Brave GitHub as PiP behavior source of truth.
-  - Restore upstream seams before deleting dead local PiP helpers.
-  - Keep OneTabTube product/UI changes, but stop driving PiP through the local receiver/restore graph.
+  - Keep the two-phase expand-return path unchanged because it is now verified.
+  - Stop widening scope on this issue now that the target behavior is confirmed.
 - Rejected approaches:
-  - stacking more Samsung-specific timing hacks on top of the old restore graph
-  - treating `rerun225` as the active direction after the user clarified the target
-  - blindly replacing all of `BraveActivity.java` with upstream and risking unrelated OneTab regressions
+  - reopening older fullscreen fallback experiments
+  - further changing the expand path without a new regression report
 - Stop point classification:
-  - code edited, build passed, APK installed, launch smoke passed, waiting on manual PiP validation
+  - behavior verified on device; waiting for the next requested task
 - What is done but unverified:
-  - real PiP unlock behavior of `rerun226`
+  - broader regression coverage outside this specific expand-return behavior
 - What is verified:
-  - active PiP entry path is now substantially closer to Brave GitHub
-  - `rerun226` compiles
-  - `rerun226` installs
-  - `rerun226` launches
+  - `PiP -> expand` returns to the YouTube watch page on `R9TRC00GA2E`
 - External prerequisite:
-  - manual device lock/unlock on `R9TRC00GA2E`
+  - physical device interaction will still be needed for future runtime validations
 - Secret required but not stored:
-  - device lock credential intentionally not stored
+  - none
 
-## [2026-04-02 17:57]
+## [2026-04-03 15:22:01 +07:00]
 - Phase:
-  - Phase 7 - Validation / Brave GitHub PiP alignment
+  - Phase 7 - Validation / PiP expand-to-watch-page stabilization
 - Objective:
-  - Remove the last non-upstream PiP controller hook, rebuild a Brave-GitHub-aligned APK, and prepare `rerun228` for the next real-device lock/unlock truth-check.
+  - Remove the remaining `PiP -> expand` crash by waiting for page fullscreen to actually clear before finalizing browser fullscreen exit.
 - Done:
-  - Re-read the latest desk-state and confirmed the user wanted Brave GitHub behavior as the PiP source of truth.
-  - Re-checked the active PiP working set against Brave GitHub / upstream snapshots.
-  - Removed the remaining local PiP restore/preserve/repair graph from `android/java/org/chromium/chrome/browser/app/BraveActivity.java`.
-  - Restored `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` to the Brave GitHub entry path.
-  - Restored `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java` and `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java` to the Brave GitHub fullscreen cleanup path.
-  - Removed the local recent-fullscreen extension from:
-    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
-    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
-  - Synced the Windows working set into WSL/ext4.
-  - Built `rerun227` and used the compile error to find one last local controller hook still active in ext4.
-  - Restored `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` to the upstream behavior by removing:
-    - the extra `BraveActivity` import
-    - `reassertPersistentVideoIfNeeded(...)`
-    - `maybeHandleTransientPictureInPictureFullscreenLoss(...)`
-    - the custom `onStart()` / `onResume()` additions
-    - the custom early-return/suppression logic in `dismissActivityIfNeeded(...)`
-  - Deleted the stale repo mirror patch `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`.
-  - Rebuilt successfully as `rerun228`.
-  - Installed `rerun228` on `R9TRC00GA2E`.
-  - Verified warm launch succeeds.
+  - Pulled `adb logcat -b crash`, filtered runtime logs, and `dumpsys activity activities` after the user reproduced `PiP -> expand -> still crashes`.
+  - Confirmed the crash signature on `rerun3` is unchanged:
+    - `FATAL:content/browser/screen_orientation/screen_orientation_provider.cc:188] DCHECK failed: !entered_fullscreen.`
+  - Confirmed from runtime logs that fullscreen-backed PiP was still being re-entered during the expand return:
+    - repeated `media_effectively_fullscreen_changed fullscreen=1 requested=1`
+    - repeated `enter_picture_in_picture_from_fullscreen`
+  - Concluded that `fullscreenManager.exitPersistentFullscreenMode()` was still happening too early, before page/video fullscreen state had fully cleared.
+  - Reworked `android/java/org/chromium/chrome/browser/app/BraveActivity.java`:
+    - if `hasActiveEffectivelyFullscreenVideo()` or `hasFullscreenBeenRequested()` is still true, do not exit browser fullscreen yet
+    - request `BraveYouTubeScriptInjectorNativeHelper.exitFullscreen(...)`
+    - reschedule the same return-to-watch-page step
+    - only call `fullscreenManager.exitPersistentFullscreenMode()` once both are false
+  - Kept the page-level fullscreen-exit bridge and JS helper from the previous patch.
+  - Synced the revised patch to `/home/master/src_ext4/brave`.
+  - Rebuilt successfully:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun4.log`
+  - Installed the rebuilt APK on `R9TRC00GA2E`.
+  - Verified APK SHA-256:
+    - `30728098e9c1177e07af0e038a96cdf0e382f136c69c786f4859dd3f7484ff23`
+  - Cleared logcat, force-stopped the app, and relaunched directly to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
 - In progress:
-  - Waiting for the next manual PiP -> lock -> unlock run on `rerun228`.
+  - Waiting on the real-device truth-check for `PiP -> expand` on the new two-phase exit build.
 - Files touched:
   - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
   - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java`
-  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch` (deleted)
   - `docs/current-status.md`
   - `docs/progress-log.md`
 - Build/test status:
-  - `rerun227` failed in `chrome_java__compile_java` because `FullscreenVideoPictureInPictureController.java` still referenced deleted `BraveActivity` transient-loss helpers.
-  - `rerun228` passed.
-  - APK SHA-256: `7ecc1db375340ed64152ba6d34e2c9dcb99ff62dd17570e30397c800db6a8656`
-  - `adb install -r` on `R9TRC00GA2E`: pass
-  - `adb am start -W`: pass
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun4.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `30728098e9c1177e07af0e038a96cdf0e382f136c69c786f4859dd3f7484ff23`
+  - install passed on `R9TRC00GA2E`
+  - app relaunched successfully to the watch page
+  - note:
+    - background static-analysis output still mentions `//chrome/browser/xsurface_provider:dependency_provider_impl_java`, but the APK target completed successfully
 - Blockers/risks:
-  - Real Samsung lock/unlock behavior is still unverified on `rerun228`.
-  - adb still cannot bypass the secure keyguard, so manual unlock is required.
+  - The new build still needs a manual/device truth-check.
+  - If it still crashes, we need to confirm whether page fullscreen ever clears before browser fullscreen exit is attempted.
+  - If it stops crashing but still returns to fullscreen, the next likely issue is page fullscreen re-entry during the wait window.
 - Next step:
-  - Run the real-device PiP -> lock -> unlock flow on `rerun228`.
-  - If it still fails, capture fresh `rerun228` runtime evidence before changing code again.
+  - On `R9TRC00GA2E`, enter PiP from the watch page and tap the system expand button.
+  - Record whether it:
+    - returns to watch page
+    - still returns to fullscreen
+    - still crashes
+  - If it still fails, dump the crash and filtered runtime logs immediately.
 - Expected resume inspection scope:
   - `docs/current-status.md`
-  - this `2026-04-02 17:57` entry
+  - this `2026-04-03 15:22:01 +07:00` entry
   - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java`
-  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java`
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun228.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun4.log`
 - Current tool(s):
   - `shell_command`
   - `apply_patch`
-  - `autoninja`
   - `adb`
-  - `web`
+  - `wsl.exe bash`
 - Exact command(s):
+  - `adb -s R9TRC00GA2E logcat -d -b crash`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime OneTabTubePerf:I OTB_PIP:I YouTubeNativeHelper:I VideoPersist:I chromium:I AndroidRuntime:E *:S`
   - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun227.log 2>&1"`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun228.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun4.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
 - Tool purpose:
-  - Remove the last non-upstream PiP controller hook and validate a freshly built Brave-GitHub-aligned APK.
+  - Build/install the safer two-phase exit patch and prepare the device for focused expand-button validation.
 - Tool state:
-  - No build running.
-  - `rerun228` installed on `R9TRC00GA2E`.
-  - No fresh `rerun228` runtime evidence yet.
+  - No build currently running.
+  - Latest build is installed and ready for manual testing.
 - Expected resume command:
-  - run the manual PiP -> lock -> unlock flow on `rerun228`
-  - if it fails, capture the `rerun228` screenshot/logcat/dumpsys set
+  - Reproduce `PiP -> expand` on device, then dump crash/runtime logs immediately if it still fails.
 - Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun227.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun228.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun4.log`
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - repo-side PiP graph removal
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - Brave GitHub PiP entry
-  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java` - Brave GitHub fullscreen cleanup
-  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java` - Brave GitHub fullscreen cleanup
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - removed recent-fullscreen extension
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - upstream controller restore
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
 - Files to inspect first after resume:
   - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
+  - this entry
   - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun228.log`
+  - crash/runtime logs from the next expand attempt
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
+  - build root:
+    - `/home/master/src_ext4`
 - Prerequisites before command:
-  - WSL/ext4 checkout reachable
+  - `R9TRC00GA2E` connected and authorized
+  - ext4 checkout reachable
   - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to lock/unlock the phone
 - Expected success signal:
-  - PiP after unlock behaves closer to Brave GitHub with no multi-stage bounce path
+  - expand returns to the watch page with no crash and no fullscreen fallback
 - Expected failure signal:
-  - black PiP
-  - visible page/fullscreen bounce
-  - crash/dismiss on unlock
+  - expand still crashes
+  - expand still returns to fullscreen
 - Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun228.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun4.log`
 - Last known artifact path:
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Recent decisions:
-  - Use Brave GitHub/upstream as the PiP source of truth and delete remaining local recovery hooks.
-  - Fix the compile break by reverting the actual ext4 controller hook instead of restoring deleted `BraveActivity` methods.
-  - Remove the stale controller patch mirror from the repo.
+  - Keep the `Home` baseline unchanged.
+  - Keep the deferred Java-side PiP exit fix because it removed the first crash.
+  - Keep the page-level fullscreen-exit bridge.
+  - Delay browser fullscreen exit until page fullscreen state is actually gone.
 - Rejected approaches:
-  - restoring deleted local transient-loss helpers
-  - adding more Samsung-specific timing hacks
+  - reintroducing Home-specific PiP behavior
+  - immediate browser fullscreen exit in the same step as page fullscreen exit request
+  - widening scope before validating the narrower two-phase patch
 - Stop point classification:
-  - build passed, APK installed, launch smoke passed, waiting on manual runtime PiP validation
+  - code edited, synced, built, installed, and device-prepared; runtime result of the new build is still unverified
 - What is done but unverified:
-  - `rerun228` lock/unlock PiP behavior on hardware
+  - two-phase expand-to-watch-page flow that waits for page fullscreen/latch clear before browser exit
 - What is verified:
-  - the last controller hook causing `rerun227` failure is gone
-  - `rerun228` builds
-  - `rerun228` installs
-  - `rerun228` launches
+  - the new patch compiles
+  - the APK installs
+  - the app launches to the watch page
+  - the previous crash signature was reproduced and understood
 - External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked
+  - physical device interaction is required for the expand-button truth-check
 - Secret required but not stored:
-  - device lock credential intentionally not stored
+  - none for debug APK assembly
 
-## [2026-04-02 02:02]
+## [2026-04-03 16:30:56 +07:00]
 - Phase:
-  - Phase 7 - Validation / real-device smoke test
+  - Phase 3 - One-tab enforcement hardening / runtime validation
 - Objective:
-  - Run the current OneTabTube APK on device `R9TRC00GA2E`, remove the remaining external-intent crash, and verify the core allowlist behavior on hardware.
+  - Remove the lingering multi-tab behavior in OneTabTube by pruning restored tabs to one and permanently removing the landscape tab switcher UI.
 - Done:
-  - Read the latest desk-state snapshot instead of re-scanning the repo.
-  - Targeted only the PiP-related files from the recorded working set:
-    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - Disabled PiP for OneTabTube in the runtime path:
-    - `onUserLeaveHint`
-    - direct PiP request helpers
-    - PiP support checks
-  - Hid and short-circuited the PiP toolbar button for OneTabTube.
-  - Synced Windows changes into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
-  - Rebuilt successfully as `rerun200`.
-  - Installed the new APK on `R9TRC00GA2E`.
-  - Verified on device:
-    - normal cold launch stays alive and top-resumed
-    - `VIEW https://youtu.be/dQw4w9WgXcQ` opens in-app on `m.youtube.com/watch?v=dQw4w9WgXcQ`
-    - `VIEW https://google.com` no longer crashes and ends on `m.youtube.com`
-    - toolbar UI dump no longer shows the PiP button
+  - Pulled fresh device evidence for the new report:
+    - `C:\Users\Master\Desktop\GO_PLAY\tmp_tabs_landscape.png`
+    - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs.xml`
+  - Confirmed from `window_dump_tabs.xml` that landscape still exposed:
+    - `com.onetabtube.browser_default:id/tab_switcher_button`
+    - content description `ดู 27 แท็บ`
+  - Inspected the targeted working set and confirmed:
+    - `BraveActivity.enforceOneTabYouTubeMode()` did not prune restored tabs
+    - `BraveToolbarLayoutImpl` still made `tab_switcher_button` visible in landscape
+  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java` to:
+    - close incognito tabs in OneTab mode
+    - keep exactly one regular tab
+    - redirect the remaining tab back into the YouTube allowlist when needed
+  - Patched `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` to permanently hide and disable `tab_switcher_button` in OneTab mode.
+  - Synced the first patch set and built:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable.log`
+  - Installed the first build and immediately reproduced a runtime crash on resume.
+  - Captured crash proof from `adb logcat -d -b crash`:
+    - `java.lang.NullPointerException: Attempt to invoke interface method 'int qtd.v0(org.chromium.chrome.browser.tab.Tab)' on a null object reference`
+    - posted from `BraveActivity.onResume`
+  - Determined the pruning path was firing too early, before tab state / tab remover was ready.
+  - Reworked `BraveActivity.enforceOneTabYouTubeMode()` to use `TabModelUtils.runOnTabStateInitialized(...)` and moved model mutation into a post-initialization helper.
+  - Synced the revised patch and rebuilt successfully:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+  - Installed the `rerun2` APK on `R9TRC00GA2E`.
+  - Cleared logcat, cold-launched `https://youtu.be/dQw4w9WgXcQ?autoplay=1`, and confirmed `adb logcat -d -b crash` stayed empty.
+  - Forced a temporary landscape validation pass, then restored rotation settings.
+  - Captured final evidence:
+    - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+    - `C:\Users\Master\Desktop\GO_PLAY\tmp_tabs_landscape_after_rerun2.png`
+  - Verified from `window_dump_tabs_after_rerun2.xml` that:
+    - `tab_switcher_button` is gone
+    - no `ดู 27 แท็บ` label remains
 - In progress:
-  - Core device smoke test is done.
-  - Remaining work is broader validation and documentation, not crash triage.
+  - Holding the `rerun2` single-tab hard-disable build as the current baseline and preparing for broader smoke coverage of tab reuse / restore flows.
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - first build:
+    - build passed
+    - runtime failed on resume with an early tab-pruning NPE
+  - `rerun2`:
+    - build passed
+    - build log:
+      - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+    - APK path:
+      - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+    - APK SHA-256:
+      - `F22D0767A0241591974CF48135CF4A6A571CC65AF7D08F9662CBDE52DEA16A0F`
+    - install passed on `R9TRC00GA2E`
+    - launch passed with empty crash buffer after relaunch
+    - landscape UI dump no longer shows the tab switcher or tab count
+- Blockers/risks:
+  - Need longer-session smoke coverage to prove no other path reintroduces hidden extra tabs later.
+  - The build tail still reports unrelated background static-analysis failures for `//chrome/browser/xsurface_provider:dependency_provider_impl_java`.
+- Next step:
+  - Smoke-test repeated external intents, app relaunch, and orientation changes to ensure the app still reuses a single tab and never resurfaces tab-count UI.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this progress entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell settings put system accelerometer_rotation 0`
+  - `adb -s R9TRC00GA2E shell settings put system user_rotation 1`
+  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/window_dump_tabs_after_rerun2.xml`
+  - `adb -s R9TRC00GA2E pull /sdcard/window_dump_tabs_after_rerun2.xml C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+  - `adb -s R9TRC00GA2E exec-out screencap -p > C:\Users\Master\Desktop\GO_PLAY\tmp_tabs_landscape_after_rerun2.png`
+- Tool purpose:
+  - Hard-disable multi-tab behavior and validate the device UI in landscape.
+- Tool state:
+  - No build currently running.
+  - Latest `rerun2` build is installed and validated for the reported landscape regression.
+- Expected resume command:
+  - Reuse the installed `rerun2` build for longer runtime smoke tests unless a new regression is reported first.
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+  - `C:\Users\Master\Desktop\GO_PLAY\tmp_tabs_landscape_after_rerun2.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs.xml`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_tabs_after_rerun2.xml`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this progress entry
+  - `BraveActivity.java`
+  - `BraveToolbarLayoutImpl.java`
+  - `window_dump_tabs_after_rerun2.xml`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - no on-resume crash
+  - no `tab_switcher_button`
+  - no visible tab-count label in landscape
+- Expected failure signal:
+  - early runtime crash during pruning
+  - tab switcher remains visible in landscape
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - fix both the model state and the toolbar surface
+  - wait for initialized tab state before pruning
+  - keep the verified PiP baseline untouched
+- Rejected approaches:
+  - hiding the tab button only
+  - pruning tabs directly from `onResume` before tab state initialization
+- Stop point classification:
+  - code edited, synced, built, installed, and runtime-validated for the reported landscape multi-tab issue
+- What is done but unverified:
+  - broader smoke coverage over longer navigation and restore sessions
+- What is verified:
+  - `tab_switcher_button` removed from landscape UI
+  - `ดู 27 แท็บ` removed from landscape UI
+  - relaunch no longer crashes with the single-tab pruning patch
+- External prerequisite:
+  - physical device still required for further runtime smoke testing
+- Secret required but not stored:
+  - none for debug APK assembly
+- Actual code state after resume:
+  - OneTab mode now prunes tab models after initialization and hard-hides the top tab switcher button.
+- Chosen direction:
+  - Hold `rerun2` as the single-tab baseline and widen runtime smoke testing next instead of changing enforcement logic again immediately.
+
+## [2026-04-03 16:41:55 +07:00]
+- Phase:
+  - Phase 3 - One-tab enforcement hardening / runtime/storage reality check
+- Objective:
+  - Answer whether multi-tab is really disabled or only hidden, with explicit focus on resource usage.
+- Done:
+  - Re-read the latest desk-state and continued from the `rerun2` single-tab baseline.
+  - Confirmed device connectivity on `R9TRC00GA2E`.
+  - Queried runtime task state with `adb shell dumpsys activity activities`.
+  - Verified the active app task is now:
+    - `Task{... com.onetabtube.browser_default ... sz=1}`
+  - Inspected on-disk tab-state storage via `run-as com.onetabtube.browser_default ls app_tabs/0`.
+  - Counted `flatbufferv1_tab*` plus `tab_state*` entries and found `149` legacy tab-state files still present on disk.
+  - Fired repeated external YouTube intents:
+    - `https://youtu.be/oHg5SJYRHA0`
+    - `https://youtube.com/watch?v=jNQXAC9IVRw`
+    - `https://m.youtube.com/watch?v=D1b_CKLFY54`
+  - Recounted `app_tabs/0` afterward and confirmed the tab-state file count remained `149`.
+- In progress:
+  - No code change in this mini-step; the repo still sits on the `rerun2` single-tab baseline.
+  - Evaluating whether a one-time storage cleanup should be added so stale pre-fix tab snapshots do not remain on disk.
 - Files touched:
   - `docs/current-status.md`
   - `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `tools/sync_changed_files_to_wsl.ps1`
+  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_single_tab_check.xml`
 - Build/test status:
-  - Build passed:
-    - `rerun200`
-  - Latest APK SHA-256:
-    - `08c34f11821d3fe1245a5a02c2aa27453a1debc71ea9c6f1a220aabc557ac33d`
-  - Real-device smoke result:
-    - pass for normal launch
-    - pass for allowlisted `youtu.be`
-    - pass for off-scope `google.com` by redirecting back into the allowed YouTube scope
+  - No new build in this mini-step.
+  - Runtime/storage verification only.
+  - Current installed APK remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+    - SHA-256 `F22D0767A0241591974CF48135CF4A6A571CC65AF7D08F9662CBDE52DEA16A0F`
 - Blockers/risks:
-  - Sign-in/consent/account-selection paths are not yet revalidated after the latest runtime cleanup.
-  - Shields/adblock behavior still needs longer manual playback sanity, not just launch/navigation checks.
-  - Some earlier runtime/build fixes still exist directly in ext4 and must be reality-checked on future resumes.
+  - Multi-tab is effectively disabled at runtime now, but old tab snapshot files from the earlier multi-tab era are still present on disk.
+  - If these stale snapshots are considered unacceptable resource overhead, a cleanup/migration step is still required.
 - Next step:
-  - Expand device smoke coverage to additional YouTube and required Google auth paths.
-  - Update `docs/testing.md` and `docs/patch-summary.md` with the verified device behavior and PiP removal rationale.
+  - Implement a one-time cleanup for old `app_tabs/0` tab-state files so storage also matches the single-tab product model.
 - Expected resume inspection scope:
   - `docs/current-status.md`
-  - this `2026-04-02 02:02` entry
+  - this progress entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - runtime task-state output showing `sz=1`
+  - `run-as ... ls app_tabs/0` tab-state count evidence
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+- Exact command(s):
+  - `adb devices`
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities`
+  - `adb -s R9TRC00GA2E shell run-as com.onetabtube.browser_default ls app_tabs/0`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/oHg5SJYRHA0" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtube.com/watch?v=jNQXAC9IVRw" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://m.youtube.com/watch?v=D1b_CKLFY54" com.onetabtube.browser_default`
+- Tool purpose:
+  - Verify whether single-tab is real at runtime and whether hidden tab/storage growth still continues.
+- Tool state:
+  - No build running.
+  - Device connected and current APK remains installed.
+- Expected resume command:
+  - If continuing the cleanup work, start by adding a one-time storage cleanup hook and then rerun the same `run-as ... ls app_tabs/0` count check.
+- Expected output/artifact path:
+  - current APK:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - current build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
   - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
   - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+  - `app_tabs/0` runtime storage on device
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `BraveActivity.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - runtime still single-tab and storage cleanup reduces stale `app_tabs/0` leftovers
+- Expected failure signal:
+  - runtime tab count regrows
+  - `app_tabs/0` grows again during repeated intent tests
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_single_tab_hard_disable_rerun2.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Separate “runtime single-tab” from “stale storage cleanup” instead of pretending they are already the same thing.
+- Rejected approaches:
+  - claiming multi-tab is fully gone just because the UI button disappeared
+- Stop point classification:
+  - runtime/storage reality checked; no code edited in this mini-step
+- What is done but unverified:
+  - one-time storage cleanup
+- What is verified:
+  - active task state is `sz=1`
+  - repeated YouTube intents did not increase the current on-disk tab-state file count beyond `149`
+- External prerequisite:
+  - device access still required for before/after storage checks
+- Secret required but not stored:
+  - none
+- Actual code state after resume:
+  - runtime single-tab enforcement is active, but stale historical tab snapshots remain on disk.
+- Chosen direction:
+  - treat runtime enforcement as fixed enough for navigation reuse, and handle stale tab-state storage as the next cleanup task.
+
+## [2026-04-03 15:09:19 +07:00]
+- Phase:
+  - Phase 7 - Validation / PiP expand-to-watch-page stabilization
+- Objective:
+  - Build and install the new page-level fullscreen-exit patch so the system PiP expand button can return to the YouTube watch page instead of fullscreen video.
+- Done:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry first, then resumed with targeted inspection only.
+  - Verified the new unbuilt patch was still present across:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Confirmed the patch adds:
+    - `BraveYouTubeScriptInjectorNativeHelper.exitFullscreen(...)`
+    - JNI bridge `JNI_BraveYouTubeScriptInjectorNativeHelper_ExitFullscreen(...)`
+    - helper methods `MaybeExitFullscreen()` and `OnExitFullscreenScriptComplete(...)`
+    - JS script `kYoutubeExitFullscreen` using standard fullscreen-exit APIs
+  - Synced Windows -> ext4 with the standard sync script.
+  - Rebuilt successfully:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun3.log`
+  - Installed the rebuilt APK on `R9TRC00GA2E`.
+  - Verified APK SHA-256:
+    - `5f0cf3378031b74892d73549e376a91658e760ea9b67cc87d70daa45373fb203`
+  - Cleared logcat, force-stopped the app, and relaunched directly to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- In progress:
+  - Waiting on the real-device truth-check for `PiP -> expand` on the new page-exit-fullscreen build.
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun3.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `5f0cf3378031b74892d73549e376a91658e760ea9b67cc87d70daa45373fb203`
+  - install passed on `R9TRC00GA2E`
+  - app relaunched successfully to the watch page
+- Blockers/risks:
+  - The new build still needs a manual/device truth-check.
+  - If fullscreen still wins, the next inspection scope is whether the page-level fullscreen exit runs successfully before persistent fullscreen exits.
+  - If it still crashes, the next logs must show whether the new exit-fullscreen helper is involved.
+- Next step:
+  - On `R9TRC00GA2E`, enter PiP from the current watch page and tap the system expand button.
+  - Record whether it:
+    - returns to watch page
+    - still returns to fullscreen
+    - still crashes
+  - If it still fails, dump the crash and filtered runtime logs immediately.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 15:09:19 +07:00` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun3.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun3.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Build/install the page-level fullscreen-exit patch and prepare the device for focused expand-button validation.
+- Tool state:
+  - No build currently running.
+  - Latest build is installed and ready for the next manual test.
+- Expected resume command:
+  - Reproduce `PiP -> expand` on device, then dump crash/runtime logs immediately if it still fails.
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun3.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - deferred PiP exit scheduling
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - Java fullscreen-exit bridge
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc` - JNI bridge
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - new helper declarations
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - page/video fullscreen-exit script and latch clearing
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - runtime logs from the next expand-button attempt
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - expand returns to the watch page with no crash and no fullscreen fallback
+- Expected failure signal:
+  - expand still crashes
+  - expand still returns to fullscreen
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun3.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the `Home` baseline unchanged.
+  - Keep the deferred Java-side PiP exit fix because it already removed the expand crash.
+  - Add a narrow page-level fullscreen-exit helper instead of growing more lifecycle hacks.
+- Rejected approaches:
+  - reintroducing any Home-specific PiP behavior
+  - immediate fullscreen exit inside the PiP callback
+  - widening scope before validating this focused patch
+- Stop point classification:
+  - code edited, synced, built, installed, and device-prepared; runtime result of the new build is still unverified
+- What is done but unverified:
+  - page/video fullscreen exit before persistent fullscreen exit on PiP expand return
+- What is verified:
+  - the new patch compiles
+  - the APK installs
+  - the app launches to the watch page
+- External prerequisite:
+  - physical device interaction is required for the expand-button truth-check
+- Secret required but not stored:
+  - none for debug APK assembly
+
+## [2026-04-03 12:18]
+- Phase:
+  - Phase 7 - Validation / PiP stability restore after experiment rollback
+- Objective:
+  - Continue the recorded next concrete step now that the device is back: install the rollback APK and stage the lock/unlock PiP retest.
+- Done:
+  - Ran `adb devices`.
+  - Confirmed `R9TRC00GA2E` is connected again.
+  - Installed `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`.
+  - Launched:
+    - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- In progress:
+  - Waiting for the real device-side `PiP -> lock -> unlock` check on the installed rollback APK.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - no new build in this snapshot
+  - installed APK remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+    - SHA-256 `a36afe41ab87ed7bd2b830e20432363c54cfb0fa2018cb16336fac190faa88a8`
+  - install passed on `R9TRC00GA2E`
+  - launch passed to YouTube watch URL
+- Blockers/risks:
+  - no tooling blocker now
+  - remaining blocker is runtime truth on the physical device
+- Next step:
+  - run the device-side flow:
+    - tap toolbar PiP
+    - lock screen
+    - unlock
+    - report whether PiP survives
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 12:18` entry
+  - current installed APK path
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+- Exact command(s):
+  - `adb devices`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Stage the rollback APK on the phone for the pending PiP stability test
+- Tool state:
+  - commands completed
+  - device connected
+  - app running on a watch page
+- Expected resume command:
+  - physical device test
+  - optional logcat if needed
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - installed rollback APK
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest progress entry
+  - any follow-up device log/output
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device connected and authorized
+- Expected success signal:
+  - PiP survives unlock again
+- Expected failure signal:
+  - PiP still disappears after unlock
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_restore_unlock_stability.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - no new code changes; hold the rollback build for runtime validation
+- Rejected approaches:
+  - changing code again before validating the installed rollback build
+- Stop point classification:
+  - APK installed and launched; waiting on runtime device validation
+- What is done but unverified:
+  - actual PiP lock/unlock behavior on device
+- What is verified:
+  - device reconnected
+  - install passed
+  - launch passed
+- External prerequisite:
+  - physical interaction on device
+- Secret required but not stored:
+  - none
+
+## [2026-04-03 12:14]
+- Phase:
+  - Phase 7 - Validation / PiP stability restore after experiment rollback
+- Objective:
+  - Execute the recorded next concrete step: check device availability, then install and retest the rollback APK if the device is back.
+- Done:
+  - Ran `adb devices`.
+- In progress:
+  - Waiting for `R9TRC00GA2E` to reconnect so install/retest can continue.
+- Files touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - no new build run in this snapshot
+  - last successful build remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_restore_unlock_stability.log`
+  - last APK remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+    - SHA-256 `a36afe41ab87ed7bd2b830e20432363c54cfb0fa2018cb16336fac190faa88a8`
+- Blockers/risks:
+  - `adb devices` still returns no connected devices.
+- Next step:
+  - reconnect `R9TRC00GA2E`
+  - rerun install
+  - rerun `PiP -> lock -> unlock` validation
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 12:14` entry
+  - `adb devices` status
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_restore_unlock_stability.log`
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+- Exact command(s):
+  - `adb devices`
+- Tool purpose:
+  - Check whether the physical device is back so the pending install/retest can proceed.
+- Tool state:
+  - command completed
+  - device still absent
+- Expected resume command:
+  - `adb devices`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - built APK at `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest progress entry
+  - `adb devices` result
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - physical device connected and authorized
+- Expected success signal:
+  - `R9TRC00GA2E` appears in `adb devices`
+- Expected failure signal:
+  - `adb devices` output remains empty
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_restore_unlock_stability.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - no new code changes; hold the rollback build as the install candidate
+- Rejected approaches:
+  - rebuilding again before the device reconnects
+- Stop point classification:
+  - install/retest blocked by disconnected device
+- What is done but unverified:
+  - runtime validation of the rollback APK
+- What is verified:
+  - device is still absent from `adb` in this snapshot
+- External prerequisite:
+  - `R9TRC00GA2E` must reconnect
+- Secret required but not stored:
+  - none
+
+## [2026-04-03 12:09]
+- Phase:
+  - Phase 7 - Validation / PiP stability restore after experiment rollback
+- Objective:
+  - Remove the regressed standard-video-PiP toolbar experiment and restore the fullscreen-backed PiP lifecycle that was stable through lock/unlock before.
+- Done:
+  - Resumed from the latest desk state and checked the actual code in the narrowed PiP working set.
+  - Confirmed the toolbar still used `requestVideoPictureInPicture(...)`.
+  - Re-checked the surrounding PiP lifecycle wiring and accepted the user's report as source of truth: after the standard-video-PiP experiment, PiP disappeared again after lock/unlock.
+  - Rolled back the standard-video-PiP experiment from:
+    - `BraveToolbarLayoutImpl.java`
+    - `BraveYouTubeScriptInjectorNativeHelper.java`
+    - `brave_youtube_script_injector_native_helper.cc`
+    - `youtube_script_injector_tab_helper.h`
+    - `youtube_script_injector_tab_helper.cc`
+  - Synced rollback files into `/home/master/src_ext4/brave`.
+  - Rebuilt successfully.
+- In progress:
+  - Rebuilt rollback APK exists, but device install/retest is blocked because `R9TRC00GA2E` disconnected from `adb`.
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_restore_unlock_stability.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `a36afe41ab87ed7bd2b830e20432363c54cfb0fa2018cb16336fac190faa88a8`
+  - install status:
+    - blocked, device missing from `adb`
+- Blockers/risks:
+  - `adb devices` currently returns no devices.
+  - runtime re-verification of restored unlock stability is still pending.
+- Next step:
+  - reconnect `R9TRC00GA2E`
+  - install rebuilt APK
+  - re-run lock/unlock PiP test
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 12:09` entry
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_restore_unlock_stability.log`
 - Current tool(s):
   - `shell_command`
   - `apply_patch`
   - `autoninja`
   - `adb`
+  - `wsl.exe bash`
 - Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log 2>&1"`
+  - sync via `Copy-Item` for the 5 rollback files into ext4
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_restore_unlock_stability.log 2>&1"`
+  - attempted:
+    - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+    - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - observed:
+    - `adb devices`
+- Tool purpose:
+  - restore the last known stable PiP lifecycle path and prepare it for reinstall
+- Tool state:
+  - no build running
+  - rollback APK built
+  - device offline/disconnected
+- Expected resume command:
+  - `adb devices`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_restore_unlock_stability.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `BraveToolbarLayoutImpl.java`
+  - `BraveYouTubeScriptInjectorNativeHelper.java`
+  - `brave_youtube_script_injector_native_helper.cc`
+  - `youtube_script_injector_tab_helper.h`
+  - `youtube_script_injector_tab_helper.cc`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest progress entry
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - build log above
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - device `R9TRC00GA2E` must reconnect and authorize
+- Expected success signal:
+  - device appears in `adb devices`
+  - install succeeds
+  - PiP survives unlock again
+- Expected failure signal:
+  - device still missing
+  - installed rollback APK still loses PiP after unlock
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_restore_unlock_stability.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - prioritize restoring stability over keeping the no-fullscreen-flash experiment
+- Rejected approaches:
+  - keeping the standard-video-PiP experiment active while debugging unlock disappearance
+- Stop point classification:
+  - code edited, synced, build passed, install/retest blocked by disconnected device
+- What is done but unverified:
+  - runtime behavior of rebuilt rollback APK
+- What is verified:
+  - experiment removed from source
+  - rebuild succeeded
+- External prerequisite:
+  - physical device reconnect required
+- Secret required but not stored:
+  - none
+
+## [2026-04-03 11:48]
+- Phase:
+  - Phase 7 - Validation / standard video PiP entry refinement
+- Objective:
+  - Replace whole-page direct activity PiP with a standard video PiP request path for the toolbar button.
+- Done:
+  - Took the user's runtime feedback as source of truth: the previous direct activity-level PiP path removed the fullscreen flash but still shoved the whole page into PiP.
+  - Re-checked the targeted code and confirmed why:
+    - the direct helper still called `enterPictureInPictureMode(new PictureInPictureParams.Builder().build())`
+    - meaningful PiP bounds refresh only happened while Chromium still believed there was active fullscreen video
+  - Confirmed the tree already injects `kYoutubePictureInPictureSupport`, which relaxes YouTube flags for the standard PiP API.
+  - Added `requestVideoPictureInPicture(...)` to `BraveYouTubeScriptInjectorNativeHelper.java`.
+  - Added native forwarding in `brave_youtube_script_injector_native_helper.cc`.
+  - Added `MaybeRequestVideoPictureInPicture()` and `OnVideoPictureInPictureScriptComplete(...)` to `YouTubeScriptInjectorTabHelper`.
+  - Added `kYoutubeRequestVideoPictureInPicture` script:
+    - checks `document.pictureInPictureEnabled`
+    - picks a generic `<video>` candidate without YouTube-internal control selectors
+    - calls `video.requestPictureInPicture()`
+    - logs result back through the existing callback path
+  - Updated the toolbar PiP button to call the new standard video PiP request path.
+  - Synced all changed files into `/home/master/src_ext4/brave`.
+  - Rebuilt successfully.
+  - Reinstalled on `R9TRC00GA2E`.
+  - Verified warm launch still works.
+- In progress:
+  - Waiting for runtime validation of whether the new standard video PiP path actually focuses the video correctly on device.
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_video_pip_request.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `b56a07367ec489a84149b13ccbce7772ba93e53e0efaa09e218a8f1abc5fbd20`
+  - install passed on `R9TRC00GA2E`
+  - warm launch passed
+- Blockers/risks:
+  - Standard `video.requestPictureInPicture()` may still fail depending on YouTube page state or Chromium Android support details in this browser-tab context.
+  - No fallback to whole-page PiP was kept in this round, by design, so failure signals are cleaner.
+- Next step:
+  - Test the toolbar PiP button on `R9TRC00GA2E`.
+  - If it fails, capture:
+    - `adb -s R9TRC00GA2E logcat -d -v threadtime OTB_PIP:I YouTubeNativeHelper:I VideoPersist:I *:S`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 11:48` entry
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_video_pip_request.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - sync via `Copy-Item` for the 5 changed files into `\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\...`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_video_pip_request.log 2>&1"`
   - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
   - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://google.com" com.onetabtube.browser_default`
 - Tool purpose:
-  - Keep the APK buildable and validate the AGENTS.md product policy on a real device.
-- Tool state:
-  - No build currently running.
-  - Device `R9TRC00GA2E` is connected and the latest APK is installed.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - rerun the next manual smoke case or rebuild from the same target if code changes are needed
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - runtime PiP disable for OneTabTube
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` - PiP button hidden and blocked
-  - `tools/sync_changed_files_to_wsl.ps1` - Windows/ext4 sync
-  - `docs/current-status.md` - current desk state
-  - `docs/progress-log.md` - append-only handoff history
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized in `adb devices`
-  - sync Windows edits to ext4 before rebuilding
-- Expected success signal:
-  - app stays top-resumed
-  - `adb logcat -b crash -d` remains empty
-  - off-scope URLs redirect/block instead of loading arbitrary pages
-- Expected failure signal:
-  - crash buffer shows a new fatal
-  - app leaves `com.onetabtube.browser_default`
-  - off-scope URL remains on a non-YouTube page
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Cut PiP because it is out of scope for OneTabTube and was the last crash source.
-  - Prefer redirecting off-scope links back to YouTube scope instead of preserving optional media behavior.
-- Rejected approaches:
-  - Keeping PiP and continuing to debug it
-  - Reopening optional product surfaces just to preserve prior behavior
-  - Re-scanning the whole repo instead of following desk state
-- Stop point classification:
-  - build passed, APK installed, core device smoke-tested and passing
-- What is done but unverified:
-  - broader auth/consent path coverage
-  - longer adblock/shields playback sanity
-  - docs updates outside the status files
-- What is verified:
-  - latest tree builds
-  - latest APK installs
-  - normal launch is stable on device
-  - allowlisted `youtu.be` deep link stays in-app
-  - off-scope `google.com` no longer crashes and lands on `m.youtube.com`
-  - PiP toolbar button is absent in the captured UI dump
-- External prerequisite:
-  - WSL/ext4 checkout and Android/Chromium deps remain required
-  - physical device `R9TRC00GA2E` must remain connected for further validation
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-02 15:23]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock smoothness optimization
-- Objective:
-  - Reduce the remaining visible restore stages after unlock by making PiP restore prefer direct recent-fullscreen re-entry before the slower fullscreen/page bounce path.
-- Done:
-  - Read the fresh user report for `rerun221`: smoother than before, but still visibly jumps through the YouTube page and fullscreen before settling back to PiP.
-  - Inspected `tmp_toolbar_pip_logcat_rerun221.txt` and confirmed the first successful `fullscreen_script_result result=fullscreen_triggered` still arrives only after the task is fronted out of PiP.
-  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java` so restore:
-    - treats recent fullscreen as immediate fullscreen-ready evidence
-    - tries `requestDirectPictureInPictureUsingRecentFullscreen(...)` first on Android S+
-    - falls back to `requestSystemPictureInPictureForCurrentVideo(...)` only if the direct recent-fullscreen path does not enter PiP
-  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` to widen `kRecentEffectiveFullscreenGrace` from `1500ms` to `3000ms`.
-  - Synced Windows -> WSL.
-  - Rebuilt successfully as `rerun222`.
-  - Verified APK SHA-256:
-    - `ee8866fa099d43863b6f67768467c68b226abe4124c7dec4b9ee22f9429ccb64`
-  - Installed `rerun222` on `R9TRC00GA2E`.
-  - Cleared device logcat.
-- In progress:
-  - Waiting for one real PiP -> lock -> unlock validation pass on `rerun222`.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `tmp_toolbar_pip_logcat_rerun221.txt`
-- Build/test status:
-  - Build passed:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun222.log 2>&1"`
-  - APK path:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Install status:
-    - pass on `R9TRC00GA2E`
-  - Runtime status:
-    - `rerun221` still multi-stage by user report
-    - `rerun222` not yet manually validated
-- Blockers/risks:
-  - Samsung secure keyguard still requires a real manual unlock.
-  - The widened recent-fullscreen grace may still be insufficient if unlock timing is slower than expected.
-  - Direct recent-fullscreen PiP re-entry could still fall back to the slower path or produce a bad whole-page PiP if the recent-fullscreen hint is wrong.
-- Next step:
-  - Run the same manual flow on `rerun222`:
-    - open a YouTube watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-  - If the symptom remains, collect fresh `rerun222` screenshot/logcat/activity/media-session/window evidence.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `tmp_toolbar_pip_logcat_rerun221.txt`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun222.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun222.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Try a more direct PiP restore path that can skip some of the visible page/fullscreen churn after unlock.
-- Tool state:
-  - No build currently running.
-  - `rerun222` is installed.
-  - Device logcat is cleared.
-- Expected resume command:
-  - run the real-device PiP -> lock -> unlock flow on `rerun222`
-  - then collect `rerun222` evidence if needed
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun222.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun222.png`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun222.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun222.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_media_session_rerun222.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun222.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - direct recent-fullscreen restore attempt
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - recent fullscreen grace window
-  - `tmp_toolbar_pip_logcat_rerun221.txt` - evidence for the still-stagey restore path
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun222.log` - latest build evidence
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `tmp_toolbar_pip_logcat_rerun222.txt` if the next manual run has happened
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to perform one real lock/unlock cycle
-- Expected success signal:
-  - after unlock, PiP returns with less visible page/fullscreen churn than `rerun221`
-- Expected failure signal:
-  - the app still visibly fronts to the YouTube page/fullscreen before settling back to PiP
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun222.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Stay in the existing PiP working set instead of reopening wider repo areas.
-  - Use `rerun221` event ordering as the truth source for the next patch.
-  - Prefer a direct recent-fullscreen PiP restore attempt before deeper controller/compositor changes.
-- Rejected approaches:
-  - wholesale upstream Brave PiP restore
-  - deleting the slower fallback path before the new direct path is validated
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation for `rerun222`
-- What is done but unverified:
-  - whether `rerun222` actually removes most of the visible restore stages after unlock
-- What is verified:
-  - `rerun221` still feels multi-stage by real-user report
-  - `rerun222` compiles
-  - `rerun222` installs on `R9TRC00GA2E`
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 16:36]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock smoothness optimization
-- Objective:
-  - Prevent the unlock fallback from fronting the app too early by waiting longer for fullscreen recovery to settle first.
-- Done:
-  - Collected `rerun224` evidence after the user said it still goes through several pages/states and also "breaks".
-  - Verified `tmp_toolbar_pip_crash_rerun224.txt` is empty for the captured run, so the main captured failure is still visible bounce plus broken/stuck PiP rather than a new crash stack.
-  - Confirmed from `tmp_toolbar_pip_logcat_rerun224.txt` that the unlock fallback still fires too early:
-    - `pip_unlock_bounce_wait_for_fullscreen:*remaining_ms=698`
-    - `pip_unlock_bounce_move_to_front:*`
-    - only later successful `fullscreen_script_result`
-    - then eventual `pip_mode_changed:true`
-  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java`:
-    - `PIP_POST_UNLOCK_FULLSCREEN_REQUEST_GRACE_MS = 3000`
-    - `PIP_POST_UNLOCK_BOUNCE_DELAY_MS = 100`
-  - Synced Windows -> WSL.
-  - Rebuilt successfully as `rerun225`.
-  - Verified APK SHA-256:
-    - `407787097e56dd78b8e423f5352cc80ef65fb5e21dcf6f80d1eae86d303cbc8d`
-  - Installed `rerun225` on `R9TRC00GA2E`.
-  - Cleared device logcat.
-- In progress:
-  - Waiting for one real PiP -> lock -> unlock validation pass on `rerun225`.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `tmp_toolbar_pip_logcat_rerun224.txt`
-  - `tmp_toolbar_pip_crash_rerun224.txt`
-  - `pip_after_unlock_rerun224.png`
-- Build/test status:
-  - Build passed:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun225.log 2>&1"`
-  - APK path:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Install status:
-    - pass on `R9TRC00GA2E`
-  - Runtime status:
-    - `rerun225` not yet manually validated
-- Blockers/risks:
-  - Samsung secure keyguard still requires a real manual unlock.
-  - A longer grace may leave the user in broken PiP longer if recovery never settles.
-  - If fullscreen success still arrives after `3000ms`, the visible bounce may remain.
-- Next step:
-  - Run the same manual flow on `rerun225`:
-    - open a YouTube watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-  - If the symptom remains, collect fresh `rerun225` evidence including crash buffer/logcat/activity/window state.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `tmp_toolbar_pip_logcat_rerun224.txt`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun225.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun225.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Give fullscreen recovery more time to win before the visible unlock fallback fronts the app.
-- Tool state:
-  - No build currently running.
-  - `rerun225` is installed.
-  - Device logcat is cleared.
-- Expected resume command:
-  - run the real-device PiP -> lock -> unlock flow on `rerun225`
-  - then collect `rerun225` evidence if needed
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun225.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun225.png`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_crash_rerun225.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun225.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun225.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun225.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - longer unlock fullscreen-settle grace
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - earlier recovery hook remains in place
-  - `tmp_toolbar_pip_logcat_rerun224.txt` - proof that the old fallback fired too early
-  - `pip_after_unlock_rerun224.png` - captured broken/stuck launcher PiP state
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `tmp_toolbar_pip_logcat_rerun225.txt` if the next manual run has happened
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to perform one real lock/unlock cycle
-- Expected success signal:
-  - after unlock, the app avoids the early visible bounce to page/fullscreen
-- Expected failure signal:
-  - the app still visibly walks page -> fullscreen -> PiP
-  - or remains broken/stuck longer before fallback
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun225.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Treat the remaining issue as a too-early unlock fallback, not a newly proven crash.
-  - Prefer a timing adjustment grounded in `rerun224` evidence before changing fallback structure more drastically.
-- Rejected approaches:
-  - chasing a missing crash stack
-  - removing the fallback chain outright before validating a longer grace window
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation for `rerun225`
-- What is done but unverified:
-  - whether `rerun225` materially reduces or avoids the early visible fallback after unlock
-- What is verified:
-  - `rerun224` still visibly walks through multiple states before PiP settles
-  - the captured `rerun224` run did not produce a new crash stack in `logcat -b crash`
-  - `rerun225` compiles
-  - `rerun225` installs on `R9TRC00GA2E`
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 16:03]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock smoothness optimization
-- Objective:
-  - Cut the remaining visible page/fullscreen walk after unlock by triggering PiP recovery immediately on fullscreen-script success.
-- Done:
-  - Collected fresh `rerun223` screenshot/logcat/activity/media-session/window evidence after the user said it still goes through several visible pages/states.
-  - Confirmed from `tmp_toolbar_pip_logcat_rerun223.txt` that `rerun223` still does:
-    - `pip_unlock_bounce_move_to_front:*`
-    - several `fullscreen_request_rearmed`
-    - only later `pip_direct_request:native_fullscreen_change:entered=true`
-    - then `pip_mode_changed:true`
-  - This showed there is still a visible gap between fullscreen-script success and when PiP recovery is actually requested.
-  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` so `OnFullscreenScriptComplete(...)` now immediately calls `EnterPictureInPicture(...)` when the fullscreen script reports `fullscreen_triggered` or `already_fullscreen` for the current frame.
-  - Synced Windows -> WSL.
-  - Rebuilt successfully as `rerun224`.
-  - Verified APK SHA-256:
-    - `2b3568688a0d559a69121f9dc756dde6642c4cc989224ec523ff688e4afa286f`
-  - Installed `rerun224` on `R9TRC00GA2E`.
-  - Cleared device logcat.
-- In progress:
-  - Waiting for one real PiP -> lock -> unlock validation pass on `rerun224`.
-- Files touched:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `pip_after_unlock_rerun223.png`
-  - `tmp_toolbar_pip_logcat_rerun223.txt`
-  - `tmp_toolbar_pip_activities_rerun223.txt`
-  - `tmp_toolbar_pip_media_session_rerun223.txt`
-  - `tmp_toolbar_pip_windows_rerun223.txt`
-- Build/test status:
-  - Build passed:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun224.log 2>&1"`
-  - APK path:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Install status:
-    - pass on `R9TRC00GA2E`
-  - Runtime status:
-    - `rerun224` not yet manually validated
-- Blockers/risks:
-  - Samsung secure keyguard still requires a real manual unlock.
-  - If fullscreen-script success still happens too late, the visible bounce may remain.
-  - Immediate PiP recovery on script success may create repeated requests in edge cases.
-- Next step:
-  - Run the same manual flow on `rerun224`:
-    - open a YouTube watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-  - If the symptom remains, collect fresh `rerun224` evidence.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `tmp_toolbar_pip_logcat_rerun223.txt`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun224.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun224.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Trigger recovery closer to fullscreen-script success and shrink the still-visible gap after unlock.
-- Tool state:
-  - No build currently running.
-  - `rerun224` is installed.
-  - Device logcat is cleared.
-- Expected resume command:
-  - run the real-device PiP -> lock -> unlock flow on `rerun224`
-  - then collect `rerun224` evidence if needed
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun224.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun224.png`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun224.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun224.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_media_session_rerun224.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun224.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - immediate PiP recovery on fullscreen-script success
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - recovery chain behind the immediate callback
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - current restore/bounce orchestration fallback
-  - `tmp_toolbar_pip_logcat_rerun223.txt` - evidence of the old gap
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `tmp_toolbar_pip_logcat_rerun224.txt` if the next manual run has happened
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to perform one real lock/unlock cycle
-- Expected success signal:
-  - after unlock, PiP returns with fewer visible intermediate states than `rerun223`
-- Expected failure signal:
-  - the app still visibly walks page -> fullscreen -> PiP with little improvement
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun224.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Target the gap after fullscreen-script success instead of only tweaking unlock timing further.
-  - Keep the fallback chain in place while trying an earlier recovery hook.
-- Rejected approaches:
-  - assuming the existing helper/controller path was already early enough
-  - deleting the fallback chain before the earlier hook is validated
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation for `rerun224`
-- What is done but unverified:
-  - whether `rerun224` materially reduces the visible page/fullscreen walk after unlock
-- What is verified:
-  - `rerun223` still visibly walks through multiple states before PiP settles
-  - `rerun224` compiles
-  - `rerun224` installs on `R9TRC00GA2E`
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 15:44]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock smoothness optimization
-- Objective:
-  - Cut the remaining visible page/fullscreen walk after unlock by making native fullscreen recovery use the Brave/Chromium PiP controller path instead of the old raw activity-level PiP shortcut.
-- Done:
-  - Read the user's clarification that the issue is specifically the visible multi-page restore path, not just general slowness.
-  - Re-inspected the live ext4 `FullscreenVideoPictureInPictureController.java` and confirmed Brave/Chromium still expects fullscreen-video PiP entry through the controller path.
-  - Identified that `BraveYouTubeScriptInjectorNativeHelper.java` still used a simplified raw `enterPictureInPictureMode(...)` path for native fullscreen recovery.
-  - Patched `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` so native fullscreen recovery now:
-    - refreshes PiP params if already pinned
-    - otherwise prefers `BraveActivity.requestSystemPictureInPictureForCurrentVideo("native_fullscreen_change")`
-    - otherwise tries `requestDirectPictureInPictureUsingRecentFullscreen("native_fullscreen_change")`
-    - only falls back to raw `enterPictureInPictureMode(...)` last
-  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` so `MediaEffectivelyFullscreenChanged(true)` no longer waits for the old `VISIBLE`-only gate before notifying Java recovery.
-  - Synced Windows -> WSL.
-  - Rebuilt successfully as `rerun223`.
-  - Verified APK SHA-256:
-    - `52e9f8522d5456b1a61b1d2a30e6d59aca508a874cb941c0fe72279057a16ef2`
-  - Installed `rerun223` on `R9TRC00GA2E`.
-  - Cleared device logcat.
-- In progress:
-  - Waiting for one real PiP -> lock -> unlock validation pass on `rerun223`.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - Build passed:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun223.log 2>&1"`
-  - APK path:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Install status:
-    - pass on `R9TRC00GA2E`
-  - Runtime status:
-    - `rerun223` not yet manually validated
-- Blockers/risks:
-  - Samsung secure keyguard still requires a real manual unlock.
-  - The controller-oriented callback may still arrive too late to fully hide the visible page/fullscreen stage.
-  - Removing the old visibility-only gate could create extra PiP requests in edge cases if the recovery path is too eager.
-- Next step:
-  - Run the same manual flow on `rerun223`:
-    - open a YouTube watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-  - If the symptom remains, collect fresh `rerun223` screenshot/logcat/activity/media-session/window evidence.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun223.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun223.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Use the Brave/Chromium controller path for native fullscreen recovery and try to cut the remaining visible restore walk after unlock.
-- Tool state:
-  - No build currently running.
-  - `rerun223` is installed.
-  - Device logcat is cleared.
-- Expected resume command:
-  - run the real-device PiP -> lock -> unlock flow on `rerun223`
-  - then collect `rerun223` evidence if needed
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun223.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun223.png`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun223.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun223.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_media_session_rerun223.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun223.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - controller-oriented native PiP recovery
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - native callback gate for fullscreen recovery
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - existing restore/bounce orchestration
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun223.log` - latest build evidence
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `tmp_toolbar_pip_logcat_rerun223.txt` if the next manual run has happened
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to perform one real lock/unlock cycle
-- Expected success signal:
-  - after unlock, PiP returns with less visible page/fullscreen churn than `rerun221`/`rerun222`
-- Expected failure signal:
-  - the app still visibly walks page -> fullscreen -> PiP
-  - or the new callback causes repeated PiP requests / bad whole-page PiP
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun223.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Treat the remaining issue as a controller/helper seam problem, not only a timing tweak.
-  - Reuse the Brave/Chromium PiP controller path before touching deeper compositor/media internals.
-- Rejected approaches:
-  - blindly deleting the bounce fallback now
-  - leaving the native helper on the old raw activity-level PiP path
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation for `rerun223`
-- What is done but unverified:
-  - whether `rerun223` materially reduces the visible page/fullscreen walk after unlock
-- What is verified:
-  - `rerun223` compiles
-  - `rerun223` installs on `R9TRC00GA2E`
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 14:40]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock restore stabilization
-- Objective:
-  - Fix the narrower `rerun219` failure where unlock bounce returns to the YouTube page but does not automatically return to PiP.
-- Done:
-  - Collected fresh `rerun219` runtime evidence:
-    - `pip_after_unlock_rerun219.png`
-    - `tmp_toolbar_pip_logcat_rerun219.txt`
-    - `tmp_toolbar_pip_activities_rerun219.txt`
-    - `tmp_toolbar_pip_media_session_rerun219.txt`
-    - `tmp_toolbar_pip_windows_rerun219.txt`
-    - `window_dump_rerun219.xml`
-  - Confirmed from real logs that the bounce path is fronting the app/session successfully, but restore then loops with:
-    - `requested=true`
-    - `recent_fullscreen=false`
-    - `fullscreen=false`
-    - repeated `pip_restore_attempt:1`
-    - eventual `pip_restore_cleared:fullscreen_wait_timeout`
-  - Confirmed there is no fresh `fullscreen_script_result` during the failing restore window, which narrowed the bug to a stale fullscreen-request latch rather than another crash or dead media session.
-  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` so stale fullscreen requests are re-armed when `fullscreen_requested=true` but there is no recent effective fullscreen evidence.
-  - Synced Windows changes into ext4.
-  - Rebuilt successfully as `rerun220`.
-  - Installed `rerun220` on `R9TRC00GA2E`.
-  - Cleared device logcat for the next truth-check.
-- In progress:
-  - Waiting for one real manual PiP -> lock -> unlock validation pass on the already-installed `rerun220`.
-- Files touched:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun220` passed
-  - APK SHA-256: `03924ec5660c15ba85730294e43c6af089a274512e44e85cd4234f51fa178bfa`
-  - Install on `R9TRC00GA2E`: pass
-  - Runtime validation of `rerun220`: not yet done
-- Blockers/risks:
-  - Real unlock is still required because adb cannot bypass the Samsung secure keyguard.
-  - If `rerun220` still fails, the next seam is likely deeper than the fullscreen-request latch and may require compositor/media-layer evidence.
-- Next step:
-  - On `R9TRC00GA2E`, with `rerun220` already installed:
-    - open a YouTube watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-    - verify whether the app auto-returns to PiP instead of staying on the YouTube page
-  - If it still fails, collect `rerun220` screenshot/logcat/activity/media/window evidence immediately.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 14:40` entry
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `tmp_toolbar_pip_logcat_rerun219.txt`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun220.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `adb -s R9TRC00GA2E shell screencap -p /sdcard/pip_after_unlock_rerun219.png`
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_OneTabTubePerf:I chromium:I cr_*:I ActivityTaskManager:I WindowManager:I VideoPersist:I AndroidRuntime:E DEBUG:E *:S > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun219.txt`
-  - `adb -s R9TRC00GA2E shell dumpsys activity activities > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun219.txt`
-  - `adb -s R9TRC00GA2E shell dumpsys media_session > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_media_session_rerun219.txt`
-  - `adb -s R9TRC00GA2E shell dumpsys window windows > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun219.txt`
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun220.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Turn the live `rerun219` evidence into a narrow fullscreen re-arm fix and package it for the next device validation pass.
-- Tool state:
-  - No build is running.
-  - `rerun220` is installed on `R9TRC00GA2E`.
-  - Device logcat is cleared and ready for the next manual validation pass.
-- Expected resume command:
-  - If the user has already reproduced on `rerun220`, collect `rerun220` screenshot/logcat/activity/media/window evidence immediately.
-  - Otherwise ask for one manual PiP -> lock -> unlock pass on `rerun220`.
-- Expected output/artifact path:
-  - Build log: `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun220.log`
-  - APK: `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Future runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun220.png`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun220.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun220.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_media_session_rerun220.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun220.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - stale fullscreen-request re-arm
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - unlock-bounce and PiP restore orchestration
-  - `tmp_toolbar_pip_logcat_rerun219.txt` - strongest live evidence for the stale-request seam
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun220.log` - latest build evidence
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `tmp_toolbar_pip_logcat_rerun220.txt` if the next run has happened
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for one real PiP lock/unlock cycle
-- Expected success signal:
-  - `rerun220` preserves the no-crash state
-  - after unlock, the app auto-returns to PiP instead of getting stuck on the YouTube page
-- Expected failure signal:
-  - the app still lands on the YouTube page without returning to PiP
-  - logs still show stale fullscreen waits without a fresh fullscreen script result
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun220.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Use the exact `rerun219` logs as source of truth instead of guessing another activity-level fix.
-  - Patch the fullscreen injection latch instead of broadening the PiP lifecycle work again.
-- Rejected approaches:
-  - blindly reverting the unlock-bounce work
-  - patching more Activity lifecycle hooks before explaining why no new fullscreen request was being issued
-  - wholesale restoring Brave upstream PiP code
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation for `rerun220`
-- What is done but unverified:
-  - whether `rerun220` auto-returns to PiP after unlock without manual interaction
-- What is verified:
-  - `rerun219` no longer crashes and no longer stays in pure black PiP
-  - `rerun219` still gets stuck on the YouTube page after unlock
-  - `rerun219` can return to working PiP after later manual interaction
-  - `rerun220` builds and installs successfully
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked for the next truth-check
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 14:59]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock smoothness optimization
-- Objective:
-  - Keep the now-correct post-unlock PiP recovery, but reduce the visible multi-stage bounce so the flow stays closer to normal PiP behavior.
-- Done:
-  - Read the user's new runtime report:
-    - post-unlock recovery now completes all the way back to normal PiP
-    - but the sequence still looks slow and visibly step-based
-  - Re-read the existing restore-event ordering from `tmp_toolbar_pip_logcat_rerun219.txt` and confirmed the visible churn comes from:
-    - user-present fullscreen refresh
-    - immediate bounce scheduling
-    - fronting the task
-    - fullscreen request / restore loop
-    - PiP re-entry
-  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java` so:
-    - fullscreen requests are timestamped through a shared helper
-    - unlock bounce waits while a fresh fullscreen request is still settling
-    - unlock bounce is skipped if recent fullscreen evidence already exists
-    - fallback bounce delay is shortened so the fallback path is less visibly drawn out when it is still needed
-    - fullscreen repair uses the same shared helper for consistent timing
-  - Synced Windows changes into ext4.
-  - Rebuilt successfully as `rerun221`.
-  - Installed `rerun221` on `R9TRC00GA2E`.
-  - Cleared device logcat for the next truth-check.
-- In progress:
-  - Waiting for one real manual PiP -> lock -> unlock validation pass on the already-installed `rerun221`.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun221` passed
-  - APK SHA-256: `91a229324de90796236288cd1a24a8f487677fc1fdc971c9c92754c344911387`
-  - Install on `R9TRC00GA2E`: pass
-  - Runtime validation of `rerun221`: not yet done
-- Blockers/risks:
-  - Real unlock is still required because adb cannot bypass the Samsung secure keyguard.
-  - This round intentionally changes timing, so the main regression risk is losing the correctness we just recovered in `rerun220`.
-- Next step:
-  - On `R9TRC00GA2E`, with `rerun221` already installed:
-    - open a YouTube watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-    - verify whether recovery now stays closer to normal PiP and avoids the long visible staged bounce
-  - If it still feels stagey or regresses, collect `rerun221` screenshot/logcat/activity/media/window evidence immediately.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 14:59` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `tmp_toolbar_pip_logcat_rerun219.txt`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun221.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun221.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Shift unlock bounce from a first move to a true fallback and package that smoother timing as `rerun221`.
-- Tool state:
-  - No build is running.
-  - `rerun221` is installed on `R9TRC00GA2E`.
-  - Device logcat is cleared and ready for the next manual validation pass.
-- Expected resume command:
-  - If the user has already reproduced on `rerun221`, collect `rerun221` screenshot/logcat/activity/media/window evidence immediately.
-  - Otherwise ask for one manual PiP -> lock -> unlock pass on `rerun221`.
-- Expected output/artifact path:
-  - Build log: `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun221.log`
-  - APK: `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Future runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun221.png`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun221.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun221.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_media_session_rerun221.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_windows_rerun221.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - unlock-bounce fallback timing and gating
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - stale fullscreen-request re-arm
-  - `tmp_toolbar_pip_logcat_rerun219.txt` - strongest evidence of the old staged bounce sequence
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun221.log` - latest build evidence
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `tmp_toolbar_pip_logcat_rerun221.txt` if the next run has happened
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for one real PiP lock/unlock cycle
-- Expected success signal:
-  - `rerun221` keeps the now-correct post-unlock PiP recovery
-  - the visible restore stages are reduced compared with `rerun220`
-- Expected failure signal:
-  - regression back to getting stuck on the YouTube page / black PiP
-  - or no perceptible smoothness improvement because bounce is still being taken too often
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun221.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Treat `rerun220` as the correctness checkpoint and use the user's latest feedback to optimize feel rather than changing the architecture again.
-  - Keep Brave upstream as reference, but tune only the local fallback timing rather than importing more upstream PiP code wholesale.
-- Rejected approaches:
-  - declaring victory just because `rerun220` became correct
-  - broadening the Activity/controller changes before first tightening the obvious bounce timing
-  - trying to make the Chromium-based flow identical to the native YouTube app without first reducing the artificial waits we already control
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation for `rerun221`
-- What is done but unverified:
-  - whether `rerun221` actually feels smoother on real-device unlock
-- What is verified:
-  - `rerun220` reportedly restores back to working PiP after unlock
-  - `rerun221` builds and installs successfully
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked for the next truth-check
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 13:03]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock black-screen stabilization
-- Objective:
-  - Use the real `rerun215` evidence plus Brave GitHub upstream PiP code to choose the safest next repair step without reintroducing the old reflection crash path.
-- Done:
-  - Read `docs/current-status.md` and the latest progress entry first instead of re-scanning the repo.
-  - Confirmed the latest real-device result from the user on `R9TRC00GA2E`:
-    - `rerun215` no longer crashes after unlock
-    - PiP still goes black after unlock while audio keeps playing
-  - Verified and anchored the latest runtime evidence:
-    - `pip_after_unlock_rerun215.png`
-    - `tmp_toolbar_pip_logcat_rerun215.txt`
-    - `tmp_toolbar_pip_logcat_rerun215_videopersist.txt`
-    - `tmp_toolbar_pip_activities_rerun215.txt`
-    - `tmp_toolbar_pip_media_session_rerun215.txt`
-  - Confirmed from `dumpsys activity` that the app task remains alive in `mode=pinned`.
-  - Confirmed from `dumpsys media_session` that playback remains `PLAYING`.
-  - Confirmed from `cr_VideoPersist` logs that after unlock:
-    - `Effective video fullscreen change: false`
-    - `Suppress dismiss activity with reason 7 while PiP should persist.`
-  - Confirmed our current unlock refresh is still too weak because it ends with:
-    - `fullscreen_script_result result=timeout`
-  - Inspected Brave upstream PiP code on GitHub before choosing the next direction:
-    - `BraveFullscreenVideoPictureInPictureController.java` still uses `BraveReflectionUtil`
-    - `BraveFullscreenVideoPictureInPictureControllerClassAdapter.java` still redirects `dismissActivityIfNeeded(...)`
-  - Cross-checked local history and verified that this same reflection seam was intentionally removed here after causing the earlier `BraveReflectionUtil` / `NoSuchMethodException` PiP crash path.
-- In progress:
-  - Preparing the next narrow patch so controller-detected fullscreen loss can enter the existing `BraveActivity` retry-based repair path.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-  - `pip_after_unlock_rerun215.png`
-  - `tmp_toolbar_pip_logcat_rerun215.txt`
-  - `tmp_toolbar_pip_logcat_rerun215_videopersist.txt`
-  - `tmp_toolbar_pip_activities_rerun215.txt`
-  - `tmp_toolbar_pip_media_session_rerun215.txt`
-- Build/test status:
-  - `rerun215` remains the latest packaged and installed build
-  - APK SHA-256: `4c9d27aa7e97231273f20ae2514781eaf1fd24b67507fa64510c64bea505b0bf`
-  - Real-device status on `R9TRC00GA2E`:
-    - crash after unlock: fixed
-    - black PiP after unlock: still reproduces
-- Blockers/risks:
-  - Samsung secure keyguard still requires manual user unlock for every truth-check.
-  - Brave upstream still carries the reflection-based `dismissActivityIfNeeded` seam, so a wholesale upstream restore would risk reintroducing the old reflection crash path in this fork.
-  - The current failure seam is now narrower than “PiP generally broken”; it is specifically post-unlock fullscreen restoration while PiP remains alive.
-- Next step:
-  - Keep Brave GitHub as the reference source, but do not paste the whole upstream PiP bridge back in.
-  - Patch the controller/activity handoff so the suppressed post-unlock fullscreen-loss case uses the existing `BraveActivity` repair retry path.
-  - Then sync, rebuild as `rerun216`, install, and rerun the same PiP -> lock -> unlock validation on `R9TRC00GA2E`.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 13:03` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-  - `tmp_toolbar_pip_logcat_rerun215.txt`
-  - `tmp_toolbar_pip_logcat_rerun215_videopersist.txt`
-- Current tool(s):
-  - `shell_command`
-  - `web`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `Get-Content docs/current-status.md`
-  - `Get-Content docs/progress-log.md -Tail 120`
-  - `Get-Content android\\java\\org\\chromium\\chrome\\browser\\media\\BraveFullscreenVideoPictureInPictureController.java`
-  - `Get-Content build\\android\\bytecode\\java\\org\\brave\\bytecode\\BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-  - `rg -n "BraveReflectionUtil|NoSuchMethodException|dismissActivityIfNeeded|rerun207|rerun208|reflection" docs/progress-log.md`
-  - `rg -n "handleTransientPictureInPictureFullscreenLoss|onPictureInPictureFullscreenLost|schedulePictureInPictureFullscreenRepair|shouldSuppressProactivePictureInPictureFullscreenRepair|schedulePictureInPictureFullscreenRefreshAfterUserPresent" android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java`
-  - web open:
-    - `https://github.com/brave/brave-core/blob/master/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-    - `https://github.com/brave/brave-core/blob/master/build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-- Tool purpose:
-  - Verify the real failure seam and compare it against Brave upstream before choosing the next patch direction.
-- Tool state:
-  - No build currently running.
-  - `rerun215` still installed on `R9TRC00GA2E`.
-  - Latest runtime evidence and upstream code comparison are now captured.
-- Expected resume command:
-  - patch controller/activity handoff
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun216.log 2>&1"`
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun216.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun215.png`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun215.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun215_videopersist.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun215.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_media_session_rerun215.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - contains the retry-based fullscreen repair paths already designed for `lost_*` and `transient_*` reasons
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - suppresses dismiss while PiP should persist, but does not yet hand off into the retry loop
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` - local Brave wrapper still shows the upstream reflection-based helper shape
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java` - local bytecode adapter no longer redirects `dismissActivityIfNeeded(...)`
-  - `tmp_toolbar_pip_logcat_rerun215_videopersist.txt` - strongest proof of the current unlock-time failure seam
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `tmp_toolbar_pip_logcat_rerun215_videopersist.txt`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for one more real PiP lock/unlock validation after the next build
-- Expected success signal:
-  - next patch preserves the no-crash state from `rerun215`
-  - PiP video surface returns after unlock instead of staying black
-- Expected failure signal:
-  - reflection/assertion crash path comes back
-  - or PiP still stays black after unlock
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun215.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Keep the `rerun215` crash fix.
-  - Use Brave GitHub as reference before changing the next PiP seam.
-  - Do not restore the whole upstream PiP bridge because upstream still depends on the reflection seam already proven unstable in this fork.
-  - Prefer a narrow controller->repair-loop handoff over broad file replacement.
-- Rejected approaches:
-  - wholesale Brave-upstream PiP file replacement
-  - restoring the old `dismissActivityIfNeeded` owner redirect
-  - treating the remaining bug as generic PiP-entry failure instead of a post-unlock restoration failure
-- Stop point classification:
-  - desk state updated after targeted inspection; next step is code edit not yet applied
-- What is done but unverified:
-  - whether the next controller->repair-loop patch restores video after unlock
-- What is verified:
-  - `rerun215` removed the post-unlock crash regression
-  - `rerun215` still leaves PiP black after unlock while the app and playback stay alive
-  - Brave upstream currently still uses the reflection-based `dismissActivityIfNeeded` seam in its PiP bridge
-- External prerequisite:
-  - manual device unlock still required for the next truth-check
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 13:15]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock black-screen stabilization
-- Objective:
-  - Land the selective controller->repair-loop patch guided by Brave upstream and package it as `rerun216` for real-device validation.
-- Done:
-  - Patched the live ext4 `FullscreenVideoPictureInPictureController.java` to import `BraveActivity`.
-  - Added a narrow helper that asks `BraveActivity.shouldTreatPictureInPictureFullscreenLossAsTransient(...)` for `LEFT_FULLSCREEN` / `WEB_CONTENTS_LEFT_FULLSCREEN`.
-  - When BraveActivity marks the fullscreen-loss event as transient, the controller now calls `BraveActivity.handleTransientPictureInPictureFullscreenLoss(reason)` before returning.
-  - Kept the local “suppress dismiss while PiP should persist” behavior.
-  - Mirrored the same logic into the tracked repo patch mirror:
-    - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-  - Ran Windows -> WSL sync.
-  - Rebuilt successfully as `rerun216`.
-  - Installed `rerun216` on `R9TRC00GA2E`.
-  - Cleared device logcat for the next validation pass.
-- In progress:
-  - Waiting for one real PiP -> lock -> unlock validation pass on the already-installed `rerun216`.
-- Files touched:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun216` passed
-  - APK SHA-256: `89a33b2eea041c0bccc2155516094448f9c1e66bab55a95e956fdaf95b46101e`
-  - Install status on `R9TRC00GA2E`: pass
-  - Runtime status: not yet validated on `rerun216`
-- Blockers/risks:
-  - Manual user unlock is still required for truth-checking this issue.
-  - If the transient handoff is still insufficient, PiP may remain black even though task/media survive.
-  - If the patch is too aggressive, it could regress into a new lifecycle loop or crash path.
-- Next step:
-  - On `R9TRC00GA2E`, with `rerun216` already installed:
-    - open a YouTube watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-    - observe whether video returns or PiP is still black
-  - If it still fails, collect:
-    - `pip_after_unlock_rerun216.png`
-    - `tmp_toolbar_pip_logcat_rerun216.txt`
-    - `tmp_toolbar_pip_activities_rerun216.txt`
-    - `tmp_toolbar_pip_media_session_rerun216.txt`
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 13:15` entry
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun216.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun216.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Package the first selective Brave-upstream-guided repair for unlock-time fullscreen loss without restoring the old reflection seam.
-- Tool state:
-  - No build is currently running.
-  - `rerun216` is installed on `R9TRC00GA2E`.
-  - Device logcat is clear for the next manual run.
-- Expected resume command:
-  - collect `rerun216` runtime evidence if the symptom still reproduces
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun216.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - now routes transient fullscreen-loss events into BraveActivity repair logic
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - still owns the retry-based repair loop
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch` - tracked mirror of the controller change
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun216.log` - latest build evidence
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `tmp_toolbar_pip_logcat_rerun216.txt` if the next manual run has happened
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for one real PiP lock/unlock validation
-- Expected success signal:
-  - `rerun216` preserves the no-crash state and restores video after unlock
-- Expected failure signal:
-  - PiP still black after unlock
-  - or a new lifecycle/crash regression appears
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun216.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Use Brave GitHub as reference, not as a wholesale replacement source for the PiP bridge.
-  - Keep the local no-reflection seam decision.
-  - Route unlock-time transient fullscreen loss into the existing BraveActivity retry loop.
-- Rejected approaches:
-  - restore the upstream `dismissActivityIfNeeded` reflection redirect
-  - replace the whole PiP stack with upstream Brave code
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation for `rerun216`
-- What is done but unverified:
-  - whether `rerun216` restores video after unlock
-- What is verified:
-  - patch compiled
-  - APK packaged
-  - APK installed successfully
-- External prerequisite:
-  - manual device lock/unlock still required
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 13:32]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock crash-and-black-screen stabilization
-- Objective:
-  - Package and validate an automatic post-unlock bounce fallback based on the user's proven manual expand/recover behavior.
-- Done:
-  - Recorded the latest real-device truth from the user on `rerun216`:
-    - PiP still black after unlock
-    - but tapping expand from PiP takes the app fullscreen and then returns to a working PiP surface
-  - Interpreted that as new evidence that the stable recovery path is `fullscreen resume -> PiP re-entry`, not only in-place fullscreen repair while pinned.
-  - Patched [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java) to add an automatic post-unlock bounce fallback:
-    - schedule a one-shot fallback after the normal unlock refresh
-    - only run it when PiP is still active and fullscreen/video is still missing
-    - arm the existing PiP restore state
-    - move the current task to the foreground through `ActivityManager.AppTask.moveToFront()`
-    - let the existing restore path re-enter PiP automatically
-  - Synced Windows -> WSL.
-  - Rebuilt successfully as `rerun217`.
-  - Installed `rerun217` on `R9TRC00GA2E`.
-  - Cleared device logcat for the next validation pass.
-- In progress:
-  - Waiting for one real PiP -> lock -> unlock validation pass on the already-installed `rerun217`.
-- Files touched:
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-- Build/test status:
-  - `rerun217` passed
-  - APK SHA-256: `a37041de9571b0b9cb58c9a41888a6057f7c7e600c88194fe1aaf3312473e5e9`
-  - Install status on `R9TRC00GA2E`: pass
-  - Runtime status: not yet validated on `rerun217`
-- Blockers/risks:
-  - Manual user unlock is still required for truth-checking this issue.
-  - If the bounce fallback is insufficient, PiP may remain black even after the app is foregrounded and re-entered.
-  - If the bounce fallback is too aggressive, the user may see a visible fullscreen flicker.
-- Next step:
-  - On `R9TRC00GA2E`, with `rerun217` already installed:
-    - open a YouTube watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-    - observe whether video returns or PiP is still black
-  - If it still fails, collect:
-    - `pip_after_unlock_rerun217.png`
-    - `tmp_toolbar_pip_logcat_rerun217.txt`
-    - `tmp_toolbar_pip_activities_rerun217.txt`
-    - `tmp_toolbar_pip_media_session_rerun217.txt`
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this `2026-04-02 13:32` entry
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun217.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun217.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Turn the user-proven manual recovery path into an automatic recovery path for the next PiP validation round.
-- Tool state:
-  - No build is currently running.
-  - `rerun217` is installed on `R9TRC00GA2E`.
-  - Device logcat is clear for the next manual run.
-- Expected resume command:
-  - collect `rerun217` runtime evidence if the symptom still reproduces
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun217.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java) - now owns the automatic post-unlock bounce fallback
-  - [FullscreenVideoPictureInPictureController.java](//wsl.localhost/Ubuntu/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java) - still owns the transient fullscreen-loss handoff
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun217.log` - latest build evidence
-  - [tmp_toolbar_pip_logcat_rerun215_videopersist.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun215_videopersist.txt) - key prior evidence for the unlock-time failure seam
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [tmp_toolbar_pip_logcat_rerun217.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun217.txt) if the next manual run has happened
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for one real PiP lock/unlock validation
-- Expected success signal:
-  - `rerun217` preserves the no-crash state and restores video after unlock
-- Expected failure signal:
-  - PiP still black after unlock
-  - or a new lifecycle/crash regression appears
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun217.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Use Brave GitHub as reference, not as a wholesale replacement source for the PiP bridge.
-  - Keep the local no-reflection seam decision.
-  - Use the user-proven manual expand/recover behavior as the next engineering clue.
-  - Implement the next step as an automatic fullscreen-bounce fallback instead of only retrying fullscreen repair while still pinned.
-- Rejected approaches:
-  - restore the upstream `dismissActivityIfNeeded` reflection redirect
-  - replace the whole PiP stack with upstream Brave code
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation for `rerun217`
-- What is done but unverified:
-  - whether `rerun217` restores video after unlock
-- What is verified:
-  - patch compiled
-  - APK packaged
-  - APK installed successfully
-  - user-confirmed manual expand from black PiP recovers video and returns to working PiP
-- External prerequisite:
-  - manual device lock/unlock still required
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 13:53]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock crash-and-black-screen stabilization
-- Objective:
-  - Fix the restore-path seam in the automatic bounce fallback so it re-enters PiP through the video-focused pipeline.
-- Done:
-  - Recorded the user's latest real-device finding on `rerun217`:
-    - PiP still black after unlock
-    - the bounce path appears to restore the app/page, but it still does not focus the fullscreen video correctly
-  - Read the restore logic in [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java) and found that `maybeRestorePictureInPictureOnResume()` was still calling `enterPictureInPictureMode(params)` directly on Android S+.
-  - Treated that direct raw PiP entry as the likely source of “whole page PiP” instead of “video-focused PiP”.
-  - Patched `maybeRestorePictureInPictureOnResume()` so Android S+ restore now:
-    - waits for fullscreen video or recent fullscreen evidence
-    - routes back through `requestSystemPictureInPictureForCurrentVideo(...)`
-    - avoids direct whole-activity `enterPictureInPictureMode(params)` during the restore bounce
-  - Synced Windows -> WSL.
-  - Rebuilt successfully as `rerun218`.
-  - Installed `rerun218` on `R9TRC00GA2E`.
-  - Cleared device logcat for the next validation pass.
-- In progress:
-  - Waiting for one real PiP -> lock -> unlock validation pass on the already-installed `rerun218`.
-- Files touched:
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-- Build/test status:
-  - `rerun218` passed
-  - APK SHA-256: `4c43285674640a84cc7d7bf2e94ff9210a12f53df5ac23290195866cac199daa`
-  - Install status on `R9TRC00GA2E`: pass
-  - Runtime status: not yet validated on `rerun218`
-- Blockers/risks:
-  - Manual user unlock is still required for truth-checking this issue.
-  - If the restore-path fix is still insufficient, PiP may remain black even though the re-entry path is now more video-focused.
-  - The bounce fallback may still produce visible fullscreen flicker.
-- Next step:
-  - On `R9TRC00GA2E`, with `rerun218` already installed:
-    - open a YouTube watch page
-    - enter PiP
-    - lock the phone
-    - unlock it
-    - observe whether video returns or PiP is still black
-  - If it still fails, collect:
-    - `pip_after_unlock_rerun218.png`
-    - `tmp_toolbar_pip_logcat_rerun218.txt`
-    - `tmp_toolbar_pip_activities_rerun218.txt`
-    - `tmp_toolbar_pip_media_session_rerun218.txt`
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this `2026-04-02 13:53` entry
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun218.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun218.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Fix the restore-path seam that still looked like whole-page PiP during the bounce recovery path.
-- Tool state:
-  - No build is currently running.
-  - `rerun218` is installed on `R9TRC00GA2E`.
-  - Device logcat is clear for the next manual run.
-- Expected resume command:
-  - collect `rerun218` runtime evidence if the symptom still reproduces
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun218.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java) - now contains the corrected Android S+ restore path
-  - [FullscreenVideoPictureInPictureController.java](//wsl.localhost/Ubuntu/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java) - still owns the transient fullscreen-loss handoff
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun218.log` - latest build evidence
-  - [tmp_toolbar_pip_logcat_rerun215_videopersist.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun215_videopersist.txt) - prior evidence for the unlock-time failure seam
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [tmp_toolbar_pip_logcat_rerun218.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun218.txt) if the next manual run has happened
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available for one real PiP lock/unlock validation
-- Expected success signal:
-  - `rerun218` preserves the no-crash state and restores video after unlock
-- Expected failure signal:
-  - PiP still black after unlock
-  - or a new lifecycle/crash regression appears
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun218.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Use Brave GitHub as reference, not as a wholesale replacement source for the PiP bridge.
-  - Keep the local no-reflection seam decision.
-  - Use the user-proven manual expand/recover behavior as the next engineering clue.
-  - Fix the restore seam so the automatic bounce re-enters PiP through the video-focused pipeline on Android S+.
-- Rejected approaches:
-  - restore the upstream `dismissActivityIfNeeded` reflection redirect
-  - replace the whole PiP stack with upstream Brave code
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation for `rerun218`
-- What is done but unverified:
-  - whether `rerun218` restores video after unlock
-- What is verified:
-  - patch compiled
-  - APK packaged
-  - APK installed successfully
-  - user-confirmed manual expand from black PiP recovers video and returns to working PiP
-- External prerequisite:
-  - manual device lock/unlock still required
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 12:05]
-- Phase:
-  - Phase 7 - Validation / PiP black-screen-after-unlock stabilization
-- Objective:
-  - Use the user-recorded `rerun212` evidence to stop guessing, identify the real post-unlock black-PiP failure layer, and patch the live controller that owns persistent-video state.
-- Done:
-  - Read the latest desk state instead of re-scanning the repo.
-  - Waited for the user-completed screen recording and pulled `pip_unlock_rerun212.mp4`.
-  - Generated and reviewed `pip_unlock_rerun212_contact.png`; it shows launcher/home, black PiP, and later partial-return video frames, confirming the problem is visual/compositor state rather than a dead session.
-  - Collected fresh `rerun212` evidence:
-    - `pip_after_unlock_rerun212.png`
-    - `tmp_toolbar_pip_logcat_rerun212.txt`
-    - `tmp_toolbar_pip_activities_rerun212.txt`
-    - `tmp_toolbar_pip_media_session_rerun212.txt`
-  - Verified from the real logs that:
-    - PiP entered normally on `rerun212`
-    - `screen_off` happened while `pip=true`
-    - WindowManager destroyed the OneTabTube main surface while PiP remained active
-    - after wake/unlock the activity resumed with `pip=true`, so the visual failure is a video-surface rebind problem, not the old crash path
-  - Re-checked Brave upstream directly for the PiP wrapper and helper files before changing behavior further.
-  - Patched the live ext4 Chromium controller `FullscreenVideoPictureInPictureController.java` to reassert persistent video on `onStart()` and `onResume()` while the activity is still in PiP.
-  - Mirrored that controller change into tracked repo state via `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`.
-  - Rebuilt successfully as `rerun213`.
-  - Installed `rerun213` on `R9TRC00GA2E`.
-- In progress:
-  - Waiting on one real manual PiP lock/unlock run on `rerun213`.
-- Files touched:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `pip_unlock_rerun212.mp4`
-  - `pip_unlock_rerun212_contact.png`
-  - `pip_after_unlock_rerun212.png`
-  - `tmp_toolbar_pip_logcat_rerun212.txt`
-  - `tmp_toolbar_pip_activities_rerun212.txt`
-  - `tmp_toolbar_pip_media_session_rerun212.txt`
-- Build/test status:
-  - `rerun213` passed
-  - APK SHA-256: `a0b775b1f5d20d903a4b63aa63de015a58a84bdb913fac998eb486574c9f02f0`
-  - install on `R9TRC00GA2E`: pass
-  - runtime validation of the new fix: pending
-- Blockers/risks:
-  - Samsung secure keyguard still requires manual unlock for a truthful post-unlock validation pass.
-  - If `rerun213` still fails, the next suspect is the fullscreen/video-focus restoration layer, not the persistent-video owner alone.
-- Next step:
-  - Run a real manual PiP lock/unlock cycle on `rerun213`.
-  - If it still fails, immediately capture `pip_after_unlock_rerun213.png`, `tmp_toolbar_pip_logcat_rerun213.txt`, `tmp_toolbar_pip_activities_rerun213.txt`, and `tmp_toolbar_pip_media_session_rerun213.txt`.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 12:05` entry
-  - `pip_unlock_rerun212_contact.png`
-  - `tmp_toolbar_pip_logcat_rerun212.txt`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun213.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-  - `view_image`
-- Exact command(s):
-  - `adb -s R9TRC00GA2E pull /sdcard/pip_unlock_rerun212.mp4 C:\Users\Master\Desktop\GO_PLAY\pip_unlock_rerun212.mp4`
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_OneTabTubePerf:I chromium:I cr_*:I ActivityTaskManager:I WindowManager:I VideoPersist:I *:S > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun212.txt`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun213.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-- Tool purpose:
-  - Prove the black-PiP issue is a controller-owned persistent-video/surface problem and ship a build that tests that fix directly on hardware.
+  - Move the toolbar PiP entry path onto the standard video PiP API and prepare a clean runtime test.
 - Tool state:
   - No build running.
-  - `rerun213` is installed on `R9TRC00GA2E`.
+  - New APK installed and launchable.
 - Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - run the manual `rerun213` lock/unlock flow
-  - collect fresh evidence if still broken
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - then manual toolbar PiP tap
 - Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun213.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_video_pip_request.log`
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun213.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun213.txt`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - live persistent-video reassert fix
-  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch` - tracked mirror of that fix
-  - `pip_unlock_rerun212_contact.png` - visual proof of black PiP plus partial later recovery
-  - `tmp_toolbar_pip_logcat_rerun212.txt` - proof that the main activity surface is destroyed while PiP remains active
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun213.log` - latest successful build log
+  - `BraveToolbarLayoutImpl.java` - toolbar PiP action wiring
+  - `BraveYouTubeScriptInjectorNativeHelper.java` - Java native bridge
+  - `brave_youtube_script_injector_native_helper.cc` - JNI forwarding
+  - `youtube_script_injector_tab_helper.h/.cc` - standard video PiP request script and callback
 - Files to inspect first after resume:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `pip_unlock_rerun212_contact.png`
-  - `tmp_toolbar_pip_logcat_rerun212.txt`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_video_pip_request.log`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
+  - build root:
+    - `/home/master/src_ext4`
 - Prerequisites before command:
-  - WSL/ext4 reachable
-  - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device authorized
-  - user available to run one real PiP lock/unlock cycle
-- Expected success signal:
-  - PiP shows live video after unlock on `rerun213`
-  - no fresh crash
-  - no black-window screenshot repro
-- Expected failure signal:
-  - PiP remains black after unlock
-  - fresh screenshot/logs still show the video surface not rebinding
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun213.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Move from `BraveActivity` churn suppression down to the controller that owns `setHasPersistentVideo(true)`.
-  - Keep the earlier crash fix intact and avoid adding another local PiP entry hack.
-- Rejected approaches:
-  - re-scanning the repo from scratch
-  - assuming the black PiP means the session died
-  - adding another direct-entry workaround without using the new evidence
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation
-- What is done but unverified:
-  - whether `rerun213` fixes the black-PiP-after-unlock symptom
-- What is verified:
-  - `rerun212` still blacks out after unlock
-  - the activity surface is destroyed during `screen_off` while PiP remains active
-  - `rerun213` builds and installs successfully
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked/unlocked again
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 12:22]
-- Phase:
-  - Phase 7 - Validation / PiP black-screen-after-unlock stabilization
-- Objective:
-  - Bring the recorded desk state back in sync with reality, validate the new `rerun214` post-unlock fullscreen-refresh build on `R9TRC00GA2E`, and be ready to pivot to unlock-specific fullscreen-repair retries if the black PiP symptom still holds.
-- Done:
-  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching anything else.
-  - Verified the recorded snapshot was stale at `rerun213`, while the actual workspace already contained:
-    - the `ACTION_USER_PRESENT` fullscreen-refresh change in `BraveActivity.java`
-    - a successful `rerun214` build log
-  - Confirmed the `rerun214` build log ends successfully at `chrome_public_apk__create`.
-  - Computed the current APK hash:
-    - `a8e15e091935481acdfca83c9a2c03ebe80f1e96817f780ad65c89671366a15e`
-  - Installed the `rerun214` APK on `R9TRC00GA2E`.
-  - Cleared device logcat to prepare a clean next validation run.
-  - Re-reviewed prior evidence:
-    - `pip_after_unlock_rerun213.png`
-    - `pip_unlock_rerun212_contact.png`
-    - `tmp_toolbar_pip_logcat_rerun213.txt`
-  - Updated `docs/current-status.md` to reflect the real `rerun214` desk state.
-- In progress:
-  - Waiting for one real manual PiP lock/unlock pass on the already-installed `rerun214`.
-  - Holding the next narrow patch plan in reserve:
-    - if `rerun214` is still black, switch from one-shot `user_present` fullscreen refresh to a selective retry-based fullscreen repair that is allowed to run while PiP remains active after unlock.
-- Files touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - [pip_after_unlock_rerun213.png](C:/Users/Master/Desktop/GO_PLAY/pip_after_unlock_rerun213.png)
-  - [tmp_toolbar_pip_logcat_rerun213.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun213.txt)
-- Build/test status:
-  - Latest verified packaged build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun214.log 2>&1"`
-  - Latest APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Latest APK SHA-256:
-    - `a8e15e091935481acdfca83c9a2c03ebe80f1e96817f780ad65c89671366a15e`
-  - Install status on `R9TRC00GA2E`:
-    - pass
-  - Runtime status:
-    - `rerun213` still black after unlock
-    - `rerun214` installed, not yet manually verified
-- Blockers/risks:
-  - adb still cannot bypass the secure Samsung keyguard, so the next truth-check requires a real manual unlock.
-  - The `ACTION_USER_PRESENT` one-shot refresh may still run too early if the page is still hidden when unlock completes.
-  - The existing fullscreen repair loop still suppresses proactive repairs while PiP is active, so the next likely code move is a selective unlock-specific bypass, not a generic global change.
-- Next step:
-  - Have the user run the normal PiP -> lock -> unlock flow on `rerun214`.
-  - If it still fails, immediately collect:
-    - `pip_after_unlock_rerun214.png`
-    - `tmp_toolbar_pip_logcat_rerun214.txt`
-    - `tmp_toolbar_pip_activities_rerun214.txt`
-    - `tmp_toolbar_pip_media_session_rerun214.txt`
-  - Then patch unlock-specific fullscreen-repair retries if the evidence still shows active audio with a black PiP tile.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this `2026-04-02 12:22` entry
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [pip_after_unlock_rerun213.png](C:/Users/Master/Desktop/GO_PLAY/pip_after_unlock_rerun213.png)
-  - [tmp_toolbar_pip_logcat_rerun213.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun213.txt)
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun214.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-  - `view_image`
-- Exact command(s):
-  - `Get-Content -Path 'C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md' -TotalCount 250`
-  - `Get-Content -Path 'C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md' -Tail 220`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && tail -n 60 out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun214.log"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Re-anchor the live workspace to the real build/install state and keep the next PiP investigation tied to the correct candidate APK.
-- Tool state:
-  - No build currently running.
-  - `rerun214` is installed and waiting for manual validation.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_OneTabTubePerf:I chromium:I cr_*:I ActivityTaskManager:I WindowManager:I VideoPersist:I *:S > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun214.txt`
-  - plus the screenshot / dumpsys commands if the symptom reproduces again
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun214.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun214.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun214.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_media_session_rerun214.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
-  - [tmp_toolbar_pip_logcat_rerun213.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun213.txt)
-  - [pip_after_unlock_rerun213.png](C:/Users/Master/Desktop/GO_PLAY/pip_after_unlock_rerun213.png)
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun214.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [pip_after_unlock_rerun214.png](C:/Users/Master/Desktop/GO_PLAY/pip_after_unlock_rerun214.png) if created
-  - [tmp_toolbar_pip_logcat_rerun214.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun214.txt) if created
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to perform one real PiP lock/unlock cycle
-- Expected success signal:
-  - `rerun214` shows live video in PiP after unlock
-  - no fresh crash logs
-- Expected failure signal:
-  - `rerun214` still shows a black PiP tile after unlock
-  - logs show `user_present` while PiP stays active but no durable fullscreen/video rebind follows
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun214.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Use the actual build/artifact state as source of truth over the stale `rerun213` snapshot.
-  - Validate the narrow `rerun214` unlock refresh before widening the patch surface.
-  - Keep the likely next fix focused on unlock-specific fullscreen-repair retries if needed.
-- Rejected approaches:
-  - repo-wide re-inspection
-  - assuming the `rerun214` artifact was already installed
-  - jumping straight to a large PiP rewrite without validating the narrow change
-- Stop point classification:
-  - build passed, APK installed, waiting on manual runtime validation
-- What is done but unverified:
-  - whether `rerun214` fixes the black-PiP-after-unlock symptom
-  - whether unlock-specific retry repair is required next
-- What is verified:
-  - `rerun214` build passed
-  - `rerun214` APK hash computed
-  - `rerun214` installed successfully
-  - prior `rerun213` evidence still shows active PiP/audio with wrong visuals rather than a dead session
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked for the next validation
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 12:49]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock crash-and-black-screen stabilization
-- Objective:
-  - Remove the new unlock crash regression introduced in `rerun214`, then return to measuring the original black-PiP symptom on a non-crashing build.
-- Done:
-  - Collected live crash output after the user reported the app now crashes after unlock.
-  - Confirmed the new regression is a native fatal:
-    - abort message:
-      - `[FATAL:content/browser/media/media_web_contents_observer.cc:325] Check failed: fullscreen_player_.has_value().`
-    - top native frame:
-      - `content::MediaWebContentsObserver::IsPictureInPictureAllowedForFullscreenVideo() const`
-  - Inspected the live code path and found the narrow Java trigger in `BraveActivity.java`:
-    - `logPictureInPictureAttemptState(...)` was still calling `webContents.isPictureInPictureAllowedForFullscreenVideo()`
-    - `rerun214` added new `logPictureInPictureAttemptState(...)` calls on the `ACTION_USER_PRESENT` path
-    - Chromium asserts if that allowance query is made before `fullscreen_player_` exists
-  - Patched `BraveActivity.java` so the diagnostic log only queries PiP allowance when `hasFullscreenVideo` is already true.
-  - Synced Windows changes into ext4.
-  - Rebuilt successfully as `rerun215`.
-  - Installed `rerun215` on `R9TRC00GA2E`.
-  - Cleared device logcat for the next clean run.
-  - Updated `docs/current-status.md` to reflect the new `rerun215` desk state.
-- In progress:
-  - Waiting for the next real manual PiP -> lock -> unlock validation pass on `rerun215`.
-  - If the crash is gone, the next focus is back to the remaining black-PiP visual issue.
-- Files touched:
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [tmp_toolbar_pip_logcat_rerun214_crash.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun214_crash.txt)
-- Build/test status:
-  - Latest verified packaged build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun215.log 2>&1"`
-  - Latest APK SHA-256:
-    - `4c9d27aa7e97231273f20ae2514781eaf1fd24b67507fa64510c64bea505b0bf`
-  - Install status:
-    - pass on `R9TRC00GA2E`
-  - Runtime truth so far:
-    - `rerun213` = black PiP after unlock, no crash
-    - `rerun214` = new crash regression after unlock
-    - `rerun215` = installed, not yet manually validated
-- Blockers/risks:
-  - The unlock crash and the original black-PiP bug are now two separate truths; we must not mix them up in later reasoning.
-  - adb still cannot bypass secure Samsung keyguard, so physical manual unlock remains required.
-  - `rerun215` only fixes the crash trigger from diagnostics; it does not yet claim to solve the original visual PiP restore issue.
-- Next step:
-  - Have the user run the standard PiP -> lock -> unlock flow on `rerun215`.
-  - If it still fails, immediately collect:
-    - `pip_after_unlock_rerun215.png`
-    - `tmp_toolbar_pip_logcat_rerun215.txt`
-    - `tmp_toolbar_pip_activities_rerun215.txt`
-    - `tmp_toolbar_pip_media_session_rerun215.txt`
-  - If the crash is gone but the PiP tile is still black, continue with unlock-specific fullscreen-repair retries.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this `2026-04-02 12:49` entry
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun215.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `adb -s R9TRC00GA2E logcat -b crash -d`
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_OneTabTubePerf:I chromium:I ActivityTaskManager:I WindowManager:I AndroidRuntime:E DEBUG:E *:S`
-  - `adb -s R9TRC00GA2E shell dumpsys activity activities`
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun215.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E logcat -c`
-- Tool purpose:
-  - Remove the crash regression with the smallest possible code change, then restore the investigation to the original visual PiP problem.
-- Tool state:
-  - No build currently running.
-  - `rerun215` is installed and waiting for manual validation.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_OneTabTubePerf:I chromium:I cr_*:I ActivityTaskManager:I WindowManager:I VideoPersist:I AndroidRuntime:E DEBUG:E *:S > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun215.txt`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun215.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun215.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun215.txt`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_media_session_rerun215.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun215.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
-  - [tmp_toolbar_pip_logcat_rerun215.txt](C:/Users/Master/Desktop/GO_PLAY/tmp_toolbar_pip_logcat_rerun215.txt) if created
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized
-  - user available to perform one real PiP lock/unlock cycle
-- Expected success signal:
-  - no post-unlock crash on `rerun215`
-  - next observed outcome is either normal PiP video or the older black-PiP symptom
-- Expected failure signal:
-  - post-unlock crash still occurs
-  - crash buffer still points to fullscreen-player PiP-allowance assertion
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun215.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Separate the new crash regression from the original black-PiP bug.
-  - Fix the crash at the Java caller instead of changing core PiP behavior again.
-- Rejected approaches:
-  - undoing all PiP work without tracing the crash
-  - treating the crash as the same root cause as the earlier black screen
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting on manual runtime validation
-- What is done but unverified:
-  - whether `rerun215` removes the crash regression
-  - whether the older black-PiP issue still remains once the crash is gone
-- What is verified:
-  - live crash output implicated `IsPictureInPictureAllowedForFullscreenVideo()`
-  - the Java diagnostic call site was patched narrowly
-  - `rerun215` builds and installs successfully
-- External prerequisite:
-  - physical device `R9TRC00GA2E` must be manually locked and unlocked for the next validation
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 10:57]
-- Phase:
-  - Phase 7 - Validation / PiP black-screen-after-unlock stabilization
-- Objective:
-  - Keep the post-unlock crash fix, then remove the remaining black/clipped PiP surface by aligning the implementation back toward Brave upstream instead of layering on more local PiP behavior.
-- Done:
-  - Read `docs/current-status.md` and the latest progress entry before doing any new work.
-  - Verified the new symptom is not a crash regression: the pinned task stays alive and the media session remains `PLAYING` while the user sees a black PiP window.
-  - Captured fresh visual evidence in `pip_black_live2.png`; the PiP window is clipped with only a narrow strip of video still visible on the right side.
-  - Compared the current `BraveActivity.java` PiP path against `brave-core/master` directly.
-  - Confirmed two local divergences from Brave upstream that were relevant to the symptom:
-    - OneTabTube-specific `autoEnter` / `seamlessResize` PiP params
-    - proactive `schedulePictureInPictureFullscreenRepair(...)` running while the activity is already in PiP
-  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java` so:
-    - `buildPictureInPictureParams()` now returns a plain upstream-style builder
-    - proactive fullscreen repair is suppressed during active PiP unless the reason is an actual loss/transient-loss path
-  - Synced Windows changes into ext4.
-  - Rebuilt successfully as `rerun209`, then again as `rerun210` after the second narrow repair suppression patch.
-  - Installed `rerun210` on `R9TRC00GA2E`.
-- In progress:
-  - Waiting for a real manual PiP lock/unlock run on `rerun210` to verify whether the clipped black PiP surface is gone.
-  - Direct PiP re-entry was not re-verified in this round because the visible PiP affordance was not present in the current non-fullscreen watch-page layout, and the debug broadcast did not force entry from that state.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `pip_black_live2.png`
-  - `pip_rerun209_prelock.png`
-  - `pip_rerun209_debugpip.png`
-- Build/test status:
-  - `rerun209` passed
-  - `rerun210` passed
-  - latest APK SHA-256: `651e26cc51878de6111ecdb7f0cbf0162cebffe7883ad8e36adf844c4b990d7d`
-  - install on `R9TRC00GA2E`: pass
-  - runtime truth before `rerun210`: PiP task alive + media session playing, but visual PiP surface clipped/black
-- Blockers/risks:
-  - adb still cannot bypass the secure Samsung keyguard, so the next truth-check requires a real manual lock/unlock.
-  - If `rerun210` still shows a black/clipped PiP, the next suspect remains the broader local restore/repair layer in `BraveActivity.java`.
-- Next step:
-  - Have the user run the real PiP lock/unlock flow on `rerun210`.
-  - Immediately collect:
-    - `pip_after_unlock_rerun210.png`
-    - `tmp_toolbar_pip_logcat_rerun210.txt`
-    - `tmp_toolbar_pip_activities_rerun210.txt`
-  - If the PiP window still clips, inspect the remaining restore/repair hooks before making another code change.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 10:57` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `pip_black_live2.png`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun210.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `git show brave-core/master:android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun210.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E shell screencap -p /sdcard/pip_black_live2.png`
-  - `adb -s R9TRC00GA2E pull /sdcard/pip_black_live2.png C:\Users\Master\Desktop\GO_PLAY\pip_black_live2.png`
-- Tool purpose:
-  - Narrow the PiP fix back toward Brave upstream and validate it with real-device evidence instead of guesswork.
-- Tool state:
-  - No build running.
-  - `rerun210` installed on device.
-  - Waiting on manual runtime validation.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - run the user-triggered PiP lock/unlock flow
-  - collect screenshot/log/activity evidence
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun210.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun210.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - latest upstream-alignment fixes for PiP params and repair suppression
-  - `pip_black_live2.png` - best evidence of the pre-fix clipped PiP window
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun210.log` - latest passing build
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` - latest installed APK
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `pip_after_unlock_rerun210.png` if it exists
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 reachable
+  - ext4 checkout reachable
   - `PYTHONPATH=/home/master/src_ext4/brave/script`
   - device `R9TRC00GA2E` connected and authorized
-  - user available for one real unlock step
 - Expected success signal:
-  - PiP renders normally after unlock on `rerun210`
-  - no new fatal in crash buffer
+  - toolbar PiP enters a video-focused PiP window
+  - log contains `result=entered`
 - Expected failure signal:
-  - screenshot still shows clipped/black PiP
-  - PiP restore/repair logs still point to a visual-state corruption path
+  - no PiP / wrong PiP / log contains `unsupported`, `no_video`, `request_api_missing`, or `error:...`
 - Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun210.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_video_pip_request.log`
 - Last known artifact path:
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Recent decisions:
-  - Treat the black PiP as a visual clipping problem rather than reopening the already-fixed crash path.
-  - Use `brave-core/master` as the source of truth for the next PiP behavior correction.
-  - Fix the params divergence first, then suppress local proactive fullscreen repair during active PiP.
+  - Stop using whole-page activity PiP as the primary toolbar path.
+  - Prefer standard video PiP API before adding any fallback.
 - Rejected approaches:
-  - adding more local PiP hacks before checking Brave upstream
-  - trusting lockscreen-only evidence without a new screenshot
-  - calling the issue fixed before a real manual unlock retest
+  - immediate fallback to fullscreen-first
+  - YouTube-internal PiP button selector hacks
 - Stop point classification:
-  - code edited, build passed, APK installed, waiting for manual runtime retest
+  - code edited, synced, build passed, APK installed, warm launch verified, runtime standard-video-PiP behavior not yet verified
 - What is done but unverified:
-  - whether `rerun210` resolves the clipped black PiP after unlock
+  - actual user-visible PiP behavior of the new standard path
 - What is verified:
-  - `rerun210` builds and installs
-  - the earlier crash fix remains in place
-  - the pre-fix symptom is visual clipping/black PiP with live audio
+  - previous direct activity PiP path caused whole-page PiP
+  - new standard path compiles and installs
 - External prerequisite:
-  - manual PiP lock/unlock run on `R9TRC00GA2E`
+  - physical device `R9TRC00GA2E` required for runtime validation
 - Secret required but not stored:
-  - device lock credential intentionally not stored
+  - none
 
-## [2026-04-02 11:31]
+## [2026-04-03 11:34]
 - Phase:
-  - Phase 7 - Validation / active-PiP restore churn suppression
+  - Phase 7 - Validation / PiP direct-entry refinement
 - Objective:
-  - Follow up on the real `rerun210` unlock evidence and stop the local restore lifecycle from mutating PiP when the session is already pinned and healthy.
+  - Remove the fullscreen-first hop from the toolbar PiP entry path without disturbing the existing recovery flow.
 - Done:
-  - Collected real post-unlock evidence from `rerun210`:
-    - `pip_after_unlock_rerun210.png`
-    - `tmp_toolbar_pip_logcat_rerun210.txt`
-    - `tmp_toolbar_pip_activities_rerun210.txt`
-  - Verified that `rerun210` still reproduces the visual bug.
-  - Confirmed from logs and activity state that:
-    - task remains `mode=pinned`
-    - media session remains `PLAYING`
-    - the bug is still not a crash
-    - while already pinned, local restore lifecycle still runs `activity_resume` / `pip_restore_*`
-  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java` again so:
-    - `maybeApplyPictureInPictureParams()` returns immediately when PiP is already active and the app is not awaiting entry
-    - `maybeRestorePictureInPictureOnResume()` clears immediately when PiP is already active instead of scheduling unlock retries
-    - `onPause`, `onStop`, and `ACTION_SCREEN_OFF` only arm restore when PiP has actually dropped
-  - Synced to ext4, rebuilt successfully as `rerun211`, and installed it on `R9TRC00GA2E`.
+  - Resumed from `docs/current-status.md` and the latest progress entry rather than rescanning the repo.
+  - Verified in real code that the toolbar PiP button still used `BraveYouTubeScriptInjectorNativeHelper.setFullscreen(...)`.
+  - Verified the Java-side direct PiP helper already existed and already refreshed PiP params before calling `enterPictureInPictureMode(...)`.
+  - Patched `BraveToolbarLayoutImpl.java` so the toolbar PiP button now calls `BraveYouTubeScriptInjectorNativeHelper.enterPictureInPicture(...)` directly.
+  - Synced the patched file into `/home/master/src_ext4/brave`.
+  - Rebuilt successfully from ext4.
+  - Reinstalled the APK on `R9TRC00GA2E`.
+  - Verified warm launch still succeeds after the patch.
 - In progress:
-  - Waiting for the user to re-run the real PiP lock/unlock scenario on `rerun211`.
+  - Waiting on runtime proof for whether the direct-entry patch actually removes the visible fullscreen-first transition on device.
 - Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `pip_after_unlock_rerun210.png`
-  - `tmp_toolbar_pip_logcat_rerun210.txt`
-  - `tmp_toolbar_pip_activities_rerun210.txt`
-- Build/test status:
-  - `rerun211` passed
-  - APK SHA-256: `f229900c9b5943cdd404aa532d53206c72cae5d30950f5d00ee680e4bbbe1a1c`
-  - install on `R9TRC00GA2E`: pass
-  - runtime after unlock on `rerun210`: fail, still clipped/black PiP
-- Blockers/risks:
-  - Need one more real-device manual retest; adb cannot supply the lock credential.
-  - If `rerun211` still fails, the next suspect is the remaining PiP persistence layer rather than params/repair/restore churn.
-- Next step:
-  - Have the user run the normal PiP -> lock -> unlock flow on `rerun211`.
-  - If it still fails, collect `pip_after_unlock_rerun211.png` and inspect the remaining persistence path.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 11:31` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `pip_after_unlock_rerun210.png`
-  - `tmp_toolbar_pip_logcat_rerun210.txt`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime cr_OneTabTubePerf:I chromium:I cr_*:I ActivityTaskManager:I WindowManager:I *:S > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun210.txt`
-  - `adb -s R9TRC00GA2E shell dumpsys activity activities > C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_activities_rerun210.txt`
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun211.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-- Tool purpose:
-  - Remove local restore-state churn while PiP is already active and validate whether that is the final visual fix.
-- Tool state:
-  - No build running.
-  - `rerun211` installed on device.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - user reruns PiP lock/unlock flow
-  - collect `rerun211` screenshot/log evidence if needed
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun211.png`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - active PiP params/restore suppression
-  - `pip_after_unlock_rerun210.png` - proof of failure before `rerun211`
-  - `tmp_toolbar_pip_logcat_rerun210.txt` - proof of restore churn while already pinned
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun211.log` - latest build log
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `pip_after_unlock_rerun211.png` if present
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 reachable
-  - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device connected and authorized
-  - user available for manual unlock
-- Expected success signal:
-  - PiP survives unlock with a normal rendered frame on `rerun211`
-- Expected failure signal:
-  - `rerun211` still shows a clipped/black PiP window after unlock
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun211.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Treat active-PiP restore churn as the next concrete divergence from Brave behavior.
-  - Do not let unlock-time lifecycle callbacks mutate PiP state when the session is already pinned.
-- Rejected approaches:
-  - guessing that the black window was fixed after `rerun210` without collecting evidence
-  - reopening the old crash-path investigation
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting for user retest
-- What is done but unverified:
-  - whether `rerun211` resolves the clipped/black PiP after unlock
-- What is verified:
-  - `rerun210` still failed visually after unlock
-  - `rerun211` builds and installs
-- External prerequisite:
-  - one manual PiP lock/unlock run on `R9TRC00GA2E`
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 11:47]
-- Phase:
-  - Phase 7 - Validation / active-PiP subclass lifecycle suppression
-- Objective:
-  - Stop `BraveActivity` from doing OneTabTube-specific resume/focus work while the session is already pinned, since `rerun211` still showed black PiP and the remaining divergence from upstream is now mostly in subclass lifecycle behavior.
-- Done:
-  - Re-read latest desk-state and inspected the real Chromium `FullscreenVideoPictureInPictureController.java` in ext4 instead of widening scope.
-  - Compared the controller behavior with local `BraveActivity` overrides and confirmed the controller already ignores `onResume()` while the activity remains in PiP.
-  - Noted that our subclass still ran extra `onResume`, `onWindowFocusChanged`, and `onTopResumedActivityChanged` work while pinned.
-  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java` so:
-    - `onResume()` returns early after logging when the activity is already in PiP
-    - `onWindowFocusChanged()` returns early when already in PiP
-    - `onTopResumedActivityChanged()` returns early when already in PiP
-  - Synced to ext4, rebuilt successfully as `rerun212`, and installed it on `R9TRC00GA2E`.
-- In progress:
-  - Waiting for the user to rerun the real PiP -> lock -> unlock scenario on `rerun212`.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-- Build/test status:
-  - `rerun212` passed
-  - APK SHA-256: `0354afd18e8e3ddd86cc0fe3b0b1807498349408c52c4ef4e8d8a992444d0139`
-  - install on `R9TRC00GA2E`: pass
-- Blockers/risks:
-  - Needs one more real-device retest.
-  - If `rerun212` still fails, the next suspect moves further down to the persistent-video/controller/native side rather than the subclass lifecycle side.
-- Next step:
-  - User reruns PiP -> lock -> unlock on `rerun212`.
-  - If still black, collect `pip_after_unlock_rerun212.png` and inspect persistent-video/controller behavior next.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 11:47` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - ext4 `FullscreenVideoPictureInPictureController.java`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun212.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-- Tool purpose:
-  - Remove remaining local subclass lifecycle churn while PiP is already active.
-- Tool state:
-  - No build running.
-  - `rerun212` installed on device.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - user reruns PiP lock/unlock flow
-  - collect `rerun212` evidence if needed
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\pip_after_unlock_rerun212.png`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - latest lifecycle suppression patch
-  - ext4 `FullscreenVideoPictureInPictureController.java` - upstream-ish controller reference used for comparison
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun212.log` - latest build log
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `pip_after_unlock_rerun212.png` if present
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 reachable
-  - device connected and authorized
-  - user available for manual unlock
-- Expected success signal:
-  - PiP survives unlock with normal rendered video on `rerun212`
-- Expected failure signal:
-  - `rerun212` still shows a black/clipped PiP window after unlock
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun212.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Move the next fix closer to upstream by stopping subclass lifecycle work during active PiP.
-- Rejected approaches:
-  - jumping straight to deeper native/controller changes before removing this remaining high-level divergence
-- Stop point classification:
-  - code edited, build passed, APK installed, waiting for user retest
-- What is done but unverified:
-  - whether `rerun212` resolves black PiP after unlock
-- What is verified:
-  - `rerun212` builds and installs
-- External prerequisite:
-  - one manual PiP lock/unlock run on `R9TRC00GA2E`
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 10:28]
-- Phase:
-  - Phase 7 - Validation / PiP post-unlock crash fix and secure-keyguard verification
-- Objective:
-  - Eliminate the real crash reported after unlock while keeping PiP anchored to Brave-upstream entry wiring.
-- Done:
-  - Read the recorded desk state, then checked the real device crash buffer and found a non-noise fatal after unlock.
-  - Confirmed the crash path was `Effective video fullscreen change: false` followed by `BraveReflectionUtil` `NoSuchMethodException`, first for `getWebContents()` and then for `dismissActivityIfNeeded(Activity,int)`.
-  - Reverted `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` to the Brave-upstream minimal wrapper.
-  - Removed the ASM `changeMethodOwner(..., "dismissActivityIfNeeded", ...)` redirect from `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`.
-  - Patched `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java` so `START` and `RESUME` clear `mDismissPending` directly in the controller.
-  - Rebuilt successfully as `rerun207` and then `rerun208`.
-  - Installed `rerun208` on `R9TRC00GA2E`.
-  - Verified direct toolbar-button PiP enters pinned mode on `rerun208` with no repeat of the old reflection/assertion crash.
-  - Re-ran a power/wake sequence; crash buffer stayed empty, but the device returned to Samsung keyguard instead of a post-unlock app state.
-- In progress:
-  - Final post-unlock verification is pending a real manual unlock on the device.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-  - `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
-  - `tmp_toolbar_pip_logcat_rerun208_postwake.txt`
-  - `tmp_toolbar_pip_activities_rerun208_postwake.txt`
-  - `tmp_toolbar_pip_window_rerun208_postwake.txt`
-- Build/test status:
-  - `rerun208` passed
-  - APK SHA-256: `d44788f94f8f731f78715a623ac622eb93157eb62bfafc8bdfe0be23b4f4b939`
-  - direct PiP -> launcher: pass
-  - power/wake: partial
-  - crash buffer after latest wake test: empty
-- Blockers/risks:
-  - Samsung secure keyguard still blocks a trustworthy post-unlock automation pass.
-  - The controller fix currently exists directly in `/home/master/src_ext4/chrome/...` and should be mirrored back into tracked repo state after runtime verification.
-- Next step:
-  - Manually unlock `R9TRC00GA2E`, verify keyguard is gone, then rerun the post-wake PiP stability check on the already-installed `rerun208`.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 10:28` entry
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java`
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
-  - `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java`
-  - `tmp_toolbar_pip_logcat_rerun208_postwake.txt`
-  - `tmp_toolbar_pip_window_rerun208_postwake.txt`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun208.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E shell input tap 866 144`
-  - `adb -s R9TRC00GA2E shell input keyevent KEYCODE_POWER`
-  - `adb -s R9TRC00GA2E shell input keyevent KEYCODE_WAKEUP`
-  - `adb -s R9TRC00GA2E logcat -d -v brief > tmp_toolbar_pip_logcat_rerun208_postwake.txt`
-  - `adb -s R9TRC00GA2E shell dumpsys activity activities > tmp_toolbar_pip_activities_rerun208_postwake.txt`
-  - `adb -s R9TRC00GA2E shell dumpsys window > tmp_toolbar_pip_window_rerun208_postwake.txt`
-- Tool purpose:
-  - Prove the post-unlock crash is gone on real hardware instead of inferring from source only.
-- Tool state:
-  - No build currently running.
-  - `rerun208` is installed.
-  - Device currently sits at secure keyguard after the last wake test.
-- Expected resume command:
-  - after manual unlock:
-    - `adb -s R9TRC00GA2E shell dumpsys window | Select-String -Pattern "mDreamingLockscreen|isKeyguardShowing|mCurrentFocus"`
-    - `adb -s R9TRC00GA2E logcat -c`
-    - rerun the post-wake PiP verification
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun208.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun208_postwake.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `build/android/bytecode/java/org/brave/bytecode/BraveFullscreenVideoPictureInPictureControllerClassAdapter.java` - removed reflection-based owner redirect
-  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` - restored to upstream minimal wrapper
-  - `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java` - owns `START`/`RESUME` PiP dismissal behavior directly
-  - `tmp_toolbar_pip_logcat_rerun208_postwake.txt` - latest runtime evidence with no reflection crash
-  - `tmp_toolbar_pip_window_rerun208_postwake.txt` - latest proof that wake still lands on keyguard
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `tmp_toolbar_pip_logcat_rerun208_postwake.txt`
-  - `tmp_toolbar_pip_window_rerun208_postwake.txt`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 reachable
-  - `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device authorized
-  - manual unlock available
-- Expected success signal:
-  - no `BraveReflectionUtil` fatal
-  - no `AssertionError`
-  - stable pinned PiP session after unlock
-- Expected failure signal:
-  - new crash-buffer entry
-  - force-finished app after unlock
-  - keyguard still shown
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun208.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Stop depending on reflection for `dismissActivityIfNeeded`.
-  - Preserve Brave-upstream PiP entry wiring while letting the controller own its own dismissal logic.
-- Rejected approaches:
-  - adding another local immediate-entry PiP workaround
-  - treating secure-keyguard wake runs as valid post-unlock evidence
-- Stop point classification:
-  - build passed, APK installed, direct PiP verified, post-unlock validation pending manual unlock
-- What is done but unverified:
-  - final post-unlock stability
-  - repo-tracked mirror of the ext4 controller hotfix
-- What is verified:
-  - `rerun208` direct PiP no longer crashes on the old reflection path
-  - wake test did not repopulate the crash buffer
-- External prerequisite:
-  - device unlock must be done manually
-- Secret required but not stored:
-  - device lock credential intentionally not stored
-
-## [2026-04-02 03:14]
-- Phase:
-  - Phase 7 - Validation / PiP and lifecycle restore on real device
-- Objective:
-  - Restore full Brave-derived PiP behavior for OneTabTube, keep lifecycle/playbackground continuity intact, and validate the result on `R9TRC00GA2E`.
-- Done:
-  - Read the latest desk state and resumed from the old `rerun200` PiP-disable snapshot instead of rescanning the repo.
-  - Inspected `BraveActivity.java` and confirmed the full PiP/lifecycle state machine was still present; the breakage was a handful of OneTabTube-only hard-disable gates.
-  - Removed the OneTabTube PiP disable gates from `android/java/org/chromium/chrome/browser/app/BraveActivity.java`.
-  - Restored the PiP toolbar entry points and visibility logic in `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`.
-  - Re-synced the Windows tree into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
-  - Rebuilt successfully as `rerun201`.
-  - Installed the new APK on `R9TRC00GA2E`.
-  - Verified on-device that the PiP button is visible again on a YouTube watch page.
-  - Verified PiP entry on hardware by tapping the PiP button to trigger fullscreen, then pressing Home; `dumpsys activity` reports `mode=pinned` and `mLastReportedPictureInPictureMode=true`.
-  - Verified playback continuity in PiP via continuing YouTube QoE traffic and adblock activity (`seq=4 -> 5 -> 6 -> 8`) while the task stayed pinned.
-  - Verified one clean PiP return path by bringing the existing task back to the front and observing the same task leave PiP without spawning a new watch task.
-  - Verified screen-off handling logs `screen_off`, `pip_global_preserve_armed`, and `pip_restore_armed` while the pinned session remains alive.
-- In progress:
-  - PiP is restored and device evidence is positive.
-  - The only remaining validation gap is a cleaner post-power-cycle foreground-return check; the current unlock / launcher handoff on Samsung is noisy even though the preserve / restore markers fire.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
   - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
 - Build/test status:
-  - Latest verified packaged build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun201.log 2>&1"`
-  - Latest APK:
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_direct_pip_entry.log`
+  - APK path:
     - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - Latest APK SHA-256:
-    - `05ece024a2c488c8f2256655aa48a64c2fb08e11186354483394602dae3ce920`
-  - Device evidence on `R9TRC00GA2E`:
-    - launch to `https://youtu.be/dQw4w9WgXcQ`: pass
-    - watch-page UI dump shows `brave_youtube_pip_button`: pass
-    - tap PiP button then Home: pass (`mode=pinned`, `mLastReportedPictureInPictureMode=true`)
-    - playback continuity during PiP: pass (`qoe seq` advanced while pinned)
-    - screen-off preservation markers: pass
-    - post-power-cycle foreground return: partial; restore markers fire, but the Samsung launcher handoff needs one cleaner rerun for a final UX-quality call
+  - APK SHA-256:
+    - `6e719de7a39f8b328b04b657b8812a82591fae67db2e4b1b65e2835ee4f43a48`
+  - install passed on `R9TRC00GA2E`
+  - warm launch passed:
+    - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
 - Blockers/risks:
-  - PiP restore is working, but Samsung's unlock / launcher behavior makes the post-power-cycle foreground-return evidence noisy.
-  - The current validation set proves PiP entry and continuity, not yet a fully polished lockscreen-return UX pass.
-  - The working tree now has code changes that are not committed or pushed yet.
+  - Chromium still appears to want fullscreen-video state for some PiP controller decisions, so the direct-entry patch may still need a follow-up if PiP bounds or content are wrong.
+  - Recovery/unlock behavior was intentionally left alone in this round.
+  - Build completed successfully, but the log also printed non-blocking background static-analysis output unrelated to the APK completion.
 - Next step:
-  - Rerun one clean power / unlock / foreground-return pass from the restored PiP build, then decide whether another small lifecycle adjustment is needed or the current behavior is good enough.
-  - If the user is satisfied with the restored PiP system, commit these changes on `publish/go_play-sync-20260402` and push the follow-up to `codex/onetabtube-sync-20260402`.
+  - Manually validate the patched toolbar PiP entry on `R9TRC00GA2E` and check whether PiP now opens directly without flashing through fullscreen first.
 - Expected resume inspection scope:
   - `docs/current-status.md`
-  - this `2026-04-02 03:14` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - this `2026-04-03 11:34` entry
   - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun201.log`
-  - local evidence files:
-    - `window_dump_pip_resume201_watch.xml`
-    - `window_dump_pip_resume201_restored.xml`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_direct_pip_entry.log`
 - Current tool(s):
   - `shell_command`
   - `apply_patch`
   - `autoninja`
   - `adb`
+  - `wsl.exe bash`
 - Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun201.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E shell input tap 866 144`
-  - `adb -s R9TRC00GA2E shell input keyevent KEYCODE_HOME`
-  - `adb -s R9TRC00GA2E shell input keyevent KEYCODE_POWER`
+  - `Copy-Item -LiteralPath 'C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\toolbar\\top\\BraveToolbarLayoutImpl.java' -Destination '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\toolbar\\top\\BraveToolbarLayoutImpl.java' -Force`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_direct_pip_entry.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
   - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
 - Tool purpose:
-  - Restore the old Brave PiP path for OneTabTube and validate real-device behavior across PiP, background, and screen-off transitions.
-- Tool state:
-  - No build is currently running.
-  - No adb long-running capture is currently running.
-  - The latest installed APK on the device is the `rerun201` build.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E logcat -c`
-  - rerun the watch -> PiP -> power -> unlock -> foreground-return flow from the `rerun201` build
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun201.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - local device evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\window_dump_pip_resume201_watch.xml`
-    - `C:\Users\Master\Desktop\GO_PLAY\window_dump_pip_resume201_restored.xml`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - restored PiP entry / lifecycle paths by removing OneTabTube-only hard disables
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` - restored PiP button visibility and click path
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun201.log` - latest successful build evidence
-  - `docs/testing.md` - updated with the April 2, 2026 PiP restore evidence
-  - `docs/patch-summary.md` - updated with the PiP restore rationale
-  - `docs/current-status.md` - current desk-state source of truth
-  - `docs/progress-log.md` - append-only audit trail for the restore work
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun201.log`
-  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_pip_resume201_watch.xml`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized in `adb devices`
-  - device unlocked before the clean rerun
-- Expected success signal:
-  - the restored watch page shows `brave_youtube_pip_button`
-  - `dumpsys activity` reports `mode=pinned` after PiP entry
-  - logcat continues showing watch-page QoE / adblock events while pinned
-  - foreground return reuses the same task and same watch context
-- Expected failure signal:
-  - PiP button disappears again
-  - Home leaves the app without entering `mode=pinned`
-  - playback stalls in PiP and QoE traffic stops advancing
-  - returning from PiP or after power-cycle drops the session or spawns a fresh watch task
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun201.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Restore PiP by removing OneTabTube-only hard-disable gates instead of rewriting the YouTube injector or Android media stack.
-  - Keep the existing Brave PiP/lifecycle machinery intact and validate it on hardware.
-  - Treat the earlier parallel `force-stop` + `start` launch as invalid evidence and rerun sequentially.
-- Rejected approaches:
-  - keeping the `rerun200` PiP-disable state
-  - rebuilding a custom PiP path outside the existing Brave activity / injector architecture
-  - trusting a device run where `force-stop` raced with app launch
-- Stop point classification:
-  - build passed, APK installed, PiP entry and playback continuity verified, power-cycle restore partially verified, waiting on a cleaner foreground-return validation pass
-- What is done but unverified:
-  - a clean post-power-cycle foreground return that stays in the app instead of bouncing through the Samsung launcher
-  - whether any extra polish is needed for the lockscreen-return UX
-- What is verified:
-  - source edits saved and synced successfully
-  - `rerun201` built successfully
-  - the new APK installed successfully on `R9TRC00GA2E`
-  - PiP button is visible again on the watch page
-  - PiP enters successfully on Home after fullscreen trigger
-  - playback continues while pinned
-  - screen-off preserve / restore markers fire
-- External prerequisite:
-  - WSL/ext4 checkout and Android/Chromium deps remain required
-  - physical device `R9TRC00GA2E` must remain connected and unlocked for further validation
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-02 03:49]
-- Phase:
-  - Phase 7 - Validation / real-device PiP restore and lifecycle verification
-- Objective:
-  - Prove that the visible PiP toolbar button works from a real tap on `R9TRC00GA2E`, not only through the older fullscreen/JS path plus Home-assisted entry.
-- Done:
-  - Read `docs/current-status.md` and the latest PiP restore entry first.
-  - Reality-checked the current code instead of trusting the old `rerun201` snapshot.
-  - Confirmed the toolbar click handler still only called `BraveYouTubeScriptInjectorNativeHelper.setFullscreen(...)`, which explained why the earlier claim was too optimistic for real user tapping.
-  - Added a direct Android-side immediate PiP request path in `android/java/org/chromium/chrome/browser/app/BraveActivity.java`.
-  - Rewired the toolbar PiP button in `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` to call that immediate path and keep one delayed retry.
-  - Synced to ext4, rebuilt successfully as `rerun204`, and reinstalled the APK on `R9TRC00GA2E`.
-  - Re-ran a device flow: open `https://youtu.be/dQw4w9WgXcQ`, wait for the watch page, tap the visible PiP button, inspect logcat and `dumpsys`.
-  - Verified the direct button tap now enters PiP immediately.
-  - Saved fresh evidence to `tmp_toolbar_pip_logcat.txt`, `tmp_toolbar_pip_dumpsys.txt`, and `window_dump_pip_verify.xml`.
-- In progress:
-  - Direct button-driven PiP entry is now closed.
-  - The remaining pass is a power/off unlock rerun after the immediate-entry fix.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
-- Build/test status:
-  - Latest verified successful packaged build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun204.log 2>&1"`
-  - APK SHA-256:
-    - `d21da8e3a45cdce3b949af6b09e1ea5f3fc09b505bb621676eef84ee5ae2a3ec`
-  - Device result:
-    - direct PiP button tap: pass
-    - `logcat`:
-      - `event=pip_enter_request:toolbar_button`
-      - `event=pip_immediate_request:toolbar_button:entered=true`
-      - `event=pip_mode_changed:true`
-    - `dumpsys activity`:
-      - `mode=pinned`
-      - `mLastReportedPictureInPictureMode=true`
-- Blockers/risks:
-  - Power/off unlock behavior still needs a rerun after the immediate-entry fix.
-  - The working tree includes uncommitted code changes and local evidence files.
-- Next step:
-  - Run watch -> PiP button tap -> power/off -> unlock -> foreground-return on `rerun204`.
-  - If that remains stable, commit and push the PiP follow-up.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 03:49` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun204.log`
-  - `tmp_toolbar_pip_logcat.txt`
-  - `tmp_toolbar_pip_dumpsys.txt`
-  - `window_dump_pip_verify.xml`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun204.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
-  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E logcat -c`
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E shell input tap 866 144`
-  - `adb -s R9TRC00GA2E logcat -d | Select-String -Pattern "pip_immediate_request|toolbar_button|pip_mode_changed|fullscreen_script_result|pip_enter_request|youtube_helper" -CaseSensitive:$false`
-  - `adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern "mode=pinned|mLastReportedPictureInPictureMode=true|topResumedActivity|ResumedActivity|com.onetabtube.browser_default" -CaseSensitive:$false`
-- Tool purpose:
-  - Validate the real toolbar-button PiP UX on hardware and capture direct evidence.
-- Tool state:
-  - No build currently running.
-  - Latest device state already reflects the installed `rerun204` APK.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E logcat -c`
-  - rerun the power/off unlock validation flow from the `rerun204` build
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun204.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_dumpsys.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\window_dump_pip_verify.xml`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun204.log`
-  - `tmp_toolbar_pip_logcat.txt`
-  - `tmp_toolbar_pip_dumpsys.txt`
-  - `docs/current-status.md`
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `tmp_toolbar_pip_logcat.txt`
-  - `tmp_toolbar_pip_dumpsys.txt`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun204.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized and unlocked
-- Expected success signal:
-  - `pip_immediate_request:toolbar_button:entered=true`
-  - `mode=pinned`
-  - same task survives the next lifecycle rerun
-- Expected failure signal:
-  - button tap only fullscreening the player without `mode=pinned`
-  - `entered=false`
-  - preserve/restore regression after the immediate-entry change
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun204.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Replace the fullscreen-only toolbar click behavior with a direct immediate PiP request.
-  - Treat the old `rerun201` result as partial evidence only.
-- Rejected approaches:
-  - claiming the tap UX was solved based only on JS/fullscreen success
-  - rewriting PiP outside the existing Brave activity path
-- Stop point classification:
-  - build passed, APK installed, direct button tap verified; power/off unlock rerun still pending
-- What is done but unverified:
-  - preserve/restore after the immediate-entry change
-- What is verified:
-  - latest tree builds
-  - latest APK installs
-  - direct toolbar tap now enters PiP on device
-- External prerequisite:
-  - WSL/ext4 checkout and the connected device remain required
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-02 09:38]
-- Phase:
-  - Phase 7 - Validation / Brave-upstream PiP restore and return-path stabilization
-- Objective:
-  - Replace the local PiP guesswork with the actual Brave GitHub PiP wiring, keep direct toolbar PiP entry working, and isolate the remaining return-path instability after wake.
-- Done:
-  - Read the latest desk state and resumed from the `rerun204` PiP snapshot first.
-  - Pulled the upstream Brave sources directly from `brave/brave-core` for `BraveActivity.java`, `BraveToolbarLayoutImpl.java`, `BraveYouTubeScriptInjectorNativeHelper.java`, and `youtube_script_injector_tab_helper.cc`.
-  - Confirmed from the real upstream code that:
-    - the toolbar PiP button only calls `setFullscreen(...)`
-    - the native callback path is what calls `enterPictureInPictureMode(...)`
-  - Replaced the local helper PiP entry path with the Brave-upstream direct `enterPictureInPictureMode(...)` behavior.
-  - Reverted the toolbar click path back to the Brave-upstream `setFullscreen(...)` flow.
-  - Removed the now-unused `requestImmediatePictureInPictureForCurrentVideo(...)` method from `BraveActivity.java`.
-  - Synced to ext4 and rebuilt successfully as `rerun205`, then again as `rerun206`.
-  - Installed the `rerun206` APK on `R9TRC00GA2E`.
-  - Verified from a fresh watch-page launch that the PiP button is present and a direct tap still enters PiP.
-  - Verified the latest tap path with:
-    - `OTB_PERF event=fullscreen_script_result result=fullscreen_triggered`
-    - `event=pip_mode_changed:true`
-  - Verified via `dumpsys activity recents` that the OneTabTube task enters `mode=pinned`.
-  - Verified after power/off -> wake that the pinned OneTabTube task still exists in recents as `mode=pinned`.
-  - Verified the remaining failure: launcher relaunch after wake created a new fullscreen task `#534` instead of reusing the existing pinned task `#533`.
-- In progress:
-  - The upstream-aligned PiP entry path is working.
-  - The remaining work is task reuse after wake.
-- Files touched:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
-- Build/test status:
-  - Latest verified successful packaged build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun206.log 2>&1"`
-  - APK SHA-256:
-    - `1a611f8412dd27e15e99df7007ad9130bf81cea53fc6d7051a5cc6e5f64632d9`
-  - Device result:
-    - direct toolbar PiP tap: pass
-    - pinned task in recents after tap: pass
-    - pinned task still present after power/off -> wake: pass
-    - launcher relaunch after wake reuses same task: fail
-- Blockers/risks:
-  - The remaining instability is isolated to the relaunch-after-wake path.
-  - Samsung/launcher behavior remains noisy enough that `activities` dumps are less reliable than `recents` for pinned-task evidence.
-- Next step:
-  - Trace why `ChromeTabbedActivity.shouldSuppressMainLauncherRelaunchWhileOtherTaskIsInPictureInPicture(...)` is not preventing the new task after wake.
-  - Determine whether the original pinned task process is already dead by the time the launcher relaunch happens.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 09:38` entry
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java`
-  - `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java`
-  - `tmp_toolbar_pip_logcat_rerun206.txt`
-  - `tmp_toolbar_pip_recents_rerun206.txt`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `web`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/brave/brave-core/master/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java" -OutFile "tmp_upstream_BraveYouTubeScriptInjectorNativeHelper.java"`
-  - `Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/brave/brave-core/master/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java" -OutFile "tmp_upstream_BraveToolbarLayoutImpl.java"`
-  - `Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/brave/brave-core/master/android/java/org/chromium/chrome/browser/app/BraveActivity.java" -OutFile "tmp_upstream_BraveActivity.java"`
-  - `Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/brave/brave-core/master/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc" -OutFile "tmp_upstream_youtube_script_injector_tab_helper.cc"`
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun206.log 2>&1"`
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E shell input tap 866 144`
-  - `adb -s R9TRC00GA2E shell dumpsys activity recents | Select-String -Pattern "com.onetabtube.browser_default|mode=pinned|Task\\{|#533|#534"`
-  - `adb -s R9TRC00GA2E shell input keyevent KEYCODE_POWER`
-  - `adb -s R9TRC00GA2E shell input keyevent KEYCODE_WAKEUP`
-  - `adb -s R9TRC00GA2E shell wm dismiss-keyguard`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-- Tool purpose:
-  - Align PiP entry with Brave upstream and expose the real remaining blocker.
-- Tool state:
-  - No build currently running.
-  - Latest installed APK on device is `rerun206`.
-- Expected resume command:
-  - inspect `ChromeTabbedActivity.java` around `shouldSuppressMainLauncherRelaunchWhileOtherTaskIsInPictureInPicture(...)`
-  - inspect task/process liveness around the pinned task before relaunch
-- Expected output/artifact path:
-  - build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun206.log`
-  - APK:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - runtime evidence:
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun206.txt`
-    - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_recents_rerun206.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java`
-  - `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java`
-  - `tmp_toolbar_pip_recents_rerun206.txt`
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java`
-  - `tmp_toolbar_pip_recents_rerun206.txt`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized and unlocked
-- Expected success signal:
-  - relaunch after wake no longer creates task `#534`
-  - existing pinned task is reused or restored cleanly
-- Expected failure signal:
-  - new fullscreen task still appears after wake
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun206.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Use the real Brave GitHub PiP helper/toolbar path instead of the local immediate-entry workaround.
-  - Keep the OneTabTube lifecycle/preserve code for now and isolate the remaining failure instead of changing multiple variables at once.
-- Rejected approaches:
-  - keeping the custom immediate-entry method
-  - declaring the whole PiP system stable just because direct tap works
-- Stop point classification:
-  - build passed, APK installed, direct PiP entry verified with Brave-upstream wiring, return path after wake still failing task reuse
-- What is done but unverified:
-  - a clean same-task foreground return after wake
-- What is verified:
-  - latest tree builds
-  - latest APK installs
-  - direct toolbar tap enters PiP with Brave-upstream wiring
-  - pinned task persists in recents across wake
-- External prerequisite:
-  - WSL/ext4 checkout and connected device remain required
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-02 09:47]
-- Phase:
-  - Phase 7 - Validation / Brave-upstream PiP restore and stability triage
-- Objective:
-  - Keep PiP anchored to Brave's real upstream implementation while honestly measuring what still fails to repeat on device.
-- Done:
-  - Continued device validation after the upstream-alignment patch.
-  - Captured additional Samsung runs that showed mixed outcomes:
-    - one upstream-aligned run produced `fullscreen_triggered` and `pip_mode_changed:true`
-    - later repeated automated reruns showed the PiP button missing or the transition not repeating cleanly
-  - Captured new UI evidence such as `window_dump_waitpip.xml`, where the PiP button never appeared across repeated polls.
-  - Kept the latest tree on `rerun206`; no new code patch was applied after the upstream alignment because the next fix depends on understanding which runtime state is failing.
-- In progress:
-  - PiP entry is now upstream-aligned in code, but repeatability is still flaky on device.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `docs/testing.md`
-  - `docs/patch-summary.md`
-- Build/test status:
-  - Latest verified build remains `rerun206`
-  - Device validation after that build is mixed / flaky, not yet stable enough to close
-- Blockers/risks:
-  - The remaining blocker is no longer "what code should PiP use?" but "why does the upstream-aligned path fail to repeat consistently on this shell/device combination?"
-  - Samsung launcher / fullscreen / toolbar visibility timing is still noisy enough to invalidate simple blind-tap automation.
-- Next step:
-  - Compare successful vs unsuccessful upstream-aligned runs and decide whether the smallest OneTabTube-specific fix should be:
-    - a toolbar visibility/state fix
-    - a helper-side upstream-first fallback
-    - or a relaunch/task-reuse fix after wake
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 09:47` entry
-  - `window_dump_waitpip.xml`
-  - `tmp_toolbar_pip_logcat_rerun206.txt`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `web`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - repeated `adb shell am start ...`, `uiautomator dump`, `input tap`, `dumpsys`, and `logcat` validation loops against `rerun206`
-- Tool purpose:
-  - Triage the remaining runtime instability after upstream code alignment.
-- Tool state:
-  - No build currently running.
-- Expected resume command:
-  - inspect the latest UI dump and logcat first, then choose the narrowest fix
-- Expected output/artifact path:
-  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_waitpip.xml`
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun206.txt`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `publish/go_play-sync-20260402`
-- Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `window_dump_waitpip.xml`
-  - `tmp_toolbar_pip_logcat_rerun206.txt`
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `window_dump_waitpip.xml`
-  - `tmp_toolbar_pip_logcat_rerun206.txt`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Prerequisites before command:
-  - device `R9TRC00GA2E` connected and unlocked
-  - ext4 checkout reachable if a new build is needed
-- Expected success signal:
-  - a fix that makes the button appear and PiP enter repeatedly across fresh reruns
-- Expected failure signal:
-  - button visibility and PiP entry remain inconsistent across repeated reruns
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun206.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Do not over-claim stability from a single successful upstream-aligned run.
-  - Keep the code anchored to Brave upstream until the exact flaky state is understood.
-- Rejected approaches:
-  - reverting immediately back to the old workaround without understanding the runtime divergence
-- Stop point classification:
-  - build passed; runtime still under active triage
-- What is done but unverified:
-  - stable repeated PiP entry/return on the device
-- What is verified:
-  - upstream-aligned code compiles and packages
-- External prerequisite:
-  - connected device remains required
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-02 09:56]
-- Phase:
-  - Phase 7 - Validation / Brave-upstream PiP restore and lockscreen-validity check
-- Objective:
-  - Determine whether the remaining wake/return instability is a real app problem or an invalid secure-lockscreen test state.
-- Done:
-  - Ran a new controlled device sequence that used a launcher-faithful relaunch command instead of an explicit `-n ...Main` component launch.
-  - Captured `window_dump_pip_controlled_entry.xml`, which shows the app on the YouTube watch page and the PiP button present before the power/wake step.
-  - Captured `window_dump_pip_controlled_afterwake.xml`, which shows `com.android.systemui` with `lockPatternView` after wake.
-  - Captured `window_dump_pip_controlled_afterlauncher.xml`, which still shows the secure keyguard rather than the app.
-  - Confirmed that `adb shell wm dismiss-keyguard` did not bypass the secure pattern lock on this device.
-  - Found a script-side issue in the same controlled rerun: the recorded tap position was `entryTap=0,0`, so that run cannot be used to judge actual PiP entry behavior.
-- In progress:
-  - Waiting for a manually unlocked device state so wake/return can be retested with valid app UI evidence.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `window_dump_pip_controlled_entry.xml`
-  - `window_dump_pip_controlled_afterwake.xml`
-  - `window_dump_pip_controlled_afterlauncher.xml`
-  - `tmp_toolbar_pip_logcat_rerun206_controlled_afterlauncher.txt`
-  - `tmp_toolbar_pip_recents_rerun206_controlled_afterlauncher.txt`
-- Build/test status:
-  - Latest build still `rerun206`: pass
-  - Latest controlled wake/return probe: invalid for app-behavior conclusions because the device remained on the secure keyguard after wake
-- Blockers/risks:
-  - Secure lockscreen blocks truthful wake/return automation.
-  - `wm dismiss-keyguard` is not enough on this Samsung device when the pattern lock is active.
-  - The tap parser in the controlled script must be corrected before the next run.
-- Next step:
-  - After the device is manually unlocked, rerun the controlled launcher-faithful sequence with:
-    - top-package verification before every action
-    - corrected PiP-button bounds parsing
-    - wake/return conclusions only if the app, not `com.android.systemui`, is on screen
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 09:56` entry
-  - `window_dump_pip_controlled_entry.xml`
-  - `window_dump_pip_controlled_afterwake.xml`
-  - `window_dump_pip_controlled_afterlauncher.xml`
-  - `tmp_toolbar_pip_logcat_rerun206_controlled_afterlauncher.txt`
-- Current tool(s):
-  - `shell_command`
-  - `adb`
-  - `apply_patch`
-- Exact command(s):
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E shell input keyevent KEYCODE_POWER`
-  - `adb -s R9TRC00GA2E shell input keyevent KEYCODE_WAKEUP`
-  - `adb -s R9TRC00GA2E shell wm dismiss-keyguard`
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER com.onetabtube.browser_default`
-- Tool purpose:
-  - Verify whether wake/return evidence is testing the app or just the secure lockscreen.
+  - Convert the toolbar PiP path to direct entry and verify that the app still builds, installs, and launches.
 - Tool state:
   - No build running.
-  - Device validation is paused pending manual unlock.
+  - Direct-entry APK installed on `R9TRC00GA2E`.
 - Expected resume command:
-  - rerun the controlled launcher-faithful probe after manual unlock
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - then manual toolbar PiP tap on device
 - Expected output/artifact path:
-  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_pip_controlled_entry.xml`
-  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_pip_controlled_afterwake.xml`
-  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_pip_controlled_afterlauncher.xml`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_direct_pip_entry.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `a8c5f4b6c1c371ae2b0b31cc882c92533df175e9`
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
-  - `window_dump_pip_controlled_entry.xml`
-  - `window_dump_pip_controlled_afterwake.xml`
-  - `window_dump_pip_controlled_afterlauncher.xml`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` - toolbar PiP button wiring
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - direct Java-side PiP helper
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - existing fullscreen/recovery path left untouched this round
 - Files to inspect first after resume:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `window_dump_pip_controlled_afterwake.xml`
-  - `window_dump_pip_controlled_afterlauncher.xml`
-  - `tmp_toolbar_pip_logcat_rerun206_controlled_afterlauncher.txt`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_direct_pip_entry.log`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
 - Prerequisites before command:
-  - device `R9TRC00GA2E` connected
-  - device manually unlocked after wake
+  - ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - device `R9TRC00GA2E` connected and authorized
 - Expected success signal:
-  - wake/return dumps show the app package rather than `com.android.systemui`
-  - only then can launcher/task reuse be judged
+  - build passes
+  - APK installs
+  - toolbar PiP tap enters PiP directly without a fullscreen-first flash
 - Expected failure signal:
-  - dumps still show `com.android.systemui` / `lockPatternView`
+  - compile failure
+  - fullscreen-first visual hop still present
+  - PiP content no longer focuses on the active video
 - Last known log location:
-  - `C:\Users\Master\Desktop\GO_PLAY\tmp_toolbar_pip_logcat_rerun206_controlled_afterlauncher.txt`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_direct_pip_entry.log`
 - Last known artifact path:
-  - `C:\Users\Master\Desktop\GO_PLAY\window_dump_pip_controlled_afterlauncher.xml`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Recent decisions:
-  - Treat secure keyguard as a test invalidation boundary, not as app behavior.
-  - Stop using explicit-component relaunch as the primary wake-return probe.
+  - Keep the patch narrow and reversible.
+  - Change only the initial toolbar entry path first.
 - Rejected approaches:
-  - trusting `wm dismiss-keyguard` as a full unlock
-  - drawing PiP conclusions from the `entryTap=0,0` controlled rerun
+  - removing the fullscreen-loss recovery path preemptively
+  - adding new DOM/selector hacks for PiP entry
 - Stop point classification:
-  - device test paused on external secure-lockscreen prerequisite
+  - code edited, synced, build passed, APK installed, warm launch verified, runtime PiP transition not yet verified
 - What is done but unverified:
-  - wake/return behavior with a truly unlocked device
+  - direct PiP visual behavior on device
 - What is verified:
-  - watch page + PiP button before lock
-  - secure keyguard after wake invalidates the current wake/return run
+  - toolbar button no longer calls `setFullscreen(...)`
+  - build/install/launch still work
 - External prerequisite:
-  - manual device unlock required
+  - physical device `R9TRC00GA2E` required for user-visible PiP verification
 - Secret required but not stored:
-  - device unlock credential not stored
+  - none
 
-## [2026-04-02 02:02]
+## [2026-04-03 10:41 +07:00]
 - Phase:
-  - Phase 7 - Validation / real-device smoke test
+  - Phase 7 - Validation / native browser-tab media controls alignment
 - Objective:
-  - Run the current OneTabTube APK on device `R9TRC00GA2E`, remove the remaining external-intent crash, and verify the core allowlist behavior on hardware.
+  - Start the controls rework from `PiP_Chromium_Android_native.txt` and move the active YouTube controls path toward Chromium/Android-native media session behavior.
 - Done:
-  - Read the latest desk-state snapshot instead of re-scanning the repo.
-  - Targeted only the PiP-related files from the recorded working set:
-    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - Disabled PiP for OneTabTube in the runtime path:
-    - `onUserLeaveHint`
-    - direct PiP request helpers
-    - PiP support checks
-  - Hid and short-circuited the PiP toolbar button for OneTabTube.
-  - Synced Windows changes into ext4 with `tools/sync_changed_files_to_wsl.ps1`.
-  - Rebuilt successfully as `rerun200`.
-  - Installed the new APK on `R9TRC00GA2E`.
-  - Verified on device:
-    - normal cold launch stays alive and top-resumed
-    - `VIEW https://youtu.be/dQw4w9WgXcQ` opens in-app on `m.youtube.com/watch?v=dQw4w9WgXcQ`
-    - `VIEW https://google.com` no longer crashes and ends on `m.youtube.com`
-    - toolbar UI dump no longer shows the PiP button
+  - Re-read the latest desk state instead of rescanning the repo.
+  - Read `PiP_Chromium_Android_native.txt` and used it as the controls design brief.
+  - Inspected the recorded baseline against the actual code and confirmed `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` still had a selector-heavy `kYoutubeMediaSessionControls` path that did not match the native-first guidance.
+  - Replaced that bridge with a lightweight path that:
+    - watches the current `video` element
+    - updates `navigator.mediaSession.playbackState`
+    - updates `navigator.mediaSession.setPositionState(...)`
+    - handles only `play`, `pause`, `seekforward`, `seekbackward`, and `seekto`
+  - Cleared stale `nexttrack` / `previoustrack` handlers explicitly so unsupported actions do not stay exposed through older page state.
+  - Synced `youtube_script_injector_tab_helper.cc` directly into `/home/master/src_ext4/brave` because the helper script reported ext4 drift.
+  - Rebuilt successfully with the new bridge.
+  - Reinstalled the APK on `R9TRC00GA2E`.
+  - Ran launch smoke:
+    - main activity launch passed
+    - `VIEW https://youtu.be/dQw4w9WgXcQ` launch passed
 - In progress:
-  - Core device smoke test is done.
-  - Remaining work is broader validation and documentation, not crash triage.
+  - The project is now on a native/browser-first controls phase 1 baseline, but the actual PiP / notification button behavior on device has not been revalidated yet.
 - Files touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
   - `docs/current-status.md`
   - `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `tools/sync_changed_files_to_wsl.ps1`
 - Build/test status:
-  - Build passed:
-    - `rerun200`
-  - Latest APK SHA-256:
-    - `08c34f11821d3fe1245a5a02c2aa27453a1debc71ea9c6f1a220aabc557ac33d`
-  - Real-device smoke result:
-    - pass for normal launch
-    - pass for allowlisted `youtu.be`
-    - pass for off-scope `google.com` by redirecting back into the allowed YouTube scope
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_native_controls_phase1.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `2908421a87acde090cc09b04125616d3b39ca5034cf9a811b19b69e3d315bbd3`
+  - install passed on `R9TRC00GA2E`
+  - launch smoke passed
 - Blockers/risks:
-  - Sign-in/consent/account-selection paths are not yet revalidated after the latest runtime cleanup.
-  - Shields/adblock behavior still needs longer manual playback sanity, not just launch/navigation checks.
-  - Some earlier runtime/build fixes still exist directly in ext4 and must be reality-checked on future resumes.
+  - The native-first path intentionally drops guaranteed `next/previous`; those actions should exist only if Chromium/page media session exposes them natively.
+  - Device validation is still needed to see what controls are actually surfaced after the bridge change.
+  - The bridge is lighter now, but still uses the existing `ExecuteJavaScript(...)` injection architecture.
 - Next step:
-  - Expand device smoke coverage to additional YouTube and required Google auth paths.
-  - Update `docs/testing.md` and `docs/patch-summary.md` with the verified device behavior and PiP removal rationale.
+  - Validate PiP and notification controls on `R9TRC00GA2E` using the new build.
+  - If actions are still wrong, inspect actual `MediaSessionAction` exposure before adding any optional fallback.
 - Expected resume inspection scope:
   - `docs/current-status.md`
-  - this `2026-04-02 02:02` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+  - this `2026-04-03 10:41 +07:00` entry
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_native_controls_phase1.log`
 - Current tool(s):
   - `shell_command`
   - `apply_patch`
   - `autoninja`
   - `adb`
+  - `wsl.exe bash`
 - Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log 2>&1"`
+  - `Copy-Item -LiteralPath 'C:\\Users\\Master\\Desktop\\GO_PLAY\\browser\\android\\youtube_script_injector\\youtube_script_injector_tab_helper.cc' -Destination '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\browser\\android\\youtube_script_injector\\youtube_script_injector_tab_helper.cc' -Force`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_native_controls_phase1.log 2>&1"`
   - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
   - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
   - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://google.com" com.onetabtube.browser_default`
 - Tool purpose:
-  - Keep the APK buildable and validate the AGENTS.md product policy on a real device.
+  - Replace the selector-heavy controls path with a native/browser-first media-session bridge and verify the updated build still compiles, installs, and launches.
 - Tool state:
-  - No build currently running.
-  - Device `R9TRC00GA2E` is connected and the latest APK is installed.
+  - No build running.
+  - Native-controls phase 1 APK installed on `R9TRC00GA2E`.
 - Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - rerun the next manual smoke case or rebuild from the same target if code changes are needed
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - runtime PiP disable for OneTabTube
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` - PiP button hidden and blocked
-  - `tools/sync_changed_files_to_wsl.ps1` - Windows/ext4 sync
-  - `docs/current-status.md` - current desk state
-  - `docs/progress-log.md` - append-only handoff history
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized in `adb devices`
-  - sync Windows edits to ext4 before rebuilding
-- Expected success signal:
-  - app stays top-resumed
-  - `adb logcat -b crash -d` remains empty
-  - off-scope URLs redirect/block instead of loading arbitrary pages
-- Expected failure signal:
-  - crash buffer shows a new fatal
-  - app leaves `com.onetabtube.browser_default`
-  - off-scope URL remains on a non-YouTube page
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Cut PiP because it is out of scope for OneTabTube and was the last crash source.
-  - Prefer redirecting off-scope links back to YouTube scope instead of preserving optional media behavior.
-- Rejected approaches:
-  - Keeping PiP and continuing to debug it
-  - Reopening optional product surfaces just to preserve prior behavior
-  - Re-scanning the whole repo instead of following desk state
-- Stop point classification:
-  - build passed, APK installed, core device smoke-tested and passing
-- What is done but unverified:
-  - broader auth/consent path coverage
-  - longer adblock/shields playback sanity
-  - docs updates outside the status files
-- What is verified:
-  - latest tree builds
-  - latest APK installs
-  - normal launch is stable on device
-  - allowlisted `youtu.be` deep link stays in-app
-  - off-scope `google.com` no longer crashes and lands on `m.youtube.com`
-  - PiP toolbar button is absent in the captured UI dump
-- External prerequisite:
-  - WSL/ext4 checkout and Android/Chromium deps remain required
-  - physical device `R9TRC00GA2E` must remain connected for further validation
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-02 00:24]
-- Phase:
-  - Phase 7 - Validation / AGENTS-aligned surface pruning
-- Objective:
-  - Remove the last non-required OneTabTube blocker surfaces from the packaging path and return to a buildable APK without reintroducing disallowed product baggage.
-- Done:
-  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry first, then checked actual ext4 code/build state instead of trusting the stale `rerun173` snapshot.
-  - Confirmed the real stop point was `rerun187`, where R8 was failing only on:
-    - `org.chromium.chrome.browser.data_import.DataImporterServiceImpl`
-    - `org.chromium.chrome.browser.test_dummy.TestDummyActivity`
-  - Patched `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn` to remove `java/src/org/chromium/chrome/browser/data_import/DataImporterService.java` from the OneTabTube base-module source list.
-  - Patched `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml` to remove:
-    - `org.chromium.chrome.browser.data_import.DataImporterService`
-    - `org.chromium.chrome.browser.test_dummy.TestDummyActivity`
-  - Rebuilt successfully through `rerun188`.
-  - Verified current APK SHA-256:
-    - `79be837655cb8f1234b864cd923e3ebc1811bcd149eaedf5267c1e54d26b7cc7`
-  - Verified saved baseline SHA-256:
-    - `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
-  - Verified current APK descriptor probes are all zero for:
-    - `com/google/android/gms/internal/cast`
-    - `com/google/android/play/core/splitinstall`
-    - `org/chromium/chrome/browser/brave_leo`
-    - `org/chromium/chrome/browser/playlist`
-    - `org/chromium/chrome/browser/data_import`
-    - `org/chromium/chrome/browser/test_dummy`
-  - Checked `adb devices`; no hardware/emulator is currently attached.
-- In progress:
-  - Local packaging/pruning work is at a stable stop point.
-  - The next useful step is runtime validation on device/emulator rather than more speculative build-graph churn.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
-- Build/test status:
-  - Latest verified successful packaged build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log 2>&1"`
-  - Latest build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
-  - Latest artifact:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `adb devices` output:
-    - empty device list
-- Blockers/risks:
-  - Runtime/device validation is blocked until a device or emulator is available.
-  - The build is intentionally no longer baseline-identical because AGENTS.md-driven pruning removed disallowed baggage from the APK.
-- Next step:
-  - Connect/start a device or emulator.
-  - Install `OneTabTube.apk`.
-  - Run the manual YouTube-only / one-tab / non-allowlist smoke test.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 00:24` entry
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log 2>&1"`
-  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.baseline_saved.apk"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... count descriptor probes across dex files ... PY"`
-  - `adb devices`
-- Tool purpose:
-  - Validate that the OneTabTube tree still builds after removing disallowed `data_import` and `test_dummy` surfaces.
-- Tool state:
-  - No build is running.
-  - No device is attached.
-- Expected resume command:
-  - `adb devices`
-  - then `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - WSL/ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - attach an Android device or start an emulator before install
-- Expected success signal:
-  - install succeeds and smoke test confirms YouTube-only one-tab behavior
-- Expected failure signal:
-  - no attached device/emulator
-  - install failure
-  - runtime navigation escapes product policy
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun188.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Remove disallowed surfaces directly at the build/manifest boundary when that is the fastest safe fix.
-  - Treat ext4 build evidence as source of truth over stale docs snapshots.
-- Rejected approaches:
-  - silencing R8 warnings without actually removing the unused surface
-  - keeping `DataImporterService` or `TestDummyActivity` around for baseline matching
-- Stop point classification:
-  - build passed and APK emitted; runtime smoke test blocked by missing device/emulator
-- What is done but unverified:
-  - runtime behavior of the `rerun188` APK
-- What is verified:
-  - `rerun188` packages successfully
-  - cast/splitinstall/leo/playlist/data_import/test_dummy probes are all zero in the APK
-  - no connected device is currently available
-- External prerequisite:
-  - Android device or emulator for the next validation step
-- Secret required but not stored:
-  - None for debug APK assembly or install
-
-## [2026-04-01 21:20]
-- Phase:
-  - Phase 7 - Validation / APK reproducibility
-- Objective:
-  - Keep the OneTabTube tree buildable while removing surfaces that AGENTS.md marks as non-essential for a YouTube-only one-tab product.
-- Done:
-  - Read the stale `rerun157` desk state, compared it with the actual code/build state, and treated the verified buildable source as the source of truth.
-  - Removed OneTabTube-specific AI/Leo re-enable paths from GN/build wiring:
-    - [renderer/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/renderer/BUILD.gn)
-    - [renderer/sources.gni](C:/Users/Master/Desktop/GO_PLAY/renderer/sources.gni)
-    - [build/android/config.gni](C:/Users/Master/Desktop/GO_PLAY/build/android/config.gni)
-    - [browser/sources.gni](C:/Users/Master/Desktop/GO_PLAY/browser/sources.gni)
-    - [components/brave_mobile_subscription/renderer/android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/BUILD.gn)
-    - [android/brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni)
-    - [renderer/brave_content_renderer_client.cc](C:/Users/Master/Desktop/GO_PLAY/renderer/brave_content_renderer_client.cc)
-  - Added Leo stub-srcjar generation for OneTabTube:
-    - [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn)
-    - [tools/create_onetabyt_leo_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_leo_stub_srcjar.py)
-  - Removed OneTabTube-specific AI branches from:
-    - [subscription_render_frame_observer.h](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.h)
-    - [subscription_render_frame_observer.cc](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.cc)
-  - Removed disallowed playlist / Leo activities and services from [android/java/AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml).
-  - Removed the cast options provider keep rule from [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags).
-  - Patched the ext4 manifest copy at `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml` to remove `com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME`.
-  - Rebuilt successfully through:
-    - `rerun163`
-    - `rerun165`
-    - `rerun167`
-  - Verified current APK facts after `rerun167`:
-    - current hash `87310bdfe06110752b35400ed7c33a7d2e5917bb756d3e67f7b5afe6c2e166aa`
-    - baseline hash `70df091a6f0f890337a1faf22575426905edc4f9f85c78669399394b3c4722ae`
-    - remaining zip drift:
-      - `AndroidManifest.xml`
-      - `classes.dex`
-      - `classes2.dex`
-      - `lib/arm64-v8a/libai_chat_common.cr.so`
-      - `lib/arm64-v8a/libchrome.so`
-    - current APK no longer contains `org/chromium/chrome/browser/brave_leo/*` probe strings
-    - current APK no longer contains `org/chromium/chrome/browser/playlist/*` probe strings
-    - current APK no longer contains `lib/arm64-v8a/libai_chat_common.cr.so`
-    - current dex probe strings still show:
-      - `com/google/android/gms/internal/cast` -> `14`
-      - `com/google/android/play/core/splitinstall` -> `7`
-  - Tried removing the full `//components/media_router/browser/android:java` dependency from ext4 `chrome/android/BUILD.gn`; `rerun166` failed because [ChromeMediaRouterClient.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\router\ChromeMediaRouterClient.java) still depends on `org.chromium.components.media_router.MediaRouterClient`.
-  - Reverted that over-broad media-router removal before `rerun167`.
-- In progress:
-  - Inspecting the smaller `stack_unwinder / splitinstall` path as the next fastest cut that still fits the OneTabTube requirements.
-- Files touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn)
-  - [tools/create_onetabyt_leo_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_leo_stub_srcjar.py)
-  - [android/java/AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml)
-  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
-  - [build/android/config.gni](C:/Users/Master/Desktop/GO_PLAY/build/android/config.gni)
-  - [renderer/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/renderer/BUILD.gn)
-  - [renderer/sources.gni](C:/Users/Master/Desktop/GO_PLAY/renderer/sources.gni)
-  - [renderer/brave_content_renderer_client.cc](C:/Users/Master/Desktop/GO_PLAY/renderer/brave_content_renderer_client.cc)
-  - [subscription_render_frame_observer.h](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.h)
-  - [subscription_render_frame_observer.cc](C:/Users/Master/Desktop/GO_PLAY/components/brave_mobile_subscription/renderer/android/subscription_render_frame_observer.cc)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-- Build/test status:
-  - Latest verified successful packaged build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun167.log 2>&1"`
-  - Latest failed experiment:
-    - `rerun166` after removing the whole media-router Java target
-  - Current APK remains device-testable.
-- Blockers/risks:
-  - `cast/media_router` still cannot be removed wholesale without breaking compile-time dependencies.
-  - `splitinstall` likely flows through stack unwinder / module installer and needs a smaller cut.
-  - Manifest drift is now partly intentional because AGENTS.md prioritizes removing disallowed surfaces over byte-for-byte baseline matching.
-- Next step:
-  - Inspect ext4 `chrome/android/BUILD.gn` plus stack unwinder provider targets, then try the smallest OneTabTube-only subtraction of `//chrome/android/modules/stack_unwinder/provider:java`.
-  - Rebuild as `rerun168`.
-  - Recompute APK hash, zip-entry drift, and cast/splitinstall probe counts.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this `2026-04-01 21:20` entry
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\modules\stack_unwinder\provider\BUILD.gn`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun167.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun167.log 2>&1"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... compare current vs baseline zip entries ... PY"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... count cast/splitinstall/leo/playlist descriptor strings in dex ... PY"`
-- Tool purpose:
-  - Keep a testable APK build while cutting every surface that is not needed by the AGENTS.md OneTabTube definition.
-- Tool state:
-  - No build currently running.
-- Expected resume command:
-  - patch stack unwinder/provider deps in ext4 `chrome/android/BUILD.gn`
-  - then run `rerun168`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\modules\stack_unwinder\provider\BUILD.gn`
-  - [android/java/AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml)
-  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
-  - [tools/create_onetabyt_leo_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_leo_stub_srcjar.py)
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\modules\stack_unwinder\provider\BUILD.gn`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - sync Windows changes to ext4 before rebuilding
-- Expected success signal:
-  - `rerun168` passes and lowers the splitinstall probe count without bringing Leo/playlist back
-- Expected failure signal:
-  - missing stack unwinder references at compile time or no measurable reduction in splitinstall drift
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun167.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Follow AGENTS.md strictly for product-surface pruning rather than preserving disallowed surfaces just to mimic the old APK.
-  - Prefer the smallest valid OneTabTube-specific cuts instead of broad subsystem removal.
-- Rejected approaches:
-  - keeping any `|| is_onetabyt` path that re-enables Leo/AI
-  - keeping playlist / Leo manifest surfaces
-  - removing the whole media-router Java target
-- Stop point classification:
-  - build passed and APK emitted; pruning work continues from a verified buildable state
-- What is done but unverified:
-  - whether stack unwinder / splitinstall can be dropped cleanly for OneTabTube
-- What is verified:
-  - current tree builds a testable APK
-  - latest verified buildable state is `rerun167`
-  - Leo/playlist are absent from the current APK
-  - `libai_chat_common.cr.so` is absent from the current APK
-- External prerequisite:
-  - WSL/ext4 checkout and Android/Chromium deps remain required
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-01 22:12]
-- Phase:
-  - Phase 7 - Validation / APK reproducibility
-- Objective:
-  - Keep the current OneTabTube tree buildable while pruning non-essential surfaces using the AGENTS.md product definition rather than preserving old baseline-only baggage.
-- Done:
-  - Updated the desk-state files to reflect the real buildable source instead of the stale `rerun157` snapshot.
-  - Added a generated stub target for `LanguageSplitInstaller`:
-    - [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn)
-    - [tools/create_onetabyt_language_split_installer_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_language_split_installer_stub_srcjar.py)
-  - Synced Windows changes to ext4 with:
-    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - Patched ext4 `chrome/browser/language/android/BUILD.gn` to swap in the OneTabTube `LanguageSplitInstaller` stub and remove the direct source file for `is_onetabyt`.
-  - Patched ext4 `chrome/android/BUILD.gn` to remove `//chrome/android/modules/stack_unwinder/provider:java` for OneTabTube from `chrome_java` and `base_module_java`.
-  - Tried lifecycle-level `ModuleUtil` gating in:
-    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\ChromeApplicationImpl.java`
-    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\base\SplitCompatApplication.java`
-  - `rerun169` failed because `SplitCompatApplication` could not see `BraveConfig` from `base_module_java`; reverted the `ModuleUtil` guard attempt instead of widening GN deps.
-  - Removed OneTabTube-only Play Core appupdate/install/review and rate-dialog keep rules from [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags).
-  - Rebuilt successfully through:
-    - `rerun168`
-    - `rerun171`
-    - `rerun172`
-    - `rerun173`
-  - Verified after `rerun173`:
-    - current APK hash `9c718a64d561d8fa8ffe26b780874d521e9b456d4714dee2350dd71e767572a0`
-    - remaining zip drift still exactly:
-      - `AndroidManifest.xml`
-      - `classes.dex`
-      - `classes2.dex`
-      - `lib/arm64-v8a/libai_chat_common.cr.so`
-      - `lib/arm64-v8a/libchrome.so`
-    - dex probe strings still:
-      - `com/google/android/gms/internal/cast` -> `14`
-      - `com/google/android/play/core/splitinstall` -> `7`
-      - `org/chromium/chrome/browser/brave_leo` -> `0`
-      - `org/chromium/chrome/browser/playlist` -> `0`
-    - `com/google/android/play/core/review` -> `0`
-    - `com/google/android/play/core/appupdate` -> `0`
-- In progress:
-  - Splitinstall-focused reductions have stopped producing measurable wins, so the next pass is pivoting to the cast/media-router source boundary.
-- Files touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn)
-  - [tools/create_onetabyt_language_split_installer_stub_srcjar.py](C:/Users/Master/Desktop/GO_PLAY/tools/create_onetabyt_language_split_installer_stub_srcjar.py)
-  - [android/java/onetabtube_repro.proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/onetabtube_repro.proguard.flags)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\browser\language\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\ChromeApplicationImpl.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\base\SplitCompatApplication.java`
-- Build/test status:
-  - Latest verified successful packaged build:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log 2>&1"`
-  - Latest failed experiment:
-    - `rerun169` failed due to missing `BraveConfig` visibility from `base_module_java`
-  - Current APK remains testable and buildable.
-- Blockers/risks:
-  - The remaining `splitinstall` tail did not shrink after stack unwinder removal, language split stubbing, or Play Core keep-rule pruning.
-  - The remaining `cast` tail still cannot be removed by dropping the whole `media_router:java` target because `ChromeMediaRouterClient` depends on it.
-- Next step:
-  - Inspect `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn` and related CAF sources to find a smaller source-level cast cut for OneTabTube.
-  - Rebuild as `rerun174`.
-  - Recompute hash, zip drift, and cast/splitinstall probes.
-- Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - this `2026-04-01 22:12` entry
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CastOptionsProvider.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log 2>&1"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... compare current vs baseline zip entries ... PY"`
-  - `wsl.exe bash -lc "python3 - <<'PY' ... count cast/splitinstall/leo/playlist probe strings in dex ... PY"`
-- Tool purpose:
-  - Keep a device-testable APK while pruning disallowed surfaces in the simplest safe order.
-- Tool state:
-  - No build currently running.
-- Expected resume command:
-  - inspect and patch `components/media_router/browser/android/BUILD.gn`
-  - then run `rerun174`
-- Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Repo root / working directory:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-- Current branch:
-  - `main`
-- Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
-- Build flavor / target:
-  - `brave/build/android:onetabtube_android_package`
-- Primary working set:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\BrowserMediaRouter.java`
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\java\src\org\chromium\components\media_router\caf\CastOptionsProvider.java`
-  - [android/java/proguard.flags](C:/Users/Master/Desktop/GO_PLAY/android/java/proguard.flags)
-  - [android/java/AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml)
-- Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\media_router\browser\android\BUILD.gn`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log`
-- Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
-- Prerequisites before command:
-  - ext4 checkout reachable
-  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - sync Windows changes to ext4 before rebuilding
-- Expected success signal:
-  - `rerun174` passes and lowers the cast probe count below `14` without bringing back Leo/playlist
-- Expected failure signal:
-  - missing media-router compile symbols or unchanged cast probes after the edit
-- Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun173.log`
-- Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-- Recent decisions:
-  - Stop preserving non-essential Play Core keep rules now that the goal is the AGENTS.md product surface, not the old APK baggage.
-  - Stop repeating splitinstall-focused cuts that do not move the APK probe counts.
-- Rejected approaches:
-  - widening `base_module_java` GN deps just to let `BraveConfig` flow into `SplitCompatApplication`
-  - assuming stack unwinder or language split changes alone would remove the `splitinstall` tail
-- Stop point classification:
-  - build passed and APK emitted; next work is source-boundary pruning of cast/media-router
-- What is done but unverified:
-  - whether cast can be reduced cleanly at the `components/media_router/browser/android` boundary
-- What is verified:
-  - current tree builds a testable APK
-  - latest verified buildable state is `rerun173`
-  - Leo/playlist probes remain absent
-  - review/appupdate probes are now absent
-- External prerequisite:
-  - WSL/ext4 checkout and Android/Chromium deps remain required
-- Secret required but not stored:
-  - None for debug APK assembly
-
-## [2026-04-02 02:02]
-- Phase:
-  - Phase 7 - Validation / real-device smoke test
-- Objective:
-  - Run the current OneTabTube APK on device `R9TRC00GA2E`, remove the remaining external-intent crash, and verify the core allowlist behavior on hardware.
-- Done:
-  - Disabled PiP for OneTabTube in `BraveActivity.java` and `BraveToolbarLayoutImpl.java`.
-  - Synced Windows changes into ext4.
-  - Rebuilt successfully as `rerun200`.
-  - Installed the new APK on `R9TRC00GA2E`.
-  - Verified normal launch is stable.
-  - Verified `VIEW https://youtu.be/dQw4w9WgXcQ` opens in-app at `m.youtube.com/watch?v=dQw4w9WgXcQ`.
-  - Verified `VIEW https://google.com` no longer crashes and lands on `m.youtube.com`.
-  - Verified the PiP button is absent in the captured toolbar UI dump.
-- In progress:
-  - Core device smoke test is done; broader validation remains.
-- Files touched:
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-- Build/test status:
-  - `rerun200` passed
-  - APK SHA-256: `08c34f11821d3fe1245a5a02c2aa27453a1debc71ea9c6f1a220aabc557ac33d`
-  - Device smoke: pass for normal launch, `youtu.be`, and off-scope `google.com` redirect
-- Blockers/risks:
-  - Sign-in/consent/account-selection paths still need validation.
-  - Shields/adblock still need longer playback sanity checks.
-- Next step:
-  - Expand device smoke coverage to more YouTube and required Google auth paths.
-  - Update `docs/testing.md` and `docs/patch-summary.md`.
-- Expected resume inspection scope:
-  - `docs/current-status.md`
-  - this `2026-04-02 02:02` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
-- Current tool(s):
-  - `shell_command`
-  - `apply_patch`
-  - `autoninja`
-  - `adb`
-- Exact command(s):
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log 2>&1"`
-  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
   - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ" com.onetabtube.browser_default`
-  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://google.com" com.onetabtube.browser_default`
-- Tool purpose:
-  - Validate the AGENTS.md product policy on a real device.
-- Tool state:
-  - No build currently running; latest APK installed on `R9TRC00GA2E`.
-- Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c`
-  - rerun the next manual smoke case or rebuild from the same target if code changes are needed
+  - then manual PiP / notification controls validation
 - Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_native_controls_phase1.log`
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
-  - `main`
+  - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `0d120e6501115f4620f7ed3bc594e37c0f564b42`
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
   - `docs/current-status.md`
   - `docs/progress-log.md`
 - Files to inspect first after resume:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_native_controls_phase1.log`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
-  - build root `/home/master/src_ext4`
+  - build root:
+    - `/home/master/src_ext4`
 - Prerequisites before command:
-  - WSL/ext4 checkout reachable
+  - ext4 checkout reachable
   - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
-  - device `R9TRC00GA2E` authorized in `adb devices`
+  - device `R9TRC00GA2E` connected and authorized
 - Expected success signal:
-  - app stays top-resumed
-  - `adb logcat -b crash -d` remains empty
-  - off-scope URLs redirect/block instead of loading arbitrary pages
+  - build succeeds with the lighter bridge
+  - APK installs
+  - controls reflect only supported native/browser actions
 - Expected failure signal:
-  - crash buffer shows a new fatal
-  - app leaves `com.onetabtube.browser_default`
-  - off-scope URL remains on a non-YouTube page
+  - build fails in `youtube_script_injector_tab_helper.cc`
+  - ext4 file drifts again
+  - `next/previous` still appear even though they were cleared from the active bridge
 - Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_repro_from_baseline_rerun200.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_native_controls_phase1.log`
 - Last known artifact path:
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
 - Recent decisions:
-  - Cut PiP because it is out of scope for OneTabTube and was the last crash source.
-  - Prefer redirecting off-scope links back to YouTube scope instead of preserving optional media behavior.
+  - Use `PiP_Chromium_Android_native.txt` as the controls design constraint.
+  - Keep browser-tab playback as the source of truth.
+  - Limit phase 1 to standard play/pause/seek actions and clear stale unsupported actions.
+  - Reuse the existing browser-tab architecture instead of switching to an embed shell.
 - Rejected approaches:
-  - Keeping PiP and continuing to debug it
-  - Reopening optional product surfaces just to preserve prior behavior
+  - selector-heavy `next/previous` control wiring as the active path
+  - switching to embed-shell playback
+  - reviving the post-`239` direct service / JNI dispatch controls path
 - Stop point classification:
-  - build passed, APK installed, core device smoke-tested and passing
+  - code edited, synced, compiled, installed, launched; device controls behavior still unverified on the new build
 - What is done but unverified:
-  - broader auth/consent path coverage
-  - longer adblock/shields playback sanity
+  - real PiP and notification control behavior on `R9TRC00GA2E`
 - What is verified:
-  - latest tree builds
-  - latest APK installs
-  - normal launch is stable on device
-  - allowlisted `youtu.be` deep link stays in-app
-  - off-scope `google.com` no longer crashes and lands on `m.youtube.com`
-  - PiP toolbar button is absent in the captured UI dump
+  - the native-controls phase 1 bridge builds
+  - APK installs
+  - app launches
+  - YouTube VIEW intent launches
 - External prerequisite:
-  - WSL/ext4 checkout and Android/Chromium deps remain required
-  - physical device `R9TRC00GA2E` must remain connected for further validation
+  - physical device `R9TRC00GA2E` required for controls validation
 - Secret required but not stored:
-  - None for debug APK assembly
+  - none for debug APK assembly
+
+## [2026-04-03 11:15]
+- Phase:
+  - Phase 7 - Validation / native browser-tab media controls alignment
+- Objective:
+  - Restore Brave/Chromium/Android standard media-session wiring for OneTabTube and verify that PiP / notification controls flow through the native OS media path rather than the removed custom button experiments.
+- Done:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry first, then resumed from the recorded native-controls phase-1 desk state without rescanning the repo.
+  - Inspected `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java` and confirmed OneTabTube still disabled:
+    - `BraveMediaNotificationControllerDelegateAdapter`
+    - `BraveMediaSessionHelperClassAdapter`
+    - `BraveMediaSessionTabHelperClassAdapter`
+  - Checked Brave upstream and confirmed those media adapters are active there without an OneTabYT gate.
+  - Inspected `android/brave_java_sources.gni` and confirmed OneTabTube also filtered out:
+    - `*media/ui/BraveMediaNotificationControllerDelegate.java`
+    - `*media/ui/BraveMediaNotificationControllerServices.java`
+  - Removed the local OneTabYT media adapter gate in `BraveClassAdapter.java`.
+  - Removed the local OneTabYT media source filters in `android/brave_java_sources.gni`.
+  - Synced both files into `/home/master/src_ext4/brave`.
+  - Rebuilt successfully after restoring the media wiring.
+  - Installed the rebuilt APK on `R9TRC00GA2E`.
+  - Ran automated runtime validation with device playback + CDP + `media_session` + `notification` dumps.
+- In progress:
+  - Standard media-session wiring is alive again.
+  - Remaining work is to confirm whether the visible PiP/notification UI now matches the standard action set cleanly on Samsung SystemUI.
+- Files touched:
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `android/brave_java_sources.gni`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_native_controls_phase2_media_sources.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `1b4829b3ca67931359e59feb4ac8bf442846ef0907b780261d6cd9c19093154c`
+  - install passed on `R9TRC00GA2E`
+  - runtime evidence report:
+    - `C:\Users\Master\Desktop\GO_PLAY\tmp_media_controls_phase2_report.json`
+  - verified runtime facts:
+    - `cmd media_session list-sessions` now shows `OneTabTube - Debug`
+    - PiP entry succeeds and task reaches `mode=pinned`
+    - `pause` and `play` dispatch change the real player state
+    - `fast-forward` and `rewind` dispatch change `currentTime`
+    - `next` and `previous` dispatch remain no-ops on the standard path
+    - `dumpsys notification --noredact` shows an active media notification with 4 actions
+- Blockers/risks:
+  - Standard action set currently corresponds to play/pause/seek-style controls, not playlist skip-next/skip-previous.
+  - Samsung PiP overlay controls were not yet captured cleanly by `uiautomator`, so direct tap-proof for the overlay itself is still weaker than the backend evidence.
+  - If the product insists on true next/previous for `youtube.com` browser-tab playback, that likely requires a separate non-standard fallback path.
+- Next step:
+  - Re-check the actual visible notification and PiP controls on `R9TRC00GA2E` now that the standard media session is active.
+  - If the UI still shows misleading next/previous affordances, inspect whether the surfaced action set should be tightened rather than reintroducing DOM-level playback hacks.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 11:15` entry
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `android/brave_java_sources.gni`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `tmp_media_controls_phase2_report.json`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_native_controls_phase2_media_sources.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+  - `adb`
+  - `wsl.exe bash`
+  - `python`
+  - DevTools / CDP over forwarded socket
+- Exact command(s):
+  - `Copy-Item -LiteralPath 'C:\\Users\\Master\\Desktop\\GO_PLAY\\build\\android\\bytecode\\java\\org\\brave\\bytecode\\BraveClassAdapter.java' -Destination '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\build\\android\\bytecode\\java\\org\\brave\\bytecode\\BraveClassAdapter.java' -Force`
+  - `Copy-Item -LiteralPath 'C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\brave_java_sources.gni' -Destination '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\brave_java_sources.gni' -Force`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_native_controls_phase2_media_sources.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell input tap 250 460`
+  - `adb -s R9TRC00GA2E shell input tap 866 144`
+  - `adb -s R9TRC00GA2E shell cmd media_session list-sessions`
+  - `adb -s R9TRC00GA2E shell dumpsys media_session`
+  - `adb -s R9TRC00GA2E shell dumpsys notification --noredact`
+- Tool purpose:
+  - Restore Brave upstream media wiring for OneTabTube and validate the standard OS media-session control path with reproducible runtime evidence.
+- Tool state:
+  - No build running.
+  - The phase-2 media-wiring APK is installed on `R9TRC00GA2E`.
+  - Runtime evidence is saved in `tmp_media_controls_phase2_report.json`.
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell input tap 250 460`
+  - `adb -s R9TRC00GA2E shell input tap 866 144`
+  - then inspect:
+    - `adb -s R9TRC00GA2E shell dumpsys media_session`
+    - `adb -s R9TRC00GA2E shell dumpsys notification --noredact`
+    - `C:\Users\Master\Desktop\GO_PLAY\tmp_media_controls_phase2_report.json`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_native_controls_phase2_media_sources.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\tmp_media_controls_phase2_report.json`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `android/brave_java_sources.gni`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `tmp_media_controls_phase2_report.json`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `tmp_media_controls_phase2_report.json`
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `android/brave_java_sources.gni`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - device `R9TRC00GA2E` connected and authorized
+  - player must be unmuted for meaningful media-session validation
+- Expected success signal:
+  - `OneTabTube - Debug` session remains active
+  - core system actions keep affecting the real player
+  - visible controls now align with the standard action set
+- Expected failure signal:
+  - session disappears again
+  - dispatch commands stop affecting the player
+  - visible controls still misrepresent unsupported actions
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_native_controls_phase2_media_sources.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Restore Brave upstream media adapter/source wiring before touching control UI again.
+  - Treat `media_session` / notification dumps and CDP player state as the reality source of truth.
+  - Keep the phase-1 standard `Media Session API` bridge in place.
+- Rejected approaches:
+  - reintroducing selector-heavy `next/previous` control logic
+  - reviving service/JNI control experiments from the discarded post-`239` branch
+  - assuming visible `next/previous` affordances should be preserved even when the standard session does not expose them
+- Stop point classification:
+  - code edited, ext4 reconciled, build passed, APK installed, automated runtime validation passed for core standard controls; direct user-visible PiP/notification tap verification still incomplete
+- What is done but unverified:
+  - exact user-visible PiP overlay behavior on Samsung SystemUI
+  - whether visible controls now match the standard action set cleanly
+- What is verified:
+  - restored media adapters/source wiring is enough to bring back the native OS media session
+  - the standard control path works for play/pause/seek-style commands
+  - PiP still enters normally
+  - the media notification is back through the standard path
+- External prerequisite:
+  - physical device `R9TRC00GA2E` required for final visible-control verification
+- Secret required but not stored:
+  - none for debug APK assembly
+
+## [2026-04-03 09:39]
+- Phase:
+  - Phase 7 - Validation / PiP and notification controls baseline reset
+- Objective:
+  - Roll the project back to the `rerun239` stage and make that source state the active baseline again.
+- Done:
+  - Read `docs/current-status.md` and the `rerun238` / `rerun239` entries in `docs/progress-log.md`.
+  - Confirmed the recorded desk state was stale: the working tree had moved beyond `rerun239` with unrecorded media-controls experiments.
+  - Identified the post-`239` path to remove:
+    - direct OneTabTube playback foreground service
+    - direct manager / notification / PiP action path
+    - JNI/native `dispatchMediaControl` bridge
+  - Removed the post-`239` Java files:
+    - `android/java/org/chromium/chrome/browser/media/ui/OneTabTubeMediaControlsManager.java`
+    - `android/java/org/chromium/chrome/browser/media/ui/OneTabTubePlaybackForegroundService.java`
+  - Removed their references from:
+    - `android/brave_java_sources.gni`
+    - `android/java/AndroidManifest.xml`
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - Removed the native direct-dispatch chain from:
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+    - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.h`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Restored the OneTabYT gate in `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`.
+  - Removed the post-`239` direct-control override block from `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`.
+  - Kept the `rerun238/239` JS `navigator.mediaSession.setActionHandler(...)` bridge in `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`.
+  - Synced once with the normal helper, detected stale ext4 content, then manually copied the rollback files into `/home/master/src_ext4/brave`.
+  - Rebuilt successfully from the rolled-back state.
+  - Reinstalled the APK on `R9TRC00GA2E`.
+- In progress:
+  - No new control-fix experiment is active; the baseline is intentionally reset to `rerun239`.
+- Files touched:
+  - `android/brave_java_sources.gni`
+  - `android/java/AndroidManifest.xml`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - rollback verification build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_rerun239_restore_verify.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `b4e8cf7c8763125b2b1140bc49aafaa5ae5b5a5bf74bfb9acce12a2699db308d`
+  - install passed on `R9TRC00GA2E`
+- Blockers/risks:
+  - Any later button-behavior improvements tried after `rerun239` are intentionally gone now.
+  - Device behavior after the rollback has not yet been manually rechecked.
+- Next step:
+  - Treat this rollback as the new current stage.
+  - If media-controls work resumes later, start by retesting the installed rollback build on `R9TRC00GA2E`.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 09:39` entry
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_rerun239_restore_verify.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `autoninja`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_rerun239_restore_verify.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `wsl.exe bash` manual copy from `/mnt/c/Users/Master/Desktop/GO_PLAY` into `/home/master/src_ext4/brave`
+- Tool purpose:
+  - Restore the repo to the `rerun239` stage and verify that the rollback baseline still builds and installs.
+- Tool state:
+  - No build running.
+  - Reset baseline APK installed on `R9TRC00GA2E`.
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - then manual PiP / notification retest only if controls work resumes
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_rerun239_restore_verify.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `build/android/bytecode/java/org/brave/bytecode/BraveClassAdapter.java`
+  - `android/java/AndroidManifest.xml`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_rerun239_restore_verify.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - ext4 checkout reachable
+  - preserve `PYTHONPATH=/home/master/src_ext4/brave/script`
+  - device `R9TRC00GA2E` connected and authorized for install / validation
+- Expected success signal:
+  - build succeeds with no references to the removed post-`239` control path
+  - installed APK matches the rollback baseline strategy
+- Expected failure signal:
+  - build still references `DispatchMediaControl`
+  - ext4 copy drifts away from the Windows rollback state
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_rerun239_restore_verify.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Use the recorded `rerun239` snapshot as source of truth.
+  - Discard all later service-backed and native-dispatch button experiments.
+  - Manually reconcile ext4 when the helper sync leaves stale files behind.
+- Rejected approaches:
+  - keeping the direct OneTabTube foreground service
+  - keeping the later JNI dispatch bridge
+  - continuing from the unrecorded post-`239` media-controls branch
+- Stop point classification:
+  - rollback applied, ext4 reconciled, build passed, APK installed, runtime retest from the reset baseline not yet redone
+- What is done but unverified:
+  - exact device button behavior after reverting to `rerun239`
+- What is verified:
+  - post-`239` manager/service/native-dispatch path removed
+  - rollback baseline builds
+  - rollback APK installs on `R9TRC00GA2E`
+- External prerequisite:
+  - physical device `R9TRC00GA2E` required for any future retest
+- Secret required but not stored:
+  - none for debug APK assembly
+
+## [2026-04-03 12:35:45 +07:00]
+- Phase:
+  - Phase 7 - Validation / PiP entry and lifecycle stabilization
+- Objective:
+  - Add `Home -> PiP` without regressing the restored fullscreen-backed PiP lifecycle, then record the architecture boundary for same-app PiP coexistence.
+- Done:
+  - Read `docs/current-status.md` and the latest progress entry first instead of rescanning the repo.
+  - Performed targeted inspection only on:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `android/java/AndroidManifest.xml`
+  - Confirmed the current PiP lifecycle had already been restored from the user report (`หายแล้ว`).
+  - Confirmed Chromium upstream already attempts PiP from `onUserLeaveHint()`, but only when fullscreen video is active.
+  - Patched `BraveActivity.onUserLeaveHint()` to arm fullscreen for OneTabTube just before delegating to `super.onUserLeaveHint()`.
+  - Synced the patched file into `/home/master/src_ext4/brave`.
+  - Rebuilt successfully with:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip.log`
+  - Verified APK SHA-256:
+    - `f99790d04cd6bb7c2ea838f7d3eeec7165956d021e225973b64df98e07ab25af`
+  - Installed the rebuilt APK on `R9TRC00GA2E`.
+  - Ran an automated runtime probe:
+    - launch watch page
+    - send Home key
+    - inspect `dumpsys activity activities`
+  - Observed the task enter `mode=pinned`, confirming the new `Home -> PiP` path works.
+- In progress:
+  - No new code experiment is active.
+  - The remaining product discussion is whether to start a separate architecture phase for “PiP floating while still browsing the same app page.”
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `home -> pip arm`
+    - build passed
+    - log:
+      - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip.log`
+    - APK:
+      - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+    - APK SHA-256:
+      - `f99790d04cd6bb7c2ea838f7d3eeec7165956d021e225973b64df98e07ab25af`
+  - install passed on `R9TRC00GA2E`
+  - automated runtime proof passed:
+    - `mode=pinned` after Home key
+- Blockers/risks:
+  - The current `singleTask` activity-based PiP model does not support “same activity pinned and fully interactable underneath” as a safe small patch.
+  - Forcing that behavior through lifecycle hacks would likely destabilize the restored `PiP -> lock -> unlock` path again.
+- Next step:
+  - Keep this build as the current stable PiP baseline.
+  - If same-app browsing under PiP is still required, scope a separate multi-activity / dedicated playback-surface design instead of patching the current activity flow again.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 12:35:45 +07:00` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/AndroidManifest.xml`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_home_pip.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell input keyevent 3`
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime OTB_PIP:I OneTabTubePerf:I YouTubeNativeHelper:I VideoPersist:I chromium:I *:S`
+- Tool purpose:
+  - Implement and verify `Home -> PiP` using the restored fullscreen-backed PiP path.
+- Tool state:
+  - No build running.
+  - Latest build is installed and was runtime-probed successfully.
+- Expected resume command:
+  - Re-run the watch-page launch command above, then manual `toolbar PiP`, `Home`, and `lock/unlock` validation if further UX evidence is needed.
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — Home-key PiP arm
+  - `android/java/AndroidManifest.xml` — current activity/task model reference
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip.log` — build evidence
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk` — installed artifact
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest progress entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/AndroidManifest.xml`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - app task enters `mode=pinned` after Home key
+- Expected failure signal:
+  - Home returns to launcher without PiP
+  - new same-activity PiP hacks destabilize the restored unlock path
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Use Chromium’s existing `onUserLeaveHint()` PiP hook instead of inventing a second Home-entry path.
+  - Treat simultaneous in-app browsing under PiP as a separate architecture problem.
+- Rejected approaches:
+  - reviving the earlier whole-page PiP experiment
+  - trying to make the current single activity both pinned and fully interactable underneath via another lifecycle patch
+- Stop point classification:
+  - code edited, built, installed, and runtime-probed; architectural follow-up remains open but no build/runtime failure is active
+- What is done but unverified:
+  - no prototype exists yet for same-app browsing underneath PiP
+- What is verified:
+  - restored `PiP -> lock -> unlock` path is working again per user report
+  - `Home -> PiP` works on the new build via automated proof
+- External prerequisite:
+  - physical device still required for any additional UX validation
+- Secret required but not stored:
+  - none for debug APK assembly
+
+## [2026-04-03 13:29:33 +07:00]
+- Phase:
+  - Phase 7 - Validation / PiP entry and lifecycle stabilization
+- Objective:
+  - Continue the `Home -> PiP` fix from the actual current code state and get the Home path back onto Android system pinned PiP instead of Chromium web PiP activity.
+- Done:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Inspected only the active working set:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - Chromium `FullscreenVideoPictureInPictureController`
+    - Chromium `PictureInPictureActivity`
+  - Confirmed the recorded status had drifted from reality:
+    - the active Home path was using `video.requestPictureInPicture()`
+    - the automated evidence showed this launched `org.chromium.chrome.browser.media.PictureInPictureActivity`
+    - the task stayed `mode=fullscreen`, not `mode=pinned`
+  - Patched `BraveActivity.onUserLeaveHint()` so the Home path:
+    - still arms fullscreen-backed recovery through `requestHomePictureInPicture(...)`
+    - but also calls `BraveYouTubeScriptInjectorNativeHelper.enterPictureInPicture(...)` immediately while the activity is still resumed
+  - Patched `YouTubeScriptInjectorTabHelper::RequestHomePictureInPicture()` so it no longer routes through `MaybeRequestVideoPictureInPicture()` and instead goes back to `MaybeSetFullscreen()`
+  - Synced the changed files into `/home/master/src_ext4/brave`
+  - Rebuilt successfully with:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip_system_pinned.log`
+  - Installed the rebuilt APK on `R9TRC00GA2E`
+  - Re-ran an automated `watch page -> Home key` probe and confirmed:
+    - task enters `mode=pinned`
+    - top PiP activity is `ChromeTabbedActivity`
+    - `PictureInPictureActivity` is no longer the Home-entry result
+- In progress:
+  - Hold the new `Home -> PiP` build as the active baseline.
+  - Manual UX confirmation is still pending for:
+    - visual correctness of the PiP contents after Home-entry
+    - `PiP -> lock -> unlock` behavior on this exact build
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip_system_pinned.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `0b77896f44097dc531672498fb1e412cae581314bb27462eb631ee5a02eba0c6`
+  - install passed on `R9TRC00GA2E`
+  - automated runtime probe passed:
+    - `mode=pinned` in `tmp_home_pip_activities_system_pinned.txt`
+    - PiP activity stayed `ChromeTabbedActivity`
+    - supporting logs in `tmp_home_pip_logcat_full_system_pinned.txt`
+- Blockers/risks:
+  - Manual device UX is still required to confirm the PiP contents are visually focused on the video after Home-entry.
+  - `PiP -> lock -> unlock` must still be rechecked on this exact build.
+  - The build log contains a background static-analysis warning for `//chrome/browser/xsurface_provider:dependency_provider_impl_java`, but APK creation and runtime probe succeeded.
+- Next step:
+  - Manually verify on `R9TRC00GA2E`:
+    - play video -> Home -> confirm PiP appears correctly
+    - from that PiP state -> lock screen -> unlock -> confirm PiP remains healthy
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 13:29:33 +07:00` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `tmp_home_pip_activities_system_pinned.txt`
+  - `tmp_home_pip_logcat_full_system_pinned.txt`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_home_pip_system_pinned.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell input keyevent 3`
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities > tmp_home_pip_activities_system_pinned.txt`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime OneTabTubePerf:I YouTubeNativeHelper:I OTB_PIP:I VideoPersist:I chromium:I AndroidRuntime:E *:S > tmp_home_pip_logcat_full_system_pinned.txt`
+- Tool purpose:
+  - Rebuild and automatically validate the new Home-entry system pinned PiP path.
+- Tool state:
+  - No build currently running.
+  - Latest build is installed and probe evidence has been captured.
+- Expected resume command:
+  - Re-run the watch-page launch command, then manual `Home` and `lock/unlock` validation on the same build.
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip_system_pinned.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `tmp_home_pip_activities_system_pinned.txt`
+  - `tmp_home_pip_logcat_full_system_pinned.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — Home-entry PiP logic while activity is still resumed
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — fullscreen-backed Home PiP preparation
+  - `tmp_home_pip_activities_system_pinned.txt` — proof of `mode=pinned`
+  - `tmp_home_pip_logcat_full_system_pinned.txt` — PiP/fullscreen callback evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this progress entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `tmp_home_pip_activities_system_pinned.txt`
+  - `tmp_home_pip_logcat_full_system_pinned.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - app task enters `mode=pinned` after Home key
+  - `ChromeTabbedActivity` remains the PiP activity
+- Expected failure signal:
+  - Home returns to launcher without PiP
+  - `PictureInPictureActivity` appears again as the top activity
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_home_pip_system_pinned.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Reject the standard web PiP Home experiment for this product path.
+  - Restore Home-entry to the fullscreen-backed system PiP model.
+  - Request Android activity PiP while the activity is still resumed to avoid the `Activity must be resumed` failure.
+- Rejected approaches:
+  - leaving `MaybeRequestVideoPictureInPicture()` as the Home path
+  - accepting Chromium `PictureInPictureActivity` as a valid Home-entry result
+- Stop point classification:
+  - code edited, built, installed, and automated runtime-probed; manual device verification is next
+- What is done but unverified:
+  - visual correctness of Home-entry PiP
+  - `PiP -> lock -> unlock` on this exact build
+- What is verified:
+  - `Home -> PiP` reaches Android `mode=pinned`
+  - Home-entry no longer routes into `PictureInPictureActivity`
+- External prerequisite:
+  - physical device interaction still required for final UX confirmation
+- Secret required but not stored:
+  - none for debug APK assembly
+
+## [2026-04-03 13:43:20 +07:00]
+- Phase:
+  - Phase 7 - Validation / PiP entry and lifecycle stabilization
+- Objective:
+  - Revert the custom `Home -> PiP` behavior so pressing Home has no special PiP action again.
+- Done:
+  - Inspected only the Home-entry working set:
+    - `BraveActivity.onUserLeaveHint()`
+    - `BraveYouTubeScriptInjectorNativeHelper`
+    - `YouTubeScriptInjectorTabHelper`
+  - Removed the custom `onUserLeaveHint()` override from `BraveActivity`.
+  - Removed the Home-specific Java/JNI/native helper path:
+    - `requestHomePictureInPicture(...)`
+    - pending Home PiP state
+    - Home-specific script callback path
+  - Synced the reverted Home path into `/home/master/src_ext4/brave`
+  - Rebuilt successfully with:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_disable_home_pip.log`
+  - Installed the rebuilt APK on `R9TRC00GA2E`
+  - Ran an automated `watch page -> Home key` probe and confirmed Home no longer enters PiP
+- In progress:
+  - No new code experiment is active.
+  - The repo now keeps explicit PiP entry paths only; Home has no special PiP logic again.
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_disable_home_pip.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `902344a40bf660f7190214fe3acc56a0f0b72cb42f40c60f15e8b142101b0e35`
+  - install passed on `R9TRC00GA2E`
+  - automated runtime proof passed:
+    - launcher is top/resumed in `tmp_home_no_pip_activities.txt`
+    - app task remains `mode=fullscreen`
+    - no `mode=pinned` task appears
+- Blockers/risks:
+  - None for the Home-path change itself.
+  - Only explicit PiP entry paths remain to be validated if future requests touch them.
+- Next step:
+  - Keep this build as the baseline if the product decision remains “Home should do nothing special”.
+  - If needed, manually verify once on device that `play -> Home` simply backgrounds the app.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 13:43:20 +07:00` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `tmp_home_no_pip_activities.txt`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_disable_home_pip.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell input keyevent 3`
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities > tmp_home_no_pip_activities.txt`
+- Tool purpose:
+  - Rebuild and verify that Home no longer triggers PiP.
+- Tool state:
+  - No build currently running.
+  - Latest build is installed and the no-PiP-on-Home probe has been captured.
+- Expected resume command:
+  - Re-run the same watch-page launch and Home-key probe if Home behavior needs reconfirmation.
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_disable_home_pip.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `tmp_home_no_pip_activities.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `tmp_home_no_pip_activities.txt`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this progress entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `tmp_home_no_pip_activities.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - no `mode=pinned` task after Home
+- Expected failure signal:
+  - app still enters PiP after Home
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_disable_home_pip.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Follow the product change and remove Home-entry PiP entirely.
+  - Revert the Home-specific path cleanly instead of leaving dormant helper state.
+- Rejected approaches:
+  - partial disable of Home PiP while keeping dormant state around
+- Stop point classification:
+  - code edited, built, installed, and automated runtime-probed; Home-path revert is complete
+- What is done but unverified:
+  - no extra manual UX step was run because the automated proof already matched the requested behavior
+- What is verified:
+  - pressing Home no longer enters PiP on the current build
+- External prerequisite:
+  - physical device interaction only if later manual reconfirmation is wanted
+- Secret required but not stored:
+  - none for debug APK assembly
+
+## [2026-04-03 14:28:15 +07:00]
+- Phase:
+  - Phase 7 - Validation / PiP entry and lifecycle stabilization
+- Objective:
+  - Make the system PiP expand button return to the YouTube watch page instead of fullscreen video, while keeping the restored PiP lifecycle and the no-Home-special-action baseline intact.
+- Done:
+  - Resumed from `docs/current-status.md` and the latest progress entry instead of rescanning the repo.
+  - Inspected only the PiP expand working set:
+    - `BraveActivity.onPictureInPictureModeChanged(...)`
+    - `BraveFullscreenVideoPictureInPictureController`
+    - `BraveFullscreenHtmlApiHandlerLegacy/Compat`
+    - `YouTubeScriptInjectorTabHelper`
+    - saved upstream references in `tmp_upstream_BraveActivity.java` and `tmp_upstream_brave_youtube_script_injector_tab_helper.cc`
+  - Confirmed the Home-path removal is still active and not related to the current request.
+  - Compared the local PiP exit branch with the saved Brave upstream snapshot and identified the local `activeFullscreen/fullscreenRequested` skip as the likely reason the app stays fullscreen after PiP expand.
+  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java` to treat a foreground-return PiP exit (`ActivityState.RESUMED` or `ActivityState.PAUSED`) as `return to watch page`, exiting persistent fullscreen instead of skipping cleanup.
+  - Synced the patch to `/home/master/src_ext4/brave`.
+  - Rebuilt successfully with `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page.log`.
+  - Installed the rebuilt APK on `R9TRC00GA2E`.
+- In progress:
+  - Runtime truth-check for `PiP expand -> watch page` is still pending on the physical device.
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `49e10485586cf8e45a537c03a62c5f6a16da76f45c42b9829807498b1a31efb4`
+  - install passed on `R9TRC00GA2E`
+  - no automated probe yet for the system expand button
+- Blockers/risks:
+  - The system PiP expand button still needs manual device validation.
+  - If this Java-only fix is insufficient, the next likely scope is the fullscreen latch in `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`.
+  - The build log still ends with background static-analysis warnings, but the APK target completed successfully.
+- Next step:
+  - On `R9TRC00GA2E`, enter PiP from a YouTube watch page and tap the system expand button.
+  - Verify whether the app returns to the watch page instead of fullscreen.
+  - If it still returns to fullscreen, inspect `OneTabTubePerf` / `OTB_PIP` logs and patch the fullscreen-request latch in `youtube_script_injector_tab_helper.cc`.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 14:28:15 +07:00` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `tmp_upstream_BraveActivity.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+- Tool purpose:
+  - Build and install the narrow PiP-expand-to-watch-page patch.
+- Tool state:
+  - No build currently running.
+  - Latest build is installed on `R9TRC00GA2E`.
+- Expected resume command:
+  - Clear logcat, reproduce `PiP -> expand`, then dump `OneTabTubePerf` / `OTB_PIP` logs if runtime verification fails.
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java`
+  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java`
+  - `tmp_upstream_BraveActivity.java`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - system PiP expand returns to the YouTube watch page
+- Expected failure signal:
+  - system PiP expand still returns to fullscreen
+  - `event=pip_exit_cleanup_skipped` still appears on the expand path
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the `Home` baseline untouched.
+  - Try the narrow Java-side fix before changing the fullscreen injector path.
+  - Use the saved Brave upstream snapshot and Android PiP guidance as reference.
+- Rejected approaches:
+  - reintroducing Home-specific PiP logic
+  - adding a new whole-page PiP or DOM-driven workaround
+  - changing the C++ fullscreen injector before testing the smaller Java fix
+- Stop point classification:
+  - code edited, synced, built, and installed; runtime behavior of the expand button remains unverified
+- What is done but unverified:
+  - PiP expand should now attempt to return to the watch page via the new foreground-return branch
+- What is verified:
+  - build/install succeeded
+  - Home still does not trigger PiP
+- External prerequisite:
+  - physical device interaction is required to verify the system PiP expand-button behavior
+- Secret required but not stored:
+  - none for debug APK assembly
+
+## [2026-04-03 14:44:32 +07:00]
+- Phase:
+  - Phase 7 - Validation / PiP entry and lifecycle stabilization
+- Objective:
+  - Fix the crash triggered by the system PiP expand button and still steer the app back toward the YouTube watch page instead of fullscreen.
+- Done:
+  - Resumed from the latest desk-state entry instead of rescanning the repo.
+  - Pulled crash buffer, filtered runtime logs, and `dumpsys activity activities` after the user reproduced `PiP -> expand -> crash`.
+  - Confirmed the previous patch crashed in `BraveActivity.onPictureInPictureModeChanged(...)` while calling `exitPersistentFullscreenMode()` during the PiP/configuration transition.
+  - Captured the native failure:
+    - `FATAL:content/browser/screen_orientation/screen_orientation_provider.cc:188] DCHECK failed: !entered_fullscreen.`
+    - stack shows `WebContentsImpl::ExitFullscreenMode(bool)` from `onPictureInPictureModeChanged`
+  - Reworked `android/java/org/chromium/chrome/browser/app/BraveActivity.java`:
+    - removed the immediate fullscreen exit in the PiP callback
+    - added a deferred `return to watch page` flag and timestamp
+    - schedule actual `exitPersistentFullscreenMode()` only after the activity is `RESUMED`
+    - clear stale pending requests automatically
+  - Synced the patch to `/home/master/src_ext4/brave`.
+  - Rebuilt successfully with `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun2.log`.
+  - Installed the rebuilt APK on `R9TRC00GA2E`.
+  - Cleared logcat and relaunched the app to a YouTube watch page for the next manual expand test.
+- In progress:
+  - Waiting on a real-device truth-check for `PiP -> expand` on the deferred fix build.
+- Files touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun2.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `2ed2954e22abdf1e0d56767025da54baa4eaacddc41b8d54bd93f73ee78d9c14`
+  - install passed on `R9TRC00GA2E`
+  - app relaunched successfully to `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- Blockers/risks:
+  - The new build still needs a manual expand-button validation.
+  - If it still fails, the next likely scope is `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`.
+- Next step:
+  - Reproduce `PiP -> expand` on `R9TRC00GA2E`.
+  - Record whether it now:
+    - returns to watch page
+    - still returns to fullscreen
+    - still crashes
+  - If it still fails, dump the crash and runtime logs immediately.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this `2026-04-03 14:44:32 +07:00` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun2.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E logcat -d -b crash`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime OneTabTubePerf:I OTB_PIP:I chromium:I AndroidRuntime:E *:S`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun2.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+- Tool purpose:
+  - Replace the unsafe immediate fullscreen exit with a deferred foreground-return step and prepare the device for validation.
+- Tool state:
+  - No build currently running.
+  - Latest build is installed and the app is open on a watch page.
+- Expected resume command:
+  - If validation fails again, dump `adb logcat -d -b crash` and the filtered PiP logs immediately.
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun2.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `3c280a05a7ee95fee61fc39fbad3e789eceec3b0`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `adb crash buffer`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun2.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - crash/runtime logs from the next `PiP -> expand` attempt
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+  - build root:
+    - `/home/master/src_ext4`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - expand no longer crashes and returns to the watch page
+- Expected failure signal:
+  - expand still crashes
+  - expand still returns to fullscreen
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_expand_watch_page_rerun2.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the `Home` baseline unchanged.
+  - Fix the crash first before broadening the scope to the fullscreen latch.
+  - Defer fullscreen exit until the activity is resumed to avoid PiP/configuration re-entry crashes.
+- Rejected approaches:
+  - keeping the immediate `exitPersistentFullscreenMode()` call
+  - reintroducing Home-specific PiP behavior
+  - widening scope to C++ before verifying the safer Java defer path
+- Stop point classification:
+  - code edited, synced, built, installed, and device-prepared; runtime result of the expand button is still unverified
+- What is done but unverified:
+  - deferred PiP expand return-to-watch-page logic
+- What is verified:
+  - previous crash root cause
+  - new build compiles and installs
+- External prerequisite:
+  - physical device interaction is required for the next expand-button validation
+- Secret required but not stored:
+  - none for debug APK assembly

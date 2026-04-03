@@ -49,6 +49,228 @@ constexpr char16_t kYoutubeBackgroundPlayback[] =
 }());
 )";
 
+constexpr char16_t kYoutubeMediaSessionControls[] =
+    uR"OTBMEDIA(
+(function() {
+  if (window.__onetabtubeMediaSessionControlsInstalled) {
+    return;
+  }
+  window.__onetabtubeMediaSessionControlsInstalled = true;
+
+  let updateTimer = 0;
+  let lifecycleObserver = null;
+  let observedVideo = null;
+
+  function log(event, detail) {
+    try {
+      console.info(
+          'OTB_MEDIA event=' + event + (detail ? ' ' + String(detail) : ''));
+    } catch (e) {}
+  }
+
+  function updatePlaybackState(reason) {
+    if (!navigator.mediaSession) {
+      return;
+    }
+    const video = currentVideo();
+    let playbackState = 'none';
+    if (video) {
+      playbackState = isVideoPlaying(video) ? 'playing' : 'paused';
+    }
+    try {
+      navigator.mediaSession.playbackState = playbackState;
+      log('playback_state', 'reason=' + reason + ' state=' + playbackState);
+    } catch (e) {}
+  }
+
+  function currentVideo() {
+    return document.querySelector('video');
+  }
+
+  function isVideoPaused(video) {
+    return !!video && (video.paused || video.ended);
+  }
+
+  function isVideoPlaying(video) {
+    return !!video && !video.paused && !video.ended;
+  }
+
+  function triggerPlay(source) {
+    const video = currentVideo();
+    if (!video || typeof video.play !== 'function') {
+      return false;
+    }
+    if (isVideoPlaying(video)) {
+      log('play_already', 'source=' + source);
+      return true;
+    }
+    try {
+      const result = video.play();
+      if (result && typeof result.catch === 'function') {
+        result.catch(() => {});
+      }
+      updatePlaybackState('play');
+      log('play', 'source=' + source);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function triggerPause(source) {
+    const video = currentVideo();
+    if (!video || typeof video.pause !== 'function') {
+      return false;
+    }
+    if (isVideoPaused(video)) {
+      log('pause_already', 'source=' + source);
+      return true;
+    }
+    try {
+      video.pause();
+      updatePlaybackState('pause');
+      log('pause', 'source=' + source);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function triggerSeekBy(offsetSeconds, source) {
+    const video = currentVideo();
+    if (!video || !Number.isFinite(video.currentTime)) {
+      return false;
+    }
+    try {
+      const duration = Number.isFinite(video.duration) ? video.duration : null;
+      const targetTime = Math.max(
+          0,
+          duration != null
+              ? Math.min(duration, video.currentTime + offsetSeconds)
+              : video.currentTime + offsetSeconds);
+      video.currentTime = targetTime;
+      updatePlaybackState('seek');
+      log('seek', 'source=' + source + ' offset=' + offsetSeconds);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function triggerSeekTo(details, source) {
+    const video = currentVideo();
+    if (!video || !details || !Number.isFinite(details.seekTime)) {
+      return false;
+    }
+    try {
+      video.currentTime = Number(details.seekTime);
+      updatePlaybackState('seek_to');
+      updatePositionState('seek_to');
+      log('seek_to', 'source=' + source + ' position=' + details.seekTime);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function setActionHandler(action, handler) {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch (e) {}
+  }
+
+  function updatePositionState(reason) {
+    if (!navigator.mediaSession
+        || typeof navigator.mediaSession.setPositionState !== 'function') {
+      return;
+    }
+    const video = currentVideo();
+    if (!video || !Number.isFinite(video.duration) || video.duration <= 0
+        || !Number.isFinite(video.currentTime)) {
+      return;
+    }
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: video.duration,
+        playbackRate: Number.isFinite(video.playbackRate) ? video.playbackRate : 1,
+        position: Math.min(video.duration, Math.max(0, video.currentTime)),
+      });
+      log('position_state', 'reason=' + reason);
+    } catch (e) {}
+  }
+
+  function updateMediaSessionHandlers(reason) {
+    if (!navigator.mediaSession
+        || typeof navigator.mediaSession.setActionHandler !== 'function') {
+      return;
+    }
+
+    observeVideo();
+    // Standard path for browser-tab playback: expose only actions we can
+    // fulfill through HTMLMediaElement and Media Session API. Clear any stale
+    // next/previous handlers from older injections or page-specific logic.
+    setActionHandler('nexttrack', null);
+    setActionHandler('previoustrack', null);
+    setActionHandler('play', () => triggerPlay('media_session'));
+    setActionHandler('pause', () => triggerPause('media_session'));
+    setActionHandler('seekforward', () => triggerSeekBy(10, 'media_session'));
+    setActionHandler('seekbackward', () => triggerSeekBy(-10, 'media_session'));
+    setActionHandler('seekto', (details) => triggerSeekTo(details, 'media_session'));
+    updatePlaybackState(reason);
+    updatePositionState(reason);
+    log('handlers_updated', 'reason=' + reason + ' actions=play,pause,seek');
+  }
+
+  function scheduleUpdate(reason) {
+    clearTimeout(updateTimer);
+    updateTimer = setTimeout(() => updateMediaSessionHandlers(reason), 120);
+  }
+
+  function observeLifecycle() {
+    if (lifecycleObserver || typeof MutationObserver !== 'function') {
+      return;
+    }
+    const root = document.body || document.documentElement;
+    if (!root) {
+      return;
+    }
+    lifecycleObserver = new MutationObserver(() => {
+      scheduleUpdate('mutation');
+    });
+    lifecycleObserver.observe(root, {childList: true, subtree: true});
+  }
+
+  function observeVideo() {
+    const video = currentVideo();
+    if (!video || video === observedVideo) {
+      return;
+    }
+    observedVideo = video;
+    video.addEventListener('playing', () => scheduleUpdate('video_playing'), true);
+    video.addEventListener('pause', () => scheduleUpdate('video_pause'), true);
+    video.addEventListener('loadeddata', () => scheduleUpdate('video_loaded'), true);
+    video.addEventListener('loadedmetadata', () => scheduleUpdate('video_metadata'), true);
+    video.addEventListener('durationchange', () => scheduleUpdate('video_duration'), true);
+    video.addEventListener('timeupdate', () => updatePositionState('timeupdate'), true);
+    video.addEventListener('ratechange', () => updatePositionState('ratechange'), true);
+    video.addEventListener('seeking', () => updatePositionState('seeking'), true);
+    video.addEventListener('ended', () => scheduleUpdate('video_ended'), true);
+  }
+
+  function bootstrap(reason) {
+    observeLifecycle();
+    observeVideo();
+    scheduleUpdate(reason || 'bootstrap');
+  }
+
+  bootstrap('initial');
+  document.addEventListener('DOMContentLoaded', () => bootstrap('dom_ready'), true);
+  document.addEventListener('yt-navigate-finish', () => bootstrap('yt_navigate_finish'), true);
+  window.addEventListener('pageshow', () => bootstrap('pageshow'), true);
+  window.addEventListener('focus', () => bootstrap('focus'), true);
+}());
+)OTBMEDIA";
+
 constexpr char16_t kYoutubePictureInPictureSupport[] =
     uR"(
 (function() {
@@ -3658,6 +3880,50 @@ constexpr char16_t kYoutubeFullscreen[] =
 }());
 )";
 
+constexpr char16_t kYoutubeExitFullscreen[] =
+    uR"(
+(function() {
+  return new Promise((resolve) => {
+    const video = document.querySelector("video.html5-main-video");
+    const finish = result => setTimeout(() => resolve(result), 150);
+    const handleMaybePromise = maybePromise => {
+      if (maybePromise && typeof maybePromise.then === 'function') {
+        maybePromise.then(
+            () => finish('fullscreen_exited'),
+            () => finish('exit_failed'));
+      } else {
+        finish('fullscreen_exited');
+      }
+    };
+
+    try {
+      const hasDocumentFullscreen =
+          !!document.fullscreenElement || !!document.webkitFullscreenElement;
+      if (hasDocumentFullscreen) {
+        const exitApi =
+            document.exitFullscreen || document.webkitExitFullscreen;
+        if (!exitApi) {
+          finish('exit_api_missing');
+          return;
+        }
+        handleMaybePromise(exitApi.call(document));
+        return;
+      }
+
+      if (video && video.webkitDisplayingFullscreen
+          && typeof video.webkitExitFullscreen === 'function') {
+        handleMaybePromise(video.webkitExitFullscreen());
+        return;
+      }
+
+      finish('not_fullscreen');
+    } catch (e) {
+      finish('exit_exception');
+    }
+  });
+}());
+)";
+
 bool IsBackgroundVideoPlaybackEnabled(content::WebContents* contents) {
   PrefService* prefs =
       static_cast<Profile*>(contents->GetBrowserContext())->GetPrefs();
@@ -3707,6 +3973,8 @@ void YouTubeScriptInjectorTabHelper::PrimaryMainDocumentElementAvailable() {
     return;
   }
   content::RenderFrameHost::AllowInjectingJavaScript();
+  contents->GetPrimaryMainFrame()->ExecuteJavaScript(
+      kYoutubeMediaSessionControls, base::NullCallback());
   if (IsBackgroundVideoPlaybackEnabled(contents)) {
     contents->GetPrimaryMainFrame()->ExecuteJavaScript(
         kYoutubeBackgroundPlayback, base::NullCallback());
@@ -3749,6 +4017,24 @@ void YouTubeScriptInjectorTabHelper::MaybeSetFullscreen() {
       blink::mojom::PromiseResultOption::kAwait,
       base::BindOnce(
           &YouTubeScriptInjectorTabHelper::OnFullscreenScriptComplete,
+          weak_factory_.GetWeakPtr(), rfh->GetGlobalFrameToken()));
+}
+
+void YouTubeScriptInjectorTabHelper::MaybeExitFullscreen() {
+  content::RenderFrameHost* rfh = web_contents()->GetPrimaryMainFrame();
+  if (!rfh || !rfh->IsRenderFrameLive()) {
+    return;
+  }
+
+  // PiP expand should return to the watch page, not keep any stale fullscreen latch.
+  SetFullscreenRequested(false);
+  EnsureBound(rfh);
+  script_injector_remote_->RequestAsyncExecuteScript(
+      ISOLATED_WORLD_ID_BRAVE_INTERNAL, kYoutubeExitFullscreen,
+      blink::mojom::UserActivationOption::kDoNotActivate,
+      blink::mojom::PromiseResultOption::kAwait,
+      base::BindOnce(
+          &YouTubeScriptInjectorTabHelper::OnExitFullscreenScriptComplete,
           weak_factory_.GetWeakPtr(), rfh->GetGlobalFrameToken()));
 }
 
@@ -3854,14 +4140,29 @@ void YouTubeScriptInjectorTabHelper::OnFullscreenScriptComplete(
   // triggered, and the callback is for the current main frame, return early
   // without resetting the fullscreen state. This prevents unnecessary state
   // changes when fullscreen was successfully entered.
-  if (web_contents()->GetVisibility() == content::Visibility::VISIBLE &&
-      value.is_string() && value.GetString() == "fullscreen_triggered" &&
-      token == web_contents()->GetPrimaryMainFrame()->GetGlobalFrameToken()) {
+  if (value.is_string() && value.GetString() == "fullscreen_triggered" &&
+      token == web_contents()->GetPrimaryMainFrame()->GetGlobalFrameToken() &&
+      web_contents()->GetVisibility() == content::Visibility::VISIBLE) {
     return;
   }
 
   SetFullscreenRequested(false);
 }
+
+void YouTubeScriptInjectorTabHelper::OnExitFullscreenScriptComplete(
+    content::GlobalRenderFrameHostToken token,
+    base::Value value) {
+  std::string result =
+      value.is_string() ? value.GetString() : std::string("<non-string>");
+  LOG(INFO) << "OTB_PIP event=exit_fullscreen_script_complete"
+            << " result=" << result
+            << " visibility=" << static_cast<int>(web_contents()->GetVisibility());
+  if (token != web_contents()->GetPrimaryMainFrame()->GetGlobalFrameToken()) {
+    return;
+  }
+  SetFullscreenRequested(false);
+}
+
 
 bool YouTubeScriptInjectorTabHelper::IsPictureInPictureAvailable() const {
   return base::FeatureList::IsEnabled(

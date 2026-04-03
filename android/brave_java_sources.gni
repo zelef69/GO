@@ -525,7 +525,6 @@ _brave_java_source_filters = []
 
 if (is_onetabyt) {
   _brave_java_source_filters += [
-    "*media/ui/BraveMediaNotificationControllerDelegate.java",
     "*omnibox/suggestions/BraveAutocompleteMediator.java",
     "*omnibox/suggestions/BraveAutocompleteMediatorBase.java",
     "*playlist/PlaylistHostActivity.java",
@@ -688,7 +687,6 @@ _brave_java_base_module_source_filters = []
 
 if (is_onetabyt) {
   _brave_java_base_module_source_filters += [
-    "*media/ui/BraveMediaNotificationControllerServices.java",
     "*playlist/hls_content/HlsService.java",
   ]
 }

@@ -28,6 +28,7 @@ class YouTubeScriptInjectorTabHelper
   bool IsYouTubeDomain(bool mobileOnly = false) const;
   bool IsYouTubeVideo(bool mobileOnly = false) const;
   void MaybeSetFullscreen();
+  void MaybeExitFullscreen();
 
   // Fullscreen state management using PageUserData
   bool HasFullscreenBeenRequested() const;
@@ -50,6 +51,8 @@ class YouTubeScriptInjectorTabHelper
   // Callback for when the fullscreen script completes.
   void OnFullscreenScriptComplete(content::GlobalRenderFrameHostToken token,
                                   base::Value value);
+  void OnExitFullscreenScriptComplete(content::GlobalRenderFrameHostToken token,
+                                      base::Value value);
 
   void EnsureBound(content::RenderFrameHost* rfh);
 

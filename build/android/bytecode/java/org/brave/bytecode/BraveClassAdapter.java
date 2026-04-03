@@ -93,13 +93,11 @@ public class BraveClassAdapter {
         chain = new BraveMainPreferenceBaseClassAdapter(chain);
         chain = new BraveManageAccountDevicesLinkViewClassAdapter(chain);
         chain = new BraveManageSyncSettingsClassAdapter(chain);
-        if (!sIsOneTabYT) {
-            chain = new BraveMediaNotificationControllerDelegateAdapter(chain);
-        }
-        if (!sIsOneTabYT) {
-            chain = new BraveMediaSessionHelperClassAdapter(chain);
-            chain = new BraveMediaSessionTabHelperClassAdapter(chain);
-        }
+        // Keep Chromium/Android media-session wiring aligned with Brave upstream so
+        // PiP and notification controls can flow through the standard browser path.
+        chain = new BraveMediaNotificationControllerDelegateAdapter(chain);
+        chain = new BraveMediaSessionHelperClassAdapter(chain);
+        chain = new BraveMediaSessionTabHelperClassAdapter(chain);
         chain = new BraveMenuButtonCoordinatorClassAdapter(chain);
         chain = new BraveMimeUtilsClassAdapter(chain);
         chain = new BraveMostVisitedTilesLayoutBaseClassAdapter(chain);
