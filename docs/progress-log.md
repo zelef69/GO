@@ -260,6 +260,1491 @@
 - Secret required but not stored:
   - none
 
+## 2026-04-04 17:16:00 +07:00
+
+- Timestamp:
+  - 2026-04-04 17:16:00 +07:00
+- Current phase:
+  - Phase 5 / PiP autoplay-next video-presentation restore
+- Current objective:
+  - Validate the new autoplay carry-forward presentation patch against a live PiP replay on device.
+- Completed since last snapshot:
+  - Replaced `docs/current-status.md` so it now reflects the latest autoplay-carry patch/build/install state instead of the older MIX-control state.
+  - Confirmed from live device state that OneTabTube is foreground on a watch/MIX page and captured fresh runtime artifacts:
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+  - Extracted the current PiP toolbar button from the live UI dump:
+    - id `com.onetabtube.browser_default:id/brave_youtube_pip_button`
+    - bounds `[668,88][795,201]`
+  - Cleared `logcat`, tapped the PiP button automatically, and captured the post-tap screenshot:
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+  - Verified the live replay did not reach pinned PiP on this session:
+    - `dumpsys activity activities` still showed OneTabTube task `mode=fullscreen`
+    - `logcat` showed `OTB_PIP event=enter_picture_in_picture_from_fullscreen`
+    - then `Delay enterPictureInPicture retry because fullscreen state is not visible to Java yet`
+    - then `Abort delayed enterPictureInPicture because fullscreen state is still not visible to Java`
+  - Verified via CDP that the page did reach fullscreen presentation temporarily while PiP stayed `false`, so the new autoplay carry-forward restore did not get exercised in a real pinned-PiP autoplay transition during this run.
+- In progress now:
+  - Holding the autoplay-carry patch in place while treating current automatic validation as blocked by the Java fullscreen-visibility race during PiP entry on the live session.
+- Blockers / risks:
+  - Automatic replay cannot truth-check autoplay-next-in-PiP until the live session actually enters pinned PiP.
+  - The current blocker is upstream of autoplay-next itself:
+    - fullscreen becomes active in JS/C++
+    - Java visibility check still returns false
+    - delayed helper retry aborts
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+- Build/test status:
+  - no new build in this snapshot; using the already-installed autoplay-carry build
+  - installed APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - installed APK SHA-256:
+    - `836B85FF35E2278E106B0087056496D062169D7F3787C70EC30CE1DA413FE35F`
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
+  - verified this snapshot:
+    - autoplay carry-forward patch is still present in source
+    - OneTabTube is foreground and ready
+    - current auto replay reaches fullscreen but aborts before pinned PiP
+- Exact next concrete step:
+  - Ask for a user truth-check on the exact autoplay-next-in-PiP symptom with the installed build.
+  - If the user instead also reports the live PiP-entry abort, resume from `BraveYouTubeScriptInjectorNativeHelper.java` and trace/fix the Java fullscreen visibility race directly.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `apply_patch`
+  - `view_image`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern 'topResumedActivity|ResumedActivity|mCurrentFocus|com.onetabtube.browser_default|mode=pinned' -Context 0,1`
+  - `adb -s R9TRC00GA2E shell screencap -p /sdcard/Download/otb_autoplay_state_now.png`
+  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/Download/otb_autoplay_state_now.xml`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell input tap 731 144`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_PIP|video_presentation|fullscreen|playback_stable|enter_picture_in_picture|fullscreen_script_complete|picture-in-picture' -Context 0,1`
+  - `adb forward tcp:9223 localabstract:chrome_devtools_remote_5612`
+  - `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9223/json/list`
+  - inline Python `websocket-client` CDP `Runtime.evaluate` calls against `ws://127.0.0.1:9223/devtools/page/222`
+- Tool purpose:
+  - Attempt a true autoplay-next-in-PiP replay and record the precise blocker when the replay stops earlier than expected.
+- Tool state:
+  - no build running
+  - live automatic replay stopped at PiP-entry abort
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -c; adb -s R9TRC00GA2E shell input tap 731 144`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6def`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - autoplay carry-forward presentation logic
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - Java-side PiP retry visibility race
+  - `docs/current-status.md`
+    - live desk state
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `BraveYouTubeScriptInjectorNativeHelper.java`
+  - `youtube_script_injector_tab_helper.cc`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - live OneTabTube watch/MIX page visible in foreground
+- Expected success signal:
+  - either user confirms autoplay-next-in-PiP now restores focused video presentation, or a dedicated PiP-entry-race round begins with clear logs
+- Expected failure signal:
+  - replay continues to abort before pinned PiP and no autoplay-next truth-check is possible
+- Last known log location:
+  - live `adb logcat` output around `17:12:53`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+- Recent decisions:
+  - keep the autoplay-carry patch as-is for now
+  - do not patch the separate PiP-entry race blindly in the same round
+- Rejected approaches:
+  - claiming autoplay-next success without ever reaching pinned PiP in the replay
+  - broad native lifecycle edits before isolating the Java fullscreen visibility blocker
+- Stop point classification:
+  - build already installed; automatic validation blocked before pinned PiP; waiting on user truth-check or a separate PiP-entry-race fix round
+- What is done but unverified:
+  - the autoplay-next PiP presentation fix on a real pinned-PiP autoplay transition
+- What is verified:
+  - autoplay-carry patch is installed
+  - current live replay hits fullscreen then aborts before pinned PiP
+- External prerequisite:
+  - user truth-check on the exact autoplay-next-in-PiP symptom, unless they also reproduce the PiP-entry abort first
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 17:09:54 +07:00
+
+- Timestamp:
+  - 2026-04-04 17:09:54 +07:00
+- Current phase:
+  - Phase 5 / PiP autoplay-next video-presentation restore
+- Current objective:
+  - Fix the case where autoplay advances to the next YouTube item while already in PiP, but PiP does not regain focused/fullscreen video presentation on the new item.
+- Completed since last snapshot:
+  - Re-opened `docs/current-status.md` and the latest tail of `docs/progress-log.md` before continuing.
+  - Re-inspected `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` and confirmed the new autoplay carry-forward logic is present:
+    - `VIDEO_PRESENTATION_CARRY_STORAGE_KEY`
+    - `saveCarryForwardVideoPresentation(...)`
+    - `loadCarryForwardVideoPresentation(...)`
+    - extended `ensureVideoPresentationForArmedTarget(...)`
+    - `video.addEventListener('ended', ...)` arming the carry-forward presentation intent
+  - Recomputed the current desk state after resume:
+    - branch `publish/go_play-sync-20260402`
+    - HEAD `8325155d6def`
+    - `R9TRC00GA2E` connected and authorized
+  - Verified current foreground runtime state from `dumpsys activity activities`:
+    - OneTabTube is `topResumedActivity`
+    - current task is visible and `mode=fullscreen`
+    - focused window belongs to `com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - Captured fresh runtime artifacts from the current live page:
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+  - Confirmed the current screen is a live YouTube watch/MIX page and extracted the current PiP button from the UI dump:
+    - resource id `com.onetabtube.browser_default:id/brave_youtube_pip_button`
+    - bounds `[668,88][795,201]`
+  - Corrected `docs/current-status.md` so it now reflects the latest autoplay-carry patch, build, install, and live replay setup.
+- In progress now:
+  - Automatic replay of `enter PiP -> force current video near end -> let autoplay advance -> inspect PiP presentation on the next item`.
+- Blockers / risks:
+  - The autoplay-next symptom still needs runtime proof on the live device; manual next/previous success is not enough evidence.
+  - PiP replay automation depends on the currently visible watch/MIX page staying foreground long enough to enter PiP and force the end-of-track transition.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+- Build/test status:
+  - no new build this snapshot; using the already-built autoplay-carry APK
+  - installed APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - installed APK SHA-256:
+    - `836B85FF35E2278E106B0087056496D062169D7F3787C70EC30CE1DA413FE35F`
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
+  - verified this snapshot:
+    - desk state now matches the autoplay-carry patch
+    - live app is foreground on a watch/MIX page
+    - PiP button coordinates are known for the next replay step
+- Exact next concrete step:
+  - Tap the known PiP button automatically, then use the live page to force an end-of-track transition and capture whether PiP regains focused video presentation on autoplay next.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `apply_patch`
+  - `view_image`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern 'topResumedActivity|ResumedActivity|mCurrentFocus|com.onetabtube.browser_default|mode=pinned' -Context 0,1`
+  - `adb -s R9TRC00GA2E shell screencap -p /sdcard/Download/otb_autoplay_state_now.png`
+  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_autoplay_state_now.png C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/Download/otb_autoplay_state_now.xml`
+  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_autoplay_state_now.xml C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+- Tool purpose:
+  - Align handoff with the latest autoplay-carry patch and establish a clean live replay point on device.
+- Tool state:
+  - no build running
+  - latest autoplay-carry build installed
+  - replay setup complete
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell input tap 731 144`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6def`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - autoplay carry-forward presentation logic
+  - `docs/current-status.md`
+    - current desk state
+  - `docs/progress-log.md`
+    - append-only audit trail
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+    - live PiP button coordinates
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - OneTabTube watch/MIX page still visible in foreground
+- Expected success signal:
+  - autoplay next in PiP restores focused/fullscreen video presentation on the new item
+- Expected failure signal:
+  - autoplay next still leaves PiP without focused video presentation on the new item
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+- Recent decisions:
+  - keep the working manual control path untouched
+  - validate the new autoplay carry-forward patch before making any native PiP changes
+- Rejected approaches:
+  - claiming success before replaying autoplay next in PiP
+  - broad native retry logic without proving the narrower JS carry-forward path first
+- Stop point classification:
+  - desk state corrected; automatic PiP autoplay replay is the next micro-step
+- What is done but unverified:
+  - end-to-end autoplay-next PiP behavior on the newly installed build
+- What is verified:
+  - live app state is ready for replay
+  - PiP entry coordinates are known
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 16:00:57 +07:00
+
+- Current phase:
+  - Phase 5 / MIX track dispatch stabilization with live automatic verification
+- Current objective:
+  - Make notification/PiP `next/previous` follow the real MIX order continuously by using fresh playlist-panel state from the current page instead of stale player-api state.
+- Completed since last update:
+  - Re-opened `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Re-attached to the user-opened live MIX page through CDP and confirmed the live media session exposed `actions=382`.
+  - Proved automatically that the old active path was still wrong for repeated MIX stepping:
+    - first `next` changed track
+    - second `next` stalled on the same video
+    - live log showed `strategy:"player-api"`
+  - Proved that transport-button and shortcut simulation were not sufficient on the same live MIX page:
+    - hidden mobile next button did not advance
+    - keyboard shortcut simulation did not advance
+  - Inspected live `ytInitialData` and found the root cause:
+    - after player-api transitions, `ytInitialData` could become stale and no longer match the currently playing `v=...`
+  - Reloaded the same MIX page and verified that fresh page state fixes this:
+    - selected playlist-panel item matched the current URL video again
+  - Proved through CDP that navigating via the selected `playlistPanelVideoRenderer` sibling and `window.__onetabtubeNavigateWatch(...)`:
+    - advanced in order
+    - stayed inside MIX
+    - restaged the next page correctly
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` to:
+    - build watch URLs directly from `watchEndpoint`
+    - add `getPlaylistPanelItemsFromInitialData()`
+    - add `findTrackHrefInPlaylistPanel(kind)`
+    - include playlist-panel capability in `hasReliableTrackCapability(kind)`
+    - prefer `playlist-panel-navigation` before player-api in `runTrackFallback(...)`
+    - prefer playlist-panel href in `findReliableTrackHref(...)` and `tryYouTubeInitialDataNavigation(...)`
+  - Synced into WSL, rebuilt, reinstalled, and reattached to the running app.
+  - Verified the new build digest:
+    - `39d316a4c939424634f97f2c03937bfd3efdd01c6c08f19fc49788077ba40352`
+  - Verified the new path automatically on the device:
+    - `next` #1:
+      - before: `Xo3kp5BLF6Q`, `selectedIndex=3`
+      - after: `V-rS174AUT0`, `selectedIndex=4`
+      - log: `reason:"playlist-panel-navigation"`
+    - `next` #2:
+      - after: `Pav2f4b-1ZE`, `selectedIndex=5`
+      - log: `reason:"playlist-panel-navigation"`
+    - `previous`:
+      - before: `Pav2f4b-1ZE`
+      - after: `V-rS174AUT0`
+      - log: `reason:"playlist-panel-navigation"`
+- In progress now:
+  - Waiting for one final truth-check from real notification/PiP taps on the installed build.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed on `R9TRC00GA2E`
+  - automatic runtime verification passed for live media-session dispatch plus CDP state reads
+  - current installed APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - current installed APK SHA-256:
+    - `39d316a4c939424634f97f2c03937bfd3efdd01c6c08f19fc49788077ba40352`
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_playlist_panel_navigation_fix.log`
+- Blockers/risks:
+  - This round verified Android media-session dispatch, not literal notification/PiP finger taps.
+  - `previous` stayed in MIX and moved back correctly, but one early post-jump read still showed a short-lived `selectedIndex=-1` before full restage.
+- Exact next concrete step:
+  - User retests actual notification/PiP `next/previous` in MIX on the installed build and reports whether they now behave like the automatic test.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - latest user report from notification/PiP taps
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `apply_patch`
+  - CDP via `chrome_devtools_remote`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E shell dumpsys media_session | Select-String -Pattern 'com.onetabtube.browser_default|state=PlaybackState|actions=|description=' -Context 0,1`
+  - `adb -s R9TRC00GA2E shell cmd media_session dispatch next`
+  - `adb -s R9TRC00GA2E shell cmd media_session dispatch previous`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_MEDIA|native_tab_bridge_command|next_track|previous_track|playlist-panel-navigation|player-api|unreliable-track-context' -Context 0,1`
+  - `adb forward tcp:9223 localabstract:chrome_devtools_remote`
+  - `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9223/json/list`
+  - PowerShell `ClientWebSocket` CDP `Runtime.evaluate` scripts against `ws://127.0.0.1:9223/devtools/page/<id>`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_mix_playlist_panel_navigation_fix.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+- Tool purpose:
+  - Replace stale MIX stepping with page-native playlist-panel navigation and verify it automatically on the device.
+- Tool state:
+  - no build running now
+  - latest playlist-panel-navigation build installed on `R9TRC00GA2E`
+  - CDP can be reattached through `localabstract:chrome_devtools_remote`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell cmd media_session dispatch next`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_playlist_panel_navigation_fix.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - playlist-panel-driven MIX `next/previous`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - native command logging
+  - `docs/current-status.md`
+    - latest handoff
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user report from notification/PiP taps
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - app in a real MIX context if UI confirmation is needed
+- Expected success signal:
+  - notification/PiP `next/previous` behave the same way as automatic media-session dispatch and stay inside MIX
+- Expected failure signal:
+  - UI taps still diverge from the automatic dispatch path or backward restage still misbehaves
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_playlist_panel_navigation_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - stop using player-api as the preferred MIX stepping path
+  - trust fresh playlist-panel state from the current page instead
+  - use same-page navigate pipeline so the page restages after every jump
+- Rejected approaches:
+  - continuing to prefer `player-api` in MIX
+  - trusting stale `ytInitialData` after player-api changes
+  - treating hidden mobile transport buttons as the reliable source of truth
+- Stop point classification:
+  - code edited, synced, built, installed, and auto-verified; final UI truth-check pending
+- What is done but unverified:
+  - actual notification tap behavior
+  - actual PiP button tap behavior
+- What is verified:
+  - repeated automatic `next` now advances sequentially in MIX
+  - automatic `previous` now moves back while staying in MIX
+  - active strategy switched to `playlist-panel-navigation`
+- External prerequisite:
+  - user-visible retest on the actual controls
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 15:37:24 +07:00
+
+- Current phase:
+  - Phase 5 / MIX track dispatch root-cause fix with automatic runtime inspection
+- Current objective:
+  - Restore working notification/PiP `next/previous` in MIX without falling back to stale no-op logic, and preserve MIX context when the bridge has to use player API.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before editing again.
+  - Reproduced the Android-side no-op automatically with:
+    - `adb -s R9TRC00GA2E shell cmd media_session dispatch next`
+    - `adb -s R9TRC00GA2E shell cmd media_session dispatch previous`
+  - Captured the real bridge failure from live logcat:
+    - `OTB_MEDIA event=native_tab_bridge_command command=next_track result={"ok":false,"strategy":"none","reason":"unreliable-track-context"}`
+    - `OTB_MEDIA event=native_tab_bridge_command command=previous_track result={"ok":false,"strategy":"none","reason":"unreliable-track-context"}`
+  - Confirmed in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` that `runTrackFallback(...)` aborted too early when transport buttons were absent, even if `player-api` was still a reliable path.
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` so the no-transport branch no longer aborts if `hasReliablePlayerTrackCapability(kind)` is true, and `player-api` runs before `DOM link` there.
+  - Synced changes into WSL with `tools/sync_changed_files_to_wsl.ps1`.
+  - Rebuilt `brave/build/android:onetabtube_android_package`.
+  - Reinstalled the rebuilt APK and verified digest:
+    - `7e628c4b96f841136baf46a0cc0d8b2d53cb4bd7d53a7acf25e3bb338cd63611`
+  - Forwarded the app devtools socket and inspected the live YouTube renderer through CDP.
+  - Verified via CDP that plain shell-launched watch pages currently strip MIX query parameters on entry:
+    - live page URL became `https://m.youtube.com/watch?v=kJQP7kiw5Fk`
+    - `playlistContext=false`
+    - `playerHasNext=true`
+    - `playerHasPrev=true`
+    - no visible `.ytp-next-button` / `.ytp-prev-button`
+  - Ran a CDP bridge call before the latest context-preservation patch and confirmed:
+    - `bridge.next({preserveVideoPresentation:false})` returned `{"ok":true,"strategy":"player-api"}`
+    - but the page URL changed from `...&list=RD...&start_radio=1` to a standalone watch URL
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` again so successful `player-api` track changes preserve MIX URL context by restoring:
+    - `list`
+    - `start_radio`
+    - `pp`
+    - `feature`
+    - `si`
+    onto the post-track watch URL via `history.replaceState(...)`
+  - Re-synced, rebuilt, reinstalled, and re-verified the new APK digest:
+    - `066fd4e2e638244fabd95ffde9d60efa5d8531e77839c226e509e479df3953f8`
+  - Resume reality check completed before stopping:
+    - re-opened `docs/current-status.md`
+    - re-opened the latest tail of `docs/progress-log.md`
+    - re-inspected `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - re-verified the built APK artifact and latest build log path still match the recorded handoff
+- In progress now:
+  - Waiting on a real device truth-check for notification/PiP `next/previous` inside an actual MIX context after the player-api MIX-preservation patch.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed on `R9TRC00GA2E`
+  - automatic runtime evidence collected from:
+    - `adb shell cmd media_session dispatch ...`
+    - `adb logcat`
+    - `adb shell dumpsys media_session`
+    - CDP over `chrome_devtools_remote`
+  - current installed APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - current installed APK SHA-256:
+    - `066fd4e2e638244fabd95ffde9d60efa5d8531e77839c226e509e479df3953f8`
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_playerapi_preserve_context_fix.log`
+  - verified this round:
+    - earlier no-op root cause was real and reproduced from live logs
+    - current shell-launched test entry does not preserve MIX query params on first load
+    - player-api can change track in MIX-capable renderer state
+    - player-api previously dropped MIX URL context
+    - latest preserve-context patch is present in source, built, and installed
+  - not yet verified this round:
+    - whether notification/PiP `next/previous` now works end-to-end in the user's actual MIX flow
+    - whether repeated `next` now advances while staying inside MIX after the preserve-context patch
+- Blockers/risks:
+  - Automatic shell launch into `m.youtube.com/watch?...&list=RD...` currently lands as a standalone watch URL, so fully automated end-to-end MIX verification from plain `am start` is not representative of the user's real MIX flow.
+  - CDP reconnect/evaluate after live navigation is flaky enough that the final preserve-context patch was verified by source/build/install plus pre-patch CDP evidence, but not yet by a second stable post-patch CDP roundtrip.
+- Exact next concrete step:
+  - User retests in actual MIX context and confirms one of:
+    - `ใช้ได้แล้ว`
+    - `ยังกดแล้วไม่ไป`
+    - `ยังหลุดออกจาก MIX`
+    - `มีอาการใหม่`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user report from real MIX retest
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `apply_patch`
+  - CDP via `chrome_devtools_remote`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E shell cmd media_session dispatch next`
+  - `adb -s R9TRC00GA2E shell cmd media_session dispatch previous`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_MEDIA|OTB_PIP|native_tab_bridge_command|next_track|previous_track|unreliable-track-context|player_api|dom_link|shortcut'`
+  - `adb -s R9TRC00GA2E shell dumpsys media_session`
+  - `adb forward tcp:9223 localabstract:chrome_devtools_remote`
+  - `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9223/json/list`
+  - PowerShell `ClientWebSocket` CDP `Runtime.evaluate` scripts against `ws://127.0.0.1:9223/devtools/page/<id>`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_mix_playerapi_gate_fix.log 2>&1"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_mix_playerapi_preserve_context_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+- Tool purpose:
+  - Reproduce the no-op failure automatically, prove the bridge root cause from logs and renderer state, and patch the narrowest code path that fixes both the no-op gate and the MIX-context drop on player-api transitions.
+- Tool state:
+  - no build running now
+  - latest MIX-preservation APK installed on `R9TRC00GA2E`
+  - CDP forwarding can be re-established from `localabstract:chrome_devtools_remote`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell dumpsys media_session | Select-String -Pattern 'OneTabTube - Debug|actions=|description=' -Context 0,2`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_playerapi_preserve_context_fix.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - MIX `next/previous` dispatch ordering and post-player-api URL preservation
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - native bridge command logging and command dispatch entry points
+  - `docs/current-status.md`
+    - live handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - app in a real MIX context if manual truth-check is needed
+- Expected success signal:
+  - notification/PiP `next/previous` changes tracks and preserves MIX context so controls stay available
+- Expected failure signal:
+  - track changes still do nothing, still drop out of MIX, or controls disappear again after the transition
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_playerapi_preserve_context_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - trust live `OTB_MEDIA` command results over assumptions about Android buttons
+  - use player-api as a reliable fallback when transport buttons are absent but YouTube player context is present
+  - repair MIX URL context after successful player-api transitions instead of letting the page drift into standalone watch URLs
+- Rejected approaches:
+  - blaming Android notification/PiP rendering without first proving bridge command results
+  - keeping the earlier early-return `unreliable-track-context` guard
+  - relying on plain `am start` as the only automatic MIX test entrypoint after proving it strips `list` in this environment
+- Stop point classification:
+  - code edited, synced, built, installed, and partially auto-verified; final real-MIX truth-check pending
+- What is done but unverified:
+  - whether the latest preserve-context patch keeps notification/PiP controls alive through repeated MIX transitions on the real device flow
+- What is verified:
+  - no-op root cause was reproduced from logs
+  - player-api path can change track in MIX-capable renderer state
+  - player-api path previously dropped MIX context
+  - latest fix for that context drop is built and installed
+- External prerequisite:
+  - manual retest in actual MIX context on `R9TRC00GA2E`
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 14:41:30 +07:00
+
+- Current phase:
+  - Phase 5 / MIX transport-first track dispatch
+- Current objective:
+  - Keep notification/PiP `next/previous` inside MIX by making the bridge prefer the same on-page transport path that the user already verified behaves correctly.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before editing.
+  - Confirmed from targeted inspection that `runTrackFallback(...)` in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` still tried `player.nextVideo()/previousVideo()` before `DOM transport`.
+  - Matched that ordering to the user report:
+    - the correct item loads
+    - but MIX context is lost and the page becomes a standalone watch page
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` so `runTrackFallback(...)` now:
+    - tries `DOM transport` first when reliable transport is available
+    - falls back to `player-api` second
+    - keeps `DOM link` fallback last
+  - Synced the patched file into WSL via `tools/sync_changed_files_to_wsl.ps1`.
+  - Rebuilt `brave/build/android:onetabtube_android_package`.
+  - Verified the rebuilt APK digest:
+    - `9e798b5f32524241411b82f49a20da4f2484c4c27eea2e05290aaf9fa0532052`
+  - Reinstalled the rebuilt APK on `R9TRC00GA2E`.
+  - Delivered the MIX URL back into the running top-most app instance:
+    - `https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1`
+- In progress now:
+  - Waiting on a real device truth-check for notification/PiP `next/previous` in MIX after the strategy reorder.
+- Blockers / risks:
+  - If reliable transport buttons are hidden/unavailable in some YouTube states, the bridge may still need to fall back to `player-api` or link-based paths.
+  - This round changes strategy ordering only; it does not remove other fallbacks yet.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed
+  - MIX launch intent delivered successfully to the running top-most instance
+  - artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `9e798b5f32524241411b82f49a20da4f2484c4c27eea2e05290aaf9fa0532052`
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_transport_first_fix.log`
+- Exact next concrete step:
+  - User retests in MIX and confirms one of:
+    - `ใช้ได้แล้ว`
+    - `ยังหลุดออกจาก MIX`
+    - `กดแล้วไม่ไป`
+    - `มีอาการใหม่`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user report about MIX next/previous behavior
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md' -Head 240`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 140`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-Object -Skip 1348 -First 70`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_mix_transport_first_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1"`
+- Tool purpose:
+  - Make notification/PiP track changes follow the same on-page transport path that the user already verified preserves MIX behavior.
+- Tool state:
+  - no build running now
+  - rebuilt transport-first APK installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_transport_first_fix.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - transport-first strategy ordering for `next/previous`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - MIX query preservation from the previous round
+  - `docs/current-status.md`
+    - live handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit log
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - notification/PiP `next/previous` stays in MIX and the controls remain available after track changes
+- Expected failure signal:
+  - track navigation still drops out of MIX or stops responding
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_transport_first_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - keep the previous MIX-query preservation patch
+  - reorder track strategy so the bridge imitates the user's confirmed-good on-page button path first
+- Rejected approaches:
+  - removing player-api fallback entirely before verifying the transport-first strategy on real device behavior
+- Stop point classification:
+  - code edited, synced, built, installed, and MIX launch intent delivered; manual truth-check pending
+- What is done but unverified:
+  - whether both notification and PiP now keep the page inside MIX after `next/previous`
+- What is verified:
+  - patch present in source
+  - build/install succeeded
+  - MIX launch intent delivered successfully on device
+- External prerequisite:
+  - user retest of notification/PiP controls in MIX
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 14:36:30 +07:00
+
+- Current phase:
+  - Phase 5 / MIX context preservation for notification and PiP track navigation
+- Current objective:
+  - Keep helper-driven `next/previous` inside the active MIX context instead of stripping the page down to a standalone watch URL.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before editing.
+  - Confirmed from targeted inspection that `notification/PiP` track navigation still funnels through:
+    - `navigateTrackHref(...)` in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `commitCanonicalWatchNavigation(...)` in `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Confirmed that `canonicalizeWatchHref(...)` was stripping watch query params down to just `v=...`, which can drop `list` / `start_radio` and eject the page from MIX.
+  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` so `canonicalizeWatchHref(...)` now preserves queue-sensitive watch params from the target URL:
+    - `list`
+    - `index`
+    - `start_radio`
+    - `pp`
+    - `t`
+    - `time_continue`
+    - `feature`
+    - `si`
+  - Added narrow inheritance from the current watch-page URL for:
+    - `list`
+    - `start_radio`
+    - `pp`
+    when the target watch URL is missing them, so MIX context survives helper-driven track navigation.
+  - Synced the patched file into WSL via `tools/sync_changed_files_to_wsl.ps1`.
+  - Rebuilt `brave/build/android:onetabtube_android_package`.
+  - Verified the rebuilt APK digest:
+    - `77a6ab3fb409424e9d1a29d73e3be8577d58a01cef954d2aea912568e0626d4b`
+  - Reinstalled the rebuilt APK on `R9TRC00GA2E`.
+  - Delivered MIX URL back into the running top-most app instance:
+    - `https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1`
+- In progress now:
+  - Waiting on a real device truth-check for notification/PiP `next/previous` in MIX after the canonicalization fix.
+- Blockers / risks:
+  - This fix covers helper-driven navigation, but a separate issue could still exist if some path bypasses helper navigation entirely.
+  - Preserving more watch params is intentional here; if a noisy param later proves harmful, the allowlist may need narrowing.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed
+  - MIX launch intent delivered successfully to the running top-most instance
+  - artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `77a6ab3fb409424e9d1a29d73e3be8577d58a01cef954d2aea912568e0626d4b`
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_context_preserve_fix.log`
+- Exact next concrete step:
+  - User retests in MIX and confirms one of:
+    - `ใช้ได้แล้ว`
+    - `ยังหลุดออกจาก MIX`
+    - `มีอาการใหม่`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user report about MIX next/previous behavior
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md' -Head 240`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 140`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc' | Select-Object -Skip 1160 -First 120`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-Object -Skip 1160 -First 110`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_mix_context_preserve_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1"`
+- Tool purpose:
+  - Preserve MIX queue context across helper-driven notification/PiP track navigation.
+- Tool state:
+  - no build running now
+  - rebuilt MIX-context APK installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_context_preserve_fix.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - watch-url canonicalization and MIX query preservation
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - helper-driven track navigation entrypoint
+  - `docs/current-status.md`
+    - current handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit log
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - notification/PiP `next/previous` stays in MIX and the controls remain available after track changes
+- Expected failure signal:
+  - track navigation still drops out of MIX and the controls disappear afterward
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_mix_context_preserve_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - fix MIX loss at the canonicalization layer first because it is the narrowest shared path for helper-driven track navigation
+  - preserve only watch-page params that are relevant to queue/radio context instead of keeping the entire raw query string
+- Rejected approaches:
+  - widening fallback navigation again before fixing the shared helper path
+- Stop point classification:
+  - code edited, synced, built, installed, and MIX launch intent delivered; manual truth-check pending
+- What is done but unverified:
+  - whether both notification and PiP now keep the page inside MIX after `next/previous`
+- What is verified:
+  - patch present in source
+  - build/install succeeded
+  - MIX launch intent delivered successfully on device
+- External prerequisite:
+  - user retest of notification/PiP controls in MIX
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 14:28:40 +07:00
+
+- Current phase:
+  - Phase 5 / Playability auto-reload rollback after live blank-page capture
+- Current objective:
+  - Remove the most likely auto-reload source behind the observed YouTube watch-page churn, then rebuild and verify the same watch URL open path.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before editing.
+  - Confirmed the actual production inject path already selects `youtube_native_tab_bridge.cc` when `kBraveYouTubeNativeTabBridge` is enabled, so the older `kYoutubeMediaSessionControls` block is not the active bridge on this build.
+  - Identified a stronger live-failure candidate in the active `kYoutubePlaybackStability` script:
+    - `schedulePlayabilityRecovery(...)` auto-called `location.reload()`.
+  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` so this path no longer auto-reloads and instead records `playability_recovery_manual_required`.
+  - Synced the patched file into WSL via `tools/sync_changed_files_to_wsl.ps1`.
+  - Rebuilt `brave/build/android:onetabtube_android_package`.
+  - Verified the rebuilt APK digest:
+    - `552f8c0005401b583097270676f48431f6f3d741f2771635d9e2cfd0fc78a2d6`
+  - Reinstalled the rebuilt APK on `R9TRC00GA2E`.
+  - Cleared `logcat`, force-stopped the app, and cold-launched:
+    - `https://m.youtube.com/watch?v=34Ig3X59_qA`
+  - Captured post-fix screenshot:
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_postfix_20260404_1427.png`
+  - Verified from the screenshot that the same watch URL no longer renders as a fully blank black content surface; the player area and play button are visible.
+- In progress now:
+  - Waiting on a manual truth-check from the user, because automation shows improvement on the exact failing watch URL but does not fully cover long-lived manual use.
+- Blockers / risks:
+  - Removing automatic reload may reduce aggressive self-recovery in genuine blocked-playability cases.
+  - The current automated check covers the open-watch flow only, not every later playback state.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed
+  - explicit watch-page launch passed
+  - artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `552f8c0005401b583097270676f48431f6f3d741f2771635d9e2cfd0fc78a2d6`
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_disable_auto_playability_reload.log`
+- Exact next concrete step:
+  - User retests the same failing open-YouTube flow on the installed build and confirms one of:
+    - `หายแล้ว`
+    - `ยังโหลดวน`
+    - `มีอาการใหม่`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_postfix_20260404_1427.png`
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `view_image`
+  - `apply_patch`
+- Exact command(s):
+  - `rg -n "function getPlayabilitySnapshot|schedulePlayabilityRecovery|location.reload\\(|playability_recovery" browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_disable_auto_playability_reload.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk && md5sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA"`
+  - `adb -s R9TRC00GA2E shell screencap -p /sdcard/Download/otb_postfix_20260404_1427.png`
+  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_postfix_20260404_1427.png C:\Users\Master\Desktop\GO_PLAY\otb_postfix_20260404_1427.png`
+- Tool purpose:
+  - Remove the narrow auto-reload cause behind the blank/looping watch-page state, then verify the same watch URL opens into a visible player surface.
+- Tool state:
+  - no build running now
+  - rebuilt APK installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA"`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_postfix_20260404_1427.png`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_disable_auto_playability_reload.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - active `kYoutubePlaybackStability` script and patched playability-recovery behavior
+  - `docs/current-status.md`
+    - current handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit log
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.png`
+    - pre-fix evidence of the blank watch-page state
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_postfix_20260404_1427.png`
+    - post-fix evidence showing a visible player/play surface on the same watch URL
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_postfix_20260404_1427.png`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - user no longer sees the watch page loading/blanking repeatedly on the installed build
+- Expected failure signal:
+  - user still reports `ยังโหลดวน` or the page returns to a blank/black watch surface
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_disable_auto_playability_reload.log`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_postfix_20260404_1427.png`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - do not touch navigation policy because the live failing-state capture did not show a top-level redirect loop
+  - roll back only the automatic `location.reload()` playability recovery path first because it is the narrowest fix that matches the visible looping symptom
+- Rejected approaches:
+  - disabling unrelated PiP/control paths while the visible issue is tied to watch-page open stability
+- Stop point classification:
+  - code edited, synced, built, installed, and explicit watch-page launch verified; manual user truth-check pending
+- What is done but unverified:
+  - whether the user-visible looping symptom is fully gone in manual use
+- What is verified:
+  - the previous failing state was a stable watch URL with a blank/black content surface
+  - the patched build opens the same watch URL into a visible player/play surface in automation
+  - build/install/launch all succeeded on the patched build
+- External prerequisite:
+  - user retest of the same failing flow
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 12:18:30 +07:00
+
+- Current phase:
+  - Phase 5 / Media control action persistence for notification and PiP
+- Current objective:
+  - Prevent YouTube transport actions from disappearing on Android notification and PiP surfaces after page/player state changes.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md`
+  - Re-read the latest progress-log entry
+  - Confirmed the current user issue had shifted from repeated PiP black entry to disappearing transport buttons
+  - Re-inspected `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - Confirmed the bridge only refreshed handlers on event-driven refreshes and had no periodic keepalive rebinding
+  - Re-inspected `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - Confirmed notification UI was not explicitly refreshed when the filtered action set changed
+  - Patched the web bridge to:
+    - add a 1500ms keepalive timer while a video exists
+    - route both scheduled and keepalive refreshes through `forceRefreshMediaSession()`
+    - track more video/player lifecycle events
+    - refresh on `yt-page-data-updated`, `yt-player-updated`, `visibilitychange`, and `pagehide`
+  - Patched `BraveMediaSessionHelper.java` to call `showNotification()` after `mediaSessionActionsChanged()` updates
+  - Synced to WSL, rebuilt, reinstalled, cleared `logcat`, force-stopped, and relaunched the app
+- In progress now:
+  - Waiting on manual truth-check that notification and PiP controls now stay visible and usable
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_media_actions_keepalive_fix.log`
+  - latest APK:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - latest APK SHA-256:
+    - `9e75e8304b7f2bc75a05e6585ca2e9848494b84d6029bac4893071f4a340ef38`
+  - install passed on `R9TRC00GA2E`
+  - relaunch passed to `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- Blockers/risks:
+  - Runtime verification is still pending
+  - If YouTube replaces handlers more often than the keepalive interval, another log-backed tuning round may still be needed
+- Next concrete step:
+  - User tests notification and PiP controls in a reliable MIX/playlist context and reports whether buttons stay visible and active
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Select-String -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' -Pattern 'nexttrack|previoustrack|setActionHandler|MediaSession|playlist|keepalive' -Context 3,4`
+  - `Select-String -Path 'components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java' -Pattern 'mediaSessionActionsChanged|showNotification|NEXT_TRACK|PREVIOUS_TRACK' -Context 3,4`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_media_actions_keepalive_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Keep media-session actions declared and refreshed on both the page side and the Android notification side
+- Tool state:
+  - no build running
+  - latest media-actions-keepalive build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'yt_page_data_updated|yt_player_updated|mediaSessionActionsChanged|mMediaSessionActions|keepalive'`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` — page-side action keepalive and lifecycle refresh
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java` — Android-side notification refresh on action changes
+  - `docs/current-status.md` — live handoff
+  - `docs/progress-log.md` — audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest progress-log entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - notification and PiP retain `next/previous` in reliable contexts
+- Expected failure signal:
+  - controls still disappear or only show temporarily
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_media_actions_keepalive_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Fix the missing-buttons issue by strengthening page-side Media Session rebinding and Android notification refresh, not by broadening transport semantics
+- Rejected approaches:
+  - reopening the PiP re-entry regression path
+  - force-advertising actions solely from Android without fixing declaration persistence
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual controls verification pending
+- What is done but unverified:
+  - user-visible persistence of controls on the current build
+- What is verified:
+  - source edits are present
+  - build/install/launch succeeded
+- External prerequisite:
+  - user test on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 12:10:15 +07:00
+
+- Current phase:
+  - Phase 5 / PiP re-entry recovery after keepalive regression
+- Current objective:
+  - Verify that the delegate-to-Java retry build is still the active source-of-truth before asking for another repeated-PiP check.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md`
+  - Re-read the latest progress-log entry
+  - Re-inspected `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Confirmed the timeout branch now logs `enter_picture_in_picture_fullscreen_timeout_delegate_to_java_helper`
+  - Confirmed the build log path is still `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_reentry_delegate_to_java_retry.log`
+  - Confirmed `R9TRC00GA2E` is connected in `adb devices`
+- In progress now:
+  - Waiting on user truth-check for repeated PiP entry on the installed delegate-to-Java build
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - no new build in this snapshot
+  - latest verified build remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_reentry_delegate_to_java_retry.log`
+  - latest APK remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - latest APK SHA-256 remains:
+    - `2f9232a635fe02c8c1bb6c800fb55554cabfae6eef60db869439ae9c85855db6`
+- Blockers/risks:
+  - Runtime behavior is still unverified by user on this exact build
+- Next concrete step:
+  - Ask user to test repeated PiP entry on the installed build and report:
+    - `หายแล้ว`
+    - `ยังดำ`
+    - `ยังไม่เข้า PiP`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md' -TotalCount 200`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 120`
+  - `Select-String -Path 'browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc' -Pattern 'enter_picture_in_picture_fullscreen_timeout_delegate_to_java_helper|enter_picture_in_picture_fullscreen_timeout_abort_no_fullscreen|EnterPictureInPicture\\(web_contents\\(\\)\\)' -Context 3,4`
+  - `Get-Content -Path '\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\codex_onetabtube_build_pip_reentry_delegate_to_java_retry.log' -Tail 60`
+  - `adb devices`
+- Tool purpose:
+  - Reality-check the recorded handoff against source/build/device state before continuing
+- Tool state:
+  - no build running
+  - device connected
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'fullscreen_script_complete|enter_picture_in_picture_fullscreen_timeout|YouTubeNativeHelper|Attempted picture-in-picture'`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — late fullscreen timeout delegate path
+  - `docs/current-status.md` — live handoff
+  - `docs/progress-log.md` — audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - user reports repeated PiP entry is fixed
+- Expected failure signal:
+  - user still reports black/fullscreen hang
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_reentry_delegate_to_java_retry.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the scope narrow and verify the delegate-to-Java build before changing PiP again
+- Rejected approaches:
+  - starting a fresh repo-wide PiP investigation
+- Stop point classification:
+  - resume inspection completed; waiting on manual runtime verification
+- What is done but unverified:
+  - repeated PiP entry behavior on the current build
+- What is verified:
+  - source contains the timeout delegate patch
+  - build log exists
+  - device is connected
+- External prerequisite:
+  - user test on device
+- Secret required but not stored:
+  - none
+
+# 2026-04-04 11:05:02 +07:00
+
+- Current phase:
+  - Phase 5 / reliable-only YouTube track controls
+- Current objective:
+  - Make `next/previous` visible only in trustworthy queue/playlist/current-item contexts and stop broad guessing on plain watch pages.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Used the user's new direction as source-of-truth:
+    - recommended path is to keep `next/previous` only when queue resolution is reliable
+    - if not reliable, hide/disable instead of guessing
+    - user additionally reported that autoplay after video end already follows the correct order
+  - Re-inspected:
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - Patched `youtube_native_tab_bridge.cc` so that:
+    - `canNext/canPrevious` now depend on trustworthy capability, not just `isYouTubeHost()`
+    - `nexttrack/previoustrack` Media Session handlers are registered only when reliable capability exists
+    - reliable capability is limited to:
+      - a real player transport button being available, or
+      - a resolved playlist/current-item context from `ytInitialData`
+    - broad behaviors were removed from the active path:
+      - no shortcut fallback in the main track-control flow
+      - no broad DOM link fallback in the main track-control flow
+      - no previous-as-restart fallback in the reliable-only path
+    - if context is not trustworthy, the bridge now returns `unreliable-next-context` / `unreliable-previous-context`
+  - Synced Windows -> WSL, rebuilt, reinstalled, and relaunched the app.
+- In progress now:
+  - Waiting on manual truth-check for reliable queue contexts vs plain watch-page contexts.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_reliable_track_only.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `ae6987728c628bd29e5d38f6fdc1e2eeefe92471b8e564bf72b6d20140f54256`
+  - install passed on `R9TRC00GA2E`
+  - launch passed to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- Blockers/risks:
+  - `ytInitialData` remains a YouTube-specific dependency even in the narrowed path.
+  - Host/layout differences can still affect whether transport-button capability is observable.
+- Next concrete step:
+  - User tests:
+    1. a reliable queue/mix context where page next works
+    2. a plain watch-page context where next/previous should now hide or disable
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user truth-check for reliable vs unreliable contexts
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-Object -Skip 720 -First 620`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_reliable_track_only.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Replace broad next/previous guessing with reliable-only capability gating.
+- Tool state:
+  - no build running now
+  - latest reliable-only build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-Object -Skip 760 -First 520`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_reliable_track_only.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - active reliable-only track capability gate
+  - `docs/current-status.md`
+    - latest handoff state
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - queue/mix contexts keep correct next/previous ordering
+  - plain watch pages stop showing misleading next/previous controls
+- Expected failure signal:
+  - controls still show in unreliable contexts and misroute
+  - or reliable queue contexts lose valid next/previous entirely
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_reliable_track_only.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep Chromium/Android media-control plumbing intact.
+  - Narrow only the local YouTube bridge exposure/resolution policy.
+  - Prefer hidden/disabled controls over wrong-page navigation.
+- Rejected approaches:
+  - broad shortcut fallback in the main track-control path
+  - broad DOM link fallback in the main track-control path
+  - previous-as-restart fallback in the reliable-only path
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual reliable-vs-unreliable truth-check pending
+- What is done but unverified:
+  - user-visible button visibility and ordering on this build
+- What is verified:
+  - source change is present in ext4
+  - build/install/launch succeeded
+- External prerequisite:
+  - user verification on device
+- Secret required but not stored:
+  - none
+
+# 2026-04-04 10:58:33 +07:00
+
+- Current phase:
+  - Phase 5 / research-first true-track feasibility check
+- Current objective:
+  - Pause runtime guessing and verify against Brave/Chromium/official docs what `notification/PiP next/previous` can honestly mean for `youtube.com` browser tabs.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Re-inspected the active local bridge in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`.
+  - Pulled primary-source references from:
+    - Brave upstream `BraveMediaSessionHelper.java`
+    - Brave upstream `BraveYouTubeScriptInjectorNativeHelper.java`
+    - Brave upstream `youtube_script_injector_tab_helper.cc`
+    - Chromium upstream `MediaSessionHelper.java`
+    - Chromium upstream `MediaNotificationController.java`
+    - W3C Media Session spec
+    - official YouTube IFrame Player API docs
+  - Confirmed these concrete facts:
+    - Brave upstream does not implement custom YouTube browser-tab queue resolution for `next/previous`.
+    - Chromium Android notification/PiP controls only dispatch generic `MediaSessionAction.NEXT_TRACK/PREVIOUS_TRACK`.
+    - The Media Session spec defines `nexttrack/previoustrack` in terms of a real playlist/queue notion.
+    - Official YouTube true sequential controls (`nextVideo()/previousVideo()`) belong to the IFrame embed API, not generic `youtube.com` watch-page transport plumbing.
+- In progress now:
+  - Translating the source/docs findings into a runtime direction for this repo.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - no new build this round
+  - latest previously installed APK remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - latest previously installed APK SHA-256 remains:
+    - `77737f5c6e87b4046f767bd0d64dff9c839ac6641f50ff542c156ba4c0f09019`
+- Blockers/risks:
+  - The local bridge still has broad heuristics (`DOM link`, `shortcut`, `ytInitialData`) that can mis-target links on plain watch pages.
+  - There is no Brave upstream implementation to transplant for true sequential browser-tab track controls.
+- Next concrete step:
+  - Report the research findings to the user with links.
+  - Recommend narrowing `next/previous` to only reliable queue/playlist contexts instead of broad guessing.
+  - Wait for user direction before patching runtime again.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - Brave/Chromium source links referenced in this entry
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `mcp__codex_apps__github_fetch`
+  - `web`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md'`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 200`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' -TotalCount 320`
+  - `rg -n "findTrackHrefInRendererArray|tryYouTubeDomTrack|tryYouTubeShortcut|runTrackFallback|ytInitialData|nexttrack|previoustrack|trackSettleState|settleTrackContext" browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-Object -Skip 520 -First 360`
+  - `mcp__codex_apps__github_fetch https://github.com/brave/brave-core/blob/master/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `mcp__codex_apps__github_fetch https://github.com/brave/brave-core/blob/master/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `mcp__codex_apps__github_fetch https://github.com/brave/brave-core/blob/master/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `mcp__codex_apps__github_fetch https://github.com/chromium/chromium/blob/main/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `mcp__codex_apps__github_fetch https://github.com/chromium/chromium/blob/main/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaNotificationController.java`
+  - `web open/find on W3C Media Session spec and YouTube IFrame API docs`
+- Tool purpose:
+  - Verify upstream/API constraints before further track-control changes.
+- Tool state:
+  - no build running now
+  - current activity is source/docs research
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-Object -Skip 700 -First 420`
+- Expected output/artifact path:
+  - none for this research-only round
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - active local next/previous fallback stack
+  - `docs/current-status.md`
+    - latest handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - Brave upstream `BraveMediaSessionHelper.java`
+  - Chromium upstream `MediaNotificationController.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - internet access for source/docs lookup
+  - local repo readable
+- Expected success signal:
+  - a narrowed, source-backed design replaces broad wrong-target heuristics
+- Expected failure signal:
+  - more runtime patching happens before resolving the upstream/API capability gap
+- Last known log location:
+  - none new in this round
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Stop guessing.
+  - Treat Brave/Chromium/official docs as the source of truth for control semantics.
+  - Prefer degrading capability over misrouting the user to the wrong page/video.
+- Rejected approaches:
+  - assuming Brave upstream already solved this
+  - continuing broad non-playlist fallback without a trustworthy current-item context
+- Stop point classification:
+  - research completed; waiting to convert findings into a user-approved implementation direction
+- What is done but unverified:
+  - whether the user wants the narrowed/reliable-only behavior
+- What is verified:
+  - Brave upstream has no true-track browser-tab solution here
+  - Chromium Android transport plumbing is generic
+  - official YouTube true sequential next/previous belongs to the IFrame API
+- External prerequisite:
+  - user confirmation on the implementation direction
+- Secret required but not stored:
+  - none
+
 ## 2026-04-04 02:59:46 +07:00
 
 - Current phase:
@@ -482,6 +1967,505 @@
   - runtime verification remained the source of truth
 - External prerequisite:
   - none
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 14:51:17 +07:00
+
+- Current phase:
+  - Phase 5 / MIX transport dispatch hardening
+- Current objective:
+  - Make notification/PiP `next/previous` in MIX trigger same-page track changes again after the transport-first patch regressed into "buttons show but pressing them does nothing."
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before editing again.
+  - Inspected the active `next/previous` path in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`.
+  - Confirmed the likely regression point:
+    - transport dispatch still allowed non-actionable candidates to be selected
+    - the next fallback skipped too quickly toward less page-faithful paths
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` so:
+    - `findTrackButton(...)` now requires an actionable/visible transport button for actual dispatch
+    - `hasReliableTransportCapability(...)` still uses hidden-capable detection only for action declaration
+    - `shortcut` fallback now runs immediately after failed transport dispatch
+    - `DOM link` fallback runs before `player-api`
+  - Synced source into WSL via `tools/sync_changed_files_to_wsl.ps1`.
+  - Rebuilt `brave/build/android:onetabtube_android_package`.
+  - Recomputed APK digest:
+    - `0dd1f65b48d75a26c0f641a0d0be670762ca4aebc2a8eeea008cabff24f36c1a`
+  - Reinstalled the rebuilt APK on `R9TRC00GA2E`.
+  - Delivered the MIX watch intent back into the already running top-most app instance:
+    - `https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1`
+- In progress now:
+  - Waiting on real-device truth-check for notification/PiP `next/previous` in MIX after transport/shortcut hardening.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed
+  - MIX launch intent delivered successfully to the running top-most instance
+  - current installed APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - current installed APK SHA-256:
+    - `0dd1f65b48d75a26c0f641a0d0be670762ca4aebc2a8eeea008cabff24f36c1a`
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_transport_shortcut_bridge_fix.log`
+  - verified this round:
+    - patch present in source
+    - sync/build/install succeeded
+    - MIX watch intent delivered successfully on device
+  - not yet verified this round:
+    - whether notification `next/previous` now changes tracks again in MIX
+    - whether PiP `next/previous` now changes tracks again in MIX
+    - whether repeated `next` advances `1 -> 2 -> 3`
+- Blockers/risks:
+  - If YouTube suppresses both visible transport buttons and keyboard shortcuts in a given player state, the bridge may still need to fall back to DOM link or player API.
+  - This round hardens dispatch ordering only; it still needs device truth-check for real MIX sequence behavior.
+- Exact next concrete step:
+  - User retests MIX with notification/PiP `next/previous` and reports one of:
+    - `ใช้ได้แล้ว`
+    - `ยังกดแล้วไม่ไป`
+    - `ยังหลุดออกจาก MIX`
+    - `มีอาการใหม่`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user report after the transport/shortcut hardening patch
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md' -Head 260`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 160`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-Object -Skip 1200 -First 240`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-Object -Skip 760 -First 120`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_transport_shortcut_bridge_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1"`
+- Tool purpose:
+  - Restore working MIX `next/previous` after the transport-first regression by preferring page-faithful dispatch paths before last-resort player API navigation.
+- Tool state:
+  - no build running now
+  - rebuilt transport/shortcut hardening APK installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1"`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_transport_shortcut_bridge_fix.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - transport dispatch, shortcut fallback, and last-resort ordering for `next/previous`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - MIX query preservation from the previous round
+  - `docs/current-status.md`
+    - live handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit log
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - notification/PiP `next/previous` changes tracks again in MIX and preserves sequence/context
+- Expected failure signal:
+  - track navigation still does nothing, still drops out of MIX, or still breaks sequence
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_transport_shortcut_bridge_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - keep the previous MIX-query preservation patch
+  - keep notification/PiP action declaration broad enough to surface controls in MIX
+  - require actionable buttons only at dispatch time
+  - run shortcut fallback before `player-api` because it is closer to page-level player semantics
+- Rejected approaches:
+  - reverting immediately to `player-api` first
+  - broad link navigation as an early fallback
+- Stop point classification:
+  - code edited, synced, built, installed, and MIX launch intent delivered; manual truth-check pending
+- What is done but unverified:
+  - whether both notification and PiP now trigger `next/previous` again in MIX
+  - whether repeated `next` advances through MIX sequence instead of stalling
+- What is verified:
+  - patch present in source
+  - build/install succeeded
+  - MIX watch intent delivered successfully on device
+- External prerequisite:
+  - user retest of notification/PiP controls in MIX
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 09:50:08 +07:00
+
+- Current phase:
+  - Phase 5 / post-beta1 YouTube true-track control refinement
+- Current objective:
+  - Fix `next/previous` so it follows the actual YouTube track/queue context instead of a generic watch-next recommendation path.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before resuming.
+  - Performed targeted code reality checks on:
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `browser/android/youtube_script_injector/features.h`
+    - `browser/android/youtube_script_injector/features.cc`
+  - Confirmed `kBraveYouTubeNativeTabBridge` is enabled by default, so the active runtime path is `youtube_native_tab_bridge`.
+  - Confirmed the seek-based media-session bridge in `youtube_script_injector_tab_helper.cc` is only the fallback when the native bridge feature is disabled.
+  - Identified the current mismatch in the active bridge:
+    - `runTrackFallback(...)` tried broad `ytInitialData` navigation before exhausting the real YouTube DOM/player transport context
+    - `findTrackHrefInInitialData(...)` could walk watch-next/recommendation structures that were not the true queue/playlist next item
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` so that:
+    - `next/previous` now prefer real YouTube DOM/button/link transport paths before `ytInitialData`
+    - `ytInitialData` navigation is restricted to playlist/queue contexts by default
+    - non-playlist contexts stop falling through to broad recommendation hopping
+  - Synced Windows -> WSL, rebuilt, reinstalled, and launched the app to a YouTube watch page.
+- In progress:
+  - Waiting on manual verification that notification/PiP `next/previous` now follow the real YouTube track order.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_context_fix.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `e3b4282025e16e20987e560948adb278e6c57f826dc2bf7ccf3dc6b40e3ff9c4`
+  - install passed on `R9TRC00GA2E`
+  - launch passed to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- Blockers/risks:
+  - If the watch page truly has no playlist/queue context, `next/previous` may now behave more conservatively rather than jumping to an arbitrary recommendation.
+  - Manual device verification is still required because Android may reuse cached control surfaces.
+- Next concrete step:
+  - Ask the user to test `next/previous` from notification and PiP on this build and report whether it now follows the real track order.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user result from notification/PiP next/previous testing
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'findTrackHrefInInitialData|tryYouTubeInitialDataNavigation|runTrackFallback|tryYouTubeDomTrack|tryYouTubeShortcutNext|tryYouTubeShortcutPrevious|isPlaylistContext|scoreTrackLinkCandidate|findTrackLink' -Context 3,8`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_true_track_context_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Narrow `next/previous` behavior to true YouTube track context without disturbing the already verified PiP baseline.
+- Tool state:
+  - no build running now
+  - latest true-track-context build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'runTrackFallback|tryYouTubeDomTrack|tryYouTubeInitialDataNavigation' -Context 2,6`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_context_fix.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/features.h`
+  - `browser/android/youtube_script_injector/features.cc`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - manual next/previous follows the actual YouTube track order for the current context
+- Expected failure signal:
+  - next/previous still chooses the wrong item or no-ops
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_context_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - keep the verified beta1 PiP path untouched
+  - narrow only the active next/previous semantics in the native bridge
+- Rejected approaches:
+  - reopening PiP lifecycle code
+  - leaving broad `ytInitialData` traversal as the default next/previous source
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual verification pending
+- What is done but unverified:
+  - user-visible next/previous correctness on this build
+- What is verified:
+  - source change is present
+  - build/install/launch succeeded
+- External prerequisite:
+  - user verification on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 10:24:34 +07:00
+
+- Current phase:
+  - Phase 5 / post-beta1 YouTube true-track control refinement
+- Current objective:
+  - Make notification/PiP `next/previous` follow the same YouTube transport buttons the player uses on-page, without drifting into unrelated page navigation.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before resuming.
+  - Used the new user report as source-of-truth:
+    - page-level next/previous is correct
+    - notification/PiP next/previous is still wrong
+  - Re-inspected the active bridge in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`.
+  - Confirmed the previous build still left two escape hatches:
+    - shortcut fallback remained in the main path
+    - broad candidate roots still allowed non-player context to influence button discovery
+  - Patched `youtube_native_tab_bridge.cc` again so that:
+    - `playerTransportRoots()` is now dedicated to player transport UI only
+    - `findTrackButton(...)` searches only those transport roots
+    - `runTrackFallback(...)` no longer tries shortcut fallback before DOM transport
+    - DOM transport remains primary, with `initialData` only as a narrow playlist-context fallback
+  - Synced Windows -> WSL, rebuilt, reinstalled, and relaunched the app to a YouTube watch page.
+- In progress:
+  - Waiting on manual verification that notification/PiP next/previous now matches the same destination as the player buttons on the page.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_transport_only_fix.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `c644427b9a40e636c5044852cc7470ae832e94fe27b45d58d11080150ccb3814`
+  - install passed on `R9TRC00GA2E`
+  - launch passed to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- Blockers/risks:
+  - If the standard player transport buttons are unavailable in the current YouTube layout, this transport-only path may be conservative instead of wandering into the wrong UI.
+  - Manual verification is still required because Android media surfaces may show cached behavior briefly.
+- Next concrete step:
+  - Ask the user to test notification/PiP `next/previous` on this build and confirm whether it now goes to the same destination as the page buttons.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user result from notification/PiP next/previous testing
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'playerTransportRoots|findTrackButton|runTrackFallback|Shortcut|ytp-next-button|ytp-prev-button' -Context 3,8`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_true_track_transport_only_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Align media controls with the player’s true next/previous buttons and avoid unrelated navigation.
+- Tool state:
+  - no build running now
+  - latest transport-only build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'playerTransportRoots|findTrackButton|runTrackFallback' -Context 2,6`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_transport_only_fix.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - notification/PiP next/previous goes to the same destination as the page buttons
+- Expected failure signal:
+  - controls still navigate to the wrong page or no-op
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_transport_only_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - do not reopen the verified PiP/lifecycle path
+  - remove shortcut ambiguity and confine control discovery to transport-only player UI
+- Rejected approaches:
+  - keeping shortcut fallback in front of DOM transport
+  - allowing non-player roots into transport-button discovery
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual verification pending
+- What is done but unverified:
+  - user-visible correctness of notification/PiP next/previous on this build
+- What is verified:
+  - source change is present
+  - build/install/launch succeeded
+- External prerequisite:
+  - user verification on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 10:04:05 +07:00
+
+- Current phase:
+  - Phase 5 / post-beta1 YouTube true-track control refinement
+- Current objective:
+  - Make notification/PiP `next/previous` follow the same YouTube transport buttons that work correctly on the page.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before resuming.
+  - Performed targeted code inspection on `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`.
+  - Used the new user report as source-of-truth:
+    - in-page YouTube next/previous works correctly
+    - notification/PiP next/previous still goes to the wrong page (`หน้าข้อมูลช่อง`)
+  - Identified two remaining risks in the active bridge:
+    - `Shift+N / Shift+P` shortcut fallback still ran before the real DOM transport path
+    - `findTrackButton(...)` still allowed a broader candidate mix than the real transport controls needed
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` so that:
+    - known transport selectors are tried first
+    - button search no longer includes `a[href]`
+    - DOM transport path now runs before shortcut fallback
+    - shortcut fallback is demoted behind the actual player-button path
+  - Synced Windows -> WSL, rebuilt, reinstalled, and relaunched the app to a YouTube watch page.
+- In progress:
+  - Waiting on manual verification that notification/PiP next/previous now matches the same destination as the in-page YouTube controls.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_button_fix.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `d813eeaf8c815dae07f1675df7e3adca5d047731539c586f3d0d0e5962d8df60`
+  - install passed on `R9TRC00GA2E`
+  - launch passed to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- Blockers/risks:
+  - If the current page layout hides/removes the standard transport controls, fallback may still need to take over.
+  - Manual verification is still required because Android control surfaces may present stale controls from the previous session.
+- Next concrete step:
+  - Ask the user to test `next/previous` from notification and PiP on this build and report whether it now goes to the same target as the page buttons.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user result from notification/PiP next/previous testing
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'findTrackButton|tryYouTubeShortcutNext|tryYouTubeShortcutPrevious|runTrackFallback|a\\[href\\]|ytp-next-button|ytp-prev-button' -Context 3,8`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_true_track_button_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Align media-control next/previous with the same YouTube transport controls the user can press on the page.
+- Tool state:
+  - no build running now
+  - latest true-track-button build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'findTrackButton|runTrackFallback' -Context 2,6`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_button_fix.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - notification/PiP next/previous goes to the same destination as the page buttons
+- Expected failure signal:
+  - controls still navigate to the wrong page or no-op
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_button_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - do not reopen the verified PiP path
+  - prioritize real YouTube transport controls over shortcut fallback
+- Rejected approaches:
+  - leaving shortcut fallback ahead of DOM transport
+  - allowing generic anchors into the button search path
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual verification pending
+- What is done but unverified:
+  - user-visible next/previous correctness on this build
+- What is verified:
+  - source change is present
+  - build/install/launch succeeded
+- External prerequisite:
+  - user verification on device
 - Secret required but not stored:
   - none
 - Timestamp:
@@ -5869,5 +7853,1837 @@
   - build/install/launch succeeded
 - External prerequisite:
   - user verification on device
+- Secret required but not stored:
+  - none
+# 2026-04-04 10:37:41 +07:00
+
+- Current phase:
+  - Phase 5 / post-beta1 YouTube true-track control refinement
+- Current objective:
+  - Make notification/PiP `next/previous` keep advancing in the real order of the active YouTube mix/playlist instead of reusing stale track context after the first transition.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Took the new user report as source-of-truth:
+    - first `next` works
+    - second `next` can snap back to the old track
+    - the likely missing piece is re-staging against the new active player after each track change
+  - Re-inspected `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`.
+  - Added a new settle/re-stage layer in the active YouTube bridge:
+    - `trackSettleState`
+    - `nudgePlayerTransportControls()`
+    - `clickTransportButton(...)`
+    - `queueTrackContextRefresh(...)`
+    - `settleTrackContext(...)`
+  - Changed DOM track flow so successful `next/previous` does not return immediately after button click; it now waits for the track context to actually change and then refreshes/rebinds around the new player state.
+  - Changed `runTrackFallback(...)` to wait for any in-flight settle cycle before accepting another track command.
+  - Synced Windows -> WSL, rebuilt, reinstalled, and relaunched the app to a YouTube watch page.
+- In progress now:
+  - Waiting on manual verification that sequential `next` from notification/PiP now advances `1 -> 2 -> 3 ...` instead of snapping back to `1`.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_restage_fix.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `c644427b9a40e636c5044852cc7470ae832e94fe27b45d58d11080150ccb3814`
+  - install passed on `R9TRC00GA2E`
+  - warm launch passed to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- Blockers/risks:
+  - Runtime sequencing still needs the user’s truth-check because the active issue is behavioral, not compile-time.
+  - APK hash stayed equal to the previous build even though ext4 source and build timestamp updated; treat the runtime result as authoritative.
+- Next concrete step:
+  - User tests sequential `next` from both notification and PiP on this exact build.
+  - Expected good result:
+    - track 1 -> track 2 -> track 3
+  - Expected bad result:
+    - track 1 -> track 2 -> track 1
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user result for sequential `next/previous`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md'`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 120`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'trackSettleState|settleTrackContext|clickTransportButton|nudgePlayerTransportControls|runTrackFallback' -Context 1,6`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_true_track_restage_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Make next/previous commands restage against the newly active player after each successful YouTube track transition.
+- Tool state:
+  - no build running now
+  - latest re-stage build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'trackSettleState|settleTrackContext|clickTransportButton|nudgePlayerTransportControls' -Context 1,6`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_restage_fix.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - active next/previous bridge and new settle/re-stage path
+  - `docs/current-status.md`
+    - latest handoff state
+  - `docs/progress-log.md`
+    - append-only log
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - repeated notification/PiP `next` advances in-order without snapping back
+- Expected failure signal:
+  - the second or third `next` reuses stale context or no-ops
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_restage_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the verified PiP/lifecycle baseline untouched.
+  - Fix the ordering problem inside the active YouTube bridge rather than reopening Android control wiring.
+- Rejected approaches:
+  - reopening PiP/lifecycle code
+  - trusting immediate post-click success without waiting for the new track context
+  - continuing to treat hidden transport buttons as unusable
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual sequential-track verification pending
+- What is done but unverified:
+  - user-visible correctness of repeated `next/previous` ordering on this build
+- What is verified:
+  - ext4 source contains the new settle/re-stage helpers
+  - build/install/launch succeeded
+- External prerequisite:
+  - user verification on device
+- Secret required but not stored:
+  - none
+# 2026-04-04 10:50:35 +07:00
+
+- Current phase:
+  - Phase 5 / post-beta1 YouTube true-track control refinement
+- Current objective:
+  - Stop repeated `next` from notification/PiP from snapping back to track 1 after the first successful transition.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Took the new user report as source-of-truth:
+    - repeated `next` still goes wrong after the first successful jump
+    - the likely remaining issue is not only stale state but also a fallback heuristic that can choose the wrong next target
+  - Re-inspected the active bridge in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`.
+  - Found a concrete wrong-order heuristic:
+    - when `findTrackHrefInRendererArray(...)` could not resolve the selected/current item, `kind === 'next'` still returned the first candidate in the array
+    - that directly matches `1 -> 2 -> 1` if stale `ytInitialData` is used on the second press
+  - Patched `youtube_native_tab_bridge.cc` again so that:
+    - the “return first candidate for next” fallback is removed
+    - transport buttons are retried 3 times with player-control nudges before broader fallback is allowed
+    - shortcut fallback is used only after transport retries fail, and before broad DOM link fallback
+  - Synced Windows -> WSL, rebuilt, reinstalled, and relaunched the app to a YouTube watch page.
+- In progress now:
+  - Waiting on manual verification that repeated `next` from notification/PiP now follows the real sequence instead of snapping back.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_selection_fix.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `77737f5c6e87b4046f767bd0d64dff9c839ac6641f50ff542c156ba4c0f09019`
+  - install passed on `R9TRC00GA2E`
+  - warm launch passed to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- Blockers/risks:
+  - Runtime correctness still needs user truth-check because the remaining issue is behavioral.
+  - If the player transport controls are unavailable in the current YouTube layout, the bridge can still fall through to narrower fallback paths.
+- Next concrete step:
+  - User tests sequential `next` from both notification and PiP on this exact build.
+  - Good result:
+    - track 1 -> track 2 -> track 3
+  - Bad result:
+    - track 1 -> track 2 -> track 1
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user result for sequential `next/previous`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md'`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 120`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'findTrackHrefInRendererArray|tryYouTubeDomTrack|trackSettleState|settleTrackContext|tryYouTubeShortcut' -Context 1,6`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_true_track_selection_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Remove the stale-selection heuristic and push repeated `next/previous` toward true player transport or safer scoped fallback.
+- Tool state:
+  - no build running now
+  - latest selection-fix build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'findTrackHrefInRendererArray|tryYouTubeDomTrack|trackSettleState|settleTrackContext' -Context 1,6`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_selection_fix.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - active next/previous bridge, stricter selected-item logic, transport retry path
+  - `docs/current-status.md`
+    - latest handoff state
+  - `docs/progress-log.md`
+    - append-only log
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - repeated notification/PiP `next` advances in-order without snapping back
+- Expected failure signal:
+  - second/third `next` still reuses stale context, snaps back to an old track, or no-ops
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_true_track_selection_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the verified PiP/lifecycle baseline untouched.
+  - Remove silent heuristics that can choose the wrong next target when current selection is unresolved.
+- Rejected approaches:
+  - reopening PiP/lifecycle code
+  - continuing to trust stale `ytInitialData` enough to pick the first candidate
+  - broad link fallback as the early path
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual sequential-track verification pending
+- What is done but unverified:
+  - user-visible correctness of repeated `next/previous` ordering on this build
+- What is verified:
+  - ext4 source contains the stricter selection fix and transport retries
+  - build/install/launch succeeded
+- External prerequisite:
+  - user verification on device
+- Secret required but not stored:
+  - none
+# 2026-04-04 11:36:53 +07:00
+
+- Current phase:
+  - Phase 5 / reliable-only YouTube track controls
+- Current objective:
+  - Restore actionable `notification/PiP next/previous` in MIX/playlist contexts without reopening the broad misrouting paths.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Took the new user result as source-of-truth:
+    - MIX mode
+    - watch-page next/previous buttons work correctly by hand
+    - notification/PiP show buttons but pressing them does nothing
+  - Re-inspected the active paths:
+    - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - Confirmed a likely action/dispatch mismatch:
+    - Java helper still had logic that could keep transport actions visible even when the reliable-only bridge no longer advertised them
+    - the bridge transport-button click path was still too weak for some YouTube controls
+  - Patched `BraveMediaSessionHelper.java` to stop forcibly re-adding YouTube `PLAY/PAUSE/PREVIOUS/NEXT` transport actions.
+  - Patched `youtube_native_tab_bridge.cc` to strengthen transport-button activation:
+    - synthetic pointer + mouse down/up/click sequence
+    - fallback `el.click()`
+    - broader but still high-score-only reliable transport candidate search
+  - Synced Windows -> WSL, rebuilt, reinstalled, cleared `logcat`, force-stopped the app, and relaunched to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- In progress now:
+  - Waiting on user truth-check in a MIX context for notification/PiP `next/previous`.
+- Files/modules touched:
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_reliable_track_dispatch_fix.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `bb185344d611ad4aade60aeccfb7394efa65ef3eeed0db8bd22475d962f367ff`
+  - install passed on `R9TRC00GA2E`
+  - relaunch passed to the watch page
+- Blockers/risks:
+  - Remaining uncertainty is runtime behavior only; compile/install are clean.
+  - YouTube transport controls can still vary by host/layout, so this round still needs device truth-check.
+- Next concrete step:
+  - User tests `next/previous` from notification and PiP in MIX context on this exact build.
+  - Expected good result:
+    - controls act like the watch-page transport
+  - Expected bad result:
+    - buttons still no-op or still misroute
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - fresh user result for MIX notification/PiP controls
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md' -TotalCount 250`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 220`
+  - `Get-Content -Path 'components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java' -TotalCount 260`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' -TotalCount 260`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'findReliableTransportButton|runTrackFallback|refreshMediaSession|clickTransportButton|tryYouTubeDomTrack|findReliableTrackHref|hasReliableTrackCapability' -Context 2,8`
+  - `git diff -- components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_reliable_track_dispatch_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb devices`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Align Android action visibility with the reliable-only bridge and make YouTube transport-button dispatch behave more like a real press.
+- Tool state:
+  - no build running now
+  - latest dispatch-fix build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-String -Pattern 'clickTransportButton|findReliableTransportButton|runTrackFallback|refreshMediaSession' -Context 2,8`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_reliable_track_dispatch_fix.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+    - prevents Java from force-showing stale next/previous actions
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - active reliable-only bridge and transport-button dispatch path
+  - `docs/current-status.md`
+    - live handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - MIX notification/PiP controls act like the real watch-page transport
+- Expected failure signal:
+  - buttons still no-op or still misroute
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_reliable_track_dispatch_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Keep the reliable-only policy.
+  - Fix the visibility/dispatch mismatch instead of reopening broad next/previous heuristics.
+- Rejected approaches:
+  - re-forcing next/previous visibility from Java
+  - reopening broad DOM link fallback
+  - touching PiP/lifecycle for a transport-dispatch bug
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual MIX transport verification pending
+- What is done but unverified:
+  - user-visible behavior of notification/PiP `next/previous` on this build
+- What is verified:
+  - source edits are present
+  - build/install/launch succeeded
+- External prerequisite:
+  - user verification on device
+- Secret required but not stored:
+  - none
+# 2026-04-04 11:55:37 +07:00
+
+- Current phase:
+  - Phase 5 / PiP keepalive during MIX track transitions
+- Current objective:
+  - Stop PiP from disappearing during slow `next/previous` transitions in MIX mode while audio keeps playing.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Took the new user report as source-of-truth:
+    - in MIX mode, notification/PiP controls are now fairly good
+    - but on slow `next`, PiP can disappear while audio continues
+  - Re-inspected the active PiP/track-transition paths:
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - Found a concrete race:
+    - `restore_video_presentation_after_track_navigation_` was still the intended restore signal
+    - but `fullscreenRequested` was being cleared too early across page/frame transitions
+    - the PiP dismiss wrapper only held PiP alive while `mIsPlaying == true`
+    - during a long buffering/load transition that can temporarily stop looking like `playing`, PiP could be dismissed before fullscreen/video presentation came back
+  - Patched `youtube_script_injector_tab_helper.cc` so PiP-originated track transitions keep the fullscreen restore latch armed longer:
+    - preserve `fullscreenRequested` through `PrimaryPageChanged()` / `RenderFrameDeleted()` while restore-after-track-navigation is pending
+    - only clear it immediately before the fresh `MaybeSetFullscreen()` in the restore branches
+    - arm it up front in `MaybeNextTrack()` / `MaybePreviousTrack()` when `preserveVideoPresentation=true`
+    - clear it again if the native-tab bridge command result is not a real successful track transition
+  - Patched `BraveFullscreenVideoPictureInPictureController.java` so PiP dismiss is suppressed on fullscreen-loss when either:
+    - media is still playing, or
+    - the fullscreen restore latch is still armed
+  - Synced Windows -> WSL, rebuilt, reinstalled, cleared `logcat`, force-stopped the app, and relaunched to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- In progress now:
+  - Waiting on user truth-check that PiP now stays on-screen during slow MIX `next/previous` transitions.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_track_keepalive_fix.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `d91d342838c205d83d57ffd1a1739c602e0add4dd11b4b9c076000d997923848`
+  - install passed on `R9TRC00GA2E`
+  - relaunch passed to the watch page
+- Blockers/risks:
+  - Remaining uncertainty is runtime behavior only; compile/install are clean.
+  - Holding the fullscreen restore latch longer is intentional, but still needs device truth-check to ensure it does not keep PiP alive incorrectly after a failed transition.
+- Next concrete step:
+  - User tests in MIX mode on this exact build:
+    1. enter PiP
+    2. press `next/previous`
+    3. watch whether a slow load keeps PiP alive or still drops PiP while audio continues
+  - Expected good result:
+    - PiP stays on-screen during the slow transition
+  - Expected bad result:
+    - PiP still disappears while audio continues
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - fresh user result for MIX PiP keepalive
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md' -TotalCount 260`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 220`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc' | Select-String -Pattern 'preserveVideoPresentation|RestoreVideoPresentation|enter_picture_in_picture|fullscreen_requested|MaybeSetFullscreen|MaybeEnterPictureInPictureAfterFullscreenRequest|OnNativeTabBridgeCommandComplete' -Context 3,8`
+  - `Get-Content -Path 'android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java' -TotalCount 180`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_pip_track_keepalive_fix.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb devices`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Keep PiP alive across slow track loads by holding the fullscreen restore latch longer and suppressing PiP dismiss while that restore is still pending.
+- Tool state:
+  - no build running now
+  - latest PiP keepalive build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc' | Select-String -Pattern 'arm_track_navigation_keepalive|restore_video_presentation_after_track_navigation_|SetFullscreenRequested|MaybeSetFullscreen' -Context 2,8`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_track_keepalive_fix.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - keeps fullscreen restore armed across PiP-originated track navigation
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+    - suppresses PiP dismiss while restore is pending
+  - `docs/current-status.md`
+    - live handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - PiP stays on-screen during long MIX `next/previous` loads
+- Expected failure signal:
+  - PiP still disappears while audio continues
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_track_keepalive_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Treat this as a PiP keepalive race during track loading, not a transport-action bug.
+  - Reuse the existing `fullscreenRequested` latch as the keepalive signal instead of adding a new subsystem.
+- Rejected approaches:
+  - reopening broad next/previous heuristics
+  - touching Android notification/media control wiring again
+  - adding a brand-new keepalive subsystem before trying the narrower latch-based fix
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual MIX PiP keepalive verification pending
+- What is done but unverified:
+  - user-visible PiP persistence during slow track transitions on this build
+- What is verified:
+  - source edits are present
+  - build/install/launch succeeded
+- External prerequisite:
+  - user verification on device in MIX mode
+- Secret required but not stored:
+  - none
+# 2026-04-04 12:07:00 +07:00
+
+- Current phase:
+  - Phase 5 / PiP re-entry recovery after keepalive regression
+- Current objective:
+  - Fix the regression where repeated PiP entry can get stuck black/fullscreen after the recent keepalive changes.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Took the new user report as source-of-truth:
+    - repeated PiP entry was hanging black/fullscreen again
+  - Pulled the real runtime log strings instead of filtering only by Android tags.
+  - Confirmed the failing path from log:
+    - `fullscreen_script_complete result=fullscreen_triggered`
+    - no `media_effectively_fullscreen_changed fullscreen=1` arrives for that re-entry
+    - timeout retry runs
+    - second script result becomes `already_fullscreen`
+    - C++ then hits `enter_picture_in_picture_fullscreen_timeout_abort_no_fullscreen`
+  - This showed the re-entry failure was not a generic PiP crash:
+    - the page was fullscreen
+    - but `HasActiveEffectivelyFullscreenVideo()` was not visible quickly enough to the C++ timeout branch
+    - the C++ path aborted too early and left the app stuck fullscreen/black
+  - Patched `youtube_script_injector_tab_helper.cc` so that the second timeout no longer aborts immediately:
+    - it now delegates to the existing Java helper retries instead
+  - Synced Windows -> WSL, rebuilt, reinstalled, cleared `logcat`, force-stopped the app, and relaunched to:
+    - `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+- In progress now:
+  - Waiting on user truth-check that repeated PiP entry no longer hangs black/fullscreen.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_reentry_delegate_to_java_retry.log`
+  - APK path:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - APK SHA-256:
+    - `2f9232a635fe02c8c1bb6c800fb55554cabfae6eef60db869439ae9c85855db6`
+  - install passed on `R9TRC00GA2E`
+  - relaunch passed to the watch page
+- Blockers/risks:
+  - Remaining uncertainty is runtime behavior only; compile/install are clean.
+  - If Java helper retries are still not enough, the next step will need another targeted log pull from this exact build.
+- Next concrete step:
+  - User tests repeated PiP entry on this exact build:
+    1. enter PiP
+    2. if part of the repro, expand back to watch page
+    3. enter PiP again
+  - Expected good result:
+    - PiP enters normally
+  - Expected bad result:
+    - black/fullscreen hang or still no PiP
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - fresh user result for repeated PiP entry
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_PIP|OTB_MEDIA|YouTubeNativeHelper|VideoPersist|BravePipWrapper|fullscreen_script_complete|enter_picture_in_picture|Attempted picture-in-picture'`
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern "com.onetabtube.browser_default|mLastReportedPictureInPictureMode|mode=pinned|ResumedActivity|fullscreen" -Context 0,2`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc' | Select-String -Pattern 'MaybeEnterPictureInPictureAfterFullscreenRequest|fullscreen_timeout' -Context 3,8`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_pip_reentry_delegate_to_java_retry.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb devices`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+- Tool purpose:
+  - Delegate late fullscreen readiness to the existing Java helper/controller retry path instead of aborting PiP re-entry too early in C++.
+- Tool state:
+  - no build running now
+  - latest delegate-to-Java-retry build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'fullscreen_script_complete|enter_picture_in_picture_fullscreen_timeout|YouTubeNativeHelper|Attempted picture-in-picture'`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_reentry_delegate_to_java_retry.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - late fullscreen timeout branch for PiP entry/re-entry
+  - `docs/current-status.md`
+    - live handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - this entry
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - repeated PiP entry no longer gets stuck black/fullscreen
+- Expected failure signal:
+  - repeated PiP entry still aborts or hangs before PiP
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_reentry_delegate_to_java_retry.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Use real log evidence before changing PiP again.
+  - Fix the exact timeout abort branch instead of reopening the wider keepalive/controller changes first.
+- Rejected approaches:
+  - blind retry-count tuning without confirming the actual abort point
+  - reopening transport-control code for a PiP re-entry regression
+  - changing `BraveActivity` first when the log already showed the C++ timeout abort
+- Stop point classification:
+  - code edited, synced, built, installed, launched; manual repeated-PiP verification pending
+- What is done but unverified:
+  - user-visible repeated PiP re-entry behavior on this build
+- What is verified:
+  - runtime log root cause was captured
+  - source change is present
+  - build/install/launch succeeded
+- External prerequisite:
+  - user verification on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 12:40:30 +07:00
+
+- Current phase:
+  - Phase 5 / Media control action persistence after launch-crash fix
+- Current objective:
+  - Restore launch stability first, then re-check whether notification and PiP controls remain visible and active.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Treated the new user report `เข้าแอปไม่ได้เด้ง` as source of truth.
+  - Pulled fresh crash evidence from:
+    - `adb -s R9TRC00GA2E logcat -d -b crash -v threadtime`
+    - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'AndroidRuntime|FATAL EXCEPTION|BraveMediaSessionHelper|MediaSessionHelper|showNotification|StackOverflowError|Exception' -Context 3,6`
+  - Confirmed actual root cause from real logs instead of guessing:
+    - `java.lang.AssertionError`
+    - stack points into `org.chromium.components.browser_ui.media.BraveMediaSessionHelper.showNotification(...)`
+    - crash is triggered from `MediaSessionImpl.mediaSessionActionsChanged(...)`
+  - Identified that the launch crash came from the Android-side notification refresh I had added in `BraveMediaSessionHelper.java`, not from the web-side keepalive logic in `youtube_native_tab_bridge.cc`.
+  - Reverted only the risky Android-side addition:
+    - removed the extra `BraveMediaSessionHelper.this.showNotification();` calls inside `mediaSessionActionsChanged(...)`
+  - Kept the safer page-side keepalive patch intact in `youtube_native_tab_bridge.cc`.
+  - Synced Windows -> WSL, rebuilt, reinstalled, cleared `logcat`, force-stopped the app, and relaunched to a YouTube watch page.
+  - Verified the fixed build at runtime:
+    - install passed
+    - cold launch passed
+    - `ChromeTabbedActivity` is resumed and visible in `dumpsys activity`
+    - no immediate re-crash after relaunch
+- In progress now:
+  - Waiting on user verification that the app launches normally and that notification/PiP controls still persist on this safer build.
+- Blockers / risks:
+  - The web-side keepalive may still need tuning, but the Android-side forced `showNotification()` path must remain removed unless replaced with a safer, log-backed refresh strategy.
+  - Controls persistence is not yet re-verified after the crash fix.
+- Files/modules touched:
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed on `R9TRC00GA2E`
+  - cold launch passed to `https://youtu.be/dQw4w9WgXcQ?autoplay=1`
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_media_actions_keepalive_fix_rerun2.log`
+  - latest artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - latest APK SHA-256:
+    - `4c670522dd8d1119a9b87a7c197ac5b026be99b881ec104c1e5285b8bbfa0694`
+- Exact next concrete step:
+  - User retests this installed build and confirms one of:
+    - app enters normally and controls still stay visible/useful
+    - app enters normally but controls disappear again
+    - a new runtime symptom appears
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E logcat -d -b crash -v threadtime`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'AndroidRuntime|FATAL EXCEPTION|BraveMediaSessionHelper|MediaSessionHelper|showNotification|StackOverflowError|Exception' -Context 3,6`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_media_actions_keepalive_fix_rerun2.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -a android.intent.action.VIEW -d "https://youtu.be/dQw4w9WgXcQ?autoplay=1" com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern "com.onetabtube.browser_default|ResumedActivity|topResumedActivity|ChromeTabbedActivity" -Context 0,2`
+- Tool purpose:
+  - Verify the actual launch crash root cause, revert only that regression, and restore a stable build without discarding the web-side keepalive work.
+- Tool state:
+  - no build running now
+  - latest rerun2 build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_YT_FALLBACK|handlers_updated|yt_page_data_updated|yt_player_updated|unreliable-next-context|unreliable-previous-context|BraveMediaSessionHelper'`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_media_actions_keepalive_fix_rerun2.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+    - crash source; reverted forced notification refresh from `mediaSessionActionsChanged(...)`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - page-side keepalive rebinding remains active and may still need tuning later
+  - `docs/current-status.md`
+    - live handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - app launches without crashing and stays on `ChromeTabbedActivity`
+- Expected failure signal:
+  - fresh `AndroidRuntime` crash referencing `BraveMediaSessionHelper.showNotification(...)` or another launch-time exception
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_media_actions_keepalive_fix_rerun2.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Trust crash logs over assumptions.
+  - Revert only the risky Android-side notification refresh and keep the web-side keepalive patch for now.
+- Rejected approaches:
+  - reverting the whole web-side keepalive patch without evidence
+  - touching PiP lifecycle for a launch crash that already had a Java stack trace
+  - adding another notification refresh hook before removing the crashing one
+- Stop point classification:
+  - code edited, synced, built, installed, and cold-launch verified; manual user retest pending
+- What is done but unverified:
+  - whether notification/PiP controls still persist and stay active on the safer build
+- What is verified:
+  - crash root cause from logs
+  - risky Android-side refresh removed
+  - build/install succeeded
+  - cold launch succeeded
+  - resumed activity is visible after launch
+- External prerequisite:
+  - user retest on `R9TRC00GA2E`
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 13:22:00 +07:00
+
+- Current phase:
+  - Phase 5 / Reliable-only `next/previous` transport controls for YouTube MIX playback
+- Current objective:
+  - Stop Android `next/previous` from being always visible and stop wrong-order navigation by restricting the active path to true YouTube player transport only.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Took the new user report as source of truth:
+    - buttons are visible all the time
+    - `next/previous` still does not follow the true MIX order
+  - Inspected the actual active path in:
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Pulled fresh runtime evidence from `adb logcat` and confirmed that the button press path was still succeeding through:
+    - `result={"ok":true,"strategy":"dom","reason":"initial-data-navigation"}`
+  - Concluded that the wrong behavior was not coming from Android action dispatch anymore; it was coming from the bridge still allowing broad DOM/initial-data fallback.
+  - Narrowed the bridge in `youtube_native_tab_bridge.cc`:
+    - `hasReliableTrackCapability(...)` now means transport-button reliability only
+    - reliable transport search is limited to player transport roots and button-like controls
+    - anchor-based candidates were removed from the reliable transport path
+    - `tryYouTubeDomTrack(...)` now returns `transport-button-unavailable` instead of falling through to `initial-data-navigation`
+    - `runTrackFallback(...)` now exits with `unreliable-transport-context` when no true transport button can be resolved
+  - Restored `candidateRoots()` only as dormant utility support for old helper code so there is no undefined function path left in the file.
+  - Synced Windows -> WSL, rebuilt, reinstalled, force-stopped YouTube and OneTabTube, and verified cold launch by explicit component start.
+  - Verified runtime desk state after install:
+    - `ChromeTabbedActivity` resumed and visible
+    - task visible fullscreen
+- In progress now:
+  - Waiting for manual retest of MIX playback so we can confirm whether the new reliable-only path both preserves correct transport behavior and hides buttons when the context is not trustworthy.
+- Blockers / risks:
+  - If YouTube hides transport buttons in some layouts, the new path should intentionally hide/disable `next/previous` instead of guessing.
+  - Broad fallback helper code still exists in the file, so future changes must not wire it back into the active path by accident.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed on `R9TRC00GA2E`
+  - cold launch passed via explicit component start
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_transport_only_track_actions.log`
+  - latest artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - latest APK SHA-256:
+    - `4ebf980f57734a26e72a9840d0c413e71f2286f2c901d70792e98fb485abbe73`
+- Exact next concrete step:
+  - User retests on `R9TRC00GA2E` in a real MIX/playlist context:
+    - verify `next/previous` from notification/PiP
+    - verify whether buttons disappear when leaving the reliable transport context
+  - Confirm one of:
+    - `ใช้ได้แล้ว`
+    - `ปุ่มกลับมาแต่ยังกดไม่ได้`
+    - `ยังพาไปผิด`
+    - `ยังมีปุ่มทั้งที่ไม่ควรมี`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md' -Head 140`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 120`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_MEDIA|OTB_YT_FALLBACK|handlers_updated|unreliable-next-context|unreliable-previous-context|next_dom|next_media_session|previous_dom|previous_media_session' -Context 0,2`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_transport_only_track_actions.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb devices`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.google.android.youtube`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern "com.onetabtube.browser_default|ChromeTabbedActivity|ResumedActivity|topResumedActivity" -Context 0,2`
+- Tool purpose:
+  - Remove broad DOM/initial-data fallback from the active `next/previous` path and keep only the true transport-button route.
+- Tool state:
+  - no build running now
+  - latest transport-only build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'native_tab_bridge_command|unreliable-transport-context|transport-button-unavailable|initial-data-navigation' -Context 0,1`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_transport_only_track_actions.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - active source of truth for browser-tab YouTube `next/previous`
+  - `docs/current-status.md`
+    - single-source handoff for the reliable-only direction
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - buttons appear only in reliable MIX/playlist transport contexts and follow the player order
+- Expected failure signal:
+  - buttons still appear outside reliable contexts
+  - logs still show `initial-data-navigation` as the active success reason
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_transport_only_track_actions.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Prefer fewer truthful controls over always-visible wrong controls.
+  - Use runtime evidence to decide the next patch instead of tweaking scoring heuristics blindly.
+- Rejected approaches:
+  - keeping `initial-data-navigation` in the active `next/previous` path
+  - using broad DOM anchor fallback in reliable-only mode
+  - forcing Android to keep showing controls regardless of page-side reliability
+- Stop point classification:
+  - code edited, synced, built, installed, and cold-launch verified; manual MIX control verification pending
+- What is done but unverified:
+  - actual user-visible behavior of notification/PiP `next/previous` on this transport-only build
+  - whether buttons now disappear outside reliable contexts
+- What is verified:
+  - the old active success path was `initial-data-navigation`
+  - active source change is present
+  - build/install succeeded
+  - cold launch succeeded
+  - resumed activity is visible after launch
+- External prerequisite:
+  - user retest on `R9TRC00GA2E`
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 13:33:50 +07:00
+
+- Current phase:
+  - Phase 5 / Reliable `next/previous` announcement plus same-page queue dispatch
+- Current objective:
+  - Make Android controls behave closer to YouTube's own on-page next/previous flow by dispatching to same-page queue/playlist targets instead of broad page navigation.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Took the new user report as source of truth:
+    - notification has no `next/previous`
+    - PiP has dimmed `next/previous`
+    - user observed that manual on-page next/previous behaves like a same-page video transition, which matches project intent better than a broad page reload
+  - Inspected the active bridge and extracted the actual action refresh cadence from code:
+    - `scheduleRefresh(...)` uses a 120 ms debounce
+    - `keepAliveTimer` refreshes every 1500 ms while a video exists
+    - refreshes are also triggered by video events, mutation observer, `DOMContentLoaded`, `yt-page-data-updated`, `yt-player-updated`, `yt-navigate-finish`, `visibilitychange`, `pageshow`, `pagehide`, and `focus`
+  - Concluded that the previous reliable-only patch was still too narrow on capability resolution and had no same-page queue/playlist click path, which explains:
+    - notification missing buttons in some reliable contexts
+    - PiP showing stale/dimmed buttons
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`:
+    - added `elementLooksSelected(...)`
+    - added `findReliableTrackLink(...)` to resolve current/adjacent queue or playlist DOM targets on the current page
+    - added `dispatchPrimaryClick(...)` for pointer/mouse click dispatch on those DOM targets
+    - changed `hasReliableTrackCapability(...)` so reliable capability now means:
+      - a true player transport button
+      - or a reliable current-page queue/playlist target
+    - updated `runTrackFallback(...)`:
+      - transport button first
+      - then reliable DOM queue/playlist click
+      - otherwise report unreliable context instead of broad fallback navigation
+  - Kept broad URL-based navigation helpers out of the active path.
+  - Synced Windows -> WSL, rebuilt, reinstalled, force-stopped the app, and re-started the explicit component.
+  - Verified:
+    - build passed
+    - install passed on `R9TRC00GA2E`
+    - explicit component start returned success
+  - Did not over-claim foreground verification because the last `dumpsys` snapshot still showed launcher as resumed.
+- In progress now:
+  - Waiting on manual user verification that notification/PiP now announce `next/previous` in MIX/playlist contexts and dispatch through same-page YouTube behavior.
+- Blockers / risks:
+  - DOM queue/playlist structure can vary between mobile, desktop, and music hosts.
+  - Because we intentionally keep broad URL navigation out of the active path, controls may stay hidden where no reliable same-page target exists.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed on `R9TRC00GA2E`
+  - explicit component start passed
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_reliable_dom_track_click.log`
+  - latest artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - latest APK SHA-256:
+    - `64247e0a0dd7774954f705c215b651760198f76ff43ceeb41881352fd4142a7d`
+- Exact next concrete step:
+  - User retests on `R9TRC00GA2E` in a MIX/playlist context and confirms one of:
+    - `ใช้ได้แล้ว`
+    - `notification ยังไม่มีปุ่ม`
+    - `PiP ยังเป็นปุ่มจาง`
+    - `ยังกระโดดแบบโหลดหน้า`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md' -Head 160`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 140`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_native_tab_bridge.cc' | Select-Object -First 260`
+  - `rg -n "kMediaSessionKeepAliveMs|scheduleRefresh\\(|setActionHandler\\('nexttrack'|setActionHandler\\('previoustrack'|clickTransportButton|isConnectedAndEnabled|isActionable|kLastResortNextSelectors|kLastResortPreviousSelectors|playerTransportRoots|hasReliableTrackCapability|settleTrackContext|yt-page-data-updated|yt-player-updated|keepAlive" browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_reliable_dom_track_click.log 2>&1"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk | cut -d' ' -f1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Add a same-page reliable DOM dispatch path so Android controls can follow the current YouTube queue/playlist flow better.
+- Tool state:
+  - no build running now
+  - latest reliable DOM track-click build installed on `R9TRC00GA2E`
+- Expected resume command:
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'native_tab_bridge_command|reliable-link-click|reliable-link-unavailable|unreliable-track-context|transport-button-unavailable' -Context 0,1`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_reliable_dom_track_click.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - active source of truth for capability and dispatch of `next/previous`
+  - `docs/current-status.md`
+    - single-source handoff for the current DOM-click direction
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+  - WSL ext4 checkout reachable
+  - `PYTHONPATH=/home/master/src_ext4/brave/script`
+- Expected success signal:
+  - `next/previous` appear in reliable MIX/playlist contexts and behave like same-page YouTube transitions
+- Expected failure signal:
+  - notification still hides buttons
+  - PiP still shows dimmed buttons
+  - controls still behave like broad page loads
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_reliable_dom_track_click.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Prefer same-page DOM target dispatch over broad URL navigation.
+  - Use code-backed cadence details to explain behavior rather than guessing.
+- Rejected approaches:
+  - re-enabling `location.assign(...)` in the active path
+  - forcing Android controls visible without a trustworthy target
+  - widening reliable capability back to generic URL fallback
+- Stop point classification:
+  - code edited, synced, built, installed, and explicit component start verified; manual control verification pending
+- What is done but unverified:
+  - actual notification/PiP behavior on the new reliable DOM-click build
+- What is verified:
+  - source change is present
+  - build/install succeeded
+  - explicit component start succeeded
+- External prerequisite:
+  - user retest on `R9TRC00GA2E`
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 13:43:40 +07:00
+
+- Current phase:
+  - Phase 5 / Runtime verification of action declaration and Android surface refresh timing
+- Current objective:
+  - Prove with live device state whether `next/previous` declaration is currently reaching Android, and document exactly when the web bridge recalculates actions and when Android surfaces refresh.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching anything.
+  - Took the user's two new questions as source of truth:
+    - does the declaration check really work now
+    - when/how are buttons refreshed and activated on notification and PiP
+  - Cleared `logcat` and captured fresh live runtime state from the connected device.
+  - Verified current runtime desk state:
+    - OneTabTube task is present in `mode=pinned`
+    - package `com.onetabtube.browser_default` is alive as the pinned task
+  - Captured live `dumpsys notification --noredact` for OneTabTube and confirmed that Android currently holds a media notification record with 4 actions:
+    - `ย้อนกลับ`
+    - `หยุดชั่วคราว`
+    - `ไปข้างหน้า`
+    - `หยุด`
+  - Concluded that action declaration is reaching Android in the current session even if the visible Samsung UI may still collapse or hide those actions.
+  - Confirmed there were no fresh `OTB_YT_FALLBACK` / `OTB_MEDIA` verbose logs in the live buffer because the bridge's `console.info` debug path is guarded by `window.__oneTabTubeYouTubeFallbackDebug` and is off by default.
+  - Re-inspected the bridge and documented the exact recalculation cadence from code:
+    - initial `refreshMediaSession('bootstrap')`
+    - debounced `scheduleRefresh(...)` at 120 ms
+    - periodic keepalive every 1500 ms while a video exists
+    - additional refresh triggers on page lifecycle, mutation observer, and video events
+  - Re-inspected Android-side timing:
+    - `mediaSessionActionsChanged(...)` updates `mMediaSessionActions`
+    - `showNotification()` applies `notificationInfoBuilder.setMediaSessionActions(...)`
+    - visible notification/PiP refresh depends on Chromium/Android re-render timing
+  - Reconfirmed that we intentionally do not force `showNotification()` inside `mediaSessionActionsChanged(...)` anymore because that was the recent launch-crash root cause.
+- In progress now:
+  - Waiting on user confirmation of the visible Samsung UI state now that live Android state proves actions exist.
+- Blockers / risks:
+  - Visible Samsung notification/PiP UI can lag behind the underlying Android action record.
+  - Verbose bridge resolution logs are off by default, so runtime path-level proof requires either user interaction plus additional instrumentation or enabling debug on-page.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - no new build this round
+  - current installed APK remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - current installed APK SHA-256:
+    - `64247e0a0dd7774954f705c215b651760198f76ff43ceeb41881352fd4142a7d`
+  - verified this round:
+    - pinned task live
+    - Android notification record live
+    - Android notification record contains previous/pause/forward/stop actions
+    - bridge refresh cadence documented from code
+  - not yet verified this round:
+    - whether visible Samsung notification/PiP matches the live Android action record
+- Exact next concrete step:
+  - Use the live proof that declaration reaches Android, then decide whether the next fix should target UI refresh timing only if the user still sees a mismatch on-screen.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern "com.onetabtube.browser_default|ChromeTabbedActivity|ResumedActivity|topResumedActivity" -Context 0,2`
+  - `rg -n "console\\.info|debugLog\\(|scheduleRefresh\\(|refreshMediaSession\\(|setActionHandler\\(|mediaSessionActionsChanged|showNotification\\(|setMediaSessionActions|mMediaSessionActions" browser/android/youtube_script_injector/youtube_native_tab_bridge.cc components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_YT_FALLBACK|OTB_MEDIA|handlers_updated|mediaSessionActionsChanged|showNotification|native_tab_bridge_command|reliable-link-click|unreliable-track-context|transport-button-unavailable' -Context 0,2`
+  - `adb -s R9TRC00GA2E shell dumpsys notification --noredact | Select-String -Pattern 'com.onetabtube.browser_default|MediaStyle|next|previous|play|pause|rewind|fast forward' -Context 0,2`
+- Tool purpose:
+  - Correlate live Android state with code-level timing to explain the declaration and refresh behavior accurately.
+- Tool state:
+  - no build running now
+  - no extra debug instrumentation enabled
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell dumpsys notification --noredact | Select-String -Pattern 'com.onetabtube.browser_default|ย้อนกลับ|ไปข้างหน้า|หยุดชั่วคราว' -Context 0,2`
+- Expected output/artifact path:
+  - none
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - action recalculation cadence and declaration
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+    - Android action filtering and notification application
+  - `docs/current-status.md`
+    - live handoff source of truth
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - live Android state and visible UI align on available controls
+- Expected failure signal:
+  - Android state shows actions but visible UI still does not expose them correctly
+- Last known log location:
+  - live `adb logcat` buffer only
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Use live `dumpsys notification` to answer whether declaration is really reaching Android.
+  - Do not reintroduce forced notification refresh after the recent crash.
+- Rejected approaches:
+  - answering the timing question from memory
+  - changing code before proving the current live Android action state
+- Stop point classification:
+  - live inspection complete; no code changed this round
+- What is done but unverified:
+  - whether visible Samsung UI will converge to the current Android action record without another patch
+- What is verified:
+  - declaration reaches Android right now
+  - bridge refresh cadence is known
+- External prerequisite:
+  - user-visible UI confirmation on the device
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 14:00:26 +07:00
+
+- Current phase:
+  - Phase 5 / Reliable `next/previous` capability promotion for MIX and playlist contexts
+- Current objective:
+  - Replace the stale DOM-only capability gate with a player-context signal that can advertise and execute real track-skip actions in MIX/playlist sessions.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Re-checked live runtime state with `dumpsys media_session` and confirmed the current live session was still publishing seek-style actions (`actions=334`) rather than `SKIP_TO_NEXT/PREVIOUS`.
+  - Re-inspected `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` and confirmed `hasReliableTrackCapability(kind)` still depended only on transport-button/link heuristics.
+  - Implemented a narrow patch in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`:
+    - `findYouTubeTrackPlayer()`
+    - `getReliablePlayerTrackContext()`
+    - `hasReliablePlayerTrackCapability(kind)`
+    - `tryYouTubePlayerTrack(kind)`
+    - updated `hasReliableTrackCapability(kind)` and `runTrackFallback(kind, ...)` to prefer player context before DOM fallback
+  - Synced the changed file into WSL via `tools/sync_changed_files_to_wsl.ps1`.
+  - Built successfully with:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_player_context_track_fix.log 2>&1"`
+  - Calculated APK hash:
+    - `879095c7faef40aeaae2907c944f537c8d7f2a4214e89d8d7d753297adc90d5c`
+  - Installed successfully on `R9TRC00GA2E`.
+  - Relaunched explicitly into OneTabTube with a MIX watch URL using:
+    - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1"`
+- In progress now:
+  - Waiting on a real user truth-check in a live MIX session to see whether notification/PiP now get active `next/previous` and whether track order follows the real sequence.
+- Blockers / risks:
+  - `nextVideo` / `previousVideo` are page-internal player methods, so runtime behavior still needs confirmation on the actual YouTube page.
+  - The media-session sample taken immediately after relaunch showed `STOPPED(1)` / `actions=8192`, which is not a valid result for the target scenario because playback had not yet fully resumed.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - install passed
+  - explicit component launch passed
+  - artifact:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_player_context_track_fix.log`
+- Exact next concrete step:
+  - User retests in a real MIX playback session and confirms one of:
+    - `ใช้ได้แล้ว`
+    - `notification ยังไม่มีปุ่ม`
+    - `PiP ยังเป็นปุ่มจาง`
+    - `ยังกระโดดแบบโหลดหน้า`
+    - `ยังกดแล้วไม่ไปตามลำดับ`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - live `dumpsys media_session` only after playback is active
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe bash`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E shell dumpsys media_session | Select-String -Pattern 'com.onetabtube.browser_default|state=PlaybackState|actions=' -Context 0,3`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_player_context_track_fix.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main -d "https://m.youtube.com/watch?v=34Ig3X59_qA&list=RD34Ig3X59_qA&start_radio=1"`
+- Tool purpose:
+  - Promote track capability from the same player context that the YouTube page itself uses, instead of relying only on DOM heuristics.
+- Tool state:
+  - no build running now
+  - latest player-context APK installed on the device
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell dumpsys media_session | Select-String -Pattern 'com.onetabtube.browser_default|state=PlaybackState|actions=' -Context 0,3`
+- Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_player_context_track_fix.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - player-context capability and dispatch for `next/previous`
+  - `docs/current-status.md`
+    - current source of truth for resume
+  - `docs/progress-log.md`
+    - append-only audit log
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device connected and authorized
+  - WSL ext4 checkout reachable
+- Expected success signal:
+  - notification/PiP expose active `next/previous` in MIX and follow the real sequence
+- Expected failure signal:
+  - controls still stay hidden, dimmed, seek-style, or jump out of order
+- Last known log location:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_player_context_track_fix.log`
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - stop prioritizing refresh timing as the main suspect
+  - promote track actions from player context first
+- Rejected approaches:
+  - reintroducing forced notification refresh
+  - widening DOM navigation fallback back to broad page loads
+- Stop point classification:
+  - code edited, synced, built, installed, and launched; manual runtime verification pending
+- What is done but unverified:
+  - whether the player-context path actually fixes live MIX controls
+- What is verified:
+  - patch present
+  - build/install/launch succeeded
+- External prerequisite:
+  - user retest on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 14:06:40 +07:00
+
+- Current phase:
+  - Phase 5 / Live launch verification after user-reported open-app crash
+- Current objective:
+  - Verify the user's "app cannot open" report with a fresh live capture before changing code again.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching anything.
+  - Verified device availability with `adb devices`.
+  - Cleared `logcat`.
+  - Force-stopped `com.onetabtube.browser_default`.
+  - Launched the app explicitly with:
+    - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - Captured fresh `logcat` after launch and filtered for:
+    - `AndroidRuntime`
+    - `FATAL EXCEPTION`
+    - `Abort message`
+    - `AssertionError`
+    - `Exception`
+  - Confirmed the large kill block at the start of the capture was caused by our own `am force-stop`, not a fresh crash.
+  - Captured `dumpsys activity activities` and confirmed:
+    - `topResumedActivity=... com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+    - task is visible in `mode=fullscreen`
+  - Verified that the current APK launches and stays foreground on explicit app start in this round.
+- In progress now:
+  - Waiting on the user to retry the exact failing entry path if they still see "cannot open app", because the explicit launch path no longer reproduces a crash.
+- Blockers / risks:
+  - The user's failing entry path may differ from the explicit component start used in this verification.
+  - This round did not retest the MIX `next/previous` scenario because isolating the launch report took priority.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - no new build
+  - current installed APK remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - current installed APK SHA-256:
+    - `879095c7faef40aeaae2907c944f537c8d7f2a4214e89d8d7d753297adc90d5c`
+  - verified this round:
+    - explicit launch succeeds
+    - no fresh launch crash in `logcat`
+    - app remains resumed in foreground
+- Exact next concrete step:
+  - If the user still sees an open-app failure, reproduce the exact entry path they used and capture `logcat` for that path specifically before patching code.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - fresh `adb logcat`
+  - `dumpsys activity activities`
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `apply_patch`
+- Exact command(s):
+  - `adb devices`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell am force-stop com.onetabtube.browser_default`
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `Start-Sleep -Seconds 8; adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'AndroidRuntime|FATAL EXCEPTION|chromium|OneTabTube|crash|Abort message|AssertionError|Exception' -Context 0,4`
+  - `Start-Sleep -Seconds 8; adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern 'com.onetabtube.browser_default|ChromeTabbedActivity|ResumedActivity|topResumedActivity' -Context 0,2`
+- Tool purpose:
+  - Separate a real launch crash from force-stop noise or stale state.
+- Tool state:
+  - no build running now
+  - current APK installed and explicit launch stable
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Expected output/artifact path:
+  - none
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `docs/current-status.md`
+    - launch-verification handoff
+  - `docs/progress-log.md`
+    - append-only audit trail
+  - live `adb logcat`
+    - runtime truth source for the launch report
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - fresh launch `logcat`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device connected and authorized
+- Expected success signal:
+  - app launches and remains resumed
+- Expected failure signal:
+  - fresh launch stack trace or immediate process death
+- Last known log location:
+  - live `adb logcat` buffer only
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - do not patch code from a user-reported crash until it is reproduced fresh
+  - treat our own `force-stop` kill sequence as noise
+- Rejected approaches:
+  - guessing a crash root cause from stale logs
+- Stop point classification:
+  - live crash check completed; no code changed this round
+- What is done but unverified:
+  - whether a different entry path still reproduces the user's failure
+- What is verified:
+  - explicit launch path is stable on the current APK
+- External prerequisite:
+  - user retest of the exact failing path if issue persists
+- Secret required but not stored:
+  - none
+
+## 2026-04-04 14:18:30 +07:00
+
+- Current phase:
+  - Phase 5 / Live YouTube-load-loop investigation after foreground launch verification
+- Current objective:
+  - Capture the user's current failing state with screenshot + live logs and determine whether "โหลดซ้ำๆไปมา" is a real navigation loop or internal page/bootstrap churn.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching anything.
+  - Kept the current failing state intact instead of force-stopping the app.
+  - Captured a live screenshot from device:
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.png`
+  - Captured a live UI dump from device:
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.xml`
+  - Inspected the screenshot and confirmed the toolbar URL is still `m.youtube.com/watch?v=34Ig3X5...` while the watch-page content area is black/blank.
+  - Inspected the UI dump and confirmed the app is foregrounded with the same watch-page URL in the omnibox.
+  - Captured filtered live `logcat` from the same state and confirmed:
+    - no fresh `FATAL EXCEPTION`
+    - no `AndroidRuntime` crash
+    - no obvious top-level redirect / navigation spam in the filtered output
+    - repeated blocked subresource churn for:
+      - `https://m.youtube.com/youtubei/v1/log_event?alt=json`
+      - `https://static.doubleclick.net/instream/ad_status.js`
+      - `https://m.youtube.com/generate_204?...`
+  - Ran targeted source inspection and confirmed the tree still contains two YouTube-side media-session paths:
+    - the newer bridge in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - the older updater block in `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- In progress now:
+  - Comparing the live blank-page evidence against the overlapping injector code paths to decide whether a legacy updater block should be disabled/gated.
+- Blockers / risks:
+  - Live evidence does not show a clean top-level redirect loop, so patching navigation policy blindly would be risky.
+  - If both injector paths are still active, editing only one may not stop the blank-page churn.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Build/test status:
+  - no new build
+  - current installed APK remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - current installed APK SHA-256:
+    - `879095c7faef40aeaae2907c944f537c8d7f2a4214e89d8d7d753297adc90d5c`
+  - verified this round:
+    - app is foregrounded in the failing state
+    - failing state is a blank/black watch page on a stable `m.youtube.com/watch?...` URL
+    - no fresh crash stack in the same state
+- Exact next concrete step:
+  - Inspect the legacy media-session updater block in `youtube_script_injector_tab_helper.cc` and decide whether to gate/disable it so the newer `youtube_native_tab_bridge.cc` remains the single active path before any rebuild.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.xml`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `view_image`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path 'docs/current-status.md' -Head 220`
+  - `Get-Content -Path 'docs/progress-log.md' -Tail 140`
+  - `adb devices`
+  - `adb -s R9TRC00GA2E shell screencap -p /sdcard/Download/otb_loop_20260404_141109.png`
+  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_loop_20260404_141109.png C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.png`
+  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/Download/otb_loop_20260404_141109.xml`
+  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_loop_20260404_141109.xml C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.xml`
+  - `adb -s R9TRC00GA2E shell dumpsys activity top | Select-String -Pattern 'ACTIVITY|mCurrentFocus|mFocusedApp|ResumedActivity|topResumedActivity|youtube|chrome|url|intent|webContents|com.onetabtube.browser_default' -Context 0,2`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_|Youtube|youtube|Navigation|loadUrl|loadstart|yt-navigate|yt-page-data-updated|yt-player-updated|ERR_|Redirect|redirect|chromium|AndroidRuntime|FATAL EXCEPTION|Abort message' -Context 0,2`
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc' | Select-Object -Skip 150 -First 110`
+  - `rg -n "commitCanonicalWatchNavigation|NavigateWatch|location.assign|window.location|yt-navigate|scheduleRefresh|refreshMediaSession|youtubei/v1/log_event|generate_204|keepAliveTimer|setActionHandler|nexttrack|previoustrack" browser/android/youtube_script_injector/youtube_native_tab_bridge.cc browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Tool purpose:
+  - Capture the live failing state without disturbing it and compare the artifacts against the active injector code paths.
+- Tool state:
+  - no build running now
+  - live failing-state artifacts captured successfully
+- Expected resume command:
+  - `Get-Content -Path 'browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc' | Select-Object -Skip 150 -First 110`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.xml`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `docs/current-status.md`
+    - latest live handoff
+  - `docs/progress-log.md`
+    - append-only audit trail
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - older media-session updater block that may still be active
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - newer bridge path and current keepalive refresh logic
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.png`
+    - screenshot of the blank watch-page state
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.xml`
+    - UI hierarchy showing stable watch URL during the failure
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.xml`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - identify a single active root cause for the blank-page churn before editing code
+- Expected failure signal:
+  - evidence remains ambiguous between duplicate JS refresh churn and a renderer/network issue
+- Last known log location:
+  - live `adb logcat` buffer only
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_loop_20260404_141109.xml`
+- Recent decisions:
+  - do not patch navigation policy blindly because the live failing-state capture does not show a top-level redirect loop
+  - treat the stable watch URL plus repeated blocked subresource churn as a hint that the visible loop may be internal page/bootstrap churn
+- Rejected approaches:
+  - guessing a redirect-loop root cause without matching top-level navigation evidence
+- Stop point classification:
+  - live failing-state capture completed; targeted source inspection started; no code changes yet
+- What is done but unverified:
+  - whether disabling/gating the legacy updater block will restore stable watch-page rendering
+- What is verified:
+  - app remains foregrounded in the failing state
+  - failing state shows a stable watch URL with a blank content surface
+  - no fresh crash stack appears in the same capture
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+- Timestamp:
+  - 2026-04-04 16:26:12 +07:00
+- Current phase:
+  - Phase 5 / MIX track dispatch stabilization with live automatic verification
+- Current objective:
+  - Truth-check the installed MIX fix from the real Android media-session side before asking for user-visible PiP/notification retest.
+- Completed since last snapshot:
+  - Re-opened `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Re-inspected `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` to confirm the playlist-panel-navigation patch was still the active code path.
+  - Ran a fresh live Android spot-check:
+    - `adb devices`
+    - `adb -s R9TRC00GA2E shell dumpsys activity top ...`
+    - `adb -s R9TRC00GA2E shell dumpsys media_session ...`
+  - Confirmed `com.onetabtube.browser_default/com.google.android.apps.chrome.Main` was still `mResumed=true`.
+  - Confirmed the active media button session was still `com.onetabtube.browser_default/OneTabTube - Debug`.
+  - Confirmed the live OneTabTube session still advertised `actions=382`, so `next/previous` remained declared at the Android media-session layer on the installed build.
+- In progress now:
+  - Waiting on user-visible retest from actual notification/PiP controls against the already verified installed MIX build.
+- Blockers / risks:
+  - This spot-check still verifies the Android media-session owner and declared actions, not literal notification/PiP tap coordinates.
+  - An unrelated pinned YouTube app task is also present on the device, so any future mismatch between UI and dispatch must re-check media-session ownership before code changes.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Build/test status:
+  - no new build
+  - installed APK remains:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - installed APK SHA-256 remains:
+    - `39d316a4c939424634f97f2c03937bfd3efdd01c6c08f19fc49788077ba40352`
+  - verified this snapshot:
+    - OneTabTube remains foreground/resumed
+    - OneTabTube still owns the active media button session
+    - Android still sees `next/previous` in the active session action set
+- Exact next concrete step:
+  - User tests actual `next/previous` taps from notification and PiP on the already installed build and reports whether real UI behavior matches the auto-verified `playlist-panel-navigation` path.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - latest user report from actual notification/PiP taps
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+- Exact command(s):
+  - `adb devices`
+  - `adb -s R9TRC00GA2E shell dumpsys activity top | Select-String -Pattern 'ACTIVITY|topResumedActivity|ResumedActivity|com.onetabtube.browser_default|mCurrentFocus' -Context 0,1`
+  - `adb -s R9TRC00GA2E shell dumpsys media_session | Select-String -Pattern 'com.onetabtube.browser_default|state=PlaybackState|actions=|description=' -Context 0,1`
+- Tool purpose:
+  - Verify that the installed build still has OneTabTube as the live active media session owner before asking for manual PiP/notification retest.
+- Tool state:
+  - no build running
+  - device connected
+  - installed build unchanged
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell dumpsys media_session | Select-String -Pattern 'com.onetabtube.browser_default|actions=' -Context 0,1`
+- Expected output/artifact path:
+  - none beyond live `adb` output
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - live MIX next/previous dispatch logic
+  - `docs/current-status.md`
+    - single-source latest status
+  - `docs/progress-log.md`
+    - append-only audit trail
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - latest user report from notification/PiP UI taps
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - User-visible PiP/notification taps follow the same MIX order already proven by auto dispatch.
+- Expected failure signal:
+  - UI taps still diverge from the active media-session owner or from the proven playlist-panel-navigation path.
+- Last known log location:
+  - live `adb` outputs only
+- Last known artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- Recent decisions:
+  - Do not patch further until actual UI taps are compared against the already verified Android media-session owner/state.
+- Rejected approaches:
+  - Blindly changing dispatch code again before checking whether the visible UI is even bound to the same active media session.
+- Stop point classification:
+  - live ownership spot-check completed; no new code changes beyond status update; waiting on manual UI truth-check
+- What is done but unverified:
+  - literal notification button taps
+  - literal PiP button taps
+- What is verified:
+  - OneTabTube owns the active media session
+  - Android still sees `next/previous` on the installed build
+  - auto-dispatch verification from the previous snapshot still matches the installed build state
+- External prerequisite:
+  - manual user-visible PiP/notification retest
+- Secret required but not stored:
+  - none
+- Timestamp:
+  - 2026-04-04 16:33:15 +07:00
+- Current phase:
+  - Phase 5 / MIX track dispatch stabilization with live notification truth-check
+- Current objective:
+  - Determine whether the reported “old notification still stuck” is a stale OneTabTube notification or a separate media session in the Android carousel.
+- Completed since last snapshot:
+  - Ran `adb -s R9TRC00GA2E shell dumpsys notification --noredact ...` targeted to media notifications.
+  - Captured the live shade screenshot:
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_notif_dupe_check.png`
+  - Verified Android currently has exactly:
+    - one transport notification from `com.onetabtube.browser_default`
+    - one transport notification from `com.google.android.youtube`
+  - Verified the screenshot shows the media player carousel with multiple pages (two dots), matching the two-package notification state.
+  - Confirmed the “old card” report is currently explained by the separate YouTube app media session, not by OneTabTube posting duplicate notification records of its own.
+- In progress now:
+  - No code change yet; waiting to see whether the user wants the external YouTube app session ignored/cleared manually or whether there is still a OneTabTube-specific stale-card symptom after that is removed.
+- Blockers / risks:
+  - OneTabTube cannot legitimately cancel another app’s media notification; if the second card is from `com.google.android.youtube`, fixing it inside OneTabTube would be the wrong target.
+  - If the user still sees a stale card after the external YouTube app session is gone, then a second OneTabTube-specific issue remains and needs a new capture.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_notif_dupe_check.png`
+- Build/test status:
+  - no new build
+  - installed APK unchanged:
+    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - installed APK SHA-256 unchanged:
+    - `39d316a4c939424634f97f2c03937bfd3efdd01c6c08f19fc49788077ba40352`
+  - verified this snapshot:
+    - OneTabTube still has one active transport notification
+    - a separate YouTube app notification is also active
+    - SystemUI media carousel is the visible reason the user perceives an old card
+- Exact next concrete step:
+  - Tell the user the current stale extra card is a separate YouTube app media session, not a duplicate OneTabTube notification, and ask for confirmation whether removing the external YouTube session also removes the extra card.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_notif_dupe_check.png`
+  - fresh user report after checking the extra carousel page
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `view_image`
+- Exact command(s):
+  - `adb -s R9TRC00GA2E shell dumpsys notification --noredact | Select-String -Pattern 'com.onetabtube.browser_default|NotificationRecord|MediaStyle|tag=|id=' -Context 0,4`
+  - `adb -s R9TRC00GA2E shell cmd statusbar expand-notifications`
+  - `adb -s R9TRC00GA2E shell screencap -p /sdcard/Download/otb_notif_dupe_check.png`
+  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_notif_dupe_check.png C:\\Users\\Master\\Desktop\\GO_PLAY\\otb_notif_dupe_check.png`
+- Tool purpose:
+  - Compare the live visible media card against actual notification records and determine whether the extra card belongs to OneTabTube or another app.
+- Tool state:
+  - no build running
+  - evidence captured successfully
+- Expected resume command:
+  - `adb -s R9TRC00GA2E shell dumpsys notification --noredact | Select-String -Pattern 'com.onetabtube.browser_default|com.google.android.youtube' -Context 0,2`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_notif_dupe_check.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `8325155d6d`
+- Build flavor / target:
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `docs/current-status.md`
+    - latest desk state
+  - `docs/progress-log.md`
+    - append-only audit trail
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_notif_dupe_check.png`
+    - screenshot of the visible media carousel state
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_notif_dupe_check.png`
+  - user reply about whether the second card is expected external YouTube app behavior
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - `R9TRC00GA2E` connected and authorized
+- Expected success signal:
+  - user confirms the extra old card is just the separate YouTube app session and OneTabTube’s own notification is now fine
+- Expected failure signal:
+  - user still sees a stale duplicate even when the external YouTube session is not present
+- Last known log location:
+  - live `adb` output only
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_notif_dupe_check.png`
+- Recent decisions:
+  - do not patch OneTabTube notification code before verifying whether the extra card is actually from OneTabTube
+- Rejected approaches:
+  - blindly changing notification IDs/cancel paths while the extra visible card belongs to another package
+- Stop point classification:
+  - live notification evidence captured; no code changes needed yet; awaiting user confirmation
+- What is done but unverified:
+  - whether the user wants the external YouTube app session treated as part of the bug report
+- What is verified:
+  - OneTabTube currently has one media notification record
+  - the extra visible card corresponds to a separate YouTube app media session in the Android carousel
+- External prerequisite:
+  - user confirmation on desired behavior regarding the separate YouTube app card
 - Secret required but not stored:
   - none

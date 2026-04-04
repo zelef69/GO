@@ -20,11 +20,15 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
   let observedVideo = null;
   let lifecycleObserver = null;
   let refreshTimer = 0;
+  let keepAliveTimer = 0;
   let trackFallbackState = null;
+  let trackSettleState = null;
+  let lastReliablePlaylistContext = null;
   let lastTrackFallbackAt = 0;
   let lastTrackFallbackKind = '';
   let lastTrackFallbackSucceeded = false;
   const kTrackFallbackCooldownMs = 250;
+  const kMediaSessionKeepAliveMs = 1500;
   const kYouTubeHosts =
       new Set(['www.youtube.com', 'youtube.com', 'm.youtube.com',
                'music.youtube.com']);
@@ -67,6 +71,39 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
     } catch (e) {
       return false;
     }
+  }
+
+  function playlistContextKeyFromUrlLike(rawHref) {
+    try {
+      const url = new URL(String(rawHref || location.href || ''), location.origin);
+      const params = url.searchParams;
+      if (params.has('list')) {
+        return 'list:' + params.get('list');
+      }
+      if (params.has('start_radio')) {
+        return 'radio:' + params.get('start_radio')
+            + '|pp:' + String(params.get('pp') || '');
+      }
+      if (params.has('pp')) {
+        return 'pp:' + params.get('pp');
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function currentPlaylistContextKey() {
+    return playlistContextKeyFromUrlLike(location.href);
+  }
+
+  function currentPlaylistIndexHint() {
+    try {
+      const params = new URLSearchParams(location.search || '');
+      const value = Number.parseInt(params.get('index') || '', 10);
+      if (Number.isFinite(value) && value > 0) {
+        return value - 1;
+      }
+    } catch (e) {}
+    return -1;
   }
 
   function debugEnabled() {
@@ -149,6 +186,42 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
     return isVisible(el) && isEnabled(el);
   }
 
+  function isConnectedAndEnabled(el) {
+    return !!el && !!el.isConnected && isEnabled(el);
+  }
+
+  function nudgePlayerTransportControls() {
+    const targets = [
+      currentVideo(),
+      playerLikeRoot(currentVideo()),
+      document.getElementById('movie_player'),
+      document.querySelector('.html5-video-player'),
+    ].filter(Boolean);
+    for (const target of targets) {
+      const rect = typeof target.getBoundingClientRect === 'function'
+          ? target.getBoundingClientRect()
+          : {left: 0, top: 0, width: 0, height: 0};
+      const clientX = Math.round((rect.left || 0) + Math.max(8, (rect.width || 0) / 2));
+      const clientY = Math.round((rect.top || 0) + Math.max(8, (rect.height || 0) / 2));
+      const commonInit = {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        clientX,
+        clientY,
+      };
+      try {
+        target.dispatchEvent(new MouseEvent('mousemove', commonInit));
+      } catch (e) {}
+      try {
+        target.dispatchEvent(new PointerEvent('pointermove', commonInit));
+      } catch (e) {}
+      try {
+        target.dispatchEvent(new MouseEvent('mouseenter', commonInit));
+      } catch (e) {}
+    }
+  }
+
   function clickIfActionable(el) {
     if (!isActionable(el)) {
       return false;
@@ -157,6 +230,68 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
       if (typeof el.focus === 'function') {
         el.focus({preventScroll: true});
       }
+    } catch (e) {}
+    try {
+      el.click();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function clickTransportButton(el) {
+    if (!isConnectedAndEnabled(el)) {
+      return false;
+    }
+    nudgePlayerTransportControls();
+    const rect = typeof el.getBoundingClientRect === 'function'
+        ? el.getBoundingClientRect()
+        : {left: 0, top: 0, width: 0, height: 0};
+    const clientX = Math.round((rect.left || 0) + Math.max(8, (rect.width || 0) / 2));
+    const clientY = Math.round((rect.top || 0) + Math.max(8, (rect.height || 0) / 2));
+    const pointerInit = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 0,
+      buttons: 1,
+      clientX,
+      clientY,
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      view: window,
+    };
+    const mouseInit = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 0,
+      buttons: 1,
+      clientX,
+      clientY,
+      view: window,
+    };
+    try {
+      if (typeof el.focus === 'function') {
+        el.focus({preventScroll: true});
+      }
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new PointerEvent('pointerdown', pointerInit));
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new MouseEvent('mousedown', mouseInit));
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new PointerEvent('pointerup', pointerInit));
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new MouseEvent('mouseup', mouseInit));
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new MouseEvent('click', mouseInit));
+      return true;
     } catch (e) {}
     try {
       el.click();
@@ -239,6 +374,35 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
       return new URL(String(rawHref || ''), location.href);
     } catch (e) {
       return null;
+    }
+  }
+
+  function preservePlaylistUrlContext(beforeHref) {
+    const beforeUrl = parseCandidateUrl(beforeHref);
+    const currentUrl = parseCandidateUrl(location.href);
+    if (!beforeUrl || !currentUrl || !isYouTubeWatchLikeUrl(currentUrl)) {
+      return false;
+    }
+
+    const preservedKeys = ['list', 'start_radio', 'pp', 'feature', 'si'];
+    let changed = false;
+    for (const key of preservedKeys) {
+      if (beforeUrl.searchParams.has(key) && !currentUrl.searchParams.has(key)) {
+        currentUrl.searchParams.set(key, beforeUrl.searchParams.get(key));
+        changed = true;
+      }
+    }
+
+    if (!changed) {
+      return false;
+    }
+
+    try {
+      history.replaceState(history.state, '', currentUrl.toString());
+      scheduleRefresh('preserve_playlist_url_context');
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -357,6 +521,58 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
     return false;
   }
 
+  async function waitForTrackActionOutcomeWithBudget(kind, beforeSnapshot, attempts, delayMs) {
+    const totalAttempts = Math.max(1, Number(attempts) || 1);
+    const waitMs = Math.max(40, Number(delayMs) || 120);
+    for (let attempt = 0; attempt < totalAttempts; ++attempt) {
+      await new Promise((resolve) => window.setTimeout(resolve, waitMs));
+      if (didTrackActionChange(kind, beforeSnapshot, snapshotTrackIdentity())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  function queueTrackContextRefresh(reason) {
+    observedVideo = null;
+    lastTrackFallbackSucceeded = false;
+    lastTrackFallbackKind = '';
+    lastTrackFallbackAt = 0;
+    const delays = [0, 100, 260, 520, 900];
+    for (const delay of delays) {
+      window.setTimeout(() => {
+        observedVideo = null;
+        scheduleRefresh(reason + '_' + delay);
+      }, delay);
+    }
+  }
+
+  async function settleTrackContext(kind, beforeSnapshot, reason) {
+    const settlePromise = (async function() {
+      const changed = await waitForTrackActionOutcomeWithBudget(
+          kind, beforeSnapshot, 18, 140);
+      if (!changed) {
+        return false;
+      }
+      queueTrackContextRefresh(reason);
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      return true;
+    }());
+
+    trackSettleState = {kind, promise: settlePromise};
+    try {
+      return await settlePromise;
+    } finally {
+      if (trackSettleState && trackSettleState.promise === settlePromise) {
+        trackSettleState = null;
+      }
+    }
+  }
+
   function strategyResult(ok, strategy, reason) {
     const result = {ok, strategy};
     if (reason) {
@@ -386,6 +602,113 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
       } catch (e) {}
     }
     return null;
+  }
+
+  function isUsableTrackPlayer(player) {
+    return !!player
+        && (typeof player.nextVideo === 'function'
+            || typeof player.previousVideo === 'function');
+  }
+
+  function findYouTubeTrackPlayer() {
+    const candidates = [
+      document.getElementById('movie_player'),
+      window.movie_player,
+      window.ytplayer?.player_,
+      window.ytplayer?.app?.player,
+    ];
+    for (const candidate of candidates) {
+      if (isUsableTrackPlayer(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  function getReliablePlayerTrackContext() {
+    if (!isYouTubeHost()) {
+      return null;
+    }
+    const player = findYouTubeTrackPlayer();
+    if (!player) {
+      return null;
+    }
+
+    let playlist = null;
+    let index = -1;
+    try {
+      if (typeof player.getPlaylist === 'function') {
+        const maybePlaylist = player.getPlaylist();
+        if (Array.isArray(maybePlaylist)) {
+          playlist = maybePlaylist.filter(Boolean).map((item) => String(item));
+        }
+      }
+    } catch (e) {}
+    try {
+      if (typeof player.getPlaylistIndex === 'function') {
+        index = Number(player.getPlaylistIndex());
+      }
+    } catch (e) {}
+
+    if ((!playlist || playlist.length <= 1) && !isPlaylistContext()) {
+      return null;
+    }
+
+    if ((!Number.isFinite(index) || index < 0) && playlist && playlist.length > 1) {
+      const currentVideoId = currentVideoIdFromUrl();
+      if (currentVideoId) {
+        index = playlist.findIndex((item) => item === currentVideoId);
+      }
+    }
+
+    return {
+      player,
+      playlist,
+      index: Number.isFinite(index) ? index : -1,
+    };
+  }
+
+  function hasReliablePlayerTrackCapability(kind) {
+    const context = getReliablePlayerTrackContext();
+    if (!context) {
+      return false;
+    }
+    const methodName = kind === 'next' ? 'nextVideo' : 'previousVideo';
+    if (typeof context.player[methodName] !== 'function') {
+      return false;
+    }
+    if (Array.isArray(context.playlist) && context.playlist.length > 1
+        && context.index >= 0) {
+      return kind === 'next' ? context.index < context.playlist.length - 1
+                             : context.index > 0;
+    }
+    return isPlaylistContext();
+  }
+
+  async function tryYouTubePlayerTrack(kind) {
+    const context = getReliablePlayerTrackContext();
+    if (!context) {
+      return strategyResult(false, 'player-api', 'unavailable');
+    }
+    const methodName = kind === 'next' ? 'nextVideo' : 'previousVideo';
+    const action = context.player[methodName];
+    if (typeof action !== 'function') {
+      return strategyResult(false, 'player-api', 'method-unavailable');
+    }
+    const beforeSnapshot = snapshotTrackIdentity();
+    const beforeHref = String(location.href || '');
+    try {
+      action.call(context.player);
+      scheduleRefresh('player_' + kind);
+      const ok = await settleTrackContext(kind, beforeSnapshot, 'player_' + kind);
+      if (ok) {
+        preservePlaylistUrlContext(beforeHref);
+      }
+      return ok ? strategyResult(true, 'player-api')
+                : strategyResult(false, 'player-api', 'unsettled');
+    } catch (e) {
+      return strategyResult(false, 'player-api', 'exception');
+    }
   }
 
   async function tryYouTubeIframeNext() {
@@ -524,14 +847,20 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
     return score;
   }
 
-  function candidateRoots() {
-    const roots = [
+  function playerTransportRoots() {
+    return Array.from(new Set([
       playerLikeRoot(currentVideo()),
       document.querySelector('.ytp-chrome-controls'),
       document.getElementById('movie_player'),
       document.querySelector('.html5-video-player'),
       document.querySelector('ytmusic-player-bar'),
       document.querySelector('ytmusic-player-page'),
+    ].filter(Boolean)));
+  }
+
+  function candidateRoots() {
+    const roots = [
+      ...playerTransportRoots(),
       document.querySelector('ytm-single-column-watch-next-results-renderer'),
       document.querySelector('ytm-watch-next-secondary-results-renderer'),
       document.querySelector('ytd-watch-flexy'),
@@ -543,18 +872,39 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
   }
 
   function findTrackButton(kind) {
+    nudgePlayerTransportControls();
+
+    return findReliableTransportButton(kind, true);
+  }
+
+  function findReliableTransportButton(kind, requireActionable) {
+    const selectors =
+        kind === 'next' ? kLastResortNextSelectors : kLastResortPreviousSelectors;
+    for (const root of playerTransportRoots()) {
+      for (const selector of selectors) {
+        try {
+          const candidate = root.querySelector(selector);
+          const usable = requireActionable ? isActionable(candidate)
+                                           : isConnectedAndEnabled(candidate);
+          if (usable) {
+            return candidate;
+          }
+        } catch (e) {}
+      }
+    }
+
     let bestCandidate = null;
     let bestScore = -1;
-    for (const root of candidateRoots()) {
+    for (const root of playerTransportRoots()) {
       let candidates = [];
       try {
         candidates = Array.from(root.querySelectorAll(
             'button, [role="button"], tp-yt-paper-icon-button, '
-            + 'yt-button-shape button, a[href]'));
+            + 'yt-button-shape button'));
       } catch (e) {}
       for (const candidate of candidates) {
         const score = scoreTrackButtonCandidate(candidate, kind);
-        if (score > bestScore) {
+        if (score >= 8 && score > bestScore) {
           bestScore = score;
           bestCandidate = candidate;
         }
@@ -563,19 +913,14 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
     if (bestCandidate) {
       return bestCandidate;
     }
-
-    // Last resort: use a small selector list for known transport buttons.
-    const selectors =
-        kind === 'next' ? kLastResortNextSelectors : kLastResortPreviousSelectors;
-    for (const selector of selectors) {
-      try {
-        const candidate = document.querySelector(selector);
-        if (isActionable(candidate)) {
-          return candidate;
-        }
-      } catch (e) {}
-    }
     return null;
+  }
+
+  function hasReliableTransportCapability(kind) {
+    if (!isYouTubeHost()) {
+      return false;
+    }
+    return !!findReliableTransportButton(kind, false);
   }
 
   function findYouTubeNextButton() {
@@ -584,6 +929,159 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
 
   function findYouTubePreviousButton() {
     return findTrackButton('previous');
+  }
+
+  function findReliableTrackHref(kind) {
+    if (!isPlaylistContext()) {
+      return '';
+    }
+    return findTrackHrefInPlaylistPanel(kind) || findTrackHrefInInitialData(kind);
+  }
+
+  function elementLooksSelected(el, currentVideoId) {
+    if (!el || !el.isConnected) {
+      return false;
+    }
+    const selectedValue = String(
+        el.getAttribute?.('aria-current')
+        || el.getAttribute?.('selected')
+        || el.getAttribute?.('aria-selected')
+        || '').toLowerCase();
+    if (selectedValue === 'true' || selectedValue === 'page'
+        || selectedValue === 'step' || selectedValue === 'location') {
+      return true;
+    }
+    const selectedAncestor = typeof el.closest === 'function'
+        ? el.closest(
+            '[aria-current],[selected],[aria-selected="true"],'
+            + '.selected,.is-selected,.current,.ytmusic-player-queue-item--selected')
+        : null;
+    if (selectedAncestor) {
+      return true;
+    }
+    const candidateUrl = parseCandidateUrl(el.getAttribute?.('href'));
+    const candidateVideoId = extractVideoIdFromUrl(candidateUrl);
+    return !!candidateVideoId && !!currentVideoId && candidateVideoId === currentVideoId;
+  }
+
+  function findReliableTrackLink(kind) {
+    if (!isPlaylistContext()) {
+      return null;
+    }
+
+    const currentVideoId = currentVideoIdFromUrl();
+    for (const root of candidateRoots()) {
+      let links = [];
+      try {
+        links = Array.from(root.querySelectorAll('a[href]'));
+      } catch (e) {}
+      const candidates = [];
+      for (const link of links) {
+        const candidateUrl = parseCandidateUrl(link.getAttribute('href'));
+        if (!isYouTubeWatchLikeUrl(candidateUrl)) {
+          continue;
+        }
+        const candidateVideoId = extractVideoIdFromUrl(candidateUrl);
+        const href = canonicalTrackHref(candidateUrl.toString());
+        if (!href) {
+          continue;
+        }
+        candidates.push({
+          link,
+          href,
+          videoId: candidateVideoId,
+          selected: elementLooksSelected(link, currentVideoId),
+        });
+      }
+      if (!candidates.length) {
+        continue;
+      }
+
+      let selectedIndex = candidates.findIndex((candidate) => candidate.selected);
+      if (selectedIndex < 0 && currentVideoId) {
+        selectedIndex = candidates.findIndex(
+            (candidate) => candidate.videoId && candidate.videoId === currentVideoId);
+      }
+      if (selectedIndex < 0) {
+        continue;
+      }
+
+      const delta = kind === 'next' ? 1 : -1;
+      for (let index = selectedIndex + delta;
+           index >= 0 && index < candidates.length; index += delta) {
+        if (isActionable(candidates[index].link)) {
+          return candidates[index].link;
+        }
+      }
+    }
+    return null;
+  }
+
+  function dispatchPrimaryClick(el) {
+    if (!el || !el.isConnected) {
+      return false;
+    }
+    const rect = typeof el.getBoundingClientRect === 'function'
+        ? el.getBoundingClientRect()
+        : {left: 0, top: 0, width: 0, height: 0};
+    const clientX = Math.round((rect.left || 0) + Math.max(8, (rect.width || 0) / 2));
+    const clientY = Math.round((rect.top || 0) + Math.max(8, (rect.height || 0) / 2));
+    const pointerInit = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 0,
+      buttons: 1,
+      clientX,
+      clientY,
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      view: window,
+    };
+    const mouseInit = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 0,
+      buttons: 1,
+      clientX,
+      clientY,
+      view: window,
+    };
+    try {
+      if (typeof el.focus === 'function') {
+        el.focus({preventScroll: true});
+      }
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new PointerEvent('pointerdown', pointerInit));
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new MouseEvent('mousedown', mouseInit));
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new PointerEvent('pointerup', pointerInit));
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new MouseEvent('mouseup', mouseInit));
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new MouseEvent('click', mouseInit));
+      return true;
+    } catch (e) {}
+    try {
+      el.click();
+      return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function hasReliableTrackCapability(kind) {
+    return !!findTrackHrefInPlaylistPanel(kind)
+        || hasReliablePlayerTrackCapability(kind)
+        || hasReliableTransportCapability(kind)
+        || !!findReliableTrackLink(kind);
   }
 
   function canonicalTrackHref(rawHref) {
@@ -614,6 +1112,23 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
   function extractRendererHref(renderer) {
     if (!renderer || typeof renderer !== 'object') {
       return '';
+    }
+    const watchEndpoint = renderer?.navigationEndpoint?.watchEndpoint;
+    if (watchEndpoint && typeof watchEndpoint === 'object') {
+      try {
+        const candidateUrl = new URL('/watch', location.origin);
+        if (watchEndpoint.videoId) {
+          candidateUrl.searchParams.set('v', String(watchEndpoint.videoId));
+        }
+        if (watchEndpoint.playlistId) {
+          candidateUrl.searchParams.set('list', String(watchEndpoint.playlistId));
+        }
+        if (watchEndpoint.index !== undefined && watchEndpoint.index !== null
+            && String(watchEndpoint.index) !== '') {
+          candidateUrl.searchParams.set('index', String(watchEndpoint.index));
+        }
+        return candidateUrl.toString();
+      } catch (e) {}
     }
     return String(
         renderer?.navigationEndpoint?.commandMetadata?.webCommandMetadata?.url
@@ -690,14 +1205,161 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
       }
     }
 
-    if (kind === 'next') {
-      for (const candidate of candidates) {
-        if (candidate?.href) {
-          return candidate.href;
+    return '';
+  }
+
+  function getPlaylistPanelItemsFromInitialData() {
+    return window.ytInitialData?.contents?.singleColumnWatchNextResults?.playlist?.playlist
+               ?.contents
+        || null;
+  }
+
+  function buildPlaylistPanelCandidates(items) {
+    const candidates = [];
+    if (!Array.isArray(items)) {
+      return candidates;
+    }
+    for (const item of items) {
+      const renderer = extractTrackRenderer(item);
+      if (!renderer) {
+        continue;
+      }
+      const href = canonicalTrackHref(extractRendererHref(renderer));
+      const videoId = extractRendererVideoId(renderer);
+      candidates.push({
+        href,
+        videoId,
+        selected: !!renderer.selected,
+      });
+    }
+    return candidates;
+  }
+
+  function resolvePlaylistCandidateIndex(candidates, currentVideoId) {
+    if (!Array.isArray(candidates) || !candidates.length) {
+      return -1;
+    }
+
+    if (currentVideoId) {
+      const byCurrentVideoId = candidates.findIndex(
+          (candidate) => candidate.videoId && candidate.videoId === currentVideoId);
+      if (byCurrentVideoId >= 0) {
+        return byCurrentVideoId;
+      }
+    }
+
+    const selectedIndex = candidates.findIndex((candidate) => candidate.selected);
+    if (selectedIndex >= 0) {
+      const selectedVideoId = candidates[selectedIndex]?.videoId || '';
+      if (!currentVideoId || (selectedVideoId && selectedVideoId === currentVideoId)) {
+        return selectedIndex;
+      }
+    }
+
+    const hintedIndex = currentPlaylistIndexHint();
+    if (hintedIndex >= 0 && hintedIndex < candidates.length) {
+      const hintedVideoId = candidates[hintedIndex]?.videoId || '';
+      if (!currentVideoId || !hintedVideoId || hintedVideoId === currentVideoId) {
+        return hintedIndex;
+      }
+    }
+
+    return -1;
+  }
+
+  function refreshReliablePlaylistContext(reason) {
+    const items = getPlaylistPanelItemsFromInitialData();
+    const candidates = buildPlaylistPanelCandidates(items);
+    if (!candidates.length) {
+      return;
+    }
+
+    const currentVideoId = currentVideoIdFromUrl();
+    const currentIndex = resolvePlaylistCandidateIndex(candidates, currentVideoId);
+    if (currentIndex < 0 || !candidates[currentIndex]?.href) {
+      return;
+    }
+
+    lastReliablePlaylistContext = {
+      key: currentPlaylistContextKey(),
+      candidates,
+      currentIndex,
+      currentVideoId,
+      updatedAt: Date.now(),
+      reason: String(reason || ''),
+    };
+  }
+
+  function findTrackHrefInCachedPlaylistPanel(kind) {
+    const context = lastReliablePlaylistContext;
+    if (!context || !Array.isArray(context.candidates) || !context.candidates.length) {
+      return '';
+    }
+
+    let currentIndex = -1;
+    const currentVideoId = currentVideoIdFromUrl();
+    if (currentVideoId) {
+      currentIndex = context.candidates.findIndex(
+          (candidate) => candidate.videoId && candidate.videoId === currentVideoId);
+    }
+
+    if (currentIndex < 0) {
+      const currentKey = currentPlaylistContextKey();
+      if (currentKey && context.key && currentKey === context.key) {
+        const hintedIndex = currentPlaylistIndexHint();
+        if (hintedIndex >= 0 && hintedIndex < context.candidates.length) {
+          currentIndex = hintedIndex;
         }
       }
     }
+
+    if (currentIndex < 0) {
+      return '';
+    }
+
+    const delta = kind === 'next' ? 1 : -1;
+    for (let index = currentIndex + delta;
+         index >= 0 && index < context.candidates.length; index += delta) {
+      if (context.candidates[index]?.href) {
+        return context.candidates[index].href;
+      }
+    }
+
     return '';
+  }
+
+  function findTrackHrefInPlaylistPanel(kind) {
+    const items = getPlaylistPanelItemsFromInitialData();
+    const currentVideoId = currentVideoIdFromUrl();
+    const candidates = buildPlaylistPanelCandidates(items).map((candidate) => ({
+      href: candidate.href,
+      videoId: candidate.videoId,
+      selected: candidate.selected,
+    }));
+    if (Array.isArray(items) && items.length && candidates.length) {
+      for (let index = 0; index < items.length && index < candidates.length; ++index) {
+        const renderer = extractTrackRenderer(items[index]);
+        if (!renderer) {
+          continue;
+        }
+        candidates[index].selected = rendererLooksSelected(renderer, currentVideoId);
+      }
+    }
+
+    const currentIndex = resolvePlaylistCandidateIndex(candidates, currentVideoId);
+    if (currentIndex < 0) {
+      return findTrackHrefInCachedPlaylistPanel(kind);
+    }
+
+    const delta = kind === 'next' ? 1 : -1;
+    for (let index = currentIndex + delta;
+         index >= 0 && index < candidates.length; index += delta) {
+      if (candidates[index]?.href) {
+        return candidates[index].href;
+      }
+    }
+
+    return findTrackHrefInCachedPlaylistPanel(kind);
   }
 
   function findTrackHrefInInitialData(kind) {
@@ -742,16 +1404,6 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
     return bestHref;
   }
 
-  async function tryRestartCurrentTrack() {
-    const video = currentVideo();
-    if (!video || !Number.isFinite(video.currentTime) || video.currentTime < 1.5) {
-      return strategyResult(false, 'media-element', 'restart-unavailable');
-    }
-    const ok = await seekTo(0);
-    return ok ? strategyResult(true, 'media-element', 'restart-current')
-              : strategyResult(false, 'media-element', 'restart-failed');
-  }
-
   async function navigateTrackHref(kind, targetHref, reason, options) {
     const beforeSnapshot = snapshotTrackIdentity();
     if (options && options.preserveVideoPresentation
@@ -770,7 +1422,10 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
         const handled = !!navigateWatch(
             targetHref, 'native_track_' + kind, {warmTarget: true});
         if (handled) {
-          return strategyResult(true, 'dom', reason + '-pipeline');
+          const changed = await settleTrackContext(
+              kind, beforeSnapshot, reason + '_pipeline');
+          return changed ? strategyResult(true, 'dom', reason + '-pipeline')
+                         : strategyResult(false, 'dom', reason + '-pipeline-unsettled');
         }
       } catch (e) {}
     }
@@ -789,11 +1444,13 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
       return strategyResult(false, 'dom', 'unsupported-host');
     }
 
-    const targetHref = findTrackHrefInInitialData(kind);
+    if (!isPlaylistContext()) {
+      return strategyResult(false, 'dom', 'initial-data-playlist-context-required');
+    }
+
+    const targetHref = findTrackHrefInPlaylistPanel(kind) || findReliableTrackHref(kind);
     if (!targetHref) {
-      return kind === 'previous' ? tryRestartCurrentTrack()
-                                 : strategyResult(
-                                       false, 'dom', 'initial-data-link-not-found');
+      return strategyResult(false, 'dom', 'initial-data-link-not-found');
     }
 
     return navigateTrackHref(
@@ -867,12 +1524,14 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
 
     const link = findTrackLink(kind);
     if (!link) {
-      return tryYouTubeInitialDataNavigation(kind, options);
+      return tryYouTubeInitialDataNavigation(
+          kind, Object.assign({}, options || {}, {requirePlaylistContext: true}));
     }
 
     const candidateUrl = parseCandidateUrl(link.getAttribute('href'));
     if (!candidateUrl) {
-      return tryYouTubeInitialDataNavigation(kind, options);
+      return tryYouTubeInitialDataNavigation(
+          kind, Object.assign({}, options || {}, {requirePlaylistContext: true}));
     }
 
     return navigateTrackHref(
@@ -883,26 +1542,56 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
     if (!isYouTubeHost()) {
       return strategyResult(false, 'dom', 'unsupported-host');
     }
-    const button =
-        kind === 'next' ? findYouTubeNextButton() : findYouTubePreviousButton();
-    if (!button) {
-      return tryYouTubeDomLinkNavigation(kind, options);
+    const beforeSnapshot = snapshotTrackIdentity();
+    for (let attempt = 0; attempt < 3; ++attempt) {
+      nudgePlayerTransportControls();
+      if (attempt > 0) {
+        await wait(90);
+      }
+      const button =
+          kind === 'next' ? findYouTubeNextButton() : findYouTubePreviousButton();
+      if (!button) {
+        continue;
+      }
+      if (!clickTransportButton(button)) {
+        continue;
+      }
+      scheduleRefresh('dom_' + kind + '_attempt_' + attempt);
+      const ok = await settleTrackContext(
+          kind, beforeSnapshot, 'dom_' + kind + '_attempt_' + attempt);
+      if (ok) {
+        return strategyResult(true, 'dom');
+      }
+    }
+    return strategyResult(false, 'dom', 'transport-button-unavailable');
+  }
+
+  async function tryYouTubeDomTrackLink(kind, options) {
+    if (!isYouTubeHost()) {
+      return strategyResult(false, 'dom', 'unsupported-host');
     }
     const beforeSnapshot = snapshotTrackIdentity();
-    if (!clickIfActionable(button)) {
-      return tryYouTubeDomLinkNavigation(kind, options);
+    const link = findReliableTrackLink(kind);
+    if (!link) {
+      return strategyResult(false, 'dom', 'reliable-link-unavailable');
     }
-    scheduleRefresh('dom_' + kind);
-    const ok = await waitForTrackActionOutcome(kind, beforeSnapshot);
-    if (ok) {
-      return strategyResult(true, 'dom');
+    if (!dispatchPrimaryClick(link)) {
+      return strategyResult(false, 'dom', 'reliable-link-dispatch-failed');
     }
-    return tryYouTubeDomLinkNavigation(kind, options);
+    scheduleRefresh('dom_link_' + kind);
+    const ok = await settleTrackContext(kind, beforeSnapshot, 'dom_link_' + kind);
+    return ok ? strategyResult(true, 'dom', 'reliable-link-click')
+              : strategyResult(false, 'dom', 'reliable-link-unsettled');
   }
 
   async function runTrackFallback(kind, options) {
     if (!isYouTubeHost()) {
       return strategyResult(false, 'none', 'unsupported-host');
+    }
+    if (trackSettleState) {
+      try {
+        await trackSettleState.promise;
+      } catch (e) {}
     }
     if (trackFallbackState) {
       if (trackFallbackState.kind === kind) {
@@ -918,42 +1607,45 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
 
     const runner = async function() {
       let result = strategyResult(false, 'none', 'no-strategy');
-      if (kind === 'next') {
-        if (canUseYouTubeIframeApi()) {
-          result = await tryYouTubeIframeNext();
-          debugLog('next_iframe', JSON.stringify(result));
-          if (result.ok) return result;
+      const playlistPanelHref = findTrackHrefInPlaylistPanel(kind);
+      if (playlistPanelHref) {
+        result = await navigateTrackHref(
+            kind, playlistPanelHref, 'playlist-panel-navigation', options || {});
+        debugLog(kind + '_playlist_panel', JSON.stringify(result));
+        if (result.ok) {
+          return result;
         }
-        result = await tryGenericMediaSessionTrack('next');
-        debugLog('next_media_session', JSON.stringify(result));
-        if (result.ok) return result;
-        result = await tryYouTubeShortcutNext();
-        debugLog('next_shortcut', JSON.stringify(result));
-        if (result.ok) return result;
-        result = await tryYouTubeInitialDataNavigation('next', options);
-        debugLog('next_initial_data', JSON.stringify(result));
-        if (result.ok) return result;
-        result = await tryYouTubeDomTrack('next', options);
-        debugLog('next_dom', JSON.stringify(result));
-        return result;
       }
-
-      if (canUseYouTubeIframeApi()) {
-        result = await tryYouTubeIframePrevious();
-        debugLog('previous_iframe', JSON.stringify(result));
-        if (result.ok) return result;
+      const hasTransport = hasReliableTransportCapability(kind);
+      if (hasTransport) {
+        result = await tryYouTubeDomTrack(kind, options);
+        debugLog(kind + '_dom', JSON.stringify(result));
+        if (result.ok) {
+          return result;
+        }
+        result = kind === 'next' ? await tryYouTubeShortcutNext()
+                                 : await tryYouTubeShortcutPrevious();
+        debugLog(kind + '_shortcut', JSON.stringify(result));
+        if (result.ok) {
+          return result;
+        }
+      } else {
+        if (!hasReliablePlayerTrackCapability(kind)
+            && !findReliableTrackLink(kind)) {
+          return strategyResult(false, 'none', 'unreliable-track-context');
+        }
       }
-      result = await tryGenericMediaSessionTrack('previous');
-      debugLog('previous_media_session', JSON.stringify(result));
-      if (result.ok) return result;
-      result = await tryYouTubeShortcutPrevious();
-      debugLog('previous_shortcut', JSON.stringify(result));
-      if (result.ok) return result;
-      result = await tryYouTubeInitialDataNavigation('previous', options);
-      debugLog('previous_initial_data', JSON.stringify(result));
-      if (result.ok) return result;
-      result = await tryYouTubeDomTrack('previous', options);
-      debugLog('previous_dom', JSON.stringify(result));
+      if (hasReliablePlayerTrackCapability(kind)
+          && !isPlaylistContext()
+          && !lastReliablePlaylistContext) {
+        result = await tryYouTubePlayerTrack(kind);
+        debugLog(kind + '_player_api', JSON.stringify(result));
+        if (result.ok) {
+          return result;
+        }
+      }
+      result = await tryYouTubeDomTrackLink(kind, options);
+      debugLog(kind + '_dom_link', JSON.stringify(result));
       return result;
     };
 
@@ -987,8 +1679,8 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
       paused: !!video.paused,
       duration,
       currentTime,
-      canNext: isYouTubeHost(),
-      canPrevious: isYouTubeHost(),
+      canNext: hasReliableTrackCapability('next'),
+      canPrevious: hasReliableTrackCapability('previous'),
     };
   }
 
@@ -1117,11 +1809,14 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
 
   function refreshMediaSession(reason) {
     const hasVideo = !!currentVideo();
+    refreshReliablePlaylistContext(reason);
+    const canNext = hasVideo && hasReliableTrackCapability('next');
+    const canPrevious = hasVideo && hasReliableTrackCapability('previous');
 
-    setActionHandler('nexttrack', hasVideo ? () => {
+    setActionHandler('nexttrack', canNext ? () => {
       void bridge.next();
     } : null);
-    setActionHandler('previoustrack', hasVideo ? () => {
+    setActionHandler('previoustrack', canPrevious ? () => {
       void bridge.previous();
     } : null);
     setActionHandler('play', hasVideo ? () => { void play(); } : null);
@@ -1140,6 +1835,32 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
 
     updatePlaybackState();
     updatePositionState();
+    updateKeepAliveState();
+  }
+
+  function updateKeepAliveState() {
+    const shouldKeepAlive = !!currentVideo();
+    if (!shouldKeepAlive) {
+      if (keepAliveTimer) {
+        clearInterval(keepAliveTimer);
+        keepAliveTimer = 0;
+      }
+      return;
+    }
+
+    if (keepAliveTimer) {
+      return;
+    }
+
+    keepAliveTimer = setInterval(() => {
+      bindVideoEvents(currentVideo());
+      refreshMediaSession('keepalive');
+    }, kMediaSessionKeepAliveMs);
+  }
+
+  function forceRefreshMediaSession(reason) {
+    bindVideoEvents(currentVideo());
+    refreshMediaSession(reason);
   }
 
   function bindVideoEvents(video) {
@@ -1152,12 +1873,18 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
       'play',
       'pause',
       'playing',
+      'loadstart',
+      'canplay',
+      'canplaythrough',
       'timeupdate',
       'seeking',
       'seeked',
       'loadedmetadata',
       'durationchange',
       'ratechange',
+      'waiting',
+      'stalled',
+      'emptied',
       'ended',
     ];
     for (const eventName of events) {
@@ -1168,8 +1895,7 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
   function scheduleRefresh(reason) {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => {
-      bindVideoEvents(currentVideo());
-      refreshMediaSession(reason);
+      forceRefreshMediaSession(reason);
     }, 80);
   }
 
@@ -1225,8 +1951,16 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
   document.addEventListener(
       'DOMContentLoaded', () => scheduleRefresh('dom_ready'), true);
   document.addEventListener(
+      'yt-page-data-updated', () => scheduleRefresh('yt_page_data_updated'),
+      true);
+  document.addEventListener(
+      'yt-player-updated', () => scheduleRefresh('yt_player_updated'), true);
+  document.addEventListener(
       'yt-navigate-finish', () => scheduleRefresh('yt_navigate_finish'), true);
+  document.addEventListener(
+      'visibilitychange', () => scheduleRefresh('visibilitychange'), true);
   window.addEventListener('pageshow', () => scheduleRefresh('pageshow'), true);
+  window.addEventListener('pagehide', () => scheduleRefresh('pagehide'), true);
   window.addEventListener('focus', () => scheduleRefresh('focus'), true);
 }());
 )OTB_YT_BRIDGE";

@@ -433,3 +433,37 @@ Honest scope note:
 
 - this beta1 note records the currently verified source/runtime snapshot only
 - actual behavior can still vary later if upstream YouTube, Chromium, Android, or OEM behavior changes
+
+## April 4, 2026 beta2 fix upgread control/autoplay
+
+This is the beta2 source-of-truth snapshot requested for the current control/autoplay workstream.
+
+What this beta2 snapshot includes:
+
+- YouTube MIX `next/previous` control logic is tightened around reliable queue context instead of broad fallback navigation
+- notification and PiP transport controls remain wired through the active OneTabTube playback path
+- autoplay-next video-presentation carry-forward logic is added so the next item can try to restore focused video presentation after a fullscreen-presented item ends
+- current desk-state and progress handoff are aligned with the installed APK snapshot
+
+Latest build tied to this beta2 note:
+
+- build log:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
+- APK SHA-256:
+  - `836B85FF35E2278E106B0087056496D062169D7F3787C70EC30CE1DA413FE35F`
+
+Verification status recorded for this beta2 note:
+
+- device: `R9TRC00GA2E`
+- verified:
+  - source changes for control/autoplay are present in the installed build
+  - build and install passed
+  - current runtime desk-state is aligned in `docs/current-status.md` and `docs/progress-log.md`
+- not yet fully verified:
+  - autoplay-next restoring focused video presentation in a real pinned-PiP autoplay transition
+  - automatic replay on the current session hit a separate `fullscreen -> PiP` Java visibility race before that truth-check completed
+
+Honest scope note:
+
+- this beta2 snapshot is the current source/runtime truth for the repository and installed APK
+- it does not claim that the autoplay-next PiP presentation issue is fully closed yet; it records the exact in-repo state and latest known verification boundary

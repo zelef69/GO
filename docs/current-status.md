@@ -1,138 +1,186 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-04 03:05:21 +07:00
+  - 2026-04-04 17:16:00 +07:00
 - Current phase:
-  - Phase 5 / beta1 published snapshot
+  - Phase 5 / PiP autoplay-next video-presentation restore
 - Current objective:
-  - Keep the verified beta1 baseline aligned between source, docs, and the published repo state.
+  - Fix the case where YouTube autoplay advances to the next video while already in PiP, but the PiP surface does not restore focused/fullscreen video presentation on the new item.
 - Completed since last update:
-  - Updated `docs/current-status.md`, `docs/progress-log.md`, and `docs/patch-summary.md` to reflect the verified-good beta1 runtime.
-  - Committed the matching source/docs snapshot with message:
-    - `beta1 fix onetab+pip+control+lifecycle`
-  - Pushed branch `publish/go_play-sync-20260402` to `origin`.
+  - Re-opened `docs/current-status.md` and the latest tail of `docs/progress-log.md` before continuing.
+  - Re-inspected `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` and confirmed the new autoplay carry-forward logic is present in source:
+    - `VIDEO_PRESENTATION_CARRY_STORAGE_KEY`
+    - `saveCarryForwardVideoPresentation(...)`
+    - `loadCarryForwardVideoPresentation(...)`
+    - `ensureVideoPresentationForArmedTarget(...)` extended with carry-forward restore
+    - `video.addEventListener('ended', ...)` wired to arm carry-forward presentation on autoplay boundaries
+  - Synced the changed files into WSL with:
+    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - Rebuilt the package successfully:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
+  - Reinstalled the build successfully on `R9TRC00GA2E`.
+  - Verified current device state after resume:
+    - OneTabTube is `topResumedActivity`
+    - current task is visible and `mode=fullscreen`
+    - the active screen is a YouTube MIX/watch page showing the current track queue
+  - Captured fresh runtime artifacts for the current screen:
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+  - Verified the PiP toolbar button is present and actionable in the live UI dump:
+    - resource id: `com.onetabtube.browser_default:id/brave_youtube_pip_button`
+    - bounds: `[668,88][795,201]`
+  - Replayed live PiP entry automatically from the verified toolbar coordinates:
+    - `adb -s R9TRC00GA2E shell input tap 731 144`
+  - Captured the post-tap runtime screenshot:
+    - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+  - Verified from live runtime evidence that this replay did **not** reach pinned PiP on the current session:
+    - `dumpsys activity activities` still showed `mode=fullscreen`, not `mode=pinned`
+    - targeted `logcat` showed:
+      - `OTB_PIP event=enter_picture_in_picture_from_fullscreen`
+      - `Delay enterPictureInPicture retry because fullscreen state is not visible to Java yet`
+      - `Abort delayed enterPictureInPicture because fullscreen state is still not visible to Java`
+  - Verified via live CDP that during this failed replay the page did reach fullscreen presentation temporarily:
+    - `fullscreen=true`
+    - `pip=false`
+    - therefore the new autoplay-carry patch itself was not reached in a real pinned-PiP autoplay transition during this run
 - In progress now:
-  - No active code change in flight.
-  - Waiting for the next user-directed task on top of the published beta1 baseline.
+  - Holding the autoplay-carry patch in place while treating current automatic verification as blocked by the pre-existing Java fullscreen-visibility race during PiP entry on this live session.
 - Files/modules touched:
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/BraveToolbarManager.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/bottom/BottomToolbarConfiguration.java`
-  - `android/java/org/chromium/chrome/browser/toolbar/bottom/BraveScrollingBottomViewResourceFrameLayout.java`
-  - `android/java/org/chromium/chrome/browser/settings/AppearancePreferences.java`
-  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
-  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.h`
   - `docs/current-status.md`
   - `docs/progress-log.md`
-  - `docs/patch-summary.md`
 - Build/test status:
-  - latest verified build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_fullscreen_play_resume_fix.log`
-  - latest verified APK path:
+  - build passed
+  - install passed on `R9TRC00GA2E`
+  - current installed APK path:
     - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - latest verified APK SHA-256:
-    - `18c01e6f21d837fb0ef2f557326cd3f47f0a19cc6b8a76c0fa98fa479491233b`
-  - install status:
-    - install passed on `R9TRC00GA2E`
-  - runtime verification:
-    - user verified PiP entry/exit works normally for 3 rounds
-  - repo publication:
-    - commit `dee4a07b0` pushed to `origin/publish/go_play-sync-20260402`
-  - pull request entrypoint:
-    - `https://github.com/zelef69/GO/pull/new/publish/go_play-sync-20260402`
+  - current installed APK SHA-256:
+    - `836B85FF35E2278E106B0087056496D062169D7F3787C70EC30CE1DA413FE35F`
+  - latest build log:
+    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
+  - verified this round:
+    - autoplay carry-forward presentation patch is present in source
+    - build succeeded
+    - install succeeded
+    - live screen is OneTabTube watch/MIX page, not launcher
+    - PiP button coordinates are known from fresh UI dump
+    - automatic tap of the PiP button currently falls into fullscreen but aborts before pinned PiP on this live session
+  - not yet verified this round:
+    - end-to-end autoplay-next runtime behavior while already in pinned PiP
+    - whether carry-forward restore prevents PiP from showing non-focused page content on the next item
 - Blockers/risks:
-  - Local workspace still contains many untracked evidence/log artifacts that were intentionally not pushed.
-  - Two local paths remain dirty outside the published snapshot and were intentionally left out because they were not part of the verified beta1 source set:
-    - `android/java/AndroidManifest.xml`
-    - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.h`
-  - The beta1 label applies to the currently verified Samsung-device baseline and is not a permanent guarantee against future upstream YouTube/OEM changes.
+  - Automatic replay is currently blocked before autoplay-next because the live session aborts at `fullscreen -> PiP` in Java:
+    - fullscreen becomes visible in JS/C++ first
+    - Java still reports `hasActiveEffectivelyFullscreenVideo() == false`
+    - delayed PiP retry then aborts
+  - The user-reported symptom is specifically autoplay-driven while already in PiP, so this round cannot yet claim success on the new patch.
 - Next concrete step:
-  - If work resumes, start from this beta1 baseline and handle the next user-reported issue without reopening the already verified PiP path unnecessarily.
+  - Keep the autoplay-carry patch installed and ask for one user truth-check on the exact symptom:
+    - let a video autoplay to the next item while already in PiP
+    - report whether the next item now regains focused/fullscreen video presentation
+  - If the user instead also hits the current PiP-entry abort, resume from:
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    and trace the Java fullscreen visibility race directly
 - Expected resume inspection scope:
   - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `docs/patch-summary.md`
+  - latest `docs/progress-log.md`
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
 - Current tool(s):
   - `shell_command`
+  - `adb`
   - `apply_patch`
-  - `git`
+  - `view_image`
 - Exact command(s):
-  - `git status --short`
-  - `git commit -m "beta1 fix onetab+pip+control+lifecycle"`
-  - `git push origin publish/go_play-sync-20260402`
+  - `adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern 'topResumedActivity|ResumedActivity|mCurrentFocus|com.onetabtube.browser_default|mode=pinned' -Context 0,1`
+  - `adb -s R9TRC00GA2E shell screencap -p /sdcard/Download/otb_autoplay_state_now.png`
+  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_autoplay_state_now.png C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/Download/otb_autoplay_state_now.xml`
+  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_autoplay_state_now.xml C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+  - `adb -s R9TRC00GA2E logcat -c`
+  - `adb -s R9TRC00GA2E shell input tap 731 144`
+  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_PIP|video_presentation|fullscreen|playback_stable|enter_picture_in_picture|fullscreen_script_complete|picture-in-picture' -Context 0,1`
+  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log 2>&1"`
+  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
 - Tool purpose:
-  - Publish the verified beta1 source/docs snapshot and record the final handoff state.
+  - Keep desk state aligned with the new PiP autoplay presentation patch and record the current automatic replay blocker precisely.
 - Tool state:
-  - push completed
-  - no build currently running
+  - no build running now
+  - latest autoplay-carry build installed on `R9TRC00GA2E`
+  - current automatic replay aborts before pinned PiP on this live session
 - Expected resume command:
-  - `git status --short`
+  - `adb -s R9TRC00GA2E logcat -c; adb -s R9TRC00GA2E shell input tap 731 144`
 - Expected output/artifact path:
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `dee4a07b0`
+  - `8325155d6def`
 - Build flavor / target:
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    - active fullscreen-to-PiP playback-resume fix used by the verified beta1 runtime
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-    - active Java helper for first-entry vs. re-entry PiP retries
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-    - active PiP/watch-page lifecycle behavior
-  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
-    - notification/PiP control action wiring
-  - `android/java/org/chromium/chrome/browser/toolbar/BraveToolbarManager.java`
-    - one-tab surface pruning path
-  - `android/java/org/chromium/chrome/browser/toolbar/bottom/BottomToolbarConfiguration.java`
-    - bottom-toolbar hard-disable path
+    - autoplay carry-forward video-presentation intent and restore consumption
+  - `docs/current-status.md`
+    - single source of truth for current autoplay-PiP investigation
+  - `docs/progress-log.md`
+    - append-only audit trail for the new patch/build/install
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+    - fresh live coordinates for PiP entry
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+    - post-tap runtime evidence
 - Files to inspect first after resume:
   - `docs/current-status.md`
-  - latest `docs/progress-log.md` entry
-  - `docs/patch-summary.md`
+  - latest entry in `docs/progress-log.md`
   - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - remote access via local git config if another push is needed
-  - avoid staging evidence/log artifacts
+  - `R9TRC00GA2E` connected and authorized
+  - live OneTabTube watch/MIX page visible in foreground
 - Expected success signal:
-  - repo already contains the beta1 snapshot and the next task can start from this state
+  - after autoplay advances in PiP, the new item still presents focused/fullscreen video content instead of falling back to unfocused page content
 - Expected failure signal:
-  - future work accidentally reopens the verified PiP path without a new confirmed regression
+  - autoplay advances but PiP does not regain focused video presentation on the next item, or the current live session still aborts before pinned PiP
 - Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_fullscreen_play_resume_fix.log`
+  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
 - Last known artifact path:
   - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
+  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
 - Recent decisions:
-  - Freeze the verified runtime as beta1 and publish the matching source/docs snapshot.
-  - Leave large evidence artifacts local instead of polluting the repo snapshot.
+  - Keep the manual next/previous path unchanged because the user already said controls look okay.
+  - Fix autoplay-next PiP presentation with a narrow carry-forward intent rather than another broad native retry.
+  - Stop the current auto replay at the PiP-entry abort instead of patching the Java retry race blindly in the same round.
 - Rejected approaches:
-  - bulk-adding the whole worktree
-  - rerunning a new build just to refresh docs
+  - claiming the fix worked before replaying autoplay-next in PiP
+  - broad native lifecycle edits before proving whether a JS-side carry-forward restore is sufficient
 - Stop point classification:
-  - source/docs committed and pushed; beta1 handoff recorded
+  - code edited, synced, built, installed, and partially runtime-checked; autoplay-next truth-check still blocked by live PiP-entry abort on this session
 - What is done but unverified:
-  - none in the published beta1 snapshot
+  - the autoplay-next PiP presentation fix on a real pinned-PiP autoplay transition
 - What is verified:
-  - source fix is present
-  - build identity is known
-  - user-verified PiP enter/exit x3 passed
-  - repo push succeeded
+  - the carry-forward patch exists in source and the new APK is installed
+  - the live page and PiP button replay reach fullscreen
+  - the current session aborts before pinned PiP because Java fullscreen visibility lags behind C++/JS fullscreen state
 - External prerequisite:
-  - none for the published snapshot
+  - one user truth-check on the exact autoplay-next-in-PiP symptom, unless the current PiP-entry abort is reported first
 - Secret required but not stored:
-  - no secrets stored in docs; remote auth relies on local git configuration only
+  - none
 - Actual code state after resume:
-  - Repo and docs are now aligned to the published beta1 baseline centered on OneTab + PiP + control + lifecycle stabilization.
+  - `youtube_script_injector_tab_helper.cc` now stores a short-lived carry-forward presentation intent when a fullscreen-presented video ends, then tries to consume that intent on the next page/item to request focused video presentation automatically.
 - Chosen direction:
-  - Preserve this beta1 baseline as the current source of truth and layer future fixes on top of it only when a new verified issue appears.
+  - Keep the narrow autoplay carry-forward restore in place, but do not claim runtime success until either the user truth-checks the PiP autoplay case or the separate Java PiP-entry abort is fixed in a dedicated round.

@@ -95,21 +95,6 @@ public class BraveMediaSessionHelper implements MediaImageCallback {
         return isYouTube(webContents);
     }
 
-    private boolean shouldAdvertiseYouTubeTransportControls(@Nullable Set<Integer> actions) {
-        if (!shouldFilterMediaSessionActions()) return false;
-        if (actions == null || actions.isEmpty()) {
-            return true;
-        }
-
-        return actions.contains(MediaSessionAction.PLAY)
-                || actions.contains(MediaSessionAction.PAUSE)
-                || actions.contains(MediaSessionAction.SEEK_FORWARD)
-                || actions.contains(MediaSessionAction.SEEK_BACKWARD)
-                || actions.contains(MediaSessionAction.SEEK_TO)
-                || actions.contains(MediaSessionAction.NEXT_TRACK)
-                || actions.contains(MediaSessionAction.PREVIOUS_TRACK);
-    }
-
     private @Nullable Set<Integer> filterSupportedMediaSessionActions(
             @Nullable Set<Integer> actions) {
         if (!shouldFilterMediaSessionActions()) {
@@ -140,16 +125,6 @@ public class BraveMediaSessionHelper implements MediaImageCallback {
         }
         if (actions != null && actions.contains(MediaSessionAction.STOP)) {
             filtered.add(MediaSessionAction.STOP);
-        }
-
-        // Keep Android transport surfaces stable for YouTube browser-tabs.
-        // The native bridge can handle next/previous directly even when the page
-        // does not reliably re-advertise those actions on every state change.
-        if (shouldAdvertiseYouTubeTransportControls(actions)) {
-            filtered.add(MediaSessionAction.PLAY);
-            filtered.add(MediaSessionAction.PAUSE);
-            filtered.add(MediaSessionAction.PREVIOUS_TRACK);
-            filtered.add(MediaSessionAction.NEXT_TRACK);
         }
 
         return Collections.unmodifiableSet(filtered);

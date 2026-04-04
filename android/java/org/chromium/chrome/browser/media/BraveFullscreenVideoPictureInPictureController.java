@@ -60,10 +60,17 @@ public class BraveFullscreenVideoPictureInPictureController {
                     Boolean.TRUE.equals(isPlaying),
                     activeFullscreen,
                     fullscreenRequested);
-            if (webContents != null && Boolean.TRUE.equals(isPlaying) && !activeFullscreen) {
+            if (webContents != null
+                    && !activeFullscreen
+                    && (Boolean.TRUE.equals(isPlaying) || fullscreenRequested)) {
                 if (!fullscreenRequested) {
                     Log.i(TAG, "re-request fullscreen while keeping PiP alive reason=%d", reason);
                     BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
+                } else {
+                    Log.i(
+                            TAG,
+                            "keep PiP alive while fullscreen restore is still pending reason=%d",
+                            reason);
                 }
                 mDismissPending = false;
                 return;
