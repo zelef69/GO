@@ -1,0 +1,11 @@
+{
+  "products": {
+    "pkg_599": {
+      "name": "Premium 30 Days",
+      "price": 599,
+      "currency": "THB",
+      "durationDays": 30,
+      "active": true
+    }
+  }
+}

@@ -1,186 +1,175 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-04 17:16:00 +07:00
+  - 2026-04-06 10:55:31 +07:00
 - Current phase:
-  - Phase 5 / PiP autoplay-next video-presentation restore
+  - Phase 5 / Runtime recovery from the latest device-installed baseline
 - Current objective:
-  - Fix the case where YouTube autoplay advances to the next video while already in PiP, but the PiP surface does not restore focused/fullscreen video presentation on the new item.
+  - Keep the APK currently installed on the device as the minimum floor, recover the broken `FAB -> Account` flow without regressing below that runtime baseline, and freeze a buildable state before resuming the next requested feature batch.
 - Completed since last update:
-  - Re-opened `docs/current-status.md` and the latest tail of `docs/progress-log.md` before continuing.
-  - Re-inspected `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` and confirmed the new autoplay carry-forward logic is present in source:
-    - `VIDEO_PRESENTATION_CARRY_STORAGE_KEY`
-    - `saveCarryForwardVideoPresentation(...)`
-    - `loadCarryForwardVideoPresentation(...)`
-    - `ensureVideoPresentationForArmedTarget(...)` extended with carry-forward restore
-    - `video.addEventListener('ended', ...)` wired to arm carry-forward presentation on autoplay boundaries
-  - Synced the changed files into WSL with:
-    - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - Rebuilt the package successfully:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
-  - Reinstalled the build successfully on `R9TRC00GA2E`.
-  - Verified current device state after resume:
-    - OneTabTube is `topResumedActivity`
-    - current task is visible and `mode=fullscreen`
-    - the active screen is a YouTube MIX/watch page showing the current track queue
-  - Captured fresh runtime artifacts for the current screen:
-    - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
-    - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
-  - Verified the PiP toolbar button is present and actionable in the live UI dump:
-    - resource id: `com.onetabtube.browser_default:id/brave_youtube_pip_button`
-    - bounds: `[668,88][795,201]`
-  - Replayed live PiP entry automatically from the verified toolbar coordinates:
-    - `adb -s R9TRC00GA2E shell input tap 731 144`
-  - Captured the post-tap runtime screenshot:
-    - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
-  - Verified from live runtime evidence that this replay did **not** reach pinned PiP on the current session:
-    - `dumpsys activity activities` still showed `mode=fullscreen`, not `mode=pinned`
-    - targeted `logcat` showed:
-      - `OTB_PIP event=enter_picture_in_picture_from_fullscreen`
-      - `Delay enterPictureInPicture retry because fullscreen state is not visible to Java yet`
-      - `Abort delayed enterPictureInPicture because fullscreen state is still not visible to Java`
-  - Verified via live CDP that during this failed replay the page did reach fullscreen presentation temporarily:
-    - `fullscreen=true`
-    - `pip=false`
-    - therefore the new autoplay-carry patch itself was not reached in a real pinned-PiP autoplay transition during this run
+  - Read the recorded handoff and confirmed it was stale versus the actual device/runtime state.
+  - Re-established the real device baseline from the installed package:
+    - package `com.onetabtube.browser_default`
+    - version `1.90.0 (429000004)`
+    - `lastUpdateTime=2026-04-06 10:48:46`
+  - Verified the reported `Account` failure was not a random crash inside the screen but a packaging problem: the installed APK initially did not contain `OneTabAccountActivity`.
+  - Confirmed the current FAB handler in [OneTabFabMenuCoordinator.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java) still starts `OneTabAccountActivity` in-app.
+  - Compared the live device package behavior with the current WSL build tree and found the auth/payment activities were missing from the buildable manifest that the current `src_ext4` target used.
+  - Applied the smallest fix directly in the real build tree:
+    - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
+    - added:
+      - `OneTabLoginActivity`
+      - `OneTabAccountActivity`
+      - `OneTabBuyPackageActivity`
+      - `OneTabPurchaseReceiptActivity`
+  - Rebuilt `brave/build/android:onetabtube_android_package` successfully from `src_ext4`.
+  - Installed the rebuilt APK with `adb install --no-incremental -r ...` so the device runtime actually moved to the new package.
+  - Verified the runtime result on the connected device:
+    - `FAB -> Account` now opens successfully
+    - screenshot proof: [account_open_now.jpg](C:/Users/Master/Desktop/GO_PLAY/account_open_now.jpg)
+    - UI dump proof: [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
+    - the screen shows Gmail and `59 days`
 - In progress now:
-  - Holding the autoplay-carry patch in place while treating current automatic verification as blocked by the pre-existing Java fullscreen-visibility race during PiP entry on this live session.
+  - No half-written recovery patch is left.
+  - The current build/device state is usable again.
+  - The next work item has not started yet; the recovery state needs to be used as the new working baseline.
 - Files/modules touched:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [OneTabFabMenuCoordinator.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java) — inspected to confirm the `Account` click path
+  - [OneTabAccountActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java) — inspected as the target screen
+  - [AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml) — inspected as the Brave manifest snippet
+  - [brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni) — inspected for Java source inclusion
+  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml) — actual manifest file patched in the build tree
 - Build/test status:
-  - build passed
-  - install passed on `R9TRC00GA2E`
-  - current installed APK path:
-    - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - current installed APK SHA-256:
-    - `836B85FF35E2278E106B0087056496D062169D7F3787C70EC30CE1DA413FE35F`
-  - latest build log:
-    - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
-  - verified this round:
-    - autoplay carry-forward presentation patch is present in source
-    - build succeeded
-    - install succeeded
-    - live screen is OneTabTube watch/MIX page, not launcher
-    - PiP button coordinates are known from fresh UI dump
-    - automatic tap of the PiP button currently falls into fullscreen but aborts before pinned PiP on this live session
-  - not yet verified this round:
-    - end-to-end autoplay-next runtime behavior while already in pinned PiP
-    - whether carry-forward restore prevents PiP from showing non-focused page content on the next item
+  - Device-installed runtime baseline:
+    - [device_baseline_package_20260406_1053.txt](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/device_baseline_package_20260406_1053.txt)
+  - Build passed:
+    - [account_manifest_fix_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_manifest_fix_build_20260406.log)
+  - Built APK hash:
+    - `8E49725AFE44405792321664A9468A80A96E532D67CE4A9415D7FC2663D392B2`
+    - [account_manifest_fix_apk_hash_20260406_1053.txt](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_manifest_fix_apk_hash_20260406_1053.txt)
+  - Runtime verified:
+    - `Account` screen opens from the FAB on-device
+    - [account_open_now.jpg](C:/Users/Master/Desktop/GO_PLAY/account_open_now.jpg)
+    - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
 - Blockers/risks:
-  - Automatic replay is currently blocked before autoplay-next because the live session aborts at `fullscreen -> PiP` in Java:
-    - fullscreen becomes visible in JS/C++ first
-    - Java still reports `hasActiveEffectivelyFullscreenVideo() == false`
-    - delayed PiP retry then aborts
-  - The user-reported symptom is specifically autoplay-driven while already in PiP, so this round cannot yet claim success on the new patch.
+  - The manifest recovery patch currently lives in the real `src_ext4` build tree, not in a repo-local `chrome/android/java/AndroidManifest.xml` file under the Windows workspace.
+  - The recorded handoff before this snapshot was stale and should not be trusted for runtime state before `2026-04-06 10:55 +07:00`.
+  - The user asked for more feature work previously (`success/receipt`, `Logout`, history, manual correction, bank account info on Buy package), but none of that should be resumed until this recovered baseline is treated as the floor.
 - Next concrete step:
-  - Keep the autoplay-carry patch installed and ask for one user truth-check on the exact symptom:
-    - let a video autoplay to the next item while already in PiP
-    - report whether the next item now regains focused/fullscreen video presentation
-  - If the user instead also hits the current PiP-entry abort, resume from:
-    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    and trace the Java fullscreen visibility race directly
+  - Start the next requested feature batch from this recovered baseline, and keep changes additive only:
+    1. inspect the current Account/Buy-package code paths that are already on the device
+    2. choose the smallest next feature delta from the user’s pending list
+    3. build from `src_ext4`
+    4. install and verify that the runtime remains at least as good as the current device baseline
 - Expected resume inspection scope:
-  - `docs/current-status.md`
-  - latest `docs/progress-log.md`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [OneTabFabMenuCoordinator.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java)
+  - [OneTabAccountActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java)
+  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
+  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
+  - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
 - Current tool(s):
   - `shell_command`
-  - `adb`
   - `apply_patch`
   - `view_image`
 - Exact command(s):
-  - `adb -s R9TRC00GA2E shell dumpsys activity activities | Select-String -Pattern 'topResumedActivity|ResumedActivity|mCurrentFocus|com.onetabtube.browser_default|mode=pinned' -Context 0,1`
-  - `adb -s R9TRC00GA2E shell screencap -p /sdcard/Download/otb_autoplay_state_now.png`
-  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_autoplay_state_now.png C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
-  - `adb -s R9TRC00GA2E shell uiautomator dump /sdcard/Download/otb_autoplay_state_now.xml`
-  - `adb -s R9TRC00GA2E pull /sdcard/Download/otb_autoplay_state_now.xml C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
-  - `adb -s R9TRC00GA2E logcat -c`
-  - `adb -s R9TRC00GA2E shell input tap 731 144`
-  - `adb -s R9TRC00GA2E logcat -d -v threadtime | Select-String -Pattern 'OTB_PIP|video_presentation|fullscreen|playback_stable|enter_picture_in_picture|fullscreen_script_complete|picture-in-picture' -Context 0,1`
-  - `powershell -ExecutionPolicy Bypass -File "C:\Users\Master\Desktop\GO_PLAY\tools\sync_changed_files_to_wsl.ps1" -IncludeUntracked`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Component_arm64 -j 14 brave/build/android:onetabtube_android_package > out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log 2>&1"`
-  - `adb -s R9TRC00GA2E install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 200`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode|versionName|lastUpdateTime'`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `cmd /c "adb exec-out screencap -p > ..."`
+  - `adb shell input tap ...`
+  - `adb logcat -c`
+  - `adb logcat -d -v brief ...`
+  - `aapt dump xmltree ... OneTabTube.apk AndroidManifest.xml`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package ..."`
+  - `adb install --no-incremental -r ...\\OneTabTube.apk`
+  - `git rev-parse --abbrev-ref HEAD`
+  - `git rev-parse HEAD`
 - Tool purpose:
-  - Keep desk state aligned with the new PiP autoplay presentation patch and record the current automatic replay blocker precisely.
+  - Reconcile stale handoff versus actual device state, patch the buildable manifest in the real `src_ext4` tree, rebuild, reinstall, and verify the broken `Account` flow from the user-reported runtime baseline.
 - Tool state:
-  - no build running now
-  - latest autoplay-carry build installed on `R9TRC00GA2E`
-  - current automatic replay aborts before pinned PiP on this live session
+  - idle
 - Expected resume command:
-  - `adb -s R9TRC00GA2E logcat -c; adb -s R9TRC00GA2E shell input tap 731 144`
+  - Reuse the same `src_ext4` build command for the next additive feature delta:
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/<next_log>.log"`
 - Expected output/artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk)
+  - [artifacts/android_build/](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build)
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `8325155d6def`
+  - `20241c411b2820454e68db6add1013b643ee4155`
 - Build flavor / target:
+  - `src_ext4`
   - `brave/build/android:onetabtube_android_package`
 - Primary working set:
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    - autoplay carry-forward video-presentation intent and restore consumption
-  - `docs/current-status.md`
-    - single source of truth for current autoplay-PiP investigation
-  - `docs/progress-log.md`
-    - append-only audit trail for the new patch/build/install
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
-    - fresh live coordinates for PiP entry
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
-    - post-tap runtime evidence
+  - [OneTabFabMenuCoordinator.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java) — current in-app entry point into `Account`
+  - [OneTabAccountActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java) — runtime Account UI that must not regress
+  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java) — likely next feature surface
+  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml) — actual build manifest currently carrying the recovery fix
+  - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml) — proof of current working UI baseline
 - Files to inspect first after resume:
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [OneTabAccountActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java)
+  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
+  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
+  - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
 - Command run from:
-  - `C:\Users\Master\Desktop\GO_PLAY`
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - `R9TRC00GA2E` connected and authorized
-  - live OneTabTube watch/MIX page visible in foreground
+  - connected Android device (`R9TRC00GA2E`) still available via `adb`
+  - WSL checkout at `/home/master/src_ext4` available
+  - `third_party/depot_tools` in `src_ext4` usable
 - Expected success signal:
-  - after autoplay advances in PiP, the new item still presents focused/fullscreen video content instead of falling back to unfocused page content
+  - next build passes
+  - next install updates the package on device
+  - `FAB -> Account` still opens, with no regression below the current on-device baseline
 - Expected failure signal:
-  - autoplay advances but PiP does not regain focused video presentation on the next item, or the current live session still aborts before pinned PiP
+  - build fails in `src_ext4`
+  - installed package loses `OneTab*Activity` declarations again
+  - `FAB -> Account` no longer opens or regresses from the verified `59 days` screen
 - Last known log location:
-  - `/home/master/src_ext4/out/android_Component_arm64/codex_onetabtube_build_pip_autoplay_presentation_carry.log`
+  - [account_manifest_fix_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_manifest_fix_build_20260406.log)
 - Last known artifact path:
-  - `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.png`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_autoplay_state_now.xml`
-  - `C:\Users\Master\Desktop\GO_PLAY\otb_after_pip_entry.png`
+  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk)
+  - [account_open_now.jpg](C:/Users/Master/Desktop/GO_PLAY/account_open_now.jpg)
+  - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
 - Recent decisions:
-  - Keep the manual next/previous path unchanged because the user already said controls look okay.
-  - Fix autoplay-next PiP presentation with a narrow carry-forward intent rather than another broad native retry.
-  - Stop the current auto replay at the PiP-entry abort instead of patching the Java retry race blindly in the same round.
+  - Treat the device-installed APK as the floor; do not regress below it.
+  - Do not roll back to the old `01:56` artifact baseline just because it once built.
+  - Fix the reported `Account` breakage by the smallest packaging recovery rather than broad manifest/build-tree surgery.
+  - Verify runtime on the actual device before touching new feature work.
 - Rejected approaches:
-  - claiming the fix worked before replaying autoplay-next in PiP
-  - broad native lifecycle edits before proving whether a JS-side carry-forward restore is sufficient
+  - treating the stale handoff as runtime truth
+  - reverting wholesale to the old `01:56` artifact baseline
+  - broad manifest rewrites before proving the smallest packaging fix
+  - continuing with new feature work before `FAB -> Account` was recovered
 - Stop point classification:
-  - code edited, synced, built, installed, and partially runtime-checked; autoplay-next truth-check still blocked by live PiP-entry abort on this session
+  - recovery patch applied, build passed, APK installed, runtime smoke for `FAB -> Account` passed; next feature batch not started yet
 - What is done but unverified:
-  - the autoplay-next PiP presentation fix on a real pinned-PiP autoplay transition
+  - none for the `Account` recovery itself
+  - future requested features (`success/receipt`, `Logout`, purchase/package history, manual correction, bank-account info on Buy package) have not been resumed yet from this recovered baseline
 - What is verified:
-  - the carry-forward patch exists in source and the new APK is installed
-  - the live page and PiP button replay reach fullscreen
-  - the current session aborts before pinned PiP because Java fullscreen visibility lags behind C++/JS fullscreen state
+  - current device baseline package info
+  - built APK hash
+  - `Account` page opens on-device from the FAB
+  - Gmail and `59 days` render on the current Account screen
 - External prerequisite:
-  - one user truth-check on the exact autoplay-next-in-PiP symptom, unless the current PiP-entry abort is reported first
+  - device must remain connected for continued runtime verification
+  - Firebase/project credentials still required later for payment/admin flows, but not for the completed Account recovery itself
 - Secret required but not stored:
-  - none
+  - Firebase deploy credentials
+  - `THUNDER_API_KEY`
+  - Google account credentials / 2FA
 - Actual code state after resume:
-  - `youtube_script_injector_tab_helper.cc` now stores a short-lived carry-forward presentation intent when a fullscreen-presented video ends, then tries to consume that intent on the next page/item to request focused video presentation automatically.
+  - The recorded handoff was stale. The real issue was that the currently installed runtime was missing the auth/payment activities from the packaged manifest. The actual `src_ext4` build tree now contains a targeted manifest recovery patch, the build succeeded, the APK is installed on the device, and `Account` opens successfully.
 - Chosen direction:
-  - Keep the narrow autoplay carry-forward restore in place, but do not claim runtime success until either the user truth-checks the PiP autoplay case or the separate Java PiP-entry abort is fixed in a dedicated round.
+  - Freeze this recovered runtime as the new working floor, then resume only additive feature work from here while continuously verifying that the device-installed APK never regresses below this state.

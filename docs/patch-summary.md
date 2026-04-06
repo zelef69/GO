@@ -1,5 +1,28 @@
 # Patch Summary
 
+## BETA+3 Prefix Product(+1)
+
+This repo snapshot is aligned to the latest device-verified GO_PLAY APK baseline that is currently installed on the test device.
+
+Current validated APK:
+
+- `/home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk`
+- SHA-256 `8E49725AFE44405792321664A9468A80A96E532D67CE4A9415D7FC2663D392B2`
+
+What was synced into repo for this baseline:
+
+- the live OneTab auth/payment Java sources and resources used by the latest APK
+- the Firebase/Thunder payment backend sources and rules used by the latest APK
+- the updated handoff snapshot files
+- a repo-side mirror of the direct build-tree manifest recovery patch at
+  [patches/chrome-android-java-AndroidManifest.xml.onetab-auth-recovery.patch](C:/Users/Master/Desktop/GO_PLAY/patches/chrome-android-java-AndroidManifest.xml.onetab-auth-recovery.patch)
+
+Why the extra manifest recovery patch mirror exists:
+
+- the latest APK was recovered from the real `src_ext4` build tree after the packaged manifest dropped the OneTab auth/payment activities
+- this repo does not carry `chrome/android/java/AndroidManifest.xml` directly in the Windows workspace
+- the mirror patch keeps the exact recovery delta used by the latest APK inside the repo so future resume/push work does not have to rediscover it from the device again
+
 ## fix onetab+pip+outwatchpage
 
 This repo state matches the current OneTabTube debug APK that was last rebuilt and installed for the OneTab/PiP/watch-page baseline.

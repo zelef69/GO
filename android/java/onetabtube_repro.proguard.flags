@@ -89,6 +89,11 @@
 
 # Mirror the small set of Brave keep rules that the OneTabTube target does not
 # inherit automatically but that still survive in the device-matching baseline.
+-keep class org.chromium.chrome.browser.onetabauth.OneTabLoginActivity { *; }
+-keep class org.chromium.chrome.browser.onetabauth.OneTabAccountActivity { *; }
+-keep class org.chromium.chrome.browser.onetabauth.OneTabBuyPackageActivity { *; }
+-keep class org.chromium.chrome.browser.onetabauth.OneTabPurchaseReceiptActivity { *; }
+
 -keepnames class org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator
 
 -keepclassmembers class org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator {

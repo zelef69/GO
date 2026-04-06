@@ -68,4 +68,37 @@ public class BraveIntentHandlerUnitTest {
 
         assertEquals("https://accounts.google.com/signin/v2/identifier", result);
     }
+
+    @Test
+    @SmallTest
+    public void extractUrlFromIntent_googleMyAccountHost_isAllowed() {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("https://myaccount.google.com/security-checkup"));
+
+        String result = BraveIntentHandler.extractUrlFromIntent(intent);
+
+        assertEquals("https://myaccount.google.com/security-checkup", result);
+    }
+
+    @Test
+    @SmallTest
+    public void extractUrlFromIntent_googleOgsHost_isAllowed() {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("https://ogs.google.com/u/0/widget/app"));
+
+        String result = BraveIntentHandler.extractUrlFromIntent(intent);
+
+        assertEquals("https://ogs.google.com/u/0/widget/app", result);
+    }
+
+    @Test
+    @SmallTest
+    public void extractUrlFromIntent_unrelatedGoogleHost_fallsBackToYoutubeHome() {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("https://mail.google.com/mail/u/0/#inbox"));
+
+        String result = BraveIntentHandler.extractUrlFromIntent(intent);
+
+        assertEquals(OneTabYouTubeMode.getDefaultHomepageUrl(), result);
+    }
 }

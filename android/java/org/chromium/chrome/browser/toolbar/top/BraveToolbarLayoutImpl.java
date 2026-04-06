@@ -484,6 +484,20 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
     @Override
     protected void onNativeLibraryReady() {
         super.onNativeLibraryReady();
+        if (OneTabYouTubeMode.isEnabled()) {
+            hideYouTubePipIcon();
+            if (mWalletLayout != null) {
+                mWalletLayout.setVisibility(View.GONE);
+            }
+            if (mShieldsLayout != null) {
+                mShieldsLayout.setVisibility(View.GONE);
+            }
+            if (mRewardsLayout != null) {
+                mRewardsLayout.setVisibility(View.GONE);
+            }
+            return;
+        }
+
         if (isPlaylistEnabledByPrefsAndFlags()) {
             initPlaylistService();
             mPlaylistServiceObserver = new PlaylistServiceObserverImpl(this);
@@ -492,15 +506,6 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
 
         mBraveShieldsContentSettings = BraveShieldsContentSettings.getInstance();
         mBraveShieldsContentSettings.addObserver(mBraveShieldsContentSettingsObserver);
-
-        if (OneTabYouTubeMode.isEnabled()) {
-            if (mRewardsLayout != null) {
-                mRewardsLayout.setVisibility(View.GONE);
-            }
-            completeRewardsInitialization();
-            return;
-        }
-
         mBraveRewardsNativeWorker = BraveRewardsNativeWorker.getInstance();
         if (mBraveRewardsNativeWorker != null
                 && mBraveRewardsNativeWorker.isSupported()
@@ -516,6 +521,12 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
     }
 
     public void setTabModelSelector(TabModelSelector selector) {
+        if (OneTabYouTubeMode.isEnabled()) {
+            hideYouTubePipIcon();
+            updateOneTabTabSwitcherVisibility();
+            return;
+        }
+
         // We might miss events before calling setTabModelSelector, so we need
         // to proactively update the shields button state here, otherwise shields
         // might sometimes show as disabled while it is actually enabled.

@@ -8,7 +8,13 @@
   "scripts": {
     "build": "tsc",
     "deploy": "firebase deploy --only functions",
-    "serve": "firebase emulators:start --only functions,firestore"
+    "deploy:payments": "firebase deploy --only functions:createPackageOrder,functions:verifyPackageSlip",
+    "serve": "firebase emulators:start --only functions,firestore,storage",
+    "seed:products": "node scripts/seed-products.js",
+    "seed:products:dry": "node scripts/seed-products.js --dry-run",
+    "seed:entitlement": "node scripts/seed-entitlement.js",
+    "seed:entitlement:dry": "node scripts/seed-entitlement.js --dry-run",
+    "smoke:payments": "node scripts/smoke-package-flow.js"
   },
   "dependencies": {
     "firebase-admin": "^13.7.0",

@@ -1,0 +1,49 @@
+diff --git a/chrome/android/java/AndroidManifest.xml b/chrome/android/java/AndroidManifest.xml
+--- a/chrome/android/java/AndroidManifest.xml
++++ b/chrome/android/java/AndroidManifest.xml
+@@ -672,6 +672,34 @@
+         <activity android:name="org.chromium.chrome.browser.settings.SettingsActivity"
+             android:theme="@style/Theme.Chromium.Settings"
+             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize|uiMode"
+             android:label="@string/settings"
+             android:exported="false">
+         </activity>
++        <!-- OneTabTube auth and purchase surfaces are launched explicitly from
++             the single-tab shell and must be present in the packaged manifest. -->
++        <activity
++            android:name="org.chromium.chrome.browser.onetabauth.OneTabLoginActivity"
++            android:theme="@style/Theme.Chromium.Activity.Fullscreen"
++            android:excludeFromRecents="true"
++            android:launchMode="singleTop"
++            android:screenOrientation="sensorPortrait"
++            android:exported="false"
++            tools:ignore="LockedOrientationActivity,DiscouragedApi" />
++        <activity
++            android:name="org.chromium.chrome.browser.onetabauth.OneTabAccountActivity"
++            android:theme="@style/Theme.Chromium.Activity.Fullscreen"
++            android:excludeFromRecents="true"
++            android:launchMode="singleTop"
++            android:screenOrientation="sensorPortrait"
++            android:exported="false"
++            tools:ignore="LockedOrientationActivity,DiscouragedApi" />
++        <activity
++            android:name="org.chromium.chrome.browser.onetabauth.OneTabBuyPackageActivity"
++            android:theme="@style/Theme.Chromium.Activity.Fullscreen"
++            android:excludeFromRecents="true"
++            android:launchMode="singleTop"
++            android:screenOrientation="sensorPortrait"
++            android:exported="false"
++            tools:ignore="LockedOrientationActivity,DiscouragedApi" />
++        <activity
++            android:name="org.chromium.chrome.browser.onetabauth.OneTabPurchaseReceiptActivity"
++            android:theme="@style/Theme.Chromium.Activity.Fullscreen"
++            android:excludeFromRecents="true"
++            android:launchMode="singleTop"
++            android:screenOrientation="sensorPortrait"
++            android:exported="false"
++            tools:ignore="LockedOrientationActivity,DiscouragedApi" />
+         <activity android:name="org.chromium.chrome.browser.site_settings.ManageSpaceActivity"
+             android:theme="@style/Theme.Chromium.Settings.ManageSpace"
+             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize"
+             android:label="@string/storage_management_activity_label"
+             android:exported="false">

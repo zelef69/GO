@@ -78,12 +78,16 @@ brave_java_resources = [
   "java/res/drawable/ic_arrow_down.xml",
   "java/res/drawable/ic_open_in_new.xml",
   "java/res/drawable/ic_timer.xml",
+  "java/brave-res/drawable/onetab_fab_logo.png",
+  "java/brave-res/drawable/onetab_fab_menu_item_bg.xml",
   "java/res/drawable/tab_selector.xml",
   "java/res/layout/location_status_incognito_badge.xml",
+  "java/brave-res/layout/onetab_fab_overlay.xml",
   "java/res/values-night/brave_colors.xml",
   "java/res/values-sw600dp/brave_dimens.xml",
   "java/res/values/brave_colors.xml",
   "java/res/values/brave_dimens.xml",
+  "java/brave-res/values/onetab_fab_strings.xml",
   "java/res/xml/secure_dns_settings.xml",
 ]
 

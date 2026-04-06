@@ -10,6 +10,7 @@ import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.res.Configuration;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup;
 import android.view.ViewStub;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -306,6 +307,7 @@ public class BraveToolbarManager extends ToolbarManager
                     }
                 };
         HomepageManager.getInstance().addListener(mBraveHomepageStateListener);
+        collapseOneTabBrowserControls();
     }
 
     @Override
@@ -498,6 +500,8 @@ public class BraveToolbarManager extends ToolbarManager
             ContextUtils.getAppSharedPreferences().registerOnSharedPreferenceChangeListener(this);
         }
 
+        collapseOneTabBrowserControls();
+
         ToolbarLayout toolbarLayout = mActivity.findViewById(R.id.toolbar);
         assert toolbarLayout instanceof BraveToolbarLayoutImpl
                 : "Something has changed in the upstream!";
@@ -541,6 +545,8 @@ public class BraveToolbarManager extends ToolbarManager
     }
 
     protected void onOrientationChange() {
+        collapseOneTabBrowserControls();
+
         if (mActionModeController != null) mActionModeController.showControlsOnOrientationChange();
 
         if (mBottomControlsCoordinatorSupplier != null
@@ -670,5 +676,39 @@ public class BraveToolbarManager extends ToolbarManager
         if (mToolbarTabController == null) return;
 
         mToolbarTabController.openHomepage();
+    }
+
+    private void collapseOneTabBrowserControls() {
+        if (!OneTabYouTubeMode.isEnabled()) {
+            return;
+        }
+
+        mBrowserControlsSizer.setAnimateBrowserControlsHeightChanges(false);
+        mBrowserControlsSizer.setTopControlsHeight(0, 0);
+        mBrowserControlsSizer.setBottomControlsHeight(0, 0);
+
+        collapseView(R.id.control_container);
+        collapseView(R.id.toolbar);
+        collapseView(R.id.toolbar_hairline);
+        collapseView(R.id.toolbar_progress_bar_container);
+    }
+
+    private void collapseView(int viewId) {
+        View view = mActivity.findViewById(viewId);
+        if (view == null) {
+            return;
+        }
+
+        if (view.getVisibility() != View.GONE) {
+            view.setVisibility(View.GONE);
+        }
+        view.setTranslationY(0f);
+        view.setAlpha(0f);
+
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+        if (layoutParams != null && layoutParams.height != 0) {
+            layoutParams.height = 0;
+            view.setLayoutParams(layoutParams);
+        }
     }
 }

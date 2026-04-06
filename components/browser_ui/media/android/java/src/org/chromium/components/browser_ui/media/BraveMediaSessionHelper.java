@@ -6,6 +6,7 @@
 package org.chromium.components.browser_ui.media;
 
 import android.graphics.Bitmap;
+import android.net.Uri;
 
 import androidx.annotation.Nullable;
 
@@ -95,9 +96,35 @@ public class BraveMediaSessionHelper implements MediaImageCallback {
         return isYouTube(webContents);
     }
 
+    private boolean hasReliableYouTubeTrackContext(WebContents webContents) {
+        if (!isYouTube(webContents)) {
+            return false;
+        }
+
+        GURL pageUrl = webContents.getLastCommittedUrl();
+        if (!pageUrl.isValid()) {
+            return false;
+        }
+
+        Uri uri;
+        try {
+            uri = Uri.parse(pageUrl.getSpec());
+        } catch (Exception e) {
+            return false;
+        }
+
+        String path = uri.getPath();
+        String listId = uri.getQueryParameter("list");
+        return "/watch".equals(path) && listId != null && !listId.isEmpty();
+    }
+
     private @Nullable Set<Integer> filterSupportedMediaSessionActions(
             @Nullable Set<Integer> actions) {
-        if (!shouldFilterMediaSessionActions()) {
+        WebContents webContents =
+                (WebContents)
+                        BraveReflectionUtil.getField(
+                                MediaSessionHelper.class, "mWebContents", this);
+        if (!isYouTube(webContents)) {
             return actions;
         }
 
@@ -125,6 +152,10 @@ public class BraveMediaSessionHelper implements MediaImageCallback {
         }
         if (actions != null && actions.contains(MediaSessionAction.STOP)) {
             filtered.add(MediaSessionAction.STOP);
+        }
+        if (hasReliableYouTubeTrackContext(webContents)) {
+            filtered.add(MediaSessionAction.PREVIOUS_TRACK);
+            filtered.add(MediaSessionAction.NEXT_TRACK);
         }
 
         return Collections.unmodifiableSet(filtered);
@@ -200,6 +231,16 @@ public class BraveMediaSessionHelper implements MediaImageCallback {
             public void mediaSessionActionsChanged(Set<Integer> actions) {
                 Set<Integer> filteredActions = filterSupportedMediaSessionActions(actions);
                 if (filteredActions != null) {
+                    @SuppressWarnings("unchecked")
+                    Set<Integer> currentActions =
+                            (Set<Integer>)
+                                    BraveReflectionUtil.getField(
+                                            MediaSessionHelper.class,
+                                            "mMediaSessionActions",
+                                            BraveMediaSessionHelper.this);
+                    if (currentActions != null && currentActions.equals(filteredActions)) {
+                        return;
+                    }
                     BraveReflectionUtil.setField(
                             MediaSessionHelper.class,
                             "mMediaSessionActions",

@@ -130,6 +130,42 @@
 </activity>
 
 <activity
+    android:name="org.chromium.chrome.browser.onetabauth.OneTabLoginActivity"
+    android:theme="@style/Theme.Chromium.Activity.Fullscreen"
+    android:excludeFromRecents="true"
+    android:launchMode="singleTop"
+    android:screenOrientation="sensorPortrait"
+    android:exported="false"
+    tools:ignore="LockedOrientationActivity,DiscouragedApi"/>
+
+<activity
+    android:name="org.chromium.chrome.browser.onetabauth.OneTabAccountActivity"
+    android:theme="@style/Theme.Chromium.Activity.Fullscreen"
+    android:excludeFromRecents="true"
+    android:launchMode="singleTop"
+    android:screenOrientation="sensorPortrait"
+    android:exported="false"
+    tools:ignore="LockedOrientationActivity,DiscouragedApi"/>
+
+<activity
+    android:name="org.chromium.chrome.browser.onetabauth.OneTabBuyPackageActivity"
+    android:theme="@style/Theme.Chromium.Activity.Fullscreen"
+    android:excludeFromRecents="true"
+    android:launchMode="singleTop"
+    android:screenOrientation="sensorPortrait"
+    android:exported="false"
+    tools:ignore="LockedOrientationActivity,DiscouragedApi"/>
+
+<activity
+    android:name="org.chromium.chrome.browser.onetabauth.OneTabPurchaseReceiptActivity"
+    android:theme="@style/Theme.Chromium.Activity.Fullscreen"
+    android:excludeFromRecents="true"
+    android:launchMode="singleTop"
+    android:screenOrientation="sensorPortrait"
+    android:exported="false"
+    tools:ignore="LockedOrientationActivity,DiscouragedApi"/>
+
+<activity
     android:name="org.chromium.chrome.browser.app.bookmarks.BraveBookmarkActivity"
     android:theme="@style/Theme.Chromium.Activity.Fullscreen"
     android:exported="false"

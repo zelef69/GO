@@ -22,6 +22,7 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -31,11 +32,13 @@ import android.os.SystemClock;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -71,6 +74,7 @@ import org.jni_zero.JNINamespace;
 import org.jni_zero.NativeMethods;
 
 import org.chromium.base.ActivityState;
+import org.chromium.base.ApkInfo;
 import org.chromium.base.ApplicationState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ApplicationStatus.ApplicationStateListener;
@@ -164,6 +168,10 @@ import org.chromium.chrome.browser.misc_metrics.MiscAndroidMetricsConnectionErro
 import org.chromium.chrome.browser.misc_metrics.MiscAndroidMetricsFactory;
 import org.chromium.chrome.browser.media.FullscreenVideoPictureInPictureController;
 import org.chromium.chrome.browser.multiwindow.BraveMultiWindowUtils;
+import org.chromium.chrome.browser.onetabauth.OneTabFirebaseAuthManager;
+import org.chromium.chrome.browser.onetabauth.OneTabDeviceSessionManager;
+import org.chromium.chrome.browser.onetabauth.OneTabLoginActivity;
+import org.chromium.chrome.browser.onetabauth.OneTabLoginOverlayCoordinator;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
@@ -209,6 +217,7 @@ import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.toolbar.BraveToolbarManager;
 import org.chromium.chrome.browser.toolbar.bottom.BottomToolbarConfiguration;
@@ -249,7 +258,9 @@ import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.content_public.browser.LoadUrlParams;
+import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.MediaSession;
+import org.chromium.content_public.browser.NavigationHandle;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.misc_metrics.mojom.MiscAndroidMetrics;
 import org.chromium.mojo.bindings.ConnectionErrorHandler;
@@ -337,8 +348,13 @@ public abstract class BraveActivity extends ChromeActivity
     private static final int PIP_EXIT_TO_WATCH_PAGE_DELAY_MS = 250;
     private static final int PIP_EXIT_TO_WATCH_PAGE_MAX_AGE_MS = 3000;
     private static final int PIP_RECENT_WATCH_PAGE_RETURN_GRACE_MS = 5000;
+    private static final long OTB_DEFERRED_ENTITLEMENT_INIT_DELAY_MS = 2500;
+    private static final long OTB_SAFE_BROWSING_INIT_DELAY_MS = 1500;
+    private static final long OTB_STARTUP_MASK_TIMEOUT_MS = 15000;
+    private static final int OTB_LOGIN_ACTIVITY_REQUEST_CODE = 0x4F48;
     private static final String OTB_PERF_TAG = "OneTabTubePerf";
     private static final String OTB_DEVTOOLS_SOCKET_PREFIX = "chrome";
+    private static final String OTB_ENABLE_DEVTOOLS_SWITCH = "onetabtube-enable-devtools";
     private boolean mIsVerification;
     public boolean mIsDeepLink;
     private BraveWalletService mBraveWalletService;
@@ -372,6 +388,22 @@ public abstract class BraveActivity extends ChromeActivity
     private boolean mPendingReturnToWatchPageAfterPictureInPictureExit;
     private long mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs;
     private long mLastReturnToWatchPageAfterPictureInPictureExitElapsedMs;
+    private boolean mOneTabSafeBrowsingInitScheduled;
+    private boolean mOneTabDeferredEntitlementInitScheduled;
+    private boolean mResetOneTabHomeAfterColdLauncherStart;
+    private boolean mShowOneTabStartupMaskAfterColdLauncherStart;
+    @Nullable private FrameLayout mOneTabStartupMaskView;
+    @Nullable private OneTabFabMenuCoordinator mOneTabFabMenuCoordinator;
+    @Nullable private OneTabFirebaseAuthManager mOneTabFirebaseAuthManager;
+    @Nullable private OneTabDeviceSessionManager mOneTabDeviceSessionManager;
+    @Nullable private OneTabLoginOverlayCoordinator mOneTabLoginOverlayCoordinator;
+    @Nullable private TabModelSelectorTabObserver mOneTabStartupMaskObserver;
+    private boolean mOneTabAuthResolved;
+    private boolean mOneTabAuthCheckInProgress;
+    private boolean mOneTabAuthGatePendingNavigation;
+    private boolean mOneTabLoginActivityLaunched;
+    private final Runnable mHideOneTabStartupMaskRunnable =
+            () -> hideOneTabStartupMask("timeout");
 
     private View mQuickSearchEnginesView;
 
@@ -393,6 +425,12 @@ public abstract class BraveActivity extends ChromeActivity
     protected void onPostCreate() {
         super.onPostCreate();
         final Bundle savedInstanceState = getSavedInstanceState();
+        if (OneTabYouTubeMode.isEnabled()
+                && savedInstanceState == null
+                && isLauncherEntryIntent(getIntent())) {
+            mShowOneTabStartupMaskAfterColdLauncherStart = true;
+            maybeShowOneTabStartupMask();
+        }
         if (savedInstanceState != null) {
             mResumeMediaSession = savedInstanceState.getBoolean(KEY_RESUME_MEDIA_SESSION, false);
             mPendingReturnToWatchPageAfterPictureInPictureExit =
@@ -421,9 +459,10 @@ public abstract class BraveActivity extends ChromeActivity
     @Override
     public void onResumeWithNative() {
         super.onResumeWithNative();
+        boolean oneTabEnabled = OneTabYouTubeMode.isEnabled();
 
         BraveActivityJni.get().restartStatsUpdater();
-        if (BraveVpnUtils.isVpnFeatureSupported(BraveActivity.this)) {
+        if (!oneTabEnabled && BraveVpnUtils.isVpnFeatureSupported(BraveActivity.this)) {
             BraveVpnNativeWorker.getInstance().addObserver(this);
             BraveVpnUtils.reportBackgroundUsageP3A();
         }
@@ -431,7 +470,7 @@ public abstract class BraveActivity extends ChromeActivity
         // The check on mNativeInitialized is mostly to ensure that mojo
         // services for wallet are initialized.
         // TODO(sergz): verify do we need it in that phase or not.
-        if (mNativeInitialized) {
+        if (mNativeInitialized && !oneTabEnabled) {
             BraveToolbarLayoutImpl layout = getBraveToolbarLayout();
             if (layout != null) {
                 layout.maybeShowTermsOfServiceUpdateRequiredBadge();
@@ -458,7 +497,12 @@ public abstract class BraveActivity extends ChromeActivity
         mSafeBrowsingFlagEnabled =
                 ChromeFeatureList.isEnabled(BraveFeatureList.BRAVE_ANDROID_SAFE_BROWSING);
 
-        executeInitSafeBrowsing(0);
+        if (oneTabEnabled) {
+            maybeScheduleOneTabSafeBrowsingInit();
+            maybeResolveOneTabAuthentication();
+        } else {
+            executeInitSafeBrowsing(0);
+        }
 
         if (!BraveConfig.IS_ONETABYT) {
             if (mAppUpdateManager == null) {
@@ -474,7 +518,9 @@ public abstract class BraveActivity extends ChromeActivity
                             });
         }
         // Executes Leo voice prompt if it was triggered from quick search app widget
-        maybeExecuteLeoVoicePrompt();
+        if (!oneTabEnabled) {
+            maybeExecuteLeoVoicePrompt();
+        }
     }
 
     @Override
@@ -482,7 +528,9 @@ public abstract class BraveActivity extends ChromeActivity
         if (mUsageMonitor != null) {
             mUsageMonitor.stop();
         }
-        if (BraveVpnUtils.isVpnFeatureSupported(BraveActivity.this)) {
+        hideOneTabStartupMask("pause");
+        if (!OneTabYouTubeMode.isEnabled()
+                && BraveVpnUtils.isVpnFeatureSupported(BraveActivity.this)) {
             BraveVpnNativeWorker.getInstance().removeObserver(this);
         }
         super.onPauseWithNative();
@@ -1068,7 +1116,7 @@ public abstract class BraveActivity extends ChromeActivity
 
     @Override
     public void initializeState() {
-        if (BraveFreshNtpHelper.isEnabled()) {
+        if (!OneTabYouTubeMode.isEnabled() && BraveFreshNtpHelper.isEnabled()) {
             setForegroundSessionEndsTriggered();
         }
         super.initializeState();
@@ -1180,14 +1228,24 @@ public abstract class BraveActivity extends ChromeActivity
     @Override
     public void onStartWithNative() {
         // Register application state listener to detect foreground session end
-        if (BraveFreshNtpHelper.isEnabled() && mApplicationStateListener == null) {
+        if (!OneTabYouTubeMode.isEnabled()
+                && BraveFreshNtpHelper.isEnabled()
+                && mApplicationStateListener == null) {
             mApplicationStateListener = this::onApplicationStateChange;
             ApplicationStatus.registerApplicationStateListener(mApplicationStateListener);
         }
 
         super.onStartWithNative();
-        ensureOneTabDevToolsServerStarted();
+        if (OneTabYouTubeMode.isEnabled() && !mNativeInitialized) {
+            mShowOneTabStartupMaskAfterColdLauncherStart = true;
+        }
+        ensureOneTabStartupMaskObserver(getTabModelSelector());
+        maybeShowOneTabStartupMask();
+        if (shouldEnableOneTabDevToolsServer()) {
+            ensureOneTabDevToolsServerStarted();
+        }
         syncOneTabCleanModeUi();
+        maybeResolveOneTabAuthentication();
     }
 
     private void syncOneTabCleanModeUi() {
@@ -1196,23 +1254,233 @@ public abstract class BraveActivity extends ChromeActivity
         }
 
         enforceOneTabChromeHidden();
+        collapseOneTabBrowserControls();
+        refreshOneTabFabMenu();
+    }
+
+    private void ensureOneTabAuthComponents() {
+        if (!OneTabYouTubeMode.isEnabled()) {
+            return;
+        }
+        if (mOneTabFirebaseAuthManager == null) {
+            mOneTabFirebaseAuthManager = new OneTabFirebaseAuthManager();
+        }
+        if (mOneTabDeviceSessionManager == null) {
+            mOneTabDeviceSessionManager = new OneTabDeviceSessionManager();
+        }
+        if (mOneTabLoginOverlayCoordinator == null) {
+            mOneTabLoginOverlayCoordinator = new OneTabLoginOverlayCoordinator();
+        }
+    }
+
+    private boolean isOneTabAuthenticated() {
+        if (!OneTabYouTubeMode.isEnabled()) {
+            return true;
+        }
+        ensureOneTabAuthComponents();
+        return mOneTabAuthResolved;
+    }
+
+    private void maybeResolveOneTabAuthentication() {
+        if (!OneTabYouTubeMode.isEnabled() || isFinishing() || isDestroyed()) {
+            return;
+        }
+        ensureOneTabAuthComponents();
+        setOneTabContentLocked(true);
+        if (mOneTabAuthCheckInProgress) {
+            return;
+        }
+        if (mOneTabLoginActivityLaunched) {
+            return;
+        }
+        if (mOneTabFirebaseAuthManager != null && mOneTabFirebaseAuthManager.isSignedInFast()) {
+            mOneTabAuthCheckInProgress = true;
+            resolveOneTabDeviceAccess();
+            return;
+        }
+
+        mOneTabAuthCheckInProgress = true;
+        mOneTabFirebaseAuthManager.resolveAuthentication(
+                (authenticated, message) -> {
+                    if (authenticated) {
+                        resolveOneTabDeviceAccess();
+                        return;
+                    }
+                    mOneTabAuthCheckInProgress = false;
+                    mOneTabAuthResolved = false;
+                    launchOneTabLoginActivity(message);
+                });
+    }
+
+    private void resolveOneTabDeviceAccess() {
+        ensureOneTabAuthComponents();
+        if (mOneTabDeviceSessionManager == null) {
+            mOneTabAuthCheckInProgress = false;
+            mOneTabAuthResolved = false;
+            launchOneTabLoginActivity("Unable to validate device access right now.");
+            return;
+        }
+
+        mOneTabDeviceSessionManager.ensureAccess(
+                (allowed, message) -> {
+                    mOneTabAuthCheckInProgress = false;
+                    if (allowed) {
+                        handleOneTabAuthenticated();
+                        return;
+                    }
+
+                    mOneTabAuthResolved = false;
+                    launchOneTabLoginActivity(message);
+                });
+    }
+
+    private void handleOneTabAuthenticated() {
+        mOneTabAuthResolved = true;
+        mOneTabAuthCheckInProgress = false;
+        mOneTabLoginActivityLaunched = false;
+        setOneTabContentLocked(false);
+        hideOneTabLoginOverlay();
+        if (mOneTabAuthGatePendingNavigation) {
+            mOneTabAuthGatePendingNavigation = false;
+            PostTask.postTask(TaskTraits.UI_DEFAULT, this::enforceOneTabYouTubeMode);
+        }
+    }
+
+    private void launchOneTabLoginActivity(@Nullable String message) {
+        if (!OneTabYouTubeMode.isEnabled() || isFinishing() || isDestroyed()) {
+            return;
+        }
+        if (mOneTabLoginActivityLaunched) {
+            return;
+        }
+        mOneTabLoginActivityLaunched = true;
+        Intent intent = new Intent(this, OneTabLoginActivity.class);
+        if (!TextUtils.isEmpty(message)) {
+            intent.putExtra(OneTabLoginActivity.EXTRA_ERROR_MESSAGE, message);
+        }
+        startActivityForResult(intent, OTB_LOGIN_ACTIVITY_REQUEST_CODE);
+    }
+
+    private void showOneTabLoginOverlay(boolean loading, @Nullable String message) {
+        if (!OneTabYouTubeMode.isEnabled()) {
+            return;
+        }
+        ensureOneTabAuthComponents();
+        setOneTabContentLocked(true);
+        pauseOneTabPlaybackForAuthGate();
+        mOneTabLoginOverlayCoordinator.show(
+                this,
+                () -> {
+                    if (mOneTabFirebaseAuthManager == null || mOneTabAuthCheckInProgress) {
+                        return;
+                    }
+                    mOneTabAuthCheckInProgress = true;
+                    mOneTabLoginOverlayCoordinator.setLoading(true, "Opening Google sign-in...");
+                    mOneTabFirebaseAuthManager.beginGoogleSignIn(
+                            this,
+                            (authenticated, authMessage) -> {
+                                if (authenticated) {
+                                    resolveOneTabDeviceAccess();
+                                } else {
+                                    mOneTabAuthCheckInProgress = false;
+                                    showOneTabLoginOverlay(false, "");
+                                    showOneTabLoginError(authMessage);
+                                }
+                            });
+                });
+        mOneTabLoginOverlayCoordinator.setLoading(loading, message);
+    }
+
+    private void setOneTabContentLocked(boolean locked) {
+        View compositorViewHolder = findViewById(R.id.compositor_view_holder);
+        if (compositorViewHolder != null) {
+            compositorViewHolder.setVisibility(locked ? View.INVISIBLE : View.VISIBLE);
+        }
+    }
+
+    private void pauseOneTabPlaybackForAuthGate() {
+        Tab currentTab = getActivityTab();
+        if (currentTab == null) {
+            return;
+        }
+        currentTab.stopLoading();
+        WebContents webContents = currentTab.getWebContents();
+        if (webContents == null) {
+            return;
+        }
+        webContents.evaluateJavaScript(
+                "(function(){try{document.querySelectorAll('video').forEach(function(v){v.pause();});}catch(e){}return true;})();",
+                null);
+    }
+
+    private void showOneTabLoginError(@Nullable String message) {
+        if (mOneTabLoginOverlayCoordinator != null) {
+            mOneTabLoginOverlayCoordinator.showError(message);
+        }
+    }
+
+    private void hideOneTabLoginOverlay() {
+        if (mOneTabLoginOverlayCoordinator != null) {
+            mOneTabLoginOverlayCoordinator.dismiss();
+        }
     }
 
     private void enforceOneTabChromeHidden() {
         if (!OneTabYouTubeMode.isEnabled()) {
             return;
         }
-        setOneTabViewVisibility(R.id.control_container, View.GONE);
-        setOneTabViewVisibility(R.id.toolbar_progress_bar_container, View.GONE);
-        setOneTabViewVisibility(R.id.bottom_controls, View.GONE);
-        setOneTabViewVisibility(R.id.bottom_toolbar, View.GONE);
+        setOneTabViewCollapsed(R.id.toolbar);
+        setOneTabViewCollapsed(R.id.toolbar_hairline);
+        setOneTabViewCollapsed(R.id.control_container);
+        setOneTabViewCollapsed(R.id.toolbar_progress_bar_container);
+        setOneTabViewCollapsed(R.id.bottom_controls);
+        setOneTabViewCollapsed(R.id.bottom_toolbar);
     }
 
-    private void setOneTabViewVisibility(int viewId, int visibility) {
+    private void setOneTabViewCollapsed(int viewId) {
         View view = findViewById(viewId);
-        if (view != null && view.getVisibility() != visibility) {
-            view.setVisibility(visibility);
+        if (view == null) {
+            return;
         }
+
+        if (view.getVisibility() != View.GONE) {
+            view.setVisibility(View.GONE);
+        }
+        view.setTranslationY(0f);
+        view.setAlpha(0f);
+
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+        if (layoutParams != null && layoutParams.height != 0) {
+            layoutParams.height = 0;
+            view.setLayoutParams(layoutParams);
+        }
+    }
+
+    private void collapseOneTabBrowserControls() {
+        if (!OneTabYouTubeMode.isEnabled() || mBrowserControlsManagerSupplier == null) {
+            return;
+        }
+
+        final BrowserControlsManager browserControlsManager = mBrowserControlsManagerSupplier.get();
+        if (browserControlsManager == null) {
+            return;
+        }
+
+        browserControlsManager.setAnimateBrowserControlsHeightChanges(false);
+        browserControlsManager.setTopControlsHeight(0, 0);
+        browserControlsManager.setBottomControlsHeight(0, 0);
+    }
+
+    private void refreshOneTabFabMenu() {
+        if (!OneTabYouTubeMode.isEnabled()) {
+            return;
+        }
+
+        if (mOneTabFabMenuCoordinator == null) {
+            mOneTabFabMenuCoordinator = new OneTabFabMenuCoordinator(this);
+        }
+
+        mOneTabFabMenuCoordinator.refresh(getActivityTab());
     }
 
     private void ensureOneTabDevToolsServerStarted() {
@@ -1227,6 +1495,209 @@ public abstract class BraveActivity extends ChromeActivity
             sOneTabDevToolsServer.setRemoteDebuggingEnabled(
                     true, DevToolsServer.Security.ALLOW_DEBUG_PERMISSION);
             Log.i(OTB_PERF_TAG, "event=devtools_server enabled=true");
+        }
+    }
+
+    private boolean shouldEnableOneTabDevToolsServer() {
+        if (!OneTabYouTubeMode.isEnabled()) {
+            return false;
+        }
+
+        // Keep remote debugging available only as an explicit developer opt-in in OneTab builds.
+        return ApkInfo.isDebugApp()
+                && CommandLine.getInstance().hasSwitch(OTB_ENABLE_DEVTOOLS_SWITCH);
+    }
+
+    private void maybeScheduleOneTabSafeBrowsingInit() {
+        if (mOneTabSafeBrowsingInitScheduled) {
+            return;
+        }
+
+        mOneTabSafeBrowsingInitScheduled = true;
+        executeInitSafeBrowsing(OTB_SAFE_BROWSING_INIT_DELAY_MS);
+    }
+
+    private void maybeScheduleOneTabDeferredEntitlementInit() {
+        if (!OneTabYouTubeMode.isEnabled() || mOneTabDeferredEntitlementInitScheduled) {
+            return;
+        }
+
+        mOneTabDeferredEntitlementInitScheduled = true;
+        PostTask.postDelayedTask(
+                TaskTraits.UI_DEFAULT,
+                () -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+
+                    BraveVpnNativeWorker.getInstance().reloadPurchasedState();
+
+                    Profile profile = mTabModelProfileSupplier.get();
+                    if (profile != null
+                            && ChromeFeatureList.isEnabled(BraveFeatureList.BRAVE_ORIGIN)
+                            && !BraveOriginSubscriptionPrefs.getIsSubscriptionActive(profile)) {
+                        BraveOriginSubscriptionPrefs.verifyPurchase(profile);
+                    }
+                },
+                OTB_DEFERRED_ENTITLEMENT_INIT_DELAY_MS);
+    }
+
+    private void syncScheduledCaptchaPausedState() {
+        if (UserPrefs.get(ProfileManager.getLastUsedRegularProfile())
+                        .getInteger(BravePref.SCHEDULED_CAPTCHA_FAILED_ATTEMPTS)
+                >= MAX_FAILED_CAPTCHA_ATTEMPTS) {
+            UserPrefs.get(ProfileManager.getLastUsedRegularProfile())
+                    .setBoolean(BravePref.SCHEDULED_CAPTCHA_PAUSED, true);
+        }
+
+        if (BraveQAPreferences.shouldVlogRewards()) {
+            Log.e(
+                    AdaptiveCaptchaHelper.TAG,
+                    "Failed attempts : "
+                            + UserPrefs.get(ProfileManager.getLastUsedRegularProfile())
+                                    .getInteger(BravePref.SCHEDULED_CAPTCHA_FAILED_ATTEMPTS));
+        }
+    }
+
+    private void maybeRunScheduledCaptchaStartupWork() {
+        if (!UserPrefs.get(ProfileManager.getLastUsedRegularProfile())
+                .getBoolean(BravePref.SCHEDULED_CAPTCHA_PAUSED)) {
+            maybeSolveAdaptiveCaptcha();
+        }
+    }
+
+    private void ensureOneTabStartupMaskObserver(@Nullable TabModelSelector selector) {
+        if (!OneTabYouTubeMode.isEnabled() || selector == null || mOneTabStartupMaskObserver != null) {
+            return;
+        }
+
+        mOneTabStartupMaskObserver =
+                new TabModelSelectorTabObserver(selector) {
+                    @Override
+                    public void onPageLoadStarted(Tab tab, GURL url) {
+                        if (shouldTrackOneTabStartupMaskForTab(tab, url)) {
+                            maybeShowOneTabStartupMask();
+                        }
+                        syncOneTabCleanModeUi();
+                    }
+
+                    @Override
+                    public void onPageLoadFinished(Tab tab, GURL url) {
+                        if (shouldTrackOneTabStartupMaskForTab(tab, url)) {
+                            hideOneTabStartupMask("page_load_finished");
+                        }
+                        syncOneTabCleanModeUi();
+                    }
+
+                    @Override
+                    public void onDidFinishNavigationInPrimaryMainFrame(
+                            Tab tab, NavigationHandle navigation) {
+                        if (!navigation.isInPrimaryMainFrame() || !navigation.hasCommitted()) {
+                            return;
+                        }
+
+                        if (shouldTrackOneTabStartupMaskForTab(tab, navigation.getUrl())) {
+                            PostTask.postDelayedTask(
+                                    TaskTraits.UI_DEFAULT,
+                                    () -> hideOneTabStartupMask("main_frame_commit"),
+                                    300);
+                        }
+                        syncOneTabCleanModeUi();
+                    }
+
+                    @Override
+                    public void onCrash(Tab tab) {
+                        if (shouldTrackOneTabStartupMaskForTab(tab, null)) {
+                            hideOneTabStartupMask("tab_crash");
+                        }
+                        syncOneTabCleanModeUi();
+                    }
+                };
+    }
+
+    private boolean shouldTrackOneTabStartupMaskForTab(@Nullable Tab tab, @Nullable GURL url) {
+        if (!OneTabYouTubeMode.isEnabled() || !mShowOneTabStartupMaskAfterColdLauncherStart) {
+            return false;
+        }
+
+        if (tab == null || tab.isIncognito()) {
+            return false;
+        }
+
+        Tab currentTab = getActivityTab();
+        if (currentTab != null && currentTab.getId() != tab.getId()) {
+            return false;
+        }
+
+        String urlSpec = url != null ? url.getSpec() : tab.getUrl().getSpec();
+        return TextUtils.isEmpty(urlSpec) || OneTabYouTubeMode.isAllowedUrl(urlSpec);
+    }
+
+    private void maybeShowOneTabStartupMask() {
+        if (!OneTabYouTubeMode.isEnabled() || !mShowOneTabStartupMaskAfterColdLauncherStart) {
+            return;
+        }
+
+        ViewGroup maskContainer = findViewById(R.id.compositor_view_holder);
+        if (maskContainer == null) {
+            maskContainer = findViewById(android.R.id.content);
+        }
+        if (maskContainer == null) {
+            return;
+        }
+
+        if (mOneTabStartupMaskView != null
+                && mOneTabStartupMaskView.getVisibility() == View.VISIBLE
+                && mOneTabStartupMaskView.getParent() != null) {
+            return;
+        }
+
+        if (mOneTabStartupMaskView == null) {
+            FrameLayout mask = new FrameLayout(this);
+            mask.setClickable(true);
+            mask.setBackgroundColor(Color.parseColor("#0F0F0F"));
+            mask.setContentDescription("Loading YouTube");
+
+            TextView label = new TextView(this);
+            label.setGravity(Gravity.CENTER);
+            label.setTextColor(Color.WHITE);
+            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+            label.setText("OneTabTube\nLoading YouTube...");
+            label.setContentDescription("Loading YouTube");
+
+            FrameLayout.LayoutParams labelParams =
+                    new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+            labelParams.gravity = Gravity.CENTER;
+            mask.addView(label, labelParams);
+            mOneTabStartupMaskView = mask;
+        }
+
+        if (mOneTabStartupMaskView.getParent() == null) {
+            maskContainer.addView(
+                    mOneTabStartupMaskView,
+                    new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        mOneTabStartupMaskView.setVisibility(View.VISIBLE);
+        mOneTabStartupMaskView.bringToFront();
+        Log.i(OTB_PERF_TAG, "event=startup_mask show=1");
+        getWindow().getDecorView().removeCallbacks(mHideOneTabStartupMaskRunnable);
+        getWindow()
+                .getDecorView()
+                .postDelayed(mHideOneTabStartupMaskRunnable, OTB_STARTUP_MASK_TIMEOUT_MS);
+    }
+
+    private void hideOneTabStartupMask(String reason) {
+        View decorView = getWindow().getDecorView();
+        decorView.removeCallbacks(mHideOneTabStartupMaskRunnable);
+        mShowOneTabStartupMaskAfterColdLauncherStart = false;
+
+        if (mOneTabStartupMaskView != null && mOneTabStartupMaskView.getVisibility() != View.GONE) {
+            Log.i(OTB_PERF_TAG, "event=startup_mask hide_reason=%s", reason);
+            mOneTabStartupMaskView.setVisibility(View.GONE);
         }
     }
 
@@ -1327,44 +1798,32 @@ public abstract class BraveActivity extends ChromeActivity
         super.finishNativeInitialization();
 
         boolean isFirstInstall = PackageUtils.isFirstInstall(this);
+        boolean oneTabEnabled = OneTabYouTubeMode.isEnabled();
 
         String countryCode = Locale.getDefault().getCountry();
 
-        BraveVpnNativeWorker.getInstance().reloadPurchasedState();
-
-        // Restore Origin purchase from Google Play if the local pref is not set
-        // (e.g. after device change). This ensures prefs are populated before the user
-        // taps the Origin menu.
         Profile profile = mTabModelProfileSupplier.get();
-        if (profile != null
-                && ChromeFeatureList.isEnabled(BraveFeatureList.BRAVE_ORIGIN)
-                && !BraveOriginSubscriptionPrefs.getIsSubscriptionActive(profile)) {
-            BraveOriginSubscriptionPrefs.verifyPurchase(profile);
+        if (oneTabEnabled) {
+            maybeScheduleOneTabDeferredEntitlementInit();
+        } else {
+            BraveVpnNativeWorker.getInstance().reloadPurchasedState();
+
+            // Restore Origin purchase from Google Play if the local pref is not set
+            // (e.g. after device change). This ensures prefs are populated before the user
+            // taps the Origin menu.
+            if (profile != null
+                    && ChromeFeatureList.isEnabled(BraveFeatureList.BRAVE_ORIGIN)
+                    && !BraveOriginSubscriptionPrefs.getIsSubscriptionActive(profile)) {
+                BraveOriginSubscriptionPrefs.verifyPurchase(profile);
+            }
         }
 
         BraveHelper.maybeMigrateSettings();
 
         PrefChangeRegistrar mPrefChangeRegistrar = PrefServiceUtil.createFor(getCurrentProfile());
         mPrefChangeRegistrar.addObserver(BravePref.SCHEDULED_CAPTCHA_ID, this);
-
-        if (UserPrefs.get(ProfileManager.getLastUsedRegularProfile())
-                        .getInteger(BravePref.SCHEDULED_CAPTCHA_FAILED_ATTEMPTS)
-                >= MAX_FAILED_CAPTCHA_ATTEMPTS) {
-            UserPrefs.get(ProfileManager.getLastUsedRegularProfile())
-                    .setBoolean(BravePref.SCHEDULED_CAPTCHA_PAUSED, true);
-        }
-
-        if (BraveQAPreferences.shouldVlogRewards()) {
-            Log.e(
-                    AdaptiveCaptchaHelper.TAG,
-                    "Failed attempts : "
-                            + UserPrefs.get(ProfileManager.getLastUsedRegularProfile())
-                                    .getInteger(BravePref.SCHEDULED_CAPTCHA_FAILED_ATTEMPTS));
-        }
-        if (!UserPrefs.get(ProfileManager.getLastUsedRegularProfile())
-                .getBoolean(BravePref.SCHEDULED_CAPTCHA_PAUSED)) {
-            maybeSolveAdaptiveCaptcha();
-        }
+        syncScheduledCaptchaPausedState();
+        maybeRunScheduledCaptchaStartupWork();
 
         if (ChromeSharedPreferences.getInstance()
                 .readBoolean(BravePreferenceKeys.BRAVE_DOUBLE_RESTART, false)) {
@@ -1379,14 +1838,14 @@ public abstract class BraveActivity extends ChromeActivity
         // trade-off for smoother watch-page transitions.
         @PreloadPagesState
         int desiredPreloadState =
-                OneTabYouTubeMode.isEnabled()
+                oneTabEnabled
                         ? PreloadPagesState.EXTENDED_PRELOADING
                         : PreloadPagesState.NO_PRELOADING;
         if (PreloadPagesSettingsBridge.getState(getCurrentProfile()) != desiredPreloadState) {
             PreloadPagesSettingsBridge.setState(getCurrentProfile(), desiredPreloadState);
         }
 
-        if (BraveRewardsHelper.hasRewardsEnvChange()) {
+        if (!oneTabEnabled && BraveRewardsHelper.hasRewardsEnvChange()) {
             BravePrefServiceBridge.getInstance().resetPromotionLastFetchStamp();
             BraveRewardsHelper.setRewardsEnvChange(false);
         }
@@ -1397,13 +1856,14 @@ public abstract class BraveActivity extends ChromeActivity
         ChromeSharedPreferences.getInstance()
                 .writeInt(BravePreferenceKeys.BRAVE_APP_OPEN_COUNT, appOpenCount + 1);
 
-        if (isFirstInstall && appOpenCount == 0) {
+        if (!oneTabEnabled && isFirstInstall && appOpenCount == 0) {
             checkForYandexSE();
             enableSearchSuggestions();
             setBraveAsDefaultPrivateMode();
         }
 
-        if (!isFirstInstall
+        if (!oneTabEnabled
+                && !isFirstInstall
                 && countryCode.equals(BraveConstants.JAPAN_COUNTRY_CODE)
                 && !ChromeSharedPreferences.getInstance()
                         .readBoolean(
@@ -1412,33 +1872,38 @@ public abstract class BraveActivity extends ChromeActivity
             applyChangesForYahooJp();
         }
 
-        BraveSetDefaultBrowserUtils.checkForBraveSetDefaultBrowser(
-                appOpenCount, BraveActivity.this);
+        if (!oneTabEnabled) {
+            BraveSetDefaultBrowserUtils.checkForBraveSetDefaultBrowser(
+                    appOpenCount, BraveActivity.this);
+        }
 
         Context app = ContextUtils.getApplicationContext();
-        if (null != app
+        if (!oneTabEnabled
+                && null != app
                 && BraveReflectionUtil.equalTypes(this.getClass(), ChromeTabbedActivity.class)) {
             // Trigger BraveSyncWorker CTOR to make migration from sync v1 if sync is enabled
             BraveSyncWorker.get();
         }
 
-        initMiscAndroidMetrics();
-        checkForNotificationData();
+        if (!oneTabEnabled) {
+            initMiscAndroidMetrics();
+            checkForNotificationData();
 
-        if (RateUtils.getInstance().isLastSessionShown()) {
-            RateUtils.getInstance().setPrefNextRateDate();
-            RateUtils.getInstance().setLastSessionShown(false);
-        }
+            if (RateUtils.getInstance().isLastSessionShown()) {
+                RateUtils.getInstance().setPrefNextRateDate();
+                RateUtils.getInstance().setLastSessionShown(false);
+            }
 
-        if (!RateUtils.getInstance().getPrefRateEnabled()) {
-            RateUtils.getInstance().setPrefRateEnabled(true);
-            RateUtils.getInstance().setPrefNextRateDate();
-        }
-        RateUtils.getInstance().setTodayDate();
+            if (!RateUtils.getInstance().getPrefRateEnabled()) {
+                RateUtils.getInstance().setPrefRateEnabled(true);
+                RateUtils.getInstance().setPrefNextRateDate();
+            }
+            RateUtils.getInstance().setTodayDate();
 
-        if (!BraveConfig.IS_ONETABYT && RateUtils.getInstance().shouldShowRateDialog(this)) {
-            showBraveRateDialog();
-            RateUtils.getInstance().setLastSessionShown(true);
+            if (!BraveConfig.IS_ONETABYT && RateUtils.getInstance().shouldShowRateDialog(this)) {
+                showBraveRateDialog();
+                RateUtils.getInstance().setLastSessionShown(true);
+            }
         }
 
         // TODO commenting out below code as we may use it in next release
@@ -1468,74 +1933,87 @@ public abstract class BraveActivity extends ChromeActivity
         //     OnboardingPrefManager.getInstance().setOnboardingShownForSkip(true);
         // }
 
-        BraveSyncAccountDeletedInformer.show();
+        if (!oneTabEnabled) {
+            BraveSyncAccountDeletedInformer.show();
 
-        if (!OnboardingPrefManager.getInstance().isOneTimeNotificationStarted() && isFirstInstall) {
-            RetentionNotificationUtil.scheduleNotification(this, RetentionNotificationUtil.HOUR_3);
-            RetentionNotificationUtil.scheduleNotification(this, RetentionNotificationUtil.HOUR_24);
-            RetentionNotificationUtil.scheduleNotification(this, RetentionNotificationUtil.DAY_6);
-            RetentionNotificationUtil.scheduleNotification(this, RetentionNotificationUtil.DAY_10);
-            RetentionNotificationUtil.scheduleNotification(this, RetentionNotificationUtil.DAY_30);
-            RetentionNotificationUtil.scheduleNotification(this, RetentionNotificationUtil.DAY_35);
-            OnboardingPrefManager.getInstance().setOneTimeNotificationStarted(true);
-        }
-
-        if (isFirstInstall
-                && ChromeSharedPreferences.getInstance()
-                                .readInt(BravePreferenceKeys.BRAVE_APP_OPEN_COUNT)
-                        == 1) {
-            Calendar calender = Calendar.getInstance();
-            calender.setTime(new Date());
-            calender.add(Calendar.DATE, DAYS_4);
-            BraveRewardsHelper.setNextRewardsOnboardingModalDate(calender.getTimeInMillis());
-        }
-
-        checkFingerPrintingOnUpgrade(isFirstInstall);
-        checkForVpnCallout();
-
-        if (ChromeFeatureList.isEnabled(BraveFeatureList.BRAVE_VPN_LINK_SUBSCRIPTION_ANDROID_UI)
-                && BraveVpnPrefUtils.isSubscriptionPurchase()
-                && !BraveVpnPrefUtils.isLinkSubscriptionDialogShown()) {
-            showLinkVpnSubscriptionDialog();
-        }
-        if (isFirstInstall
-                && (OnboardingPrefManager.getInstance().isDormantUsersEngagementEnabled()
-                        || getPackageName().equals(BraveConstants.BRAVE_PRODUCTION_PACKAGE_NAME))) {
-            OnboardingPrefManager.getInstance().setDormantUsersPrefs();
-            if (!OnboardingPrefManager.getInstance().isDormantUsersNotificationsStarted()) {
-                RetentionNotificationUtil.scheduleDormantUsersNotifications(this);
-                OnboardingPrefManager.getInstance().setDormantUsersNotificationsStarted(true);
+            if (!OnboardingPrefManager.getInstance().isOneTimeNotificationStarted()
+                    && isFirstInstall) {
+                RetentionNotificationUtil.scheduleNotification(
+                        this, RetentionNotificationUtil.HOUR_3);
+                RetentionNotificationUtil.scheduleNotification(
+                        this, RetentionNotificationUtil.HOUR_24);
+                RetentionNotificationUtil.scheduleNotification(
+                        this, RetentionNotificationUtil.DAY_6);
+                RetentionNotificationUtil.scheduleNotification(
+                        this, RetentionNotificationUtil.DAY_10);
+                RetentionNotificationUtil.scheduleNotification(
+                        this, RetentionNotificationUtil.DAY_30);
+                RetentionNotificationUtil.scheduleNotification(
+                        this, RetentionNotificationUtil.DAY_35);
+                OnboardingPrefManager.getInstance().setOneTimeNotificationStarted(true);
             }
+
+            if (isFirstInstall
+                    && ChromeSharedPreferences.getInstance()
+                                    .readInt(BravePreferenceKeys.BRAVE_APP_OPEN_COUNT)
+                            == 1) {
+                Calendar calender = Calendar.getInstance();
+                calender.setTime(new Date());
+                calender.add(Calendar.DATE, DAYS_4);
+                BraveRewardsHelper.setNextRewardsOnboardingModalDate(calender.getTimeInMillis());
+            }
+
+            checkFingerPrintingOnUpgrade(isFirstInstall);
+            checkForVpnCallout();
+
+            if (ChromeFeatureList.isEnabled(BraveFeatureList.BRAVE_VPN_LINK_SUBSCRIPTION_ANDROID_UI)
+                    && BraveVpnPrefUtils.isSubscriptionPurchase()
+                    && !BraveVpnPrefUtils.isLinkSubscriptionDialogShown()) {
+                showLinkVpnSubscriptionDialog();
+            }
+            if (isFirstInstall
+                    && (OnboardingPrefManager.getInstance().isDormantUsersEngagementEnabled()
+                            || getPackageName().equals(
+                                    BraveConstants.BRAVE_PRODUCTION_PACKAGE_NAME))) {
+                OnboardingPrefManager.getInstance().setDormantUsersPrefs();
+                if (!OnboardingPrefManager.getInstance().isDormantUsersNotificationsStarted()) {
+                    RetentionNotificationUtil.scheduleDormantUsersNotifications(this);
+                    OnboardingPrefManager.getInstance().setDormantUsersNotificationsStarted(true);
+                }
+            }
+            initWalletNativeServices();
         }
-        initWalletNativeServices();
 
         mNativeInitialized = true;
 
-        if (countryCode.equals(BraveConstants.INDIA_COUNTRY_CODE)
-                && ChromeSharedPreferences.getInstance()
-                        .readBoolean(BravePreferenceKeys.BRAVE_AD_FREE_CALLOUT_DIALOG, true)
-                && getActivityTab() != null
-                && getActivityTab().getUrl().getSpec() != null
-                && UrlUtilities.isNtpUrl(getActivityTab().getUrl().getSpec())
-                && (ChromeSharedPreferences.getInstance()
-                                .readBoolean(BravePreferenceKeys.BRAVE_OPENED_YOUTUBE, false)
-                        || ChromeSharedPreferences.getInstance()
-                                        .readInt(BravePreferenceKeys.BRAVE_APP_OPEN_COUNT)
-                                >= 7)) {
-            showAdFreeCalloutDialog();
-        }
+        if (!oneTabEnabled) {
+            if (countryCode.equals(BraveConstants.INDIA_COUNTRY_CODE)
+                    && ChromeSharedPreferences.getInstance()
+                            .readBoolean(BravePreferenceKeys.BRAVE_AD_FREE_CALLOUT_DIALOG, true)
+                    && getActivityTab() != null
+                    && getActivityTab().getUrl().getSpec() != null
+                    && UrlUtilities.isNtpUrl(getActivityTab().getUrl().getSpec())
+                    && (ChromeSharedPreferences.getInstance()
+                                    .readBoolean(
+                                            BravePreferenceKeys.BRAVE_OPENED_YOUTUBE, false)
+                            || ChromeSharedPreferences.getInstance()
+                                            .readInt(BravePreferenceKeys.BRAVE_APP_OPEN_COUNT)
+                                    >= 7)) {
+                showAdFreeCalloutDialog();
+            }
 
-        initBraveNews();
-        if (ChromeSharedPreferences.getInstance()
-                .readBoolean(BravePreferenceKeys.BRAVE_DEFERRED_DEEPLINK_PLAYLIST, false)) {
-            ChromeSharedPreferences.getInstance()
-                    .writeBoolean(BravePreferenceKeys.BRAVE_DEFERRED_DEEPLINK_PLAYLIST, false);
-            openPlaylist(false);
-        } else if (ChromeSharedPreferences.getInstance()
-                .readBoolean(BravePreferenceKeys.BRAVE_DEFERRED_DEEPLINK_VPN, false)) {
-            ChromeSharedPreferences.getInstance()
-                    .writeBoolean(BravePreferenceKeys.BRAVE_DEFERRED_DEEPLINK_VPN, false);
-            handleDeepLinkVpn();
+            initBraveNews();
+            if (ChromeSharedPreferences.getInstance()
+                    .readBoolean(BravePreferenceKeys.BRAVE_DEFERRED_DEEPLINK_PLAYLIST, false)) {
+                ChromeSharedPreferences.getInstance()
+                        .writeBoolean(BravePreferenceKeys.BRAVE_DEFERRED_DEEPLINK_PLAYLIST, false);
+                openPlaylist(false);
+            } else if (ChromeSharedPreferences.getInstance()
+                    .readBoolean(BravePreferenceKeys.BRAVE_DEFERRED_DEEPLINK_VPN, false)) {
+                ChromeSharedPreferences.getInstance()
+                        .writeBoolean(BravePreferenceKeys.BRAVE_DEFERRED_DEEPLINK_VPN, false);
+                handleDeepLinkVpn();
+            }
         }
 
         // Added to reset app links settings for upgrade case
@@ -1811,6 +2289,9 @@ public abstract class BraveActivity extends ChromeActivity
 
     private void initBraveNews() {
         ThreadUtils.assertOnUiThread();
+        if (OneTabYouTubeMode.isEnabled()) {
+            return;
+        }
         if (BravePrefServiceBridge.getInstance().getShowNews()
                 && BravePrefServiceBridge.getInstance().getNewsOptIn()) {
             BraveNewsUtils.getBraveNewsSettingsDataPerProfile(mTabModelProfileSupplier.get());
@@ -2346,6 +2827,39 @@ public abstract class BraveActivity extends ChromeActivity
         return TabModel.INVALID_TAB_INDEX;
     }
 
+    private void resetOneTabHomeAfterColdLauncherStart(@Nullable TabModelSelector selector) {
+        mResetOneTabHomeAfterColdLauncherStart = false;
+
+        if (selector == null || isFinishing() || isDestroyed()) {
+            return;
+        }
+
+        String homepageUrl = OneTabYouTubeMode.getDefaultHomepageUrl();
+        TabModel regularModel = selector.getModel(false);
+        Tab keepTab = getOneTabKeepCandidate(regularModel);
+
+        if (keepTab == null) {
+            Log.i(OTB_PERF_TAG, "event=launcher_cold_start_reset_home_fresh_tab apply=1");
+            getTabCreator(false).launchUrl(homepageUrl, TabLaunchType.FROM_CHROME_UI);
+            syncOneTabCleanModeUi();
+            return;
+        }
+
+        int keepTabIndex = getTabIndexById(regularModel, keepTab.getId());
+        if (keepTabIndex != TabModel.INVALID_TAB_INDEX) {
+            regularModel.setIndex(keepTabIndex, TabSelectionType.FROM_USER);
+        }
+
+        closeExtraTabsForOneTabMode(regularModel, keepTab.getId());
+        if (!homepageUrl.equals(keepTab.getUrl().getSpec())) {
+            Log.i(OTB_PERF_TAG, "event=launcher_cold_start_reset_home_reuse_tab load_home=1");
+            keepTab.loadUrl(new LoadUrlParams(homepageUrl));
+        } else {
+            Log.i(OTB_PERF_TAG, "event=launcher_cold_start_reset_home_reuse_tab skip_reload=1");
+        }
+        syncOneTabCleanModeUi();
+    }
+
     private void enforceOneTabYouTubeMode() {
         if (!OneTabYouTubeMode.isEnabled() || isFinishing() || isDestroyed()) {
             return;
@@ -2367,7 +2881,19 @@ public abstract class BraveActivity extends ChromeActivity
             return;
         }
 
+        ensureOneTabStartupMaskObserver(selector);
         closeIncognitoTabsForOneTabMode(selector);
+
+        if (!isOneTabAuthenticated()) {
+            mOneTabAuthGatePendingNavigation = true;
+            maybeResolveOneTabAuthentication();
+            return;
+        }
+
+        if (mResetOneTabHomeAfterColdLauncherStart) {
+            resetOneTabHomeAfterColdLauncherStart(selector);
+            return;
+        }
 
         TabModel regularModel = selector.getModel(false);
         Tab keepTab = getOneTabKeepCandidate(regularModel);
@@ -2808,10 +3334,26 @@ public abstract class BraveActivity extends ChromeActivity
             }
         }
         checkForNotificationData();
+        syncOneTabCleanModeUi();
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == OTB_LOGIN_ACTIVITY_REQUEST_CODE) {
+            mOneTabLoginActivityLaunched = false;
+            if (resultCode == RESULT_OK) {
+                handleOneTabAuthenticated();
+            } else {
+                mOneTabAuthResolved = false;
+                setOneTabContentLocked(true);
+            }
+            return;
+        }
+        if (OneTabYouTubeMode.isEnabled()
+                && mOneTabFirebaseAuthManager != null
+                && mOneTabFirebaseAuthManager.onActivityResult(requestCode, resultCode, data)) {
+            return;
+        }
         if (resultCode == RESULT_OK
                 && (requestCode == BraveConstants.VERIFY_WALLET_ACTIVITY_REQUEST_CODE
                         || requestCode == BraveConstants.USER_WALLET_ACTIVITY_REQUEST_CODE
@@ -2883,7 +3425,25 @@ public abstract class BraveActivity extends ChromeActivity
             setUpdatePreferences();
         }
 
+        mResetOneTabHomeAfterColdLauncherStart =
+                OneTabYouTubeMode.isEnabled()
+                        && savedInstanceState == null
+                        && isLauncherEntryIntent(intent);
+        mShowOneTabStartupMaskAfterColdLauncherStart = mResetOneTabHomeAfterColdLauncherStart;
+        if (mResetOneTabHomeAfterColdLauncherStart) {
+            Log.i(OTB_PERF_TAG, "event=launcher_cold_start_reset_home armed=1");
+        }
+
         return super.maybeDispatchLaunchIntent(intent, savedInstanceState);
+    }
+
+    private boolean isLauncherEntryIntent(@Nullable Intent intent) {
+        if (intent == null || !Intent.ACTION_MAIN.equals(intent.getAction())) {
+            return false;
+        }
+
+        Set<String> categories = intent.getCategories();
+        return categories != null && categories.contains(Intent.CATEGORY_LAUNCHER);
     }
 
     private void setUpdatePreferences() {
@@ -3026,6 +3586,9 @@ public abstract class BraveActivity extends ChromeActivity
     }
 
     private void initWalletNativeServices() {
+        if (OneTabYouTubeMode.isEnabled()) {
+            return;
+        }
         // Don't initialize wallet services if disabled by policy
         if (BraveWalletPolicy.isDisabledByPolicy(mTabModelProfileSupplier.get())) {
             return;

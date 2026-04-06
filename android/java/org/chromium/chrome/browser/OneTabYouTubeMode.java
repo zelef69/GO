@@ -19,8 +19,23 @@ import java.util.Locale;
 
 @NullMarked
 public final class OneTabYouTubeMode {
-    private static final String DEFAULT_HOME_URL = "https://www.youtube.com/";
+    private static final String DEFAULT_HOME_URL = "https://m.youtube.com/";
     private static final String PACKAGE_PREFIX = BraveConstants.BRAVE_ANDROID_PACKAGE_PREFIX;
+    private static final String[] ALLOWED_YOUTUBE_HOSTS = {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtu.be",
+        "consent.youtube.com",
+        "accounts.youtube.com",
+    };
+    private static final String[] ALLOWED_GOOGLE_AUTH_HOSTS = {
+        "accounts.google.com",
+        "myaccount.google.com",
+        "consent.google.com",
+        "ogs.google.com",
+        "gds.google.com",
+    };
 
     private OneTabYouTubeMode() {}
 
@@ -53,13 +68,40 @@ public final class OneTabYouTubeMode {
         }
 
         String normalizedHost = host.toLowerCase(Locale.US);
-        return normalizedHost.equals("youtube.com")
-                || normalizedHost.equals("www.youtube.com")
-                || normalizedHost.equals("m.youtube.com")
-                || normalizedHost.equals("youtu.be")
-                || normalizedHost.equals("accounts.google.com")
-                || normalizedHost.equals("consent.youtube.com")
-                || normalizedHost.equals("consent.google.com");
+        return matchesAllowedHost(normalizedHost, ALLOWED_YOUTUBE_HOSTS)
+                || matchesAllowedHost(normalizedHost, ALLOWED_GOOGLE_AUTH_HOSTS);
+    }
+
+    public static boolean isYouTubeUrl(@Nullable String url) {
+        if (!isEnabled()) {
+            return true;
+        }
+        if (TextUtils.isEmpty(url)) {
+            return false;
+        }
+
+        Uri uri = Uri.parse(url.trim());
+        String scheme = uri.getScheme();
+        if (scheme == null
+                || (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme))) {
+            return false;
+        }
+
+        String host = uri.getHost();
+        if (TextUtils.isEmpty(host)) {
+            return false;
+        }
+
+        return matchesAllowedHost(host.toLowerCase(Locale.US), ALLOWED_YOUTUBE_HOSTS);
+    }
+
+    private static boolean matchesAllowedHost(String normalizedHost, String[] allowedHosts) {
+        for (String allowedHost : allowedHosts) {
+            if (normalizedHost.equals(allowedHost)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean isAllowedGurl(@Nullable GURL url) {

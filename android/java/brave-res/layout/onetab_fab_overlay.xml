@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 The Brave Authors. All rights reserved.
+     This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this file,
+     You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/onetab_fab_overlay_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="false"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:focusable="false"
+    android:importantForAccessibility="no">
+
+    <LinearLayout
+        android:id="@+id/onetab_fab_anchor"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="28dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/onetab_fab_menu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:alpha="0"
+            android:gravity="center_vertical|end"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/onetab_fab_pip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/onetab_fab_menu_item_bg"
+                android:clickable="true"
+                android:contentDescription="@string/onetab_fab_menu_pip"
+                android:focusable="true"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp"
+                android:text="@string/onetab_fab_menu_pip"
+                android:textColor="@android:color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/onetab_fab_account"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/onetab_fab_menu_item_bg"
+                android:clickable="true"
+                android:contentDescription="@string/onetab_fab_menu_account"
+                android:focusable="true"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp"
+                android:text="@string/onetab_fab_menu_account"
+                android:textColor="@android:color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/onetab_fab_admin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/onetab_fab_menu_item_bg"
+                android:clickable="true"
+                android:contentDescription="@string/onetab_fab_menu_admin"
+                android:focusable="true"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp"
+                android:text="@string/onetab_fab_menu_admin"
+                android:textColor="@android:color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/onetab_fab_logout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/onetab_fab_menu_item_bg"
+                android:clickable="true"
+                android:contentDescription="@string/onetab_fab_menu_logout"
+                android:focusable="true"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp"
+                android:text="@string/onetab_fab_menu_logout"
+                android:textColor="@android:color/white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/onetab_fab_main_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:elevation="0dp"
+            android:padding="0dp"
+            android:stateListAnimator="@null"
+            android:translationZ="0dp"
+            android:contentDescription="@string/onetab_fab_main"
+            app:backgroundTint="@android:color/transparent"
+            app:elevation="0dp"
+            app:fabCustomSize="72dp"
+            app:hoveredFocusedTranslationZ="0dp"
+            app:maxImageSize="58dp"
+            app:pressedTranslationZ="0dp"
+            app:srcCompat="@drawable/onetab_fab_logo"
+            app:useCompatPadding="false" />
+    </LinearLayout>
+
+</FrameLayout>

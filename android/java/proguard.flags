@@ -4,6 +4,13 @@
 
 -keep class org.chromium.chrome.browser.BraveSyncWorker { *; }
 
+# Keep OneTab auth/payment activities by name because they are launched through
+# explicit intents from the main app flow and FAB menu.
+-keep class org.chromium.chrome.browser.onetabauth.OneTabLoginActivity { *; }
+-keep class org.chromium.chrome.browser.onetabauth.OneTabAccountActivity { *; }
+-keep class org.chromium.chrome.browser.onetabauth.OneTabBuyPackageActivity { *; }
+-keep class org.chromium.chrome.browser.onetabauth.OneTabPurchaseReceiptActivity { *; }
+
 # Add methods for invocation below
 -keep class org.chromium.chrome.browser.ChromeTabbedActivity {
     *** mLayoutManager;

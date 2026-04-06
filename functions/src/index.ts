@@ -1,4 +1,3 @@
-import * as admin from "firebase-admin";
 import {
   HttpsError,
   CallableRequest,
@@ -6,11 +5,9 @@ import {
 } from "firebase-functions/v2/https";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {logger} from "firebase-functions";
+import {admin, db} from "./lib/firebase";
 
-admin.initializeApp();
 setGlobalOptions({maxInstances: 20});
-
-const db = admin.firestore();
 const usersCollection = db.collection("users");
 
 const DEFAULT_PLAN = "default";
@@ -821,3 +818,10 @@ export {
   quarantineSignature,
   rollbackSnapshot,
 } from "./crowd_signatures";
+
+export {
+  createPackageOrder,
+  submitManualCorrectionRequest,
+  applyManualPackageCorrection,
+  verifyPackageSlip,
+} from "./package_orders";
