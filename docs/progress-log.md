@@ -22827,3 +22827,93 @@
   - git remote access
 - Secret required but not stored:
   - Firebase admin service-account JSON remains local-only
+
+## 2026-04-07 23:40:30 +07:00
+
+- Current phase:
+  - Release snapshot pushed / post-push handoff
+- Task/objective:
+  - Record the real end state after commit/push so the next resume starts from the correct HEAD
+- Completed since last snapshot:
+  - Created commit:
+    - `594c51efd`
+    - message: `apk build release 1.90.2+429000006`
+  - Pushed successfully to:
+    - `origin/publish/go_play-sync-20260402`
+  - Verified the requested release-line snapshot is now on the user's GitHub repo
+- In progress now:
+  - No running task
+  - Remaining work is no longer git packaging; it is product validation on the admin GUI entitlement flow
+- Blockers / risks:
+  - local worktree still contains many untracked debug artifacts and an unstaged `AGENT.md` deletion
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - git commit and push succeeded
+- Exact next concrete step:
+  - resume with admin GUI live write smoke for `Duration days (+เพิ่ม)`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest progress entry
+  - `git status --short`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+- Current tool(s):
+  - `git`
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `git commit -m "apk build release 1.90.2+429000006"`
+  - `git push origin publish/go_play-sync-20260402`
+- Tool purpose:
+  - publish the current release snapshot to the user's repo
+- Tool state:
+  - completed
+- Expected resume command:
+  - `git status --short`
+  - `C:\Users\Master\Desktop\GO_PLAY\tools\go_play_admin_gui\run_admin_gui.bat`
+- Expected output/artifact path:
+  - pushed commit `594c51efd` on `origin/publish/go_play-sync-20260402`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `594c51efd`
+- Build flavor / target:
+  - repo snapshot aligned to release `1.90.2+429000006`
+- Primary working set:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `functions/src/package_orders.ts`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `git status --short`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none for checking repo state
+- Expected success signal:
+  - next operator round starts from pushed HEAD `594c51efd`
+- Expected failure signal:
+  - resume starts from stale pre-push assumptions
+- Last known log location:
+  - none
+- Last known artifact path:
+  - remote commit on `origin/publish/go_play-sync-20260402`
+- Recent decisions:
+  - keep handoff accurate even after the requested push is already done
+- Rejected approaches:
+  - leaving handoff saying push was still pending after the push had already completed
+- Stop point classification:
+  - push complete; handoff updated; next validation task pending
+- What is done but unverified:
+  - admin GUI live write smoke after the semantic fix
+- What is verified:
+  - commit `594c51efd` exists and was pushed successfully
+- External prerequisite:
+  - target UID for the next live admin verification
+- Secret required but not stored:
+  - Firebase admin service-account JSON remains local-only

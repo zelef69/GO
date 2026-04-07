@@ -1,124 +1,114 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-07 23:36:25 +07:00
+  - 2026-04-07 23:40:30 +07:00
 - Current phase:
-  - Release snapshot / git packaging
+  - Release snapshot pushed / post-push handoff
 - Current objective:
-  - ทำ source tree ให้ตรงกับ release line ล่าสุด `1.90.2+429000006` แล้ว commit/push ขึ้น `origin`
+  - บันทึกสถานะหลัง push release snapshot `1.90.2+429000006` ให้ตรงกับ HEAD ล่าสุด และชี้ next step ที่ยังค้างจริง
 - Completed since last update:
-  - อ่าน `docs/current-status.md` และท้าย `docs/progress-log.md` ก่อนเริ่มรอบนี้
-  - ตรวจโต๊ะจริงแล้วพบว่า branch ยังเป็น `publish/go_play-sync-20260402`
-  - ตรวจ `origin` แล้วชี้ไปที่ `https://github.com/zelef69/GO.git`
-  - ยืนยันว่า root cause ฝั่ง admin GUI ยังตรงกับโค้ดจริง:
-    - runtime access ยังอ่านจาก `users/{uid}/entitlements/*`
-    - `Duration days` ใน admin GUI ตอนนี้ขยับ `expiresAt` จริงแล้ว
-  - stage เฉพาะ source/docs/config ที่เป็นงานจริงของ release line นี้
-  - เติม `.gitignore` เพื่อกัน `artifacts/`, `.env`, `.venv`, `__pycache__`, และ service-account JSON ของ admin GUI
+  - Curated a clean staged snapshot instead of using `git add -A`
+  - Committed the staged release snapshot with:
+    - `apk build release 1.90.2+429000006`
+  - Pushed the commit to:
+    - `origin/publish/go_play-sync-20260402`
+  - New pushed HEAD:
+    - `594c51efd`
 - In progress now:
-  - staged snapshot พร้อมสำหรับ commit
-  - ยังไม่ได้รัน `git commit` และ `git push`
+  - No running process
+  - Working tree still has local untracked screenshots/logs plus unstaged `AGENT.md` deletion that were intentionally kept out of the pushed snapshot
 - Files/modules touched:
   - `.gitignore`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
   - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
   - `lib/features/setup/presentation/setup_page.dart`
   - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
   - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
 - Build/test status:
-  - `python -m compileall tools\\go_play_admin_gui\\go_play_admin\\firebase_backend.py tools\\go_play_admin_gui\\go_play_admin\\gui_app.py` passed in the previous round
-  - current staged snapshot contains 97 source/docs/config files
-  - no new build was run in this git-packaging round
+  - main release snapshot has been committed and pushed
+  - no new build/test command was run after the push itself
+  - admin GUI entitlement-semantic live write smoke is still pending
 - Blockers/risks:
-  - push may still fail if remote auth is unavailable on this desk
-  - `AGENT.md` is deleted in the worktree but intentionally left unstaged because that deletion is not part of the product snapshot
-  - local screenshots, dumps, logs, and other test debris remain untracked in the workspace and must stay out of the commit
+  - local worktree is still dirty from screenshots, dumps, and debug evidence
+  - `AGENT.md` remains deleted in the worktree but was intentionally not included in the pushed snapshot
 - Next concrete step:
-  - run `git commit -m "apk build release 1.90.2+429000006"` and `git push origin publish/go_play-sync-20260402`
+  - If resuming product work, start from the real pending item:
+    - run admin GUI live write smoke for `Duration days (+เพิ่ม)` and verify `users/{uid}/entitlements/{packageId}.expiresAt` moves forward
 - Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
   - `git status --short`
-  - `git diff --cached --name-status`
-  - `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
-  - `lib/features/setup/presentation/setup_page.dart`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `functions/src/package_orders.ts`
 - Current tool(s):
   - `shell_command`
   - `apply_patch`
   - `git`
 - Exact command(s):
   - `git status --short`
-  - `git branch --show-current`
-  - `git rev-parse HEAD`
-  - `git remote -v`
-  - `git add -u`
-  - `git restore --staged AGENT.md`
-  - `git add <selected new source/docs/config files>`
-  - `git diff --cached --name-status`
-  - `git diff --cached --stat`
-- Tool purpose:
-  - assemble a clean git snapshot for the current release line without leaking local artifacts or secrets
-- Tool state:
-  - staged snapshot ready; commit/push pending
-- Expected resume command:
   - `git commit -m "apk build release 1.90.2+429000006"`
   - `git push origin publish/go_play-sync-20260402`
+- Tool purpose:
+  - package and publish the current release-line source snapshot
+- Tool state:
+  - completed for the push path
+- Expected resume command:
+  - `git status --short`
+  - `C:\Users\Master\Desktop\GO_PLAY\tools\go_play_admin_gui\run_admin_gui.bat`
 - Expected output/artifact path:
-  - new commit on `origin/publish/go_play-sync-20260402`
+  - remote branch updated at `origin/publish/go_play-sync-20260402`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+  - `594c51efd`
 - Build flavor / target:
-  - mixed repo snapshot aligned to release `1.90.2+429000006`
+  - repo snapshot aligned to release `1.90.2+429000006`
 - Primary working set:
-  - `.gitignore` - local artifact and secret exclusions
-  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java` - native updater flow
-  - `lib/features/setup/presentation/setup_page.dart` - lightweight setup app UI
-  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py` - admin entitlement semantics
-  - `docs/current-status.md` - latest packaging handoff
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py` - entitlement grant semantics
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py` - operator-facing grant form wording
+  - `functions/src/package_orders.ts` - runtime access source of truth
+  - `docs/current-status.md` - latest handoff
   - `docs/progress-log.md` - append-only audit trail
 - Files to inspect first after resume:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
   - `git status --short`
-  - `git diff --cached --name-status`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
 - Command run from:
   - repo root `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - remote auth for `origin`
-  - staged snapshot remains unchanged
+  - service account JSON present locally for admin GUI
+  - target UID available for live verification
 - Expected success signal:
-  - commit created with message `apk build release 1.90.2+429000006`
-  - `git push` updates `origin/publish/go_play-sync-20260402`
+  - entitlement `expiresAt` extends and app remaining days increases after admin GUI grant
 - Expected failure signal:
-  - push auth failure
-  - non-fast-forward rejection
+  - entitlement write succeeds but `expiresAt` stays unchanged
 - Last known log location:
-  - none for this git-packaging round
+  - none for the push step itself
 - Last known artifact path:
-  - staged git snapshot only; no new binary artifact produced here
+  - remote pushed commit `594c51efd` on `origin/publish/go_play-sync-20260402`
 - Recent decisions:
-  - commit only real source/docs/config for the release line
-  - keep screenshots, dumps, logs, `.env`, and service-account JSON out of git
+  - keep the pushed snapshot focused on product code/docs/config
+  - keep local credentials and evidence files out of git
 - Rejected approaches:
-  - `git add -A` over the entire dirty tree
-  - committing local credentials or debug evidence
+  - `git add -A` on the full dirty desktop state
+  - committing service-account JSON or local screenshots
 - Stop point classification:
-  - staged and handoff-updated; commit/push pending
+  - release snapshot committed and pushed; next product validation step pending
 - What is done but unverified:
-  - remote push of the staged release snapshot
+  - admin GUI live write smoke after the semantic fix
 - What is verified:
-  - staged set contains the intended product code/docs/config
-  - staged set excludes admin GUI service-account JSON and `.venv`
-  - release line referenced by repo metadata is `1.90.2+429000006`
+  - release snapshot commit exists locally and on origin
+  - pushed commit message is `apk build release 1.90.2+429000006`
 - External prerequisite:
-  - git remote access to `origin`
+  - target UID for entitlement smoke verification
 - Secret required but not stored:
   - Firebase admin service-account JSON remains local-only and intentionally not committed
 - Actual code state after resume:
-  - repo is heavily dirty overall, but the staged snapshot is curated to the product changes plus docs/handoff only
+  - pushed source is aligned to release `1.90.2+429000006`
+  - local desk still has extra evidence files not part of the pushed snapshot
 - Chosen direction:
-  - finish the git packaging path now instead of expanding scope further
+  - treat the release snapshot as published and resume from the pending entitlement-validation work next
