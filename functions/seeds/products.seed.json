@@ -1,10 +1,24 @@
 {
   "products": {
-    "pkg_599": {
-      "name": "Premium 30 Days",
-      "price": 599,
+    "pkg_01": {
+      "name": "แพ็กเกจ GO_PLAY 30 วัน",
+      "price": 99,
       "currency": "THB",
       "durationDays": 30,
+      "active": true
+    },
+    "pkg_02": {
+      "name": "แพ็กเกจ GO_PLAY 90 วัน",
+      "price": 199,
+      "currency": "THB",
+      "durationDays": 90,
+      "active": true
+    },
+    "pkg_03": {
+      "name": "แพ็กเกจ GO_PLAY 365 วัน",
+      "price": 599,
+      "currency": "THB",
+      "durationDays": 365,
       "active": true
     }
   }

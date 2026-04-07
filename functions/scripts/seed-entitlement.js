@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 function parseArgs(argv) {
   const options = {
     uid: "",
-    packageId: "pkg_599",
+    packageId: "pkg_03",
     days: 30,
     active: true,
     dryRun: false,

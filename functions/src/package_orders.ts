@@ -16,19 +16,18 @@ const ORDER_STATUS_PAID = "PAID";
 const ORDER_STATUS_EXPIRED = "EXPIRED";
 const ORDER_TTL_MINUTES = 30;
 const SLIP_MAX_BYTES = 5 * 1024 * 1024;
-const SLIP_PENDING_RETRY_WINDOW_MS = 60 * 1000;
 const MATCH_ACCOUNT_ENABLED = true;
 const CHECK_DUPLICATE_ENABLED = true;
 const ORDER_PATH_PREFIX = "orders";
 const PAYMENT_PATH_PREFIX = "payments";
 const PRODUCT_PATH_PREFIX = "products";
 const SLIP_PATH_PREFIX = "slips";
-const SLIP_VERIFICATION_PATH_PREFIX = "slip_verifications";
 const MANUAL_CORRECTION_REQUEST_PATH_PREFIX = "manual_correction_requests";
 const USER_COLLECTION_PATH_PREFIX = "users";
 const PURCHASE_HISTORY_PATH_PREFIX = "purchase_history";
 const PACKAGE_HISTORY_PATH_PREFIX = "package_history";
 const ALLOWED_IMAGE_MIME = /^image\/(jpeg|jpg|png|webp|heic|heif)$/i;
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 type OrderStatus =
   | typeof ORDER_STATUS_PENDING
@@ -74,21 +73,6 @@ interface PaymentData {
   slipSha256: string;
   createdAt: FirebaseFirestore.Timestamp;
   thunderRaw: Record<string, unknown>;
-}
-
-interface SlipVerificationCacheData {
-  slipSha256: string;
-  storagePath: string;
-  orderId: string;
-  packageId: string;
-  expectedAmount: number;
-  amountInSlip: number | null;
-  transRef: string | null;
-  paymentRef: string | null;
-  lastVerifyCode: string | null;
-  lastVerifyMessage: string | null;
-  thunderStatus: string | null;
-  lastVerificationAt: FirebaseFirestore.Timestamp | null;
 }
 
 interface SlipInspection {
@@ -172,6 +156,21 @@ interface ManualPackageCorrectionInput {
   daysDelta: number;
   note: string;
   requestId: string | null;
+}
+
+interface PackageAccessState {
+  allowed: boolean;
+  status: "ACTIVE" | "EXPIRED" | "NO_ACTIVE_PACKAGE";
+  packageId: string | null;
+  remainingDays: number;
+  expiresAt: string | null;
+  message: string;
+}
+
+interface PackageAccessCandidate {
+  packageId: string;
+  expiresAt: Date;
+  remainingDays: number;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -445,35 +444,6 @@ function parsePayment(snapshot: FirebaseFirestore.DocumentSnapshot): PaymentData
   };
 }
 
-function parseSlipVerificationCache(
-  snapshot: FirebaseFirestore.DocumentSnapshot
-): SlipVerificationCacheData | null {
-  if (!snapshot.exists) {
-    return null;
-  }
-  const data = asRecord(snapshot.data());
-  return {
-    slipSha256: asTrimmedString(data["slipSha256"]),
-    storagePath: asTrimmedString(data["storagePath"]),
-    orderId: asTrimmedString(data["orderId"]),
-    packageId: asTrimmedString(data["packageId"]),
-    expectedAmount: asNumber(data["expectedAmount"]),
-    amountInSlip:
-      typeof data["amountInSlip"] === "number" ?
-        asNumber(data["amountInSlip"]) :
-        null,
-    transRef: asTrimmedString(data["transRef"]) || null,
-    paymentRef: asTrimmedString(data["paymentRef"]) || null,
-    lastVerifyCode: asTrimmedString(data["lastVerifyCode"]) || null,
-    lastVerifyMessage: asTrimmedString(data["lastVerifyMessage"]) || null,
-    thunderStatus: asTrimmedString(data["thunderStatus"]) || null,
-    lastVerificationAt:
-      data["lastVerificationAt"] instanceof admin.firestore.Timestamp ?
-        data["lastVerificationAt"] :
-        null,
-  };
-}
-
 function buildOrderPath(orderId: string): string {
   return `${ORDER_PATH_PREFIX}/${orderId}`;
 }
@@ -510,6 +480,24 @@ function getThunderApiKey(): string {
     );
   }
   return apiKey;
+}
+
+function buildPackageAccessState(params: {
+  allowed: boolean;
+  status: "ACTIVE" | "EXPIRED" | "NO_ACTIVE_PACKAGE";
+  packageId: string | null;
+  remainingDays: number;
+  expiresAt: Date | null;
+  message: string;
+}): PackageAccessState {
+  return {
+    allowed: params.allowed,
+    status: params.status,
+    packageId: params.packageId,
+    remainingDays: params.remainingDays,
+    expiresAt: params.expiresAt?.toISOString() ?? null,
+    message: params.message,
+  };
 }
 
 function isOrderExpired(order: OrderData, now: Date): boolean {
@@ -662,210 +650,6 @@ function buildPaidResponse(params: {
   };
 }
 
-function shouldReuseCachedVerifyFailure(
-  order: OrderData,
-  storagePath: string
-): boolean {
-  if (order.slipPath !== storagePath || order.lastVerifyCode == null) {
-    return false;
-  }
-
-  return [
-    "DUPLICATE_SLIP",
-    "AMOUNT_MISMATCH",
-    "ACCOUNT_NOT_MATCH",
-    "ORDER_EXPIRED",
-  ].includes(order.lastVerifyCode);
-}
-
-function shouldThrottlePendingSlipRetry(
-  order: OrderData,
-  storagePath: string,
-  now: Date
-): boolean {
-  if (
-    order.slipPath !== storagePath ||
-    order.lastVerifyCode !== "SLIP_PENDING" ||
-    order.lastVerificationAt == null
-  ) {
-    return false;
-  }
-
-  return (
-    now.getTime() - order.lastVerificationAt.toDate().getTime() <
-    SLIP_PENDING_RETRY_WINDOW_MS
-  );
-}
-
-function shouldReuseCachedSlipVerification(
-  cache: SlipVerificationCacheData,
-  expectedAmount: number,
-  now: Date
-): boolean {
-  if (cache.lastVerifyCode == null) {
-    return false;
-  }
-
-  if (cache.lastVerifyCode === ORDER_STATUS_PAID ||
-      cache.lastVerifyCode === "DUPLICATE_SLIP" ||
-      cache.lastVerifyCode === "ACCOUNT_NOT_MATCH") {
-    return true;
-  }
-
-  if (cache.lastVerifyCode === "AMOUNT_MISMATCH") {
-    return cache.expectedAmount === expectedAmount;
-  }
-
-  if (
-    cache.lastVerifyCode === "SLIP_PENDING" &&
-    cache.lastVerificationAt != null
-  ) {
-    return (
-      now.getTime() - cache.lastVerificationAt.toDate().getTime() <
-      SLIP_PENDING_RETRY_WINDOW_MS
-    );
-  }
-
-  return false;
-}
-
-function throwCachedVerifyFailure(order: OrderData): never {
-  switch (order.lastVerifyCode) {
-  case "DUPLICATE_SLIP":
-    throw new HttpsError(
-      "already-exists",
-      order.lastVerifyMessage || "Slip has already been used.",
-      {
-        code: "DUPLICATE_SLIP",
-        retryable: false,
-        cached: true,
-      }
-    );
-  case "AMOUNT_MISMATCH":
-    throw new HttpsError(
-      "failed-precondition",
-      order.lastVerifyMessage || "Slip amount does not match the selected package.",
-      {
-        code: "AMOUNT_MISMATCH",
-        retryable: false,
-        cached: true,
-      }
-    );
-  case "ACCOUNT_NOT_MATCH":
-    throw new HttpsError(
-      "failed-precondition",
-      order.lastVerifyMessage ||
-        "Slip receiver account does not match the configured account.",
-      {
-        code: "ACCOUNT_NOT_MATCH",
-        retryable: false,
-        cached: true,
-      }
-    );
-  case "ORDER_EXPIRED":
-    throw new HttpsError(
-      "deadline-exceeded",
-      order.lastVerifyMessage || "Order has expired. Please create a new order.",
-      {
-        code: "ORDER_EXPIRED",
-        retryable: false,
-        cached: true,
-      }
-    );
-  default:
-    throw new HttpsError(
-      "failed-precondition",
-      "Slip verification cannot continue for this order.",
-      {
-        code: order.lastVerifyCode ?? "VERIFY_FAILED",
-        retryable: false,
-        cached: true,
-      }
-    );
-  }
-}
-
-function throwCachedSlipVerificationFailure(
-  cache: SlipVerificationCacheData,
-  expectedAmount: number
-): never {
-  switch (cache.lastVerifyCode) {
-  case ORDER_STATUS_PAID:
-  case "DUPLICATE_SLIP":
-    throw new HttpsError(
-      "already-exists",
-      cache.lastVerifyMessage || "This slip has already been used.",
-      {
-        code: "DUPLICATE_SLIP",
-        retryable: false,
-        cached: true,
-        transRef: cache.transRef,
-        paymentRef: cache.paymentRef,
-      }
-    );
-  case "AMOUNT_MISMATCH":
-    throw new HttpsError(
-      "failed-precondition",
-      cache.lastVerifyMessage ||
-        "Slip amount does not match the selected package.",
-      {
-        code: "AMOUNT_MISMATCH",
-        retryable: false,
-        cached: true,
-        expectedAmount,
-        amountInSlip: cache.amountInSlip,
-      }
-    );
-  case "ACCOUNT_NOT_MATCH":
-    throw new HttpsError(
-      "failed-precondition",
-      cache.lastVerifyMessage ||
-        "Slip receiver account does not match the configured account.",
-      {
-        code: "ACCOUNT_NOT_MATCH",
-        retryable: false,
-        cached: true,
-      }
-    );
-  case "SLIP_PENDING":
-    throw new HttpsError(
-      "aborted",
-      cache.lastVerifyMessage ||
-        "Slip verification is pending. Please retry shortly.",
-      {
-        code: "SLIP_PENDING",
-        retryable: true,
-        cached: true,
-      }
-    );
-  default:
-    throw new HttpsError(
-      "failed-precondition",
-      cache.lastVerifyMessage ||
-        "Slip verification cannot continue for this slip.",
-      {
-        code: cache.lastVerifyCode ?? "VERIFY_FAILED",
-        retryable: false,
-        cached: true,
-      }
-    );
-  }
-}
-
-async function upsertSlipVerificationCache(
-  slipSha256: string,
-  patch: Record<string, unknown>
-): Promise<void> {
-  await db.collection(SLIP_VERIFICATION_PATH_PREFIX)
-    .doc(slipSha256)
-    .set({
-      ...patch,
-      slipSha256,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastVerificationAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, {merge: true});
-}
-
 function mapThunderError(error: ThunderApiError): HttpsError {
   if (error.code === "SLIP_PENDING") {
     return new HttpsError(
@@ -989,6 +773,95 @@ export const createPackageOrder = onCall(
   }
 );
 
+export const getPackageAccessState = onCall(
+  {enforceAppCheck: true},
+  async (request) => {
+    requireAppCheck(request);
+    const uid = getUid(request);
+
+    try {
+      const now = new Date();
+      const entitlementsSnap = await db
+        .collection(USER_COLLECTION_PATH_PREFIX)
+        .doc(uid)
+        .collection("entitlements")
+        .get();
+
+      let bestActive: PackageAccessCandidate | null = null;
+      let bestExpired: PackageAccessCandidate | null = null;
+
+      for (const doc of entitlementsSnap.docs) {
+        const data = asRecord(doc.data());
+        const packageId = asTrimmedString(data["packageId"]) || doc.id;
+        const active = asBoolean(data["active"], false);
+        const expiresAt = toDate(data["expiresAt"]);
+        if (packageId.length === 0 || expiresAt == null) {
+          continue;
+        }
+
+        const remainingDays = Math.floor(
+          (expiresAt.getTime() - now.getTime()) / DAY_IN_MS
+        );
+
+        if (active && remainingDays >= 0) {
+          if (bestActive == null || expiresAt.getTime() > bestActive.expiresAt.getTime()) {
+            bestActive = {packageId, expiresAt, remainingDays};
+          }
+          continue;
+        }
+
+        if (remainingDays < 0) {
+          if (bestExpired == null || expiresAt.getTime() > bestExpired.expiresAt.getTime()) {
+            bestExpired = {packageId, expiresAt, remainingDays};
+          }
+        }
+      }
+
+      const activeCandidate = bestActive;
+      if (activeCandidate != null) {
+        return buildPackageAccessState({
+          allowed: true,
+          status: "ACTIVE",
+          packageId: activeCandidate.packageId,
+          remainingDays: activeCandidate.remainingDays,
+          expiresAt: activeCandidate.expiresAt,
+          message: "ใช้งานแพ็กเกจได้ตามปกติ",
+        });
+      }
+
+      const expiredCandidate = bestExpired;
+      if (expiredCandidate != null) {
+        return buildPackageAccessState({
+          allowed: false,
+          status: "EXPIRED",
+          packageId: expiredCandidate.packageId,
+          remainingDays: expiredCandidate.remainingDays,
+          expiresAt: expiredCandidate.expiresAt,
+          message: "แพ็กเกจหมดอายุแล้ว กรุณาเปิดหน้าบัญชีเพื่อต่ออายุ",
+        });
+      }
+
+      return buildPackageAccessState({
+        allowed: false,
+        status: "NO_ACTIVE_PACKAGE",
+        packageId: null,
+        remainingDays: -1,
+        expiresAt: null,
+        message: "ยังไม่มีแพ็กเกจที่ใช้งานอยู่ กรุณาเปิดหน้าบัญชีเพื่อซื้อแพ็กเกจ",
+      });
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      logger.error("getPackageAccessState failed", {
+        uid,
+        ...serializeError(error),
+      });
+      throw new HttpsError("internal", "Unable to resolve package access.");
+    }
+  }
+);
+
 export const verifyPackageSlip = onCall(
   {
     enforceAppCheck: true,
@@ -1051,49 +924,8 @@ export const verifyPackageSlip = onCall(
         );
       }
 
-      if (shouldReuseCachedVerifyFailure(order, storagePath)) {
-        throwCachedVerifyFailure(order);
-      }
-
-      if (shouldThrottlePendingSlipRetry(order, storagePath, now)) {
-        throw new HttpsError(
-          "aborted",
-          "Slip verification is pending. Please retry shortly.",
-          {
-            code: "SLIP_PENDING",
-            retryable: true,
-            cached: true,
-          }
-        );
-      }
-
       slipInspection = await inspectSlip(storagePath);
       const verifiedSlip = slipInspection;
-      const slipVerificationRef = db.collection(SLIP_VERIFICATION_PATH_PREFIX)
-        .doc(verifiedSlip.slipSha256);
-      const cachedSlipVerification = parseSlipVerificationCache(
-        await slipVerificationRef.get()
-      );
-      if (
-        cachedSlipVerification != null &&
-        shouldReuseCachedSlipVerification(
-          cachedSlipVerification,
-          order.expectedAmount,
-          now
-        )
-      ) {
-        await updateOrderVerificationState(orderRef, {
-          slipPath: storagePath,
-          slipSha256: verifiedSlip.slipSha256,
-          lastVerifyCode: cachedSlipVerification.lastVerifyCode,
-          lastVerifyMessage: cachedSlipVerification.lastVerifyMessage,
-          thunderStatus: cachedSlipVerification.thunderStatus,
-        });
-        throwCachedSlipVerificationFailure(
-          cachedSlipVerification,
-          order.expectedAmount
-        );
-      }
 
       const thunderResult = await verifySlipByUrl(getThunderApiKey(), {
         url: verifiedSlip.downloadUrl,
@@ -1107,18 +939,6 @@ export const verifyPackageSlip = onCall(
         await updateOrderVerificationState(orderRef, {
           slipPath: storagePath,
           slipSha256: verifiedSlip.slipSha256,
-          lastVerifyCode: "DUPLICATE_SLIP",
-          lastVerifyMessage: "Slip was already used.",
-          thunderStatus: "DUPLICATE_SLIP",
-        });
-        await upsertSlipVerificationCache(verifiedSlip.slipSha256, {
-          storagePath,
-          orderId,
-          packageId: order.packageId,
-          expectedAmount: order.expectedAmount,
-          amountInSlip: thunderResult.amountInSlip,
-          transRef: asTrimmedString(thunderResult.rawSlip["transRef"]) || null,
-          paymentRef: null,
           lastVerifyCode: "DUPLICATE_SLIP",
           lastVerifyMessage: "Slip was already used.",
           thunderStatus: "DUPLICATE_SLIP",
@@ -1142,18 +962,6 @@ export const verifyPackageSlip = onCall(
           lastVerifyMessage: "Slip amount does not match the selected package.",
           thunderStatus: "AMOUNT_MISMATCH",
         });
-        await upsertSlipVerificationCache(verifiedSlip.slipSha256, {
-          storagePath,
-          orderId,
-          packageId: order.packageId,
-          expectedAmount: order.expectedAmount,
-          amountInSlip: thunderResult.amountInSlip,
-          transRef: asTrimmedString(thunderResult.rawSlip["transRef"]) || null,
-          paymentRef: null,
-          lastVerifyCode: "AMOUNT_MISMATCH",
-          lastVerifyMessage: "Slip amount does not match the selected package.",
-          thunderStatus: "AMOUNT_MISMATCH",
-        });
         throw new HttpsError(
           "failed-precondition",
           "Slip amount does not match the selected package.",
@@ -1170,18 +978,6 @@ export const verifyPackageSlip = onCall(
         await updateOrderVerificationState(orderRef, {
           slipPath: storagePath,
           slipSha256: verifiedSlip.slipSha256,
-          lastVerifyCode: "ACCOUNT_NOT_MATCH",
-          lastVerifyMessage: "Slip receiver account did not match the configured account.",
-          thunderStatus: "ACCOUNT_NOT_MATCH",
-        });
-        await upsertSlipVerificationCache(verifiedSlip.slipSha256, {
-          storagePath,
-          orderId,
-          packageId: order.packageId,
-          expectedAmount: order.expectedAmount,
-          amountInSlip: thunderResult.amountInSlip,
-          transRef: asTrimmedString(thunderResult.rawSlip["transRef"]) || null,
-          paymentRef: null,
           lastVerifyCode: "ACCOUNT_NOT_MATCH",
           lastVerifyMessage: "Slip receiver account did not match the configured account.",
           thunderStatus: "ACCOUNT_NOT_MATCH",
@@ -1267,21 +1063,6 @@ export const verifyPackageSlip = onCall(
         const existingPaymentSnap = await tx.get(paymentRef);
         if (existingPaymentSnap.exists) {
           const existingPayment = parsePayment(existingPaymentSnap);
-          tx.set(slipVerificationRef, {
-            slipSha256: verifiedSlip.slipSha256,
-            storagePath,
-            orderId,
-            packageId: freshOrder.packageId,
-            expectedAmount: freshOrder.expectedAmount,
-            amountInSlip: existingPayment.amountInSlip,
-            transRef: existingPayment.transRef,
-            paymentRef: existingPayment.transRef,
-            lastVerifyCode: "DUPLICATE_SLIP",
-            lastVerifyMessage: "This slip has already been used.",
-            thunderStatus: "DUPLICATE_SLIP",
-            lastVerificationAt: admin.firestore.Timestamp.fromDate(now),
-            updatedAt: admin.firestore.Timestamp.fromDate(now),
-          }, {merge: true});
           if (freshOrder.paymentRef === existingPayment.transRef &&
               existingPayment.orderId === orderId &&
               existingPayment.uid === uid) {
@@ -1334,21 +1115,6 @@ export const verifyPackageSlip = onCall(
         };
 
         tx.create(paymentRef, paymentData);
-        tx.set(slipVerificationRef, {
-          slipSha256: verifiedSlip.slipSha256,
-          storagePath,
-          orderId,
-          packageId: freshOrder.packageId,
-          expectedAmount: freshOrder.expectedAmount,
-          amountInSlip: thunderResult.amountInSlip,
-          transRef,
-          paymentRef: transRef,
-          lastVerifyCode: ORDER_STATUS_PAID,
-          lastVerifyMessage: "Slip verified successfully.",
-          thunderStatus: ORDER_STATUS_PAID,
-          lastVerificationAt: admin.firestore.Timestamp.fromDate(now),
-          updatedAt: admin.firestore.Timestamp.fromDate(now),
-        }, {merge: true});
 
         const entitlementData: EntitlementData = {
           active: true,
@@ -1442,26 +1208,6 @@ export const verifyPackageSlip = onCall(
             ...serializeError(updateError),
           });
         });
-        if (slipInspection != null && order != null) {
-          await upsertSlipVerificationCache(slipInspection.slipSha256, {
-            storagePath,
-            orderId,
-            packageId: order.packageId,
-            expectedAmount: order.expectedAmount,
-            amountInSlip: null,
-            transRef: null,
-            paymentRef: null,
-            lastVerifyCode: asTrimmedString(mappedDetails["code"]) || error.code,
-            lastVerifyMessage: mappedError.message,
-            thunderStatus: error.code,
-          }).catch((cacheError) => {
-            logger.error("verifyPackageSlip failed to persist slip cache after Thunder error", {
-              orderId,
-              storagePath,
-              ...serializeError(cacheError),
-            });
-          });
-        }
         throw mappedError;
       }
       if (error instanceof HttpsError) {

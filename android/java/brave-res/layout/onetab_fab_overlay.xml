@@ -4,7 +4,6 @@
      License, v. 2.0. If a copy of the MPL was not distributed with this file,
      You can obtain one at https://mozilla.org/MPL/2.0/. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/onetab_fab_overlay_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -68,22 +67,6 @@
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/onetab_fab_admin"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/onetab_fab_menu_item_bg"
-                android:clickable="true"
-                android:contentDescription="@string/onetab_fab_menu_admin"
-                android:focusable="true"
-                android:paddingHorizontal="14dp"
-                android:paddingVertical="10dp"
-                android:text="@string/onetab_fab_menu_admin"
-                android:textColor="@android:color/white"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <TextView
                 android:id="@+id/onetab_fab_logout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -100,23 +83,20 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/onetab_fab_main_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:elevation="0dp"
-            android:padding="0dp"
-            android:stateListAnimator="@null"
-            android:translationZ="0dp"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:adjustViewBounds="true"
+            android:background="@android:color/transparent"
             android:contentDescription="@string/onetab_fab_main"
-            app:backgroundTint="@android:color/transparent"
-            app:elevation="0dp"
-            app:fabCustomSize="72dp"
-            app:hoveredFocusedTranslationZ="0dp"
-            app:maxImageSize="58dp"
-            app:pressedTranslationZ="0dp"
-            app:srcCompat="@drawable/onetab_fab_logo"
-            app:useCompatPadding="false" />
+            android:elevation="0dp"
+            android:outlineProvider="none"
+            android:padding="0dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/onetab_fab_logo"
+            android:stateListAnimator="@null"
+            android:translationZ="0dp" />
     </LinearLayout>
 
 </FrameLayout>

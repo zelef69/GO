@@ -1,175 +1,124 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-06 10:55:31 +07:00
+  - 2026-04-07 23:36:25 +07:00
 - Current phase:
-  - Phase 5 / Runtime recovery from the latest device-installed baseline
+  - Release snapshot / git packaging
 - Current objective:
-  - Keep the APK currently installed on the device as the minimum floor, recover the broken `FAB -> Account` flow without regressing below that runtime baseline, and freeze a buildable state before resuming the next requested feature batch.
+  - ทำ source tree ให้ตรงกับ release line ล่าสุด `1.90.2+429000006` แล้ว commit/push ขึ้น `origin`
 - Completed since last update:
-  - Read the recorded handoff and confirmed it was stale versus the actual device/runtime state.
-  - Re-established the real device baseline from the installed package:
-    - package `com.onetabtube.browser_default`
-    - version `1.90.0 (429000004)`
-    - `lastUpdateTime=2026-04-06 10:48:46`
-  - Verified the reported `Account` failure was not a random crash inside the screen but a packaging problem: the installed APK initially did not contain `OneTabAccountActivity`.
-  - Confirmed the current FAB handler in [OneTabFabMenuCoordinator.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java) still starts `OneTabAccountActivity` in-app.
-  - Compared the live device package behavior with the current WSL build tree and found the auth/payment activities were missing from the buildable manifest that the current `src_ext4` target used.
-  - Applied the smallest fix directly in the real build tree:
-    - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
-    - added:
-      - `OneTabLoginActivity`
-      - `OneTabAccountActivity`
-      - `OneTabBuyPackageActivity`
-      - `OneTabPurchaseReceiptActivity`
-  - Rebuilt `brave/build/android:onetabtube_android_package` successfully from `src_ext4`.
-  - Installed the rebuilt APK with `adb install --no-incremental -r ...` so the device runtime actually moved to the new package.
-  - Verified the runtime result on the connected device:
-    - `FAB -> Account` now opens successfully
-    - screenshot proof: [account_open_now.jpg](C:/Users/Master/Desktop/GO_PLAY/account_open_now.jpg)
-    - UI dump proof: [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
-    - the screen shows Gmail and `59 days`
+  - อ่าน `docs/current-status.md` และท้าย `docs/progress-log.md` ก่อนเริ่มรอบนี้
+  - ตรวจโต๊ะจริงแล้วพบว่า branch ยังเป็น `publish/go_play-sync-20260402`
+  - ตรวจ `origin` แล้วชี้ไปที่ `https://github.com/zelef69/GO.git`
+  - ยืนยันว่า root cause ฝั่ง admin GUI ยังตรงกับโค้ดจริง:
+    - runtime access ยังอ่านจาก `users/{uid}/entitlements/*`
+    - `Duration days` ใน admin GUI ตอนนี้ขยับ `expiresAt` จริงแล้ว
+  - stage เฉพาะ source/docs/config ที่เป็นงานจริงของ release line นี้
+  - เติม `.gitignore` เพื่อกัน `artifacts/`, `.env`, `.venv`, `__pycache__`, และ service-account JSON ของ admin GUI
 - In progress now:
-  - No half-written recovery patch is left.
-  - The current build/device state is usable again.
-  - The next work item has not started yet; the recovery state needs to be used as the new working baseline.
+  - staged snapshot พร้อมสำหรับ commit
+  - ยังไม่ได้รัน `git commit` และ `git push`
 - Files/modules touched:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [OneTabFabMenuCoordinator.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java) — inspected to confirm the `Account` click path
-  - [OneTabAccountActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java) — inspected as the target screen
-  - [AndroidManifest.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/AndroidManifest.xml) — inspected as the Brave manifest snippet
-  - [brave_java_sources.gni](C:/Users/Master/Desktop/GO_PLAY/android/brave_java_sources.gni) — inspected for Java source inclusion
-  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml) — actual manifest file patched in the build tree
+  - `.gitignore`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `lib/features/setup/presentation/setup_page.dart`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
 - Build/test status:
-  - Device-installed runtime baseline:
-    - [device_baseline_package_20260406_1053.txt](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/device_baseline_package_20260406_1053.txt)
-  - Build passed:
-    - [account_manifest_fix_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_manifest_fix_build_20260406.log)
-  - Built APK hash:
-    - `8E49725AFE44405792321664A9468A80A96E532D67CE4A9415D7FC2663D392B2`
-    - [account_manifest_fix_apk_hash_20260406_1053.txt](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_manifest_fix_apk_hash_20260406_1053.txt)
-  - Runtime verified:
-    - `Account` screen opens from the FAB on-device
-    - [account_open_now.jpg](C:/Users/Master/Desktop/GO_PLAY/account_open_now.jpg)
-    - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
+  - `python -m compileall tools\\go_play_admin_gui\\go_play_admin\\firebase_backend.py tools\\go_play_admin_gui\\go_play_admin\\gui_app.py` passed in the previous round
+  - current staged snapshot contains 97 source/docs/config files
+  - no new build was run in this git-packaging round
 - Blockers/risks:
-  - The manifest recovery patch currently lives in the real `src_ext4` build tree, not in a repo-local `chrome/android/java/AndroidManifest.xml` file under the Windows workspace.
-  - The recorded handoff before this snapshot was stale and should not be trusted for runtime state before `2026-04-06 10:55 +07:00`.
-  - The user asked for more feature work previously (`success/receipt`, `Logout`, history, manual correction, bank account info on Buy package), but none of that should be resumed until this recovered baseline is treated as the floor.
+  - push may still fail if remote auth is unavailable on this desk
+  - `AGENT.md` is deleted in the worktree but intentionally left unstaged because that deletion is not part of the product snapshot
+  - local screenshots, dumps, logs, and other test debris remain untracked in the workspace and must stay out of the commit
 - Next concrete step:
-  - Start the next requested feature batch from this recovered baseline, and keep changes additive only:
-    1. inspect the current Account/Buy-package code paths that are already on the device
-    2. choose the smallest next feature delta from the user’s pending list
-    3. build from `src_ext4`
-    4. install and verify that the runtime remains at least as good as the current device baseline
+  - run `git commit -m "apk build release 1.90.2+429000006"` and `git push origin publish/go_play-sync-20260402`
 - Expected resume inspection scope:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [OneTabFabMenuCoordinator.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java)
-  - [OneTabAccountActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java)
-  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
-  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
-  - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
+  - `git status --short`
+  - `git diff --cached --name-status`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `lib/features/setup/presentation/setup_page.dart`
 - Current tool(s):
   - `shell_command`
   - `apply_patch`
-  - `view_image`
+  - `git`
 - Exact command(s):
-  - `Get-Content docs/current-status.md`
-  - `Get-Content docs/progress-log.md -Tail 200`
-  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode|versionName|lastUpdateTime'`
-  - `adb shell pm path com.onetabtube.browser_default`
-  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-  - `cmd /c "adb exec-out screencap -p > ..."`
-  - `adb shell input tap ...`
-  - `adb logcat -c`
-  - `adb logcat -d -v brief ...`
-  - `aapt dump xmltree ... OneTabTube.apk AndroidManifest.xml`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package ..."`
-  - `adb install --no-incremental -r ...\\OneTabTube.apk`
-  - `git rev-parse --abbrev-ref HEAD`
+  - `git status --short`
+  - `git branch --show-current`
   - `git rev-parse HEAD`
+  - `git remote -v`
+  - `git add -u`
+  - `git restore --staged AGENT.md`
+  - `git add <selected new source/docs/config files>`
+  - `git diff --cached --name-status`
+  - `git diff --cached --stat`
 - Tool purpose:
-  - Reconcile stale handoff versus actual device state, patch the buildable manifest in the real `src_ext4` tree, rebuild, reinstall, and verify the broken `Account` flow from the user-reported runtime baseline.
+  - assemble a clean git snapshot for the current release line without leaking local artifacts or secrets
 - Tool state:
-  - idle
+  - staged snapshot ready; commit/push pending
 - Expected resume command:
-  - Reuse the same `src_ext4` build command for the next additive feature delta:
-    - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/<next_log>.log"`
+  - `git commit -m "apk build release 1.90.2+429000006"`
+  - `git push origin publish/go_play-sync-20260402`
 - Expected output/artifact path:
-  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk)
-  - [artifacts/android_build/](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build)
+  - new commit on `origin/publish/go_play-sync-20260402`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `20241c411b2820454e68db6add1013b643ee4155`
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
 - Build flavor / target:
-  - `src_ext4`
-  - `brave/build/android:onetabtube_android_package`
+  - mixed repo snapshot aligned to release `1.90.2+429000006`
 - Primary working set:
-  - [OneTabFabMenuCoordinator.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java) — current in-app entry point into `Account`
-  - [OneTabAccountActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java) — runtime Account UI that must not regress
-  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java) — likely next feature surface
-  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml) — actual build manifest currently carrying the recovery fix
-  - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml) — proof of current working UI baseline
+  - `.gitignore` - local artifact and secret exclusions
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java` - native updater flow
+  - `lib/features/setup/presentation/setup_page.dart` - lightweight setup app UI
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py` - admin entitlement semantics
+  - `docs/current-status.md` - latest packaging handoff
+  - `docs/progress-log.md` - append-only audit trail
 - Files to inspect first after resume:
-  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
-  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
-  - [OneTabAccountActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java)
-  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
-  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\AndroidManifest.xml)
-  - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `git status --short`
+  - `git diff --cached --name-status`
 - Command run from:
   - repo root `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - connected Android device (`R9TRC00GA2E`) still available via `adb`
-  - WSL checkout at `/home/master/src_ext4` available
-  - `third_party/depot_tools` in `src_ext4` usable
+  - remote auth for `origin`
+  - staged snapshot remains unchanged
 - Expected success signal:
-  - next build passes
-  - next install updates the package on device
-  - `FAB -> Account` still opens, with no regression below the current on-device baseline
+  - commit created with message `apk build release 1.90.2+429000006`
+  - `git push` updates `origin/publish/go_play-sync-20260402`
 - Expected failure signal:
-  - build fails in `src_ext4`
-  - installed package loses `OneTab*Activity` declarations again
-  - `FAB -> Account` no longer opens or regresses from the verified `59 days` screen
+  - push auth failure
+  - non-fast-forward rejection
 - Last known log location:
-  - [account_manifest_fix_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_manifest_fix_build_20260406.log)
+  - none for this git-packaging round
 - Last known artifact path:
-  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk)
-  - [account_open_now.jpg](C:/Users/Master/Desktop/GO_PLAY/account_open_now.jpg)
-  - [account_open_now.xml](C:/Users/Master/Desktop/GO_PLAY/account_open_now.xml)
+  - staged git snapshot only; no new binary artifact produced here
 - Recent decisions:
-  - Treat the device-installed APK as the floor; do not regress below it.
-  - Do not roll back to the old `01:56` artifact baseline just because it once built.
-  - Fix the reported `Account` breakage by the smallest packaging recovery rather than broad manifest/build-tree surgery.
-  - Verify runtime on the actual device before touching new feature work.
+  - commit only real source/docs/config for the release line
+  - keep screenshots, dumps, logs, `.env`, and service-account JSON out of git
 - Rejected approaches:
-  - treating the stale handoff as runtime truth
-  - reverting wholesale to the old `01:56` artifact baseline
-  - broad manifest rewrites before proving the smallest packaging fix
-  - continuing with new feature work before `FAB -> Account` was recovered
+  - `git add -A` over the entire dirty tree
+  - committing local credentials or debug evidence
 - Stop point classification:
-  - recovery patch applied, build passed, APK installed, runtime smoke for `FAB -> Account` passed; next feature batch not started yet
+  - staged and handoff-updated; commit/push pending
 - What is done but unverified:
-  - none for the `Account` recovery itself
-  - future requested features (`success/receipt`, `Logout`, purchase/package history, manual correction, bank-account info on Buy package) have not been resumed yet from this recovered baseline
+  - remote push of the staged release snapshot
 - What is verified:
-  - current device baseline package info
-  - built APK hash
-  - `Account` page opens on-device from the FAB
-  - Gmail and `59 days` render on the current Account screen
+  - staged set contains the intended product code/docs/config
+  - staged set excludes admin GUI service-account JSON and `.venv`
+  - release line referenced by repo metadata is `1.90.2+429000006`
 - External prerequisite:
-  - device must remain connected for continued runtime verification
-  - Firebase/project credentials still required later for payment/admin flows, but not for the completed Account recovery itself
+  - git remote access to `origin`
 - Secret required but not stored:
-  - Firebase deploy credentials
-  - `THUNDER_API_KEY`
-  - Google account credentials / 2FA
+  - Firebase admin service-account JSON remains local-only and intentionally not committed
 - Actual code state after resume:
-  - The recorded handoff was stale. The real issue was that the currently installed runtime was missing the auth/payment activities from the packaged manifest. The actual `src_ext4` build tree now contains a targeted manifest recovery patch, the build succeeded, the APK is installed on the device, and `Account` opens successfully.
+  - repo is heavily dirty overall, but the staged snapshot is curated to the product changes plus docs/handoff only
 - Chosen direction:
-  - Freeze this recovered runtime as the new working floor, then resume only additive feature work from here while continuously verifying that the device-installed APK never regresses below this state.
+  - finish the git packaging path now instead of expanding scope further

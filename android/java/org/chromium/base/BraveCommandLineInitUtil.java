@@ -35,6 +35,8 @@ public abstract class BraveCommandLineInitUtil {
     private static final String ONETABYT_COMPONENT_UPDATE_INTERVAL_SWITCH =
             "component-update-interval-in-sec";
     private static final String ONETABYT_COMPONENT_UPDATE_INTERVAL_VALUE = "30";
+    private static final String ONETABYT_ENABLE_GPU_BENCHMARKING_SWITCH =
+            "enable-gpu-benchmarking";
     private static final String TEST_VARIATIONS_SERVER_URL_FILE =
             "/data/local/tmp/brave-test-variations-server-url";
     private static final String TEST_DAY_ZERO_EXPT_FILE =
@@ -109,6 +111,10 @@ public abstract class BraveCommandLineInitUtil {
         }
 
         CommandLine commandLine = CommandLine.getInstance();
+        if (commandLine.hasSwitch(ONETABYT_ENABLE_GPU_BENCHMARKING_SWITCH)) {
+            Log.w(TAG, "Removing unsupported GPU benchmarking switch for OneTab package");
+            commandLine.removeSwitch(ONETABYT_ENABLE_GPU_BENCHMARKING_SWITCH);
+        }
         if (!commandLine.hasSwitch(ONETABYT_COMPONENT_UPDATER_SWITCH)) {
             commandLine.appendSwitchWithValue(
                     ONETABYT_COMPONENT_UPDATER_SWITCH, ONETABYT_COMPONENT_UPDATER_VALUE);

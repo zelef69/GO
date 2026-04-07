@@ -5,7 +5,7 @@ import android.text.TextUtils;
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 
-final class OneTabFirebaseSessionStore {
+public final class OneTabFirebaseSessionStore {
     private static final String PREF_PREFIX = "onetab.firebase_auth.";
     private static final String PREF_UID = PREF_PREFIX + "uid";
     private static final String PREF_EMAIL = PREF_PREFIX + "email";
@@ -15,14 +15,14 @@ final class OneTabFirebaseSessionStore {
     private static final String PREF_REFRESH_TOKEN = PREF_PREFIX + "refresh_token";
     private static final String PREF_EXPIRES_AT_MS = PREF_PREFIX + "expires_at_ms";
 
-    static final class Session {
-        final String uid;
-        final String email;
-        final String displayName;
-        final String photoUrl;
-        final String idToken;
-        final String refreshToken;
-        final long expiresAtMs;
+    public static final class Session {
+        public final String uid;
+        public final String email;
+        public final String displayName;
+        public final String photoUrl;
+        public final String idToken;
+        public final String refreshToken;
+        public final long expiresAtMs;
 
         Session(
                 String uid,
@@ -41,16 +41,16 @@ final class OneTabFirebaseSessionStore {
             this.expiresAtMs = expiresAtMs;
         }
 
-        boolean hasUsableIdToken(long nowMs) {
+        public boolean hasUsableIdToken(long nowMs) {
             return !TextUtils.isEmpty(idToken) && expiresAtMs > nowMs + 60_000L;
         }
 
-        boolean hasRefreshToken() {
+        public boolean hasRefreshToken() {
             return !TextUtils.isEmpty(refreshToken);
         }
     }
 
-    Session read() {
+    public Session read() {
         SharedPreferencesManager prefs = ChromeSharedPreferences.getInstance();
         return new Session(
                 prefs.readString(PREF_UID, ""),
@@ -62,7 +62,7 @@ final class OneTabFirebaseSessionStore {
                 prefs.readLong(PREF_EXPIRES_AT_MS, 0L));
     }
 
-    void save(Session session) {
+    public void save(Session session) {
         SharedPreferencesManager prefs = ChromeSharedPreferences.getInstance();
         prefs.writeString(PREF_UID, session.uid);
         prefs.writeString(PREF_EMAIL, session.email);
@@ -73,7 +73,7 @@ final class OneTabFirebaseSessionStore {
         prefs.writeLong(PREF_EXPIRES_AT_MS, session.expiresAtMs);
     }
 
-    void clear() {
+    public void clear() {
         SharedPreferencesManager prefs = ChromeSharedPreferences.getInstance();
         prefs.removeKey(PREF_UID);
         prefs.removeKey(PREF_EMAIL);

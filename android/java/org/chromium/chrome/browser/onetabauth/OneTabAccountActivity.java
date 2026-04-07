@@ -14,6 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,41 +23,43 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 
-import org.json.JSONObject;
-
-import org.chromium.base.Log;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
 import org.chromium.chrome.R;
-import org.chromium.net.ChromiumNetworkAdapter;
-import org.chromium.net.NetworkTrafficAnnotationTag;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
+import java.io.File;
 
 public class OneTabAccountActivity extends AppCompatActivity {
-    private static final String TAG = "OneTabAccount";
     private static final String ADMIN_CONTACT_URL = "https://line.me/R/ti/p/%40615yysio";
-    private static final String PRIMARY_PACKAGE_ID = "pkg_599";
-    private static final NetworkTrafficAnnotationTag ACCOUNT_LOOKUP_TRAFFIC_ANNOTATION =
-            NetworkTrafficAnnotationTag.MISSING_TRAFFIC_ANNOTATION;
 
     private final OneTabFirebaseAuthManager mAuthManager = new OneTabFirebaseAuthManager();
+    private final OneTabFirebaseAppCheckManager mAppCheckManager =
+            new OneTabFirebaseAppCheckManager();
+    private final OneTabPackagePurchaseManager mPurchaseManager =
+            new OneTabPackagePurchaseManager();
+
+    private OneTabAppUpdateManager mAppUpdateManager;
 
     private TextView mEmailValueView;
     private TextView mRemainingDaysValueView;
+    private TextView mCurrentVersionValueView;
+    private TextView mLatestVersionValueView;
+    private TextView mUpdateNotesValueView;
+    private TextView mUpdateStatusValueView;
+    private ProgressBar mUpdateProgressBar;
+    private AppCompatButton mUpdateButton;
+
+    private boolean mUpdateBusy;
+    private boolean mAwaitingInstallerResult;
+    @Nullable private OneTabAppUpdateManager.UpdateCheckResult mLatestUpdateCheckResult;
+    @Nullable private OneTabAppUpdateManager.PreparedUpdateState mPreparedUpdateState;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mAppUpdateManager = new OneTabAppUpdateManager(this);
         setContentView(createContentView());
+        handleInstallStatusIntent(getIntent());
         refreshAccountSummary();
     }
 
@@ -64,6 +67,13 @@ public class OneTabAccountActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         refreshAccountSummary();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleInstallStatusIntent(intent);
     }
 
     private View createContentView() {
@@ -138,6 +148,65 @@ public class OneTabAccountActivity extends AppCompatActivity {
         mRemainingDaysValueView = remainingBlock.valueView;
         card.addView(remainingBlock.container);
 
+        FieldBlock currentVersionBlock =
+                createFieldBlock(
+                        getString(R.string.onetab_account_current_version_label),
+                        getString(R.string.onetab_account_update_loading));
+        mCurrentVersionValueView = currentVersionBlock.valueView;
+        card.addView(currentVersionBlock.container);
+
+        FieldBlock latestVersionBlock =
+                createFieldBlock(
+                        getString(R.string.onetab_account_latest_version_label),
+                        getString(R.string.onetab_account_update_loading));
+        mLatestVersionValueView = latestVersionBlock.valueView;
+        card.addView(latestVersionBlock.container);
+
+        FieldBlock releaseNotesBlock =
+                createFieldBlock(
+                        getString(R.string.onetab_account_release_notes_label),
+                        getString(R.string.onetab_account_update_notes_empty));
+        mUpdateNotesValueView = releaseNotesBlock.valueView;
+        mUpdateNotesValueView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        mUpdateNotesValueView.setLineSpacing(0f, 1.15f);
+        card.addView(releaseNotesBlock.container);
+
+        mUpdateStatusValueView = new TextView(this);
+        mUpdateStatusValueView.setText(R.string.onetab_account_update_status_idle);
+        mUpdateStatusValueView.setTextColor(Color.parseColor("#D9FFFFFF"));
+        mUpdateStatusValueView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        mUpdateStatusValueView.setLineSpacing(0f, 1.1f);
+        LinearLayout.LayoutParams statusParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        statusParams.topMargin = dp(18);
+        card.addView(mUpdateStatusValueView, statusParams);
+
+        mUpdateProgressBar =
+                new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        mUpdateProgressBar.setMax(100);
+        mUpdateProgressBar.setProgress(0);
+        mUpdateProgressBar.setVisibility(View.GONE);
+        LinearLayout.LayoutParams progressParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        progressParams.topMargin = dp(14);
+        card.addView(mUpdateProgressBar, progressParams);
+
+        mUpdateButton = new AppCompatButton(this);
+        mUpdateButton.setAllCaps(false);
+        mUpdateButton.setText(R.string.onetab_account_update_button_check);
+        mUpdateButton.setTextColor(Color.WHITE);
+        mUpdateButton.setTypeface(Typeface.DEFAULT_BOLD);
+        mUpdateButton.setBackground(createFilledButtonBackground("#FFCC0000"));
+        mUpdateButton.setPadding(dp(18), dp(14), dp(18), dp(14));
+        mUpdateButton.setOnClickListener(unused -> handleUpdateButtonClick());
+        LinearLayout.LayoutParams updateParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        updateParams.topMargin = dp(20);
+        card.addView(mUpdateButton, updateParams);
+
         AppCompatButton buyPackageButton = new AppCompatButton(this);
         buyPackageButton.setAllCaps(false);
         buyPackageButton.setText(R.string.onetab_account_buy_package);
@@ -150,7 +219,7 @@ public class OneTabAccountActivity extends AppCompatActivity {
         LinearLayout.LayoutParams buyParams =
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        buyParams.topMargin = dp(24);
+        buyParams.topMargin = dp(14);
         card.addView(buyPackageButton, buyParams);
 
         AppCompatButton contactAdminButton = new AppCompatButton(this);
@@ -167,6 +236,12 @@ public class OneTabAccountActivity extends AppCompatActivity {
         adminParams.topMargin = dp(14);
         card.addView(contactAdminButton, adminParams);
 
+        applyInstalledVersionInfo(mAppUpdateManager.readInstalledVersionInfo());
+        mLatestVersionValueView.setText(R.string.onetab_account_update_unavailable);
+        mUpdateNotesValueView.setText(R.string.onetab_account_update_notes_empty);
+        mUpdateStatusValueView.setText(R.string.onetab_account_update_status_idle);
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_check), true, false, 0);
         return scrollView;
     }
 
@@ -179,167 +254,434 @@ public class OneTabAccountActivity extends AppCompatActivity {
                 (authenticated, message) -> {
                     if (!authenticated) {
                         mRemainingDaysValueView.setText(R.string.onetab_account_remaining_days_error);
-                        if (!TextUtils.isEmpty(message)) {
-                            showToastMessage(message);
-                        }
+                        if (!TextUtils.isEmpty(message)) showToastMessage(message);
                         return;
                     }
 
                     OneTabFirebaseSessionStore.Session refreshedSession =
                             new OneTabFirebaseSessionStore().read();
                     updateEmail(refreshedSession);
-                    fetchRemainingDays(refreshedSession);
+                    fetchPackageAccessState(refreshedSession);
                 });
     }
 
-    private void updateEmail(OneTabFirebaseSessionStore.Session session) {
-        if (mEmailValueView == null) return;
-        mEmailValueView.setText(
-                !TextUtils.isEmpty(session.email)
-                        ? session.email
-                        : getString(R.string.onetab_account_email_missing));
-    }
-
-    private void fetchRemainingDays(OneTabFirebaseSessionStore.Session session) {
-        if (TextUtils.isEmpty(session.uid) || TextUtils.isEmpty(session.idToken)) {
+    private void fetchPackageAccessState(OneTabFirebaseSessionStore.Session session) {
+        if (TextUtils.isEmpty(session.idToken)) {
             mRemainingDaysValueView.setText(R.string.onetab_account_remaining_days_error);
             return;
         }
 
-        PostTask.postTask(
-                TaskTraits.BEST_EFFORT_MAY_BLOCK,
-                () -> {
-                    EntitlementLookupResult result = lookupRemainingDays(session);
+        mAppCheckManager.resolveAppCheckToken(
+                (success, token, message) -> {
+                    if (!success || TextUtils.isEmpty(token)) {
+                        mRemainingDaysValueView.setText(R.string.onetab_account_remaining_days_error);
+                        if (!TextUtils.isEmpty(message)) showToastMessage(message);
+                        return;
+                    }
+
                     PostTask.postTask(
-                            TaskTraits.UI_DEFAULT,
+                            TaskTraits.BEST_EFFORT_MAY_BLOCK,
                             () -> {
-                                if (isFinishing() || isDestroyed()) return;
-                                mRemainingDaysValueView.setText(result.label);
+                                OneTabPackagePurchaseManager.AccessStateResult result =
+                                        mPurchaseManager.fetchPackageAccessState(
+                                                session.idToken, token);
+                                PostTask.postTask(
+                                        TaskTraits.UI_DEFAULT,
+                                        () -> {
+                                            if (isFinishing() || isDestroyed()) return;
+                                            applyAccessState(result);
+                                        });
                             });
                 });
     }
 
-    private EntitlementLookupResult lookupRemainingDays(OneTabFirebaseSessionStore.Session session) {
-        HttpURLConnection connection = null;
-        try {
-            String url =
-                    OneTabFirebaseAuthConfig.FIRESTORE_BASE_URL
-                            + "/users/"
-                            + Uri.encode(session.uid)
-                            + "/entitlements/"
-                            + Uri.encode(PRIMARY_PACKAGE_ID);
-            connection =
-                    (HttpURLConnection)
-                            ChromiumNetworkAdapter.openConnection(
-                                    new URL(url), ACCOUNT_LOOKUP_TRAFFIC_ANNOTATION);
-            connection.setConnectTimeout(15000);
-            connection.setReadTimeout(15000);
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Authorization", "Bearer " + session.idToken);
-            connection.setRequestProperty("Accept", "application/json");
+    private void refreshUpdateSummary() {
+        OneTabAppUpdateManager.InstalledVersionInfo installedVersion =
+                mAppUpdateManager.readInstalledVersionInfo();
+        applyInstalledVersionInfo(installedVersion);
+        mLatestVersionValueView.setText(R.string.onetab_account_update_loading);
+        mUpdateNotesValueView.setText(R.string.onetab_account_update_notes_empty);
+        mUpdateStatusValueView.setText(R.string.onetab_account_update_status_checking);
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_check), false, true, 0);
 
-            int responseCode = connection.getResponseCode();
-            String responseBody = readResponse(connection);
-            if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
-                return EntitlementLookupResult.of(
-                        getString(R.string.onetab_account_remaining_days_none));
-            }
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                Log.w(TAG, "lookupRemainingDays failed code=%d body=%s", responseCode, responseBody);
-                return EntitlementLookupResult.of(
-                        getString(R.string.onetab_account_remaining_days_error));
-            }
+        mAuthManager.resolveAuthentication(
+                (authenticated, authMessage) -> {
+                    if (!authenticated) {
+                        mLatestUpdateCheckResult = null;
+                        mLatestVersionValueView.setText(R.string.onetab_account_update_unavailable);
+                        mUpdateStatusValueView.setText(
+                                !TextUtils.isEmpty(authMessage)
+                                        ? authMessage
+                                        : getString(R.string.onetab_account_update_auth_required));
+                        mUpdateNotesValueView.setText(R.string.onetab_account_update_notes_empty);
+                        setUpdateButtonState(
+                                getString(R.string.onetab_account_update_button_check),
+                                true,
+                                false,
+                                0);
+                        return;
+                    }
 
-            JSONObject root = new JSONObject(responseBody);
-            JSONObject fields = root.optJSONObject("fields");
-            if (fields == null) {
-                return EntitlementLookupResult.of(
-                        getString(R.string.onetab_account_remaining_days_none));
-            }
+                    OneTabFirebaseSessionStore.Session session =
+                            new OneTabFirebaseSessionStore().read();
+                    if (TextUtils.isEmpty(session.idToken)) {
+                        mLatestUpdateCheckResult = null;
+                        mLatestVersionValueView.setText(R.string.onetab_account_update_unavailable);
+                        mUpdateStatusValueView.setText(R.string.onetab_account_update_auth_required);
+                        setUpdateButtonState(
+                                getString(R.string.onetab_account_update_button_check),
+                                true,
+                                false,
+                                0);
+                        return;
+                    }
 
-            boolean active = readBooleanField(fields, "active", false);
-            String expiresAtValue = readTimestampField(fields, "expiresAt");
-            Date expiresAt = parseFirestoreTimestamp(expiresAtValue);
-            if (!active || expiresAt == null || expiresAt.getTime() <= System.currentTimeMillis()) {
-                return EntitlementLookupResult.of(
-                        getString(R.string.onetab_account_remaining_days_none));
-            }
+                    mAppCheckManager.resolveAppCheckToken(
+                            (success, token, tokenMessage) -> {
+                                if (!success || TextUtils.isEmpty(token)) {
+                                    mLatestUpdateCheckResult = null;
+                                    mLatestVersionValueView.setText(
+                                            R.string.onetab_account_update_unavailable);
+                                    mUpdateStatusValueView.setText(
+                                            !TextUtils.isEmpty(tokenMessage)
+                                                    ? tokenMessage
+                                                    : getString(
+                                                            R.string
+                                                                    .onetab_account_update_app_check_error));
+                                    mUpdateNotesValueView.setText(
+                                            R.string.onetab_account_update_notes_empty);
+                                    setUpdateButtonState(
+                                            getString(R.string.onetab_account_update_button_check),
+                                            true,
+                                            false,
+                                            0);
+                                    return;
+                                }
 
-            long diffMs = expiresAt.getTime() - System.currentTimeMillis();
-            long remainingDays = Math.max(1L,
-                    (long) Math.ceil(diffMs / (double) TimeUnit.DAYS.toMillis(1)));
-            return EntitlementLookupResult.of(
-                    getString(R.string.onetab_account_remaining_days_value, remainingDays));
-        } catch (Exception e) {
-            Log.e(TAG, "lookupRemainingDays error=%s", e.getMessage());
-            return EntitlementLookupResult.of(
-                    getString(R.string.onetab_account_remaining_days_error));
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
+                                PostTask.postTask(
+                                        TaskTraits.BEST_EFFORT_MAY_BLOCK,
+                                        () -> {
+                                            OneTabAppUpdateManager.UpdateCheckResult result =
+                                                    mAppUpdateManager.fetchUpdateInfo(
+                                                            session.idToken, token);
+                                            PostTask.postTask(
+                                                    TaskTraits.UI_DEFAULT,
+                                                    () -> {
+                                                        if (isFinishing() || isDestroyed()) return;
+                                                        applyUpdateCheckResult(result);
+                                                    });
+                                        });
+                            });
+                });
+    }
+
+    private void applyUpdateCheckResult(OneTabAppUpdateManager.UpdateCheckResult result) {
+        mLatestUpdateCheckResult = result;
+        mPreparedUpdateState = null;
+        if (result == null) {
+            mLatestVersionValueView.setText(R.string.onetab_account_update_unavailable);
+            mUpdateNotesValueView.setText(R.string.onetab_account_update_notes_empty);
+            mUpdateStatusValueView.setText(R.string.onetab_account_update_unavailable);
+            setUpdateButtonState(
+                    getString(R.string.onetab_account_update_button_retry), true, false, 0);
+            return;
+        }
+
+        applyInstalledVersionInfo(result.installedVersion);
+        if (result.manifest != null) {
+            mLatestVersionValueView.setText(result.manifest.toDisplayString());
+            mUpdateNotesValueView.setText(
+                    !TextUtils.isEmpty(result.manifest.releaseNotes)
+                            ? result.manifest.releaseNotes
+                            : getString(R.string.onetab_account_update_notes_empty));
+        } else {
+            mLatestVersionValueView.setText(R.string.onetab_account_update_unavailable);
+            mUpdateNotesValueView.setText(R.string.onetab_account_update_notes_empty);
+        }
+
+        mUpdateStatusValueView.setText(result.message);
+        if (!result.success) {
+            setUpdateButtonState(
+                    getString(R.string.onetab_account_update_button_retry), true, false, 0);
+            return;
+        }
+
+        if (result.updateAvailable) {
+            OneTabAppUpdateManager.PreparedUpdateState preparedUpdateState =
+                    mAppUpdateManager.inspectPreparedUpdate(result.manifest);
+            if (preparedUpdateState.readyToInstall) {
+                mPreparedUpdateState = preparedUpdateState;
+                mUpdateStatusValueView.setText(
+                        preparedUpdateState.awaitingUnknownSourcesPermission
+                                ? R.string
+                                        .onetab_account_update_status_permission_required_manual
+                                : R.string.onetab_account_update_status_cached_ready);
+                setUpdateButtonState(
+                        getString(R.string.onetab_account_update_button_install), true, false, 100);
+                return;
             }
+            setUpdateButtonState(
+                    getString(R.string.onetab_account_update_button_install), true, false, 0);
+            return;
+        }
+
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_check), true, false, 0);
+    }
+
+    private void handleUpdateButtonClick() {
+        if (mUpdateBusy) return;
+        if (mLatestUpdateCheckResult == null || !mLatestUpdateCheckResult.success) {
+            refreshUpdateSummary();
+            return;
+        }
+        if (!mLatestUpdateCheckResult.updateAvailable || mLatestUpdateCheckResult.manifest == null) {
+            refreshUpdateSummary();
+            return;
+        }
+
+        final OneTabAppUpdateManifest manifest = mLatestUpdateCheckResult.manifest;
+        OneTabAppUpdateManager.PreparedUpdateState preparedUpdateState =
+                mAppUpdateManager.inspectPreparedUpdate(manifest);
+        if (preparedUpdateState.readyToInstall && preparedUpdateState.apkFile != null) {
+            mPreparedUpdateState = preparedUpdateState;
+            dispatchPreparedInstall(preparedUpdateState.apkFile, manifest);
+            return;
+        }
+
+        mUpdateBusy = true;
+        mUpdateStatusValueView.setText(R.string.onetab_account_update_status_preparing);
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_installing), false, true, 0);
+
+        PostTask.postTask(
+                TaskTraits.BEST_EFFORT_MAY_BLOCK,
+                () -> {
+                    OneTabAppUpdateManager.PreparedUpdateResult result =
+                            mAppUpdateManager.prepareUpdate(
+                                    manifest,
+                                    (downloaded, total) ->
+                                            PostTask.postTask(
+                                                    TaskTraits.UI_DEFAULT,
+                                                    () -> {
+                                                        if (isFinishing() || isDestroyed()) return;
+                                                        updateDownloadProgress(downloaded, total);
+                                                    }));
+                    PostTask.postTask(
+                            TaskTraits.UI_DEFAULT,
+                            () -> {
+                                if (isFinishing() || isDestroyed()) return;
+                                onPreparedUpdateReady(result);
+                            });
+                });
+    }
+
+    private void onPreparedUpdateReady(OneTabAppUpdateManager.PreparedUpdateResult result) {
+        if (!result.success || result.apkFile == null || result.manifest == null) {
+            mUpdateBusy = false;
+            mAwaitingInstallerResult = false;
+            mPreparedUpdateState = null;
+            mUpdateStatusValueView.setText(
+                    !TextUtils.isEmpty(result.message)
+                            ? result.message
+                            : getString(R.string.onetab_account_update_prepare_failed));
+            setUpdateButtonState(
+                    getString(R.string.onetab_account_update_button_retry), true, false, 0);
+            return;
+        }
+
+        if (result.reusedCachedFile) {
+            mUpdateStatusValueView.setText(R.string.onetab_account_update_status_cached_ready);
+        } else {
+            mUpdateStatusValueView.setText(R.string.onetab_account_update_status_verified);
+        }
+        mPreparedUpdateState = mAppUpdateManager.inspectPreparedUpdate(result.manifest);
+        mUpdateBusy = false;
+        mAwaitingInstallerResult = false;
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_install), true, false, 100);
+    }
+
+    private void dispatchPreparedInstall(File apkFile, OneTabAppUpdateManifest manifest) {
+        mUpdateBusy = true;
+        mUpdateStatusValueView.setText(R.string.onetab_account_update_status_preparing);
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_installing), false, true, 100);
+        OneTabAppUpdateManager.InstallRequestResult installResult =
+                mAppUpdateManager.requestInstall(
+                        this,
+                        apkFile,
+                        manifest.latestVersionCode,
+                        manifest.latestVersionName);
+        if (installResult.success) {
+            mAwaitingInstallerResult = true;
+            mUpdateBusy = false;
+            mUpdateStatusValueView.setText(installResult.message);
+            setUpdateButtonState(
+                    getString(R.string.onetab_account_update_button_waiting_install),
+                    false,
+                    true,
+                    100);
+            return;
+        }
+
+        mUpdateBusy = false;
+        if (installResult.permissionRequired) {
+            mAwaitingInstallerResult = false;
+            mUpdateStatusValueView.setText(installResult.message);
+            setUpdateButtonState(
+                    getString(R.string.onetab_account_update_button_install),
+                    true,
+                    false,
+                    100);
+            return;
+        }
+
+        mAwaitingInstallerResult = false;
+        mPreparedUpdateState = null;
+        mUpdateStatusValueView.setText(installResult.message);
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_retry), true, false, 0);
+    }
+
+    private void handleInstallStatusIntent(@Nullable Intent intent) {
+        if (intent == null) {
+            return;
+        }
+
+        OneTabAppUpdateManager.InstallStatusResult result =
+                mAppUpdateManager.consumeInstallStatusIntent(this, intent);
+        if (!result.handled) {
+            return;
+        }
+
+        if (result.waitingForUserAction) {
+            mAwaitingInstallerResult = true;
+            mUpdateBusy = false;
+            mUpdateStatusValueView.setText(result.message);
+            setUpdateButtonState(
+                    getString(R.string.onetab_account_update_button_waiting_install),
+                    false,
+                    true,
+                    100);
+            return;
+        }
+
+        if (result.installSucceeded) {
+            mAwaitingInstallerResult = false;
+            mUpdateBusy = false;
+            mPreparedUpdateState = null;
+            finishUpdateFlowWithMessage(result.message);
+            refreshUpdateSummary();
+            return;
+        }
+
+        mAwaitingInstallerResult = false;
+        mUpdateBusy = false;
+        mPreparedUpdateState = null;
+        mUpdateStatusValueView.setText(result.message);
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_retry), true, false, 0);
+        if (!TextUtils.isEmpty(result.message)) {
+            showToastMessage(result.message);
         }
     }
 
-    private static boolean readBooleanField(JSONObject fields, String fieldName, boolean fallback) {
-        JSONObject field = fields.optJSONObject(fieldName);
-        if (field == null) return fallback;
-        return field.optBoolean("booleanValue", fallback);
+    private void finishUpdateFlowWithMessage(String message) {
+        mUpdateProgressBar.setProgress(100);
+        mUpdateProgressBar.setVisibility(View.VISIBLE);
+        mUpdateStatusValueView.setText(message);
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_check), true, false, 100);
+        if (!TextUtils.isEmpty(message)) {
+            showToastMessage(message);
+        }
     }
 
-    private static String readTimestampField(JSONObject fields, String fieldName) {
-        JSONObject field = fields.optJSONObject(fieldName);
-        if (field == null) return "";
-        return field.optString("timestampValue", "");
+    private void updateDownloadProgress(long downloadedBytes, long totalBytes) {
+        if (totalBytes <= 0L) {
+            mUpdateStatusValueView.setText(R.string.onetab_account_update_status_downloading_unknown);
+            setUpdateButtonState(
+                    getString(R.string.onetab_account_update_button_installing),
+                    false,
+                    true,
+                    0);
+            return;
+        }
+
+        int progress = (int) Math.max(0L, Math.min(100L, (downloadedBytes * 100L) / totalBytes));
+        mUpdateStatusValueView.setText(
+                getString(R.string.onetab_account_update_status_downloading_progress, progress));
+        setUpdateButtonState(
+                getString(R.string.onetab_account_update_button_installing),
+                false,
+                true,
+                progress);
     }
 
-    private static Date parseFirestoreTimestamp(String rawValue) {
-        if (TextUtils.isEmpty(rawValue)) return null;
-        String normalized = rawValue.trim();
-        if (normalized.endsWith("Z") && normalized.contains(".")) {
-            int dotIndex = normalized.indexOf('.');
-            int zIndex = normalized.lastIndexOf('Z');
-            String fraction = normalized.substring(dotIndex + 1, zIndex);
-            if (fraction.length() > 3) {
-                fraction = fraction.substring(0, 3);
-            } else {
-                while (fraction.length() < 3) {
-                    fraction += "0";
+    private void setUpdateButtonState(
+            String buttonText, boolean enabled, boolean showProgress, int progressPercent) {
+        if (mUpdateButton != null) {
+            mUpdateButton.setText(buttonText);
+            mUpdateButton.setEnabled(enabled);
+            mUpdateButton.setAlpha(enabled ? 1f : 0.6f);
+        }
+        if (mUpdateProgressBar != null) {
+            if (showProgress) {
+                mUpdateProgressBar.setVisibility(View.VISIBLE);
+                mUpdateProgressBar.setIndeterminate(progressPercent <= 0);
+                if (progressPercent > 0) {
+                    mUpdateProgressBar.setProgress(progressPercent);
+                } else {
+                    mUpdateProgressBar.setProgress(0);
                 }
-            }
-            normalized = normalized.substring(0, dotIndex) + "." + fraction + "Z";
-        }
-
-        String[] patterns = {
-            "yyyy-MM-dd'T'HH:mm:ss.SSSX",
-            "yyyy-MM-dd'T'HH:mm:ssX",
-        };
-        for (String pattern : patterns) {
-            try {
-                SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.US);
-                format.setLenient(false);
-                return format.parse(normalized);
-            } catch (Exception ignored) {
+            } else {
+                mUpdateProgressBar.setIndeterminate(false);
+                mUpdateProgressBar.setProgress(Math.max(0, progressPercent));
+                mUpdateProgressBar.setVisibility(progressPercent > 0 ? View.VISIBLE : View.GONE);
             }
         }
-        return null;
     }
 
-    private static String readResponse(HttpURLConnection connection) throws Exception {
-        BufferedReader reader =
-                new BufferedReader(
-                        new InputStreamReader(
-                                connection.getResponseCode() >= 400
-                                        ? connection.getErrorStream()
-                                        : connection.getInputStream(),
-                                StandardCharsets.UTF_8));
-        StringBuilder builder = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            builder.append(line);
+    private void applyInstalledVersionInfo(OneTabAppUpdateManager.InstalledVersionInfo info) {
+        if (mCurrentVersionValueView == null || info == null) {
+            return;
         }
-        reader.close();
-        return builder.toString();
+        mCurrentVersionValueView.setText(info.toDisplayString());
+    }
+
+    private void applyAccessState(OneTabPackagePurchaseManager.AccessStateResult result) {
+        if (!result.success) {
+            mRemainingDaysValueView.setText(R.string.onetab_account_remaining_days_error);
+            if (!TextUtils.isEmpty(result.message)) showToastMessage(result.message);
+            return;
+        }
+
+        if (result.allowed) {
+            mRemainingDaysValueView.setText(
+                    getString(
+                            R.string.onetab_account_remaining_days_value,
+                            Math.max(0, result.remainingDays)));
+            return;
+        }
+
+        if ("EXPIRED".equals(result.status)) {
+            mRemainingDaysValueView.setText(R.string.onetab_account_remaining_days_expired);
+            return;
+        }
+
+        mRemainingDaysValueView.setText(R.string.onetab_account_remaining_days_none);
+    }
+
+    private void updateEmail(OneTabFirebaseSessionStore.Session session) {
+        if (mEmailValueView == null) {
+            return;
+        }
+        mEmailValueView.setText(
+                !TextUtils.isEmpty(session.email)
+                        ? session.email
+                        : getString(R.string.onetab_account_email_missing));
     }
 
     private FieldBlock createFieldBlock(String label, String value) {
@@ -421,18 +763,6 @@ public class OneTabAccountActivity extends AppCompatActivity {
         FieldBlock(View container, TextView valueView) {
             this.container = container;
             this.valueView = valueView;
-        }
-    }
-
-    private static final class EntitlementLookupResult {
-        final String label;
-
-        private EntitlementLookupResult(String label) {
-            this.label = label;
-        }
-
-        static EntitlementLookupResult of(String label) {
-            return new EntitlementLookupResult(label);
         }
     }
 }

@@ -27,8 +27,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 
-final class OneTabFirebaseAppCheckManager {
-    interface AppCheckCallback {
+public final class OneTabFirebaseAppCheckManager {
+    public interface AppCheckCallback {
         void onResolved(boolean success, String token, String message);
     }
 
@@ -41,7 +41,7 @@ final class OneTabFirebaseAppCheckManager {
     private static String sCachedToken;
     private static long sCachedTokenExpiresAtMs;
 
-    void resolveAppCheckToken(AppCheckCallback callback) {
+    public void resolveAppCheckToken(AppCheckCallback callback) {
         long nowMs = System.currentTimeMillis();
         if (!TextUtils.isEmpty(sCachedToken) && sCachedTokenExpiresAtMs > nowMs + TOKEN_REFRESH_WINDOW_MS) {
             callback.onResolved(true, sCachedToken, "");

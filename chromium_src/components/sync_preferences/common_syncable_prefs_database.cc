@@ -12,8 +12,6 @@
 #include "base/containers/map_util.h"
 #include "brave/components/containers/buildflags/buildflags.h"
 #include "brave/components/email_aliases/pref_names.h"
-#include "components/search_engines/search_engines_pref_names.h"
-
 #if BUILDFLAG(ENABLE_CONTAINERS)
 #include "brave/components/containers/core/browser/pref_names.h"
 #endif
@@ -23,36 +21,16 @@ namespace {
 
 namespace brave_syncable_prefs_ids {
 enum {
-  kSyncedDefaultPrivateSearchProviderGUID = 1000,
-  kSyncedDefaultPrivateSearchProviderData = 1001,
 #if BUILDFLAG(ENABLE_CONTAINERS)
-  kContainersList = 1002,
+  kContainersList = 1000,
 #endif
-  kEmailAliasesNotes = 1003,
+  kEmailAliasesNotes = 1001,
 };
 }  // namespace brave_syncable_prefs_ids
 
 constexpr auto kBraveCommonSyncablePrefsAllowlist = base::MakeFixedFlatMap<
     std::string_view,
     SyncablePrefMetadata>({
-    {
-        prefs::kSyncedDefaultPrivateSearchProviderGUID,
-        {
-            brave_syncable_prefs_ids::kSyncedDefaultPrivateSearchProviderGUID,
-            syncer::PREFERENCES,
-            sync_preferences::PrefSensitivity::kNone,
-            MergeBehavior::kNone,
-        },
-    },
-    {
-        prefs::kSyncedDefaultPrivateSearchProviderData,
-        {
-            brave_syncable_prefs_ids::kSyncedDefaultPrivateSearchProviderData,
-            syncer::PREFERENCES,
-            sync_preferences::PrefSensitivity::kNone,
-            MergeBehavior::kNone,
-        },
-    },
 #if BUILDFLAG(ENABLE_CONTAINERS)
     {
         containers::prefs::kContainersList,

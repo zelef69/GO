@@ -6,8 +6,6 @@
 package org.chromium.chrome.browser.app;
 
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.SystemClock;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
@@ -21,9 +19,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.core.view.ViewCompat;
-
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.OneTabYouTubeMode;
@@ -37,7 +34,6 @@ import org.chromium.chrome.browser.youtube_script_injector.BraveYouTubeScriptInj
 import org.chromium.content_public.browser.WebContents;
 
 final class OneTabFabMenuCoordinator {
-    private static final String ADMIN_CONTACT_URL = "https://line.me/R/ti/p/%40615yysio";
     private static final long SLEEP_WAKE_DOUBLE_TAP_WINDOW_MS = 450L;
     private static final long MENU_ANIMATION_DURATION_MS = 180L;
 
@@ -50,14 +46,14 @@ final class OneTabFabMenuCoordinator {
     @Nullable private View mRootView;
     @Nullable private View mAnchorView;
     @Nullable private View mMenuView;
-    @Nullable private FloatingActionButton mMainFab;
+    @Nullable private AppCompatImageButton mMainFab;
     @Nullable private TextView mPipButton;
     @Nullable private TextView mAccountButton;
-    @Nullable private TextView mAdminButton;
     @Nullable private TextView mLogoutButton;
 
     private boolean mMenuExpanded;
     private boolean mSleepMode;
+    private boolean mForceHidden;
     private long mLastSleepTapElapsedMs;
     private float mFabDownRawX;
     private float mFabDownRawY;
@@ -85,6 +81,7 @@ final class OneTabFabMenuCoordinator {
 
         boolean visible =
                 OneTabYouTubeMode.isEnabled()
+                        && !mForceHidden
                         && !mActivity.isInPictureInPictureMode()
                         && tab != null
                         && !tab.isIncognito()
@@ -101,6 +98,19 @@ final class OneTabFabMenuCoordinator {
         updatePipAvailability(tab);
     }
 
+    void setForceHidden(boolean forceHidden) {
+        if (mForceHidden == forceHidden) {
+            return;
+        }
+        mForceHidden = forceHidden;
+        if (mForceHidden) {
+            collapseMenu(false);
+            if (mRootView != null) {
+                mRootView.setVisibility(View.GONE);
+            }
+        }
+    }
+
     void destroy() {
         if (mRootView == null) {
             return;
@@ -115,7 +125,6 @@ final class OneTabFabMenuCoordinator {
         mMainFab = null;
         mPipButton = null;
         mAccountButton = null;
-        mAdminButton = null;
         mLogoutButton = null;
         mFabLongPressRunnable = null;
     }
@@ -138,12 +147,13 @@ final class OneTabFabMenuCoordinator {
         mMainFab = root.findViewById(R.id.onetab_fab_main_button);
         mPipButton = root.findViewById(R.id.onetab_fab_pip);
         mAccountButton = root.findViewById(R.id.onetab_fab_account);
-        mAdminButton = root.findViewById(R.id.onetab_fab_admin);
         mLogoutButton = root.findViewById(R.id.onetab_fab_logout);
 
         if (mMainFab != null) {
             mMainFab.setImageTintList(null);
             mMainFab.setOnTouchListener(this::onMainFabTouch);
+            ViewCompat.setElevation(mMainFab, 0f);
+            ViewCompat.setTranslationZ(mMainFab, 0f);
         }
 
         bindMenuAction(
@@ -168,12 +178,6 @@ final class OneTabFabMenuCoordinator {
                     collapseMenu(true);
                     Intent intent = new Intent(mActivity, OneTabAccountActivity.class);
                     mActivity.startActivity(intent);
-                });
-        bindMenuAction(
-                mAdminButton,
-                () -> {
-                    collapseMenu(true);
-                    openAdminContact();
                 });
         bindMenuAction(
                 mLogoutButton,
@@ -224,22 +228,22 @@ final class OneTabFabMenuCoordinator {
         }
 
         mRootView.bringToFront();
-        ViewCompat.setElevation(mRootView, 1000f);
+        ViewCompat.setElevation(mRootView, 0f);
         ViewCompat.setTranslationZ(mRootView, 1000f);
         if (mAnchorView != null) {
             mAnchorView.bringToFront();
-            ViewCompat.setElevation(mAnchorView, 1001f);
+            ViewCompat.setElevation(mAnchorView, 0f);
             ViewCompat.setTranslationZ(mAnchorView, 1001f);
         }
         if (mMenuView != null) {
             mMenuView.bringToFront();
-            ViewCompat.setElevation(mMenuView, 1002f);
+            ViewCompat.setElevation(mMenuView, 0f);
             ViewCompat.setTranslationZ(mMenuView, 1002f);
         }
         if (mMainFab != null) {
             mMainFab.bringToFront();
-            ViewCompat.setElevation(mMainFab, 1003f);
-            ViewCompat.setTranslationZ(mMainFab, 1003f);
+            ViewCompat.setElevation(mMainFab, 0f);
+            ViewCompat.setTranslationZ(mMainFab, 0f);
         }
     }
 
@@ -501,18 +505,6 @@ final class OneTabFabMenuCoordinator {
                     }
                     action.run();
                 });
-    }
-
-    private void openAdminContact() {
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(ADMIN_CONTACT_URL));
-        intent.addCategory(Intent.CATEGORY_BROWSABLE);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        PackageManager packageManager = mActivity.getPackageManager();
-        if (intent.resolveActivity(packageManager) == null) {
-            showToast(R.string.onetab_fab_admin_unavailable);
-            return;
-        }
-        mActivity.startActivity(intent);
     }
 
     private void showToast(int messageId) {

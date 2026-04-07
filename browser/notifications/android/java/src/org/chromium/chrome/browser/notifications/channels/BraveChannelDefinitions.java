@@ -11,7 +11,6 @@ import android.annotation.SuppressLint;
 import android.app.NotificationManager;
 
 import org.chromium.chrome.browser.notifications.R;
-import org.chromium.chrome.browser.util.BraveConstants;
 import org.chromium.components.browser_ui.notifications.channels.ChannelDefinitions;
 import org.chromium.components.browser_ui.notifications.channels.ChannelDefinitions.PredefinedChannel;
 
@@ -19,15 +18,17 @@ import java.util.Map;
 import java.util.Set;
 
 public class BraveChannelDefinitions {
+    // Keep notification channel IDs local so this narrow target does not depend on chrome_java.
+    private static final String CHANNEL_PREFIX = "com.onetabtube.browser";
+
     public static class ChannelId {
-        public static final String BRAVE_ADS = BraveConstants.BRAVE_ADS_CHANNEL_ID;
-        public static final String BRAVE_ADS_BACKGROUND =
-                BraveConstants.BRAVE_ADS_BACKGROUND_CHANNEL_ID;
-        public static final String BRAVE_BROWSER = BraveConstants.BRAVE_BROWSER_CHANNEL_ID;
+        public static final String BRAVE_ADS = CHANNEL_PREFIX + ".ads";
+        public static final String BRAVE_ADS_BACKGROUND = CHANNEL_PREFIX + ".ads.background";
+        public static final String BRAVE_BROWSER = CHANNEL_PREFIX;
     }
 
     public static class ChannelGroupId {
-        public static final String BRAVE_ADS = BraveConstants.BRAVE_ADS_CHANNEL_ID;
+        public static final String BRAVE_ADS = ChannelId.BRAVE_ADS;
         public static final String GENERAL = "general";
     }
 

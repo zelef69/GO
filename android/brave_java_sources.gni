@@ -271,6 +271,9 @@ brave_java_sources = [
   "../../brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabFirebaseAuthConfig.java",
   "../../brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabFirebaseAuthManager.java",
   "../../brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabFirebaseAppCheckManager.java",
+  "../../brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManifest.java",
+  "../../brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java",
+  "../../brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateStore.java",
   "../../brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabDeviceSessionManager.java",
   "../../brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabDeviceSessionStore.java",
   "../../brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java",
@@ -538,8 +541,12 @@ _brave_java_source_filters = []
 
 if (is_onetabyt) {
   _brave_java_source_filters += [
+    "*BraveAdsNativeHelper.java",
+    "*BraveRewardsNativeWorker.java",
+    "*bookmarks/BraveBookmarkBridge.java",
     "*omnibox/suggestions/BraveAutocompleteMediator.java",
     "*omnibox/suggestions/BraveAutocompleteMediatorBase.java",
+    "*playlist/PlaylistServiceFactoryAndroid.java",
     "*playlist/PlaylistHostActivity.java",
     "*playlist/PlaylistStreamingObserverImpl.java",
     "*playlist/hls_content/HlsServiceImpl.java",
@@ -589,6 +596,15 @@ if (_brave_java_source_filters != []) {
       filter_exclude(brave_java_sources, _brave_java_source_filters)
   brave_java_sources = []
   brave_java_sources += _filtered_brave_java_sources
+}
+
+if (is_onetabyt) {
+  brave_java_sources += [
+    "../../brave/android/java_stub/org/chromium/chrome/browser/BraveAdsNativeHelper.java",
+    "../../brave/android/java_stub/org/chromium/chrome/browser/BraveRewardsNativeWorker.java",
+    "../../brave/android/java_stub/org/chromium/chrome/browser/bookmarks/BraveBookmarkBridge.java",
+    "../../brave/android/java_stub/org/chromium/chrome/browser/playlist/PlaylistServiceFactoryAndroid.java",
+  ]
 }
 
 if (!enable_brave_wallet) {

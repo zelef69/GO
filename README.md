@@ -4,6 +4,10 @@ OneTabTube is a Brave-derived Android browser fork that constrains the product s
 
 This fork does not claim permanent or perfect YouTube ad blocking. It retains Brave's adblocking stack and aims to preserve Brave Shields behavior for YouTube, but actual effectiveness can vary as upstream rules and YouTube behavior evolve.
 
+For the current real build desk used by this repo, including the `Desktop\GO_PLAY -> src_ext4` workflow, exact commands, tool paths, and verification steps, see [docs/build-workbench-map.md](C:/Users/Master/Desktop/GO_PLAY/docs/build-workbench-map.md).
+
+For the Firestore metadata path and seed commands used by the native Account-page app updater, see [docs/app-update-firestore.md](C:/Users/Master/Desktop/GO_PLAY/docs/app-update-firestore.md).
+
 ## Current Product Behavior
 
 - Default home target is `https://www.youtube.com/`

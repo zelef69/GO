@@ -65,7 +65,7 @@ public final class OneTabDeviceSessionManager {
 
     private AccessResult ensureAccessBlocking(OneTabFirebaseSessionStore.Session authSession) {
         if (TextUtils.isEmpty(authSession.uid) || TextUtils.isEmpty(authSession.idToken)) {
-            return AccessResult.error("Please sign in again before using GO_PLAY.");
+            return AccessResult.error("กรุณาเข้าสู่ระบบใหม่ก่อนใช้งาน GO_PLAY");
         }
 
         String deviceId = mStore.ensureDeviceId();
@@ -114,7 +114,7 @@ public final class OneTabDeviceSessionManager {
             return LogoutResult.success();
         }
         if (TextUtils.isEmpty(authSession.uid) || TextUtils.isEmpty(authSession.idToken)) {
-            return LogoutResult.error("Please sign in again before logging out.");
+            return LogoutResult.error("กรุณาเข้าสู่ระบบใหม่ก่อนออกจากระบบ");
         }
 
         try {
@@ -162,7 +162,7 @@ public final class OneTabDeviceSessionManager {
             return AccessResult.error(e.message);
         } catch (Exception e) {
             Log.e(TAG, "validateExistingSession error=%s", e.getMessage());
-            return AccessResult.error("Unable to validate device access right now.");
+            return AccessResult.error("ยังตรวจสอบสิทธิ์อุปกรณ์ไม่ได้ในขณะนี้");
         }
     }
 
@@ -192,7 +192,7 @@ public final class OneTabDeviceSessionManager {
             return AccessResult.error(e.message);
         } catch (Exception e) {
             Log.e(TAG, "registerNewSession error=%s", e.getMessage());
-            return AccessResult.error("Unable to register this device.");
+            return AccessResult.error("ยังลงทะเบียนอุปกรณ์นี้ไม่ได้");
         }
     }
 
@@ -310,24 +310,24 @@ public final class OneTabDeviceSessionManager {
 
     private static String messageForResultCode(String resultCode) {
         if (RESULT_DEVICE_LIMIT_EXCEEDED.equals(resultCode)) {
-            return "This Gmail is already active on 10 devices.";
+            return "Gmail นี้กำลังใช้งานอยู่ครบ 10 อุปกรณ์แล้ว";
         }
         if (RESULT_BLOCKED.equals(resultCode)) {
-            return "This Gmail is blocked from GO_PLAY.";
+            return "Gmail นี้ถูกระงับการใช้งาน GO_PLAY";
         }
         if (RESULT_EXPIRED.equals(resultCode)) {
-            return "This Gmail can no longer access GO_PLAY.";
+            return "Gmail นี้ไม่สามารถเข้าใช้งาน GO_PLAY ได้แล้ว";
         }
         if (RESULT_DEVICE_REVOKED.equals(resultCode)) {
-            return "This device session is no longer valid.";
+            return "เซสชันของอุปกรณ์นี้ไม่ถูกต้องแล้ว";
         }
         if (RESULT_VERSION_MISMATCH.equals(resultCode)) {
-            return "This device needs a fresh GO_PLAY session.";
+            return "อุปกรณ์นี้ต้องเข้าสู่ระบบ GO_PLAY ใหม่";
         }
         if (RESULT_SESSION_NOT_FOUND.equals(resultCode)) {
-            return "This device session was not found.";
+            return "ไม่พบเซสชันของอุปกรณ์นี้";
         }
-        return "Unable to validate device access right now.";
+        return "ยังตรวจสอบสิทธิ์อุปกรณ์ไม่ได้ในขณะนี้";
     }
 
     private static String readResponse(HttpURLConnection connection) throws Exception {

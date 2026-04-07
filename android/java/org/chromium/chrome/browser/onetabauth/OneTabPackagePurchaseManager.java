@@ -14,15 +14,102 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
-final class OneTabPackagePurchaseManager {
+public final class OneTabPackagePurchaseManager {
     private static final String TAG = "OneTabPurchase";
-    static final String PAYMENT_SERVICE_UNAVAILABLE_MESSAGE =
-            "Package purchase service is not ready yet. Please contact admin.";
+    private static final String PRODUCT_DOC_PATH_PREFIX = "products/";
+    private static final String PAYMENT_ACCOUNT_DOC_PATH = "settings/payment_account";
+    public static final String[] SUPPORTED_PACKAGE_IDS = {"pkg_01", "pkg_02", "pkg_03"};
+    public static final String PAYMENT_SERVICE_UNAVAILABLE_MESSAGE =
+            "ระบบซื้อแพ็กเกจยังไม่พร้อมใช้งาน โปรดติดต่อแอดมิน";
+    public static final String PACKAGE_ACCESS_UNAVAILABLE_MESSAGE =
+            "ไม่สามารถตรวจสอบสิทธิ์แพ็กเกจได้ในขณะนี้";
     private static final NetworkTrafficAnnotationTag PURCHASE_TRAFFIC_ANNOTATION =
             NetworkTrafficAnnotationTag.MISSING_TRAFFIC_ANNOTATION;
 
-    ProductSummary fetchProductSummary(String packageId) {
+    public ProductSummary fetchProductSummary(String packageId) {
+        try {
+            JSONObject fields = fetchDocumentFields(PRODUCT_DOC_PATH_PREFIX + packageId);
+            if (fields == null) {
+                return ProductSummary.fallback(packageId);
+            }
+            JSONObject paymentAccountFields = fetchDocumentFields(PAYMENT_ACCOUNT_DOC_PATH);
+
+            return new ProductSummary(
+                    packageId,
+                    readTextField(fields, "name", ProductSummary.DEFAULT_NAME),
+                    readLongField(fields, "price", ProductSummary.DEFAULT_PRICE),
+                    readTextField(fields, "currency", ProductSummary.DEFAULT_CURRENCY),
+                    (int) readLongField(fields, "durationDays", ProductSummary.DEFAULT_DURATION_DAYS),
+                    readPreferredBankDisplayField(paymentAccountFields, fields),
+                    readTextField(
+                            paymentAccountFields,
+                            "accountNameEn",
+                            readTextField(
+                                    fields,
+                                    "accountNameEn",
+                                    ProductSummary.DEFAULT_ACCOUNT_NAME_EN)),
+                    readTextField(
+                            paymentAccountFields,
+                            "accountNameTh",
+                            readTextField(
+                                    fields,
+                                    "accountNameTh",
+                                    ProductSummary.DEFAULT_ACCOUNT_NAME_TH)),
+                    readTextField(
+                            paymentAccountFields,
+                            "accountNumber",
+                            readTextField(
+                                    fields,
+                                    "accountNumber",
+                                    ProductSummary.DEFAULT_ACCOUNT_NUMBER)),
+                    readBooleanField(fields, "active", true));
+        } catch (Exception e) {
+            Log.e(TAG, "fetchProductSummary exception=%s", e.getMessage());
+            return ProductSummary.fallback(packageId);
+        }
+    }
+
+    public List<ProductSummary> fetchProductOptions() {
+        List<ProductSummary> products = new ArrayList<>();
+        for (String packageId : SUPPORTED_PACKAGE_IDS) {
+            products.add(fetchProductSummary(packageId));
+        }
+        return products;
+    }
+
+    public AccessStateResult fetchPackageAccessState(String idToken, String appCheckToken) {
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("data", new JSONObject());
+            JSONObject response =
+                    callCallable("getPackageAccessState", payload, idToken, appCheckToken);
+            JSONObject result = response.optJSONObject("result");
+            if (result == null) {
+                return AccessStateResult.unavailable(PACKAGE_ACCESS_UNAVAILABLE_MESSAGE);
+            }
+            return AccessStateResult.success(
+                    result.optBoolean("allowed", false),
+                    result.optString("status", ""),
+                    (int) result.optLong("remainingDays", -1),
+                    result.optString("packageId", ""),
+                    result.optString("expiresAt", ""),
+                    result.optString("message", ""));
+        } catch (PurchaseException e) {
+            if (TextUtils.equals(e.message, PAYMENT_SERVICE_UNAVAILABLE_MESSAGE)
+                    || TextUtils.equals(e.message, PACKAGE_ACCESS_UNAVAILABLE_MESSAGE)) {
+                return AccessStateResult.unavailable(PACKAGE_ACCESS_UNAVAILABLE_MESSAGE);
+            }
+            return AccessStateResult.error(e.message);
+        } catch (Exception e) {
+            Log.e(TAG, "fetchPackageAccessState exception=%s", e.getMessage());
+            return AccessStateResult.unavailable(PACKAGE_ACCESS_UNAVAILABLE_MESSAGE);
+        }
+    }
+
+    private JSONObject fetchDocumentFields(String documentPath) {
         HttpURLConnection connection = null;
         try {
             connection =
@@ -30,8 +117,8 @@ final class OneTabPackagePurchaseManager {
                             ChromiumNetworkAdapter.openConnection(
                                     new URL(
                                             OneTabFirebaseAuthConfig.FIRESTORE_BASE_URL
-                                                    + "/products/"
-                                                    + packageId),
+                                                    + "/"
+                                                    + documentPath),
                                     PURCHASE_TRAFFIC_ANNOTATION);
             connection.setConnectTimeout(15000);
             connection.setReadTimeout(15000);
@@ -41,29 +128,24 @@ final class OneTabPackagePurchaseManager {
             int responseCode = connection.getResponseCode();
             String responseBody = readResponse(connection);
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                Log.w(TAG, "fetchProductSummary failed code=%d body=%s", responseCode, responseBody);
-                return ProductSummary.fallback();
+                Log.w(
+                        TAG,
+                        "fetchDocumentFields failed path=%s code=%d body=%s",
+                        documentPath,
+                        responseCode,
+                        responseBody);
+                return null;
             }
-
-            JSONObject fields = new JSONObject(responseBody).optJSONObject("fields");
-            if (fields == null) {
-                return ProductSummary.fallback();
-            }
-
-            return new ProductSummary(
-                    readStringField(fields, "name", ProductSummary.DEFAULT_NAME),
-                    readLongField(fields, "price", ProductSummary.DEFAULT_PRICE),
-                    readStringField(fields, "currency", ProductSummary.DEFAULT_CURRENCY),
-                    (int) readLongField(fields, "durationDays", ProductSummary.DEFAULT_DURATION_DAYS));
+            return new JSONObject(responseBody).optJSONObject("fields");
         } catch (Exception e) {
-            Log.e(TAG, "fetchProductSummary exception=%s", e.getMessage());
-            return ProductSummary.fallback();
+            Log.e(TAG, "fetchDocumentFields exception path=%s error=%s", documentPath, e.getMessage());
+            return null;
         } finally {
             if (connection != null) connection.disconnect();
         }
     }
 
-    CallableResult createPackageOrder(String idToken, String appCheckToken, String packageId) {
+    public CallableResult createPackageOrder(String idToken, String appCheckToken, String packageId) {
         try {
             JSONObject data = new JSONObject();
             data.put("packageId", packageId);
@@ -77,7 +159,7 @@ final class OneTabPackagePurchaseManager {
                             appCheckToken);
             JSONObject result = response.optJSONObject("result");
             if (result == null) {
-                return CallableResult.error("Order response was empty.");
+                return CallableResult.error("ข้อมูลคำสั่งซื้อที่ตอบกลับมาว่างเปล่า");
             }
             return CallableResult.success(
                     new OrderResult(
@@ -92,11 +174,11 @@ final class OneTabPackagePurchaseManager {
             return CallableResult.error(e.message);
         } catch (Exception e) {
             Log.e(TAG, "createPackageOrder exception=%s", e.getMessage());
-            return CallableResult.error("Unable to create a package order.");
+            return CallableResult.error("ยังสร้างคำสั่งซื้อแพ็กเกจไม่ได้");
         }
     }
 
-    String uploadSlipJpeg(String uploadUrl, byte[] jpegBytes) {
+    public String uploadSlipJpeg(String uploadUrl, byte[] jpegBytes) {
         HttpURLConnection connection = null;
         try {
             connection =
@@ -119,18 +201,18 @@ final class OneTabPackagePurchaseManager {
             if (responseCode != HttpURLConnection.HTTP_OK
                     && responseCode != HttpURLConnection.HTTP_CREATED) {
                 Log.w(TAG, "uploadSlipJpeg failed code=%d body=%s", responseCode, responseBody);
-                return "Unable to upload the slip image.";
+                return "ยังอัปโหลดรูปสลิปไม่ได้";
             }
             return "";
         } catch (Exception e) {
             Log.e(TAG, "uploadSlipJpeg exception=%s", e.getMessage());
-            return "Unable to upload the slip image.";
+            return "ยังอัปโหลดรูปสลิปไม่ได้";
         } finally {
             if (connection != null) connection.disconnect();
         }
     }
 
-    VerifyResult verifyPackageSlip(
+    public VerifyResult verifyPackageSlip(
             String idToken, String appCheckToken, String orderId, String storagePath) {
         try {
             JSONObject data = new JSONObject();
@@ -146,7 +228,7 @@ final class OneTabPackagePurchaseManager {
                             appCheckToken);
             JSONObject result = response.optJSONObject("result");
             if (result == null) {
-                return VerifyResult.error("Verification response was empty.");
+                return VerifyResult.error("ข้อมูลผลตรวจสลิปที่ตอบกลับมาว่างเปล่า");
             }
             return VerifyResult.success(
                     result.optString("status", ""),
@@ -165,7 +247,7 @@ final class OneTabPackagePurchaseManager {
             return VerifyResult.error(e.message);
         } catch (Exception e) {
             Log.e(TAG, "verifyPackageSlip exception=%s", e.getMessage());
-            return VerifyResult.error("Unable to verify the bank slip.");
+            return VerifyResult.error("ยังตรวจสอบสลิปธนาคารไม่ได้");
         }
     }
 
@@ -202,12 +284,12 @@ final class OneTabPackagePurchaseManager {
                 if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
                     throw new PurchaseException(PAYMENT_SERVICE_UNAVAILABLE_MESSAGE);
                 }
-                throw parseCallableError(responseBody, "Request failed.");
+                throw parseCallableError(responseBody, "คำขอไม่สำเร็จ");
             }
 
             JSONObject response = new JSONObject(responseBody);
             if (response.has("error")) {
-                throw parseCallableError(responseBody, "Request failed.");
+                throw parseCallableError(responseBody, "คำขอไม่สำเร็จ");
             }
             return response;
         } finally {
@@ -227,16 +309,25 @@ final class OneTabPackagePurchaseManager {
             if (details != null) {
                 String code = details.optString("code", "");
                 if ("SLIP_PENDING".equals(code)) {
-                    return new PurchaseException("Slip verification is pending. Please retry shortly.");
+                    return new PurchaseException("สลิปกำลังอยู่ระหว่างตรวจสอบ กรุณาลองใหม่อีกครั้ง");
                 }
                 if ("DUPLICATE_SLIP".equals(code)) {
-                    return new PurchaseException("This slip has already been used.");
+                    return new PurchaseException("สลิปนี้ถูกใช้งานไปแล้ว");
                 }
                 if ("AMOUNT_MISMATCH".equals(code)) {
-                    return new PurchaseException("Slip amount does not match this package.");
+                    return new PurchaseException("ยอดเงินในสลิปไม่ตรงกับแพ็กเกจนี้");
                 }
                 if ("ACCOUNT_NOT_MATCH".equals(code)) {
-                    return new PurchaseException("Slip receiver account does not match the configured account.");
+                    return new PurchaseException("บัญชีปลายทางในสลิปไม่ตรงกับบัญชีที่ตั้งไว้");
+                }
+                if ("ORDER_EXPIRED".equals(code)) {
+                    return new PurchaseException("คำสั่งซื้อหมดเวลาแล้ว กรุณาสร้างรายการใหม่");
+                }
+                if ("ORDER_NOT_PENDING".equals(code)) {
+                    return new PurchaseException("คำสั่งซื้อนี้ไม่อยู่ในสถานะที่ตรวจสอบสลิปได้แล้ว");
+                }
+                if ("THUNDER_UNAVAILABLE".equals(code)) {
+                    return new PurchaseException("ระบบตรวจสอบสลิปของ Thunder ยังไม่พร้อมใช้งาน");
                 }
             }
             if (!TextUtils.isEmpty(message)) {
@@ -247,13 +338,54 @@ final class OneTabPackagePurchaseManager {
         return new PurchaseException(fallback);
     }
 
-    private static String readStringField(JSONObject fields, String fieldName, String fallback) {
+    private static String readTextField(JSONObject fields, String fieldName, String fallback) {
+        if (fields == null) return fallback;
         JSONObject field = fields.optJSONObject(fieldName);
         if (field == null) return fallback;
-        return field.optString("stringValue", fallback);
+        String stringValue = field.optString("stringValue", "");
+        if (!TextUtils.isEmpty(stringValue)) return stringValue;
+        String integerValue = field.optString("integerValue", "");
+        if (!TextUtils.isEmpty(integerValue)) return integerValue;
+        String doubleValue = field.optString("doubleValue", "");
+        if (!TextUtils.isEmpty(doubleValue)) return doubleValue;
+        return fallback;
+    }
+
+    private static String readBankDisplayField(JSONObject fields) {
+        if (fields == null) return ProductSummary.DEFAULT_BANK_DISPLAY_NAME;
+        String direct =
+                readTextField(fields, "bankDisplayName", ProductSummary.DEFAULT_BANK_DISPLAY_NAME);
+        String bankNameTh = readTextField(fields, "bankNameTh", "");
+        String bankNameEn = readTextField(fields, "bankNameEn", "");
+        if (!TextUtils.isEmpty(bankNameTh) && !TextUtils.isEmpty(bankNameEn)) {
+            return bankNameTh + " ( " + bankNameEn + " )";
+        }
+        if (!TextUtils.isEmpty(bankNameTh)) {
+            return bankNameTh;
+        }
+        if (!TextUtils.isEmpty(bankNameEn)) {
+            return bankNameEn;
+        }
+        return direct;
+    }
+
+    private static String readPreferredBankDisplayField(
+            JSONObject preferredFields, JSONObject fallbackFields) {
+        if (preferredFields != null) {
+            String preferredDirect = readTextField(preferredFields, "bankDisplayName", "");
+            String preferredTh = readTextField(preferredFields, "bankNameTh", "");
+            String preferredEn = readTextField(preferredFields, "bankNameEn", "");
+            if (!TextUtils.isEmpty(preferredDirect)
+                    || !TextUtils.isEmpty(preferredTh)
+                    || !TextUtils.isEmpty(preferredEn)) {
+                return readBankDisplayField(preferredFields);
+            }
+        }
+        return readBankDisplayField(fallbackFields);
     }
 
     private static long readLongField(JSONObject fields, String fieldName, long fallback) {
+        if (fields == null) return fallback;
         JSONObject field = fields.optJSONObject(fieldName);
         if (field == null) return fallback;
         String integerValue = field.optString("integerValue", "");
@@ -269,6 +401,21 @@ final class OneTabPackagePurchaseManager {
                 return Math.round(Double.parseDouble(doubleValue));
             } catch (Exception ignored) {
             }
+        }
+        return fallback;
+    }
+
+    private static boolean readBooleanField(JSONObject fields, String fieldName, boolean fallback) {
+        if (fields == null) return fallback;
+        JSONObject field = fields.optJSONObject(fieldName);
+        if (field == null) return fallback;
+        if (field.has("booleanValue")) {
+            return field.optBoolean("booleanValue", fallback);
+        }
+        String stringValue = field.optString("stringValue", "");
+        if (!TextUtils.isEmpty(stringValue)) {
+            if ("true".equalsIgnoreCase(stringValue)) return true;
+            if ("false".equalsIgnoreCase(stringValue)) return false;
         }
         return fallback;
     }
@@ -294,25 +441,77 @@ final class OneTabPackagePurchaseManager {
     }
 
     static final class ProductSummary {
-        static final String DEFAULT_NAME = "Premium 30 Days";
+        static final String DEFAULT_NAME = "แพ็กเกจ GO_PLAY 30 วัน";
         static final long DEFAULT_PRICE = 599L;
         static final String DEFAULT_CURRENCY = "THB";
         static final int DEFAULT_DURATION_DAYS = 30;
+        static final String DEFAULT_BANK_DISPLAY_NAME = "กสิกรไทย ( K BANK )";
+        static final String DEFAULT_ACCOUNT_NAME_EN = "YAKSA TRADING LIMITED";
+        static final String DEFAULT_ACCOUNT_NAME_TH = "บจก. ยักษ์ษา เทรดดิ้ง";
+        static final String DEFAULT_ACCOUNT_NUMBER = "2008395414";
 
+        final String packageId;
         final String name;
         final long price;
         final String currency;
         final int durationDays;
+        final String bankDisplayName;
+        final String accountNameEn;
+        final String accountNameTh;
+        final String accountNumber;
+        final boolean available;
 
-        ProductSummary(String name, long price, String currency, int durationDays) {
+        ProductSummary(
+                String packageId,
+                String name,
+                long price,
+                String currency,
+                int durationDays,
+                String bankDisplayName,
+                String accountNameEn,
+                String accountNameTh,
+                String accountNumber,
+                boolean available) {
+            this.packageId = packageId;
             this.name = name;
             this.price = price;
             this.currency = currency;
             this.durationDays = durationDays;
+            this.bankDisplayName = bankDisplayName;
+            this.accountNameEn = accountNameEn;
+            this.accountNameTh = accountNameTh;
+            this.accountNumber = accountNumber;
+            this.available = available;
         }
 
-        static ProductSummary fallback() {
-            return new ProductSummary(DEFAULT_NAME, DEFAULT_PRICE, DEFAULT_CURRENCY, DEFAULT_DURATION_DAYS);
+        static ProductSummary fallback(String packageId) {
+            long price = DEFAULT_PRICE;
+            int durationDays = DEFAULT_DURATION_DAYS;
+            String name = DEFAULT_NAME;
+            if ("pkg_01".equals(packageId)) {
+                price = 99L;
+                durationDays = 30;
+                name = "แพ็กเกจ GO_PLAY 30 วัน";
+            } else if ("pkg_02".equals(packageId)) {
+                price = 199L;
+                durationDays = 90;
+                name = "แพ็กเกจ GO_PLAY 90 วัน";
+            } else if ("pkg_03".equals(packageId)) {
+                price = 599L;
+                durationDays = 365;
+                name = "แพ็กเกจ GO_PLAY 365 วัน";
+            }
+            return new ProductSummary(
+                    packageId,
+                    name,
+                    price,
+                    DEFAULT_CURRENCY,
+                    durationDays,
+                    DEFAULT_BANK_DISPLAY_NAME,
+                    DEFAULT_ACCOUNT_NAME_EN,
+                    DEFAULT_ACCOUNT_NAME_TH,
+                    DEFAULT_ACCOUNT_NUMBER,
+                    true);
         }
     }
 
@@ -432,6 +631,62 @@ final class OneTabPackagePurchaseManager {
 
         static VerifyResult error(String message) {
             return new VerifyResult(false, "", "", "", "", "", 0L, 0L, 0, false, "", message);
+        }
+    }
+
+    public static final class AccessStateResult {
+        public final boolean success;
+        public final boolean allowed;
+        public final boolean serviceUnavailable;
+        public final String status;
+        public final int remainingDays;
+        public final String packageId;
+        public final String expiresAt;
+        public final String message;
+
+        private AccessStateResult(
+                boolean success,
+                boolean allowed,
+                boolean serviceUnavailable,
+                String status,
+                int remainingDays,
+                String packageId,
+                String expiresAt,
+                String message) {
+            this.success = success;
+            this.allowed = allowed;
+            this.serviceUnavailable = serviceUnavailable;
+            this.status = status;
+            this.remainingDays = remainingDays;
+            this.packageId = packageId;
+            this.expiresAt = expiresAt;
+            this.message = message;
+        }
+
+        public static AccessStateResult success(
+                boolean allowed,
+                String status,
+                int remainingDays,
+                String packageId,
+                String expiresAt,
+                String message) {
+            return new AccessStateResult(
+                    true,
+                    allowed,
+                    false,
+                    status,
+                    remainingDays,
+                    packageId,
+                    expiresAt,
+                    message);
+        }
+
+        public static AccessStateResult error(String message) {
+            return new AccessStateResult(false, false, false, "", -1, "", "", message);
+        }
+
+        public static AccessStateResult unavailable(String message) {
+            return new AccessStateResult(false, false, true, "", -1, "", "", message);
         }
     }
 

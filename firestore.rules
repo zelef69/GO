@@ -126,7 +126,7 @@ service cloud.firestore {
     }
 
     match /app_updates/{docId} {
-      allow read: if isSignedIn() && docId == 'android';
+      allow read: if docId == 'android';
       allow write: if false;
     }
 

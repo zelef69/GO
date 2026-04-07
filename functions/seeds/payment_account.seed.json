@@ -1,0 +1,10 @@
+{
+  "settings": {
+    "payment_account": {
+      "bankDisplayName": "กสิกรไทย ( K BANK )",
+      "accountNameEn": "YAKSA TRADING LIMITED",
+      "accountNameTh": "บจก. ยักษ์ษา เทรดดิ้ง",
+      "accountNumber": "2008395414"
+    }
+  }
+}

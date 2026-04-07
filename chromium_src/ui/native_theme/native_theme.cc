@@ -18,6 +18,11 @@
 
 namespace ui {
 
+SkColor NativeTheme::GetSystemButtonPressedColor_ChromiumImpl(
+    SkColor base_color) const {
+  return base_color;
+}
+
 SkColor NativeTheme::GetSystemButtonPressedColor(SkColor base_color) const {
   bool is_dark = (preferred_color_scheme() == PreferredColorScheme::kDark);
   return color_utils::GetResultingPaintColor(

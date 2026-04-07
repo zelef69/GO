@@ -26,17 +26,40 @@ fun boolProperty(name: String, defaultValue: Boolean): Boolean {
     return resolved.equals("true", ignoreCase = true) || resolved == "1"
 }
 
+fun stringProperty(name: String): String? {
+    val projectValue = (project.findProperty(name) as String?)?.trim()
+    val envValue = System.getenv(name)?.trim()
+    val resolved = projectValue ?: envValue ?: return null
+    return resolved.ifEmpty { null }
+}
+
+val userHome = System.getProperty("user.home")
+val defaultAndroidDebugKeystore =
+    if (org.gradle.internal.os.OperatingSystem.current().isWindows) {
+        file("$userHome\\.android\\debug.keystore")
+    } else {
+        file("$userHome/.android/debug.keystore")
+    }
+
+val chromiumDebugKeystoreCandidates =
+    listOf(
+        file("\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\build\\android\\chromium-debug.keystore"),
+        file("$userHome\\src_ext4\\build\\android\\chromium-debug.keystore"),
+        rootProject.projectDir.parentFile?.parentFile?.resolve("src_ext4/build/android/chromium-debug.keystore"),
+    )
+val chromiumDebugKeystore = chromiumDebugKeystoreCandidates.firstOrNull { it?.exists() == true }
+
 val rustBuildCommand =
     "cargo ndk -t armeabi-v7a -t arm64-v8a -t x86_64 -o ../../app/src/main/jniLibs " +
         "build --release || (cargo clean && cargo ndk -t armeabi-v7a -t arm64-v8a -t x86_64 " +
         "-o ../../app/src/main/jniLibs build --release)"
 
-val expectedAppId = "com.example.go_play"
+val expectedAppId = stringProperty("GO_PLAY_SETUP_APP_ID") ?: "com.onetabtube.browser_default"
 val expectedManifestSentinel = "go_play_release_v1"
 val expectedCertSha256 = normalizeHex(
     (project.findProperty("GO_PLAY_EXPECTED_CERT_SHA256") as String?)
         ?: System.getenv("GO_PLAY_EXPECTED_CERT_SHA256")
-        ?: "57:5F:13:AA:8F:2B:D7:13:B0:4E:B7:44:34:75:BE:91:63:66:EF:A8:A5:09:A1:B5:96:6C:20:11:1D:2D:07:D6",
+        ?: "32:A2:FC:74:D7:31:10:58:59:E5:A8:5D:F1:6D:95:F1:02:D8:5B:22:09:9B:80:64:C5:D8:91:5C:61:DA:D1:E0",
 )
 val pinSetId =
     (project.findProperty("GO_PLAY_PIN_SET_ID") as String?)
@@ -74,6 +97,19 @@ val integrityPayloadB64 = Base64.getEncoder().encodeToString(integrityPayloadJso
 val integrityPayloadChecksum = sha256Hex(integrityPayloadB64)
 val generatedSecurityAssetsDir = layout.buildDirectory.dir("generated/security/integrity")
 val generatedIntegrityAssetName = "security_integrity_config.json"
+val bootstrapKeystoreFile =
+    stringProperty("GO_PLAY_BOOTSTRAP_STORE_FILE")?.let { file(it) }
+        ?: chromiumDebugKeystore
+        ?: defaultAndroidDebugKeystore
+val usesChromiumDebugKeystore = chromiumDebugKeystore?.let { it == bootstrapKeystoreFile } == true
+val bootstrapStorePassword =
+    stringProperty("GO_PLAY_BOOTSTRAP_STORE_PASSWORD")
+        ?: if (usesChromiumDebugKeystore) "chromium" else "android"
+val bootstrapKeyAlias =
+    stringProperty("GO_PLAY_BOOTSTRAP_KEY_ALIAS")
+        ?: if (usesChromiumDebugKeystore) "chromiumdebugkey" else "androiddebugkey"
+val bootstrapKeyPassword = stringProperty("GO_PLAY_BOOTSTRAP_KEY_PASSWORD") ?: bootstrapStorePassword
+val enableRustAdblockBuild = boolProperty("GO_PLAY_ENABLE_RUST_ADBLOCK", false)
 
 android {
     namespace = "com.example.go_play"
@@ -121,22 +157,22 @@ android {
     }
 
     signingConfigs {
-        create("goPlayDebug") {
-            storeFile = file("go_play_debug.keystore")
-            storePassword = "android"
-            keyAlias = "go_play_debug"
-            keyPassword = "android"
+        create("goPlayBootstrap") {
+            storeFile = bootstrapKeystoreFile
+            storePassword = bootstrapStorePassword
+            keyAlias = bootstrapKeyAlias
+            keyPassword = bootstrapKeyPassword
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("goPlayDebug")
+            signingConfig = signingConfigs.getByName("goPlayBootstrap")
             isMinifyEnabled = false
             isShrinkResources = false
         }
         release {
-            signingConfig = signingConfigs.getByName("goPlayDebug")
+            signingConfig = signingConfigs.getByName("goPlayBootstrap")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -191,8 +227,6 @@ tasks.register<Exec>("buildRustAdblockJni") {
     group = "native"
     description = "Build go_play_adblock_jni (adblock-rust) for Android ABIs."
     workingDir = rootProject.file("rust/adblock_jni")
-
-    val userHome = System.getProperty("user.home")
     val cargoBin =
         if (org.gradle.internal.os.OperatingSystem.current().isWindows) {
             "$userHome\\.cargo\\bin"
@@ -242,6 +276,8 @@ tasks.register<Exec>("buildRustAdblockJni") {
 }
 
 tasks.named("preBuild").configure {
-    dependsOn("buildRustAdblockJni")
     dependsOn(generateSecurityIntegrityConfig)
+    if (enableRustAdblockBuild) {
+        dependsOn("buildRustAdblockJni")
+    }
 }

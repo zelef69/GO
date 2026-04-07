@@ -17,6 +17,13 @@ const jsonPath =
     'app_updates_android.template.json',
   );
 const firestoreDatabase = '(default)';
+const FIREBASE_CLI_CLIENT_ID =
+  '563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com';
+const FIREBASE_CLI_CLIENT_SECRET = 'j9iVZfS8kkCEFUPaAeJV0sAi';
+const FIREBASE_REST_SCOPES = [
+  'https://www.googleapis.com/auth/firebase',
+  'https://www.googleapis.com/auth/cloud-platform',
+];
 
 function initializeAdmin() {
   if (admin.apps.length > 0) {
@@ -51,17 +58,19 @@ function resolveFirebaseToolsConfigPath() {
   return '';
 }
 
-function loadFirebaseCliAccessToken() {
+function loadFirebaseCliAuthState() {
   const configPath = resolveFirebaseToolsConfigPath();
   if (!configPath) {
-    return '';
+    return {accessToken: '', refreshToken: ''};
   }
   try {
     const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    const token = (parsed?.tokens?.access_token || '').toString().trim();
-    return token;
+    return {
+      accessToken: (parsed?.tokens?.access_token || '').toString().trim(),
+      refreshToken: (parsed?.tokens?.refresh_token || '').toString().trim(),
+    };
   } catch (_) {
-    return '';
+    return {accessToken: '', refreshToken: ''};
   }
 }
 
@@ -159,6 +168,83 @@ function requestJson({method, endpoint, token, body}) {
   });
 }
 
+function requestFormJson({endpoint, body}) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(endpoint);
+    const req = https.request(
+      {
+        protocol: url.protocol,
+        hostname: url.hostname,
+        path: `${url.pathname}${url.search}`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(body),
+        },
+      },
+      (res) => {
+        let raw = '';
+        res.on('data', (chunk) => {
+          raw += chunk;
+        });
+        res.on('end', () => {
+          const status = res.statusCode || 0;
+          let json = {};
+          try {
+            json = raw ? JSON.parse(raw) : {};
+          } catch (_) {
+            json = {};
+          }
+          if (status >= 200 && status < 300) {
+            resolve(json);
+            return;
+          }
+          const message =
+            json?.error_description ||
+            json?.error?.message ||
+            json?.error ||
+            raw ||
+            `HTTP ${status} POST ${endpoint}`;
+          reject(new Error(message));
+        });
+      },
+    );
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+async function refreshFirebaseCliAccessToken(refreshToken) {
+  const form = new URLSearchParams({
+    refresh_token: refreshToken,
+    client_id: FIREBASE_CLI_CLIENT_ID,
+    client_secret: FIREBASE_CLI_CLIENT_SECRET,
+    grant_type: 'refresh_token',
+    scope: FIREBASE_REST_SCOPES.join(' '),
+  });
+  const response = await requestFormJson({
+    endpoint: 'https://www.googleapis.com/oauth2/v3/token',
+    body: form.toString(),
+  });
+  const accessToken = (response?.access_token || '').toString().trim();
+  if (!accessToken) {
+    throw new Error('Unable to refresh Firebase CLI access token');
+  }
+  return accessToken;
+}
+
+async function loadFirestoreRestToken() {
+  const authState = loadFirebaseCliAuthState();
+  if (authState.refreshToken) {
+    return refreshFirebaseCliAccessToken(authState.refreshToken);
+  }
+  if (authState.accessToken) {
+    return authState.accessToken;
+  }
+  return '';
+}
+
 async function writeWithRestToken(payload, token) {
   const endpoint = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${firestoreDatabase}/documents/${firestoreDocPath()}`;
   await requestJson({
@@ -170,7 +256,7 @@ async function writeWithRestToken(payload, token) {
 }
 
 async function verifyWithRestToken() {
-  const token = loadFirebaseCliAccessToken();
+  const token = await loadFirestoreRestToken();
   if (!token) {
     throw new Error(
       'No Firebase CLI access token found for verification (firebase login required)',
@@ -201,7 +287,7 @@ async function main() {
     const db = admin.firestore();
     await db.collection(collection).doc(documentId).set(payload, {merge: true});
   } catch (error) {
-    const token = loadFirebaseCliAccessToken();
+    const token = await loadFirestoreRestToken();
     if (!token) {
       throw new Error(
         `Admin SDK write failed: ${

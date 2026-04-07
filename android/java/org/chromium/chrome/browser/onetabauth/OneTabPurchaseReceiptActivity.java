@@ -254,7 +254,7 @@ public class OneTabPurchaseReceiptActivity extends AppCompatActivity {
         if (date == null) {
             return getString(R.string.onetab_buy_receipt_unknown_value);
         }
-        SimpleDateFormat format = new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.US);
+        SimpleDateFormat format = new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.forLanguageTag("th-TH"));
         return format.format(date);
     }
 

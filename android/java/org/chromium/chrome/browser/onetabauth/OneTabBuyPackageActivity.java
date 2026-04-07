@@ -34,13 +34,15 @@ import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
 import org.chromium.chrome.R;
 
+import java.util.ArrayList;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.util.List;
 
 public class OneTabBuyPackageActivity extends AppCompatActivity {
     private static final String TAG = "OneTabBuyPackage";
     private static final String ADMIN_CONTACT_URL = "https://line.me/R/ti/p/%40615yysio";
-    private static final String PRIMARY_PACKAGE_ID = "pkg_599";
+    private static final String DEFAULT_SELECTED_PACKAGE_ID = "pkg_03";
     private static final int REQUEST_CODE_PICK_SLIP = 0x6259;
     private static final int MAX_IMAGE_BYTES = 5 * 1024 * 1024;
     private static final int MAX_IMAGE_DIMENSION = 2048;
@@ -52,19 +54,26 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
     private TextView mPackageNameView;
     private TextView mPriceValueView;
     private TextView mStatusView;
+    private TextView mBankValueView;
+    private TextView mAccountNameEnValueView;
+    private TextView mAccountNameThValueView;
+    private TextView mAccountNumberValueView;
+    private LinearLayout mPackageOptionsContainer;
     private ProgressBar mProgressBar;
     private AppCompatButton mSelectSlipButton;
     private AppCompatButton mContactAdminButton;
 
     @Nullable private OneTabPackagePurchaseManager.ProductSummary mProductSummary;
     @Nullable private PendingOrder mPendingOrder;
+    private final List<OneTabPackagePurchaseManager.ProductSummary> mProductOptions = new ArrayList<>();
+    private String mSelectedPackageId = DEFAULT_SELECTED_PACKAGE_ID;
     private boolean mBusy;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(createContentView());
-        loadProductSummary();
+        loadProductOptions();
     }
 
     @Override
@@ -148,6 +157,14 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         packageLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         card.addView(packageLabel);
 
+        mPackageOptionsContainer = new LinearLayout(this);
+        mPackageOptionsContainer.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams packageOptionsParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        packageOptionsParams.topMargin = dp(12);
+        card.addView(mPackageOptionsContainer, packageOptionsParams);
+
         mPackageNameView = new TextView(this);
         mPackageNameView.setTextColor(Color.WHITE);
         mPackageNameView.setTypeface(Typeface.DEFAULT_BOLD);
@@ -178,18 +195,19 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         priceValueParams.topMargin = dp(8);
         card.addView(mPriceValueView, priceValueParams);
 
-        card.addView(
-                createBankInfoBlock(
-                        getString(R.string.onetab_buy_bank_label),
-                        getString(R.string.onetab_buy_bank_value)));
-        card.addView(
-                createBankInfoBlock(
-                        getString(R.string.onetab_buy_account_name_en_label),
-                        getString(R.string.onetab_buy_account_name_en_value)));
-        card.addView(
-                createBankInfoBlock(
-                        getString(R.string.onetab_buy_account_name_th_label),
-                        getString(R.string.onetab_buy_account_name_th_value)));
+        ValueBlock bankBlock = createBankInfoBlock(getString(R.string.onetab_buy_bank_label));
+        mBankValueView = bankBlock.valueView;
+        card.addView(bankBlock.container);
+
+        ValueBlock accountNameEnBlock =
+                createBankInfoBlock(getString(R.string.onetab_buy_account_name_en_label));
+        mAccountNameEnValueView = accountNameEnBlock.valueView;
+        card.addView(accountNameEnBlock.container);
+
+        ValueBlock accountNameThBlock =
+                createBankInfoBlock(getString(R.string.onetab_buy_account_name_th_label));
+        mAccountNameThValueView = accountNameThBlock.valueView;
+        card.addView(accountNameThBlock.container);
         card.addView(createCopyAccountNumberBlock());
 
         mStatusView = new TextView(this);
@@ -239,26 +257,107 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         adminParams.topMargin = dp(14);
         card.addView(mContactAdminButton, adminParams);
 
-        setProductSummary(OneTabPackagePurchaseManager.ProductSummary.fallback());
+        setProductOptions(buildFallbackPackageOptions());
         setStatus(getString(R.string.onetab_buy_status_loading), false);
 
         return scrollView;
     }
 
-    private void loadProductSummary() {
+    private void loadProductOptions() {
         PostTask.postTask(
                 TaskTraits.BEST_EFFORT_MAY_BLOCK,
                 () -> {
-                    OneTabPackagePurchaseManager.ProductSummary summary =
-                            mPurchaseManager.fetchProductSummary(PRIMARY_PACKAGE_ID);
+                    List<OneTabPackagePurchaseManager.ProductSummary> options =
+                            mPurchaseManager.fetchProductOptions();
                     PostTask.postTask(
                             TaskTraits.UI_DEFAULT,
                             () -> {
                                 if (isFinishing() || isDestroyed()) return;
-                                setProductSummary(summary);
+                                setProductOptions(options);
                                 setStatus(getString(R.string.onetab_buy_status_ready), false);
                             });
                 });
+    }
+
+    private List<OneTabPackagePurchaseManager.ProductSummary> buildFallbackPackageOptions() {
+        List<OneTabPackagePurchaseManager.ProductSummary> options = new ArrayList<>();
+        for (String packageId : OneTabPackagePurchaseManager.SUPPORTED_PACKAGE_IDS) {
+            options.add(OneTabPackagePurchaseManager.ProductSummary.fallback(packageId));
+        }
+        return options;
+    }
+
+    private void setProductOptions(List<OneTabPackagePurchaseManager.ProductSummary> options) {
+        mProductOptions.clear();
+        if (options != null && !options.isEmpty()) {
+            mProductOptions.addAll(options);
+        } else {
+            mProductOptions.addAll(buildFallbackPackageOptions());
+        }
+
+        OneTabPackagePurchaseManager.ProductSummary selected = null;
+        for (OneTabPackagePurchaseManager.ProductSummary option : mProductOptions) {
+            if (TextUtils.equals(option.packageId, mSelectedPackageId)) {
+                selected = option;
+                break;
+            }
+        }
+        if (selected == null) {
+            for (OneTabPackagePurchaseManager.ProductSummary option : mProductOptions) {
+                if (option.available) {
+                    selected = option;
+                    break;
+                }
+            }
+        }
+        if (selected == null && !mProductOptions.isEmpty()) {
+            selected = mProductOptions.get(0);
+        }
+        if (selected != null) {
+            mSelectedPackageId = selected.packageId;
+            setProductSummary(selected);
+        }
+        renderPackageOptions();
+    }
+
+    private void renderPackageOptions() {
+        if (mPackageOptionsContainer == null) return;
+        mPackageOptionsContainer.removeAllViews();
+        for (OneTabPackagePurchaseManager.ProductSummary option : mProductOptions) {
+            AppCompatButton optionButton = new AppCompatButton(this);
+            optionButton.setAllCaps(false);
+            optionButton.setText(option.name + "\n"
+                    + getString(
+                            R.string.onetab_buy_price_value,
+                            option.price,
+                            option.currency,
+                            option.durationDays));
+            optionButton.setTextColor(Color.WHITE);
+            optionButton.setTypeface(Typeface.DEFAULT_BOLD);
+            optionButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            optionButton.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            optionButton.setPadding(dp(16), dp(14), dp(16), dp(14));
+            boolean selected = TextUtils.equals(option.packageId, mSelectedPackageId);
+            optionButton.setBackground(
+                    selected
+                            ? createFilledButtonBackground("#FFCC0000")
+                            : createOutlineButtonBackground());
+            optionButton.setEnabled(option.available && !mBusy);
+            optionButton.setAlpha(option.available ? 1f : 0.5f);
+            optionButton.setOnClickListener(
+                    unused -> {
+                        mSelectedPackageId = option.packageId;
+                        setProductSummary(option);
+                        renderPackageOptions();
+                    });
+            LinearLayout.LayoutParams optionParams =
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (mPackageOptionsContainer.getChildCount() > 0) {
+                optionParams.topMargin = dp(10);
+            }
+            mPackageOptionsContainer.addView(optionButton, optionParams);
+        }
     }
 
     private void setProductSummary(OneTabPackagePurchaseManager.ProductSummary summary) {
@@ -270,10 +369,30 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
                         summary.price,
                         summary.currency,
                         summary.durationDays));
+        if (mBankValueView != null) {
+            mBankValueView.setText(summary.bankDisplayName);
+        }
+        if (mAccountNameEnValueView != null) {
+            mAccountNameEnValueView.setText(summary.accountNameEn);
+        }
+        if (mAccountNameThValueView != null) {
+            mAccountNameThValueView.setText(summary.accountNameTh);
+        }
+        if (mAccountNumberValueView != null) {
+            mAccountNumberValueView.setText(summary.accountNumber);
+        }
     }
 
     private void startPurchaseFlow() {
         if (mBusy) return;
+        if (mProductSummary == null) {
+            setStatus(getString(R.string.onetab_buy_status_loading), true);
+            return;
+        }
+        if (!mProductSummary.available) {
+            setStatus(getString(R.string.onetab_buy_status_package_unavailable), true);
+            return;
+        }
         setBusy(true);
         setStatus(getString(R.string.onetab_buy_status_creating_order), false);
         mAuthManager.resolveAuthentication(
@@ -313,7 +432,9 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
                                         () -> {
                                             OneTabPackagePurchaseManager.CallableResult result =
                                                     mPurchaseManager.createPackageOrder(
-                                                            session.idToken, token, PRIMARY_PACKAGE_ID);
+                                                            session.idToken,
+                                                            token,
+                                                            mProductSummary.packageId);
                                             PostTask.postTask(
                                                     TaskTraits.UI_DEFAULT,
                                                     () -> {
@@ -558,6 +679,7 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
     private void setBusy(boolean busy) {
         mBusy = busy;
         mProgressBar.setVisibility(busy ? View.VISIBLE : View.GONE);
+        renderPackageOptions();
         mSelectSlipButton.setEnabled(!busy);
         mSelectSlipButton.setAlpha(busy ? 0.6f : 1f);
         mContactAdminButton.setEnabled(!busy);
@@ -584,7 +706,7 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         return drawable;
     }
 
-    private View createBankInfoBlock(String label, String value) {
+    private ValueBlock createBankInfoBlock(String label) {
         LinearLayout block = new LinearLayout(this);
         block.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable background = new GradientDrawable();
@@ -600,7 +722,6 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         block.addView(labelView);
 
         TextView valueView = new TextView(this);
-        valueView.setText(value);
         valueView.setTextColor(Color.WHITE);
         valueView.setTypeface(Typeface.DEFAULT_BOLD);
         valueView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
@@ -616,7 +737,7 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         blockParams.topMargin = dp(14);
         block.setLayoutParams(blockParams);
-        return block;
+        return new ValueBlock(block, valueView);
     }
 
     private View createCopyAccountNumberBlock() {
@@ -643,14 +764,13 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         rowParams.topMargin = dp(8);
         block.addView(row, rowParams);
 
-        TextView valueView = new TextView(this);
-        valueView.setText(R.string.onetab_buy_account_number_value);
-        valueView.setTextColor(Color.WHITE);
-        valueView.setTypeface(Typeface.DEFAULT_BOLD);
-        valueView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        mAccountNumberValueView = new TextView(this);
+        mAccountNumberValueView.setTextColor(Color.WHITE);
+        mAccountNumberValueView.setTypeface(Typeface.DEFAULT_BOLD);
+        mAccountNumberValueView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         LinearLayout.LayoutParams valueParams =
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        row.addView(valueView, valueParams);
+        row.addView(mAccountNumberValueView, valueParams);
 
         AppCompatButton copyButton = new AppCompatButton(this);
         copyButton.setAllCaps(false);
@@ -665,7 +785,7 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         copyButton.setOnClickListener(
                 unused ->
                         copyTextToClipboard(
-                                getString(R.string.onetab_buy_account_number_value),
+                                getCurrentAccountNumber(),
                                 getString(R.string.onetab_buy_account_number_copied)));
         row.addView(
                 copyButton,
@@ -678,6 +798,17 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         blockParams.topMargin = dp(14);
         block.setLayoutParams(blockParams);
         return block;
+    }
+
+    private String getCurrentAccountNumber() {
+        if (mProductSummary != null && !TextUtils.isEmpty(mProductSummary.accountNumber)) {
+            return mProductSummary.accountNumber;
+        }
+        if (mAccountNumberValueView != null
+                && !TextUtils.isEmpty(mAccountNumberValueView.getText())) {
+            return mAccountNumberValueView.getText().toString();
+        }
+        return OneTabPackagePurchaseManager.ProductSummary.DEFAULT_ACCOUNT_NUMBER;
     }
 
     private void copyTextToClipboard(String value, String copiedMessage) {
@@ -723,6 +854,16 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
             this.orderId = orderId;
             this.storagePath = storagePath;
             this.uploadUrl = uploadUrl;
+        }
+    }
+
+    private static final class ValueBlock {
+        final View container;
+        final TextView valueView;
+
+        ValueBlock(View container, TextView valueView) {
+            this.container = container;
+            this.valueView = valueView;
         }
     }
 

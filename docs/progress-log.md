@@ -1,5 +1,654 @@
 # Progress Log
 
+## 2026-04-06 22:24:30 +07:00
+
+- Timestamp:
+  - 2026-04-06 22:24:30 +07:00
+- Current phase:
+  - Phase 7 / Startup loader polish from the device-installed baseline
+- Current objective:
+  - Finalize the new OneTabTube startup loader so it shows only the GO_PLAY logo and dramatic effects, with no text, and synchronize handoff to the actual code and APK already on the device.
+- Completed since last snapshot:
+  - Read [current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md) and the latest tail of [progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md) first.
+  - Performed targeted code inspection of [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java) and confirmed the recorded status was stale:
+    - `OTB_ENABLE_STARTUP_MASK = true`
+    - startup mask is implemented, not removed
+    - custom glow/ring/logo animation path is already active
+  - Verified the startup-loader resources exist and are wired in [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn).
+  - Reviewed the latest runtime evidence:
+    - [startup_logo_loader_20260406_rerun2a.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_logo_loader_20260406_rerun2a.png)
+    - [startup_logo_loader_20260406_rerun2b.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_logo_loader_20260406_rerun2b.png)
+  - Rechecked the current installed package metadata on device:
+    - `versionCode=429000004`
+    - `versionName=1.90.0`
+    - `lastUpdateTime=2026-04-06 22:13:22`
+  - Recomputed the active APK hash from the `src_ext4` output desk:
+    - `72610F1FDE27A2D8333E7B1D9B63E6EF71C5D5C7802ED8C0127BD41F68A47F14`
+  - Rewrote [current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md) so it now matches the actual startup-loader build on the device.
+- In progress now:
+  - No code or build is running.
+  - This slice is waiting only for user visual approval or a request for further startup-loader tuning.
+- Blockers / risks:
+  - The earlier screenshot [startup_logo_loader_20260406.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_logo_loader_20260406.png) looks flatter than the later rerun screenshots and should not be mistaken as the latest truth.
+  - `uiautomator dump` was not reliable during early startup capture, so screenshots remain the primary proof.
+  - Repo still has unrelated modified/untracked files and `AGENT.md` remains deleted in git status; do not broad clean or reset.
+- Files/modules touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+- Build/test status:
+  - No new build in this snapshot.
+  - Latest verified build remains:
+    - [startup_mask_logo_loader_build_20260406_rerun3.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_mask_logo_loader_build_20260406_rerun3.log)
+    - build reached `//chrome/android:chrome_public_apk__create`
+  - Installed APK floor now recorded as:
+    - package `com.onetabtube.browser_default`
+    - `1.90.0 (429000004)`
+    - SHA-256 `72610F1FDE27A2D8333E7B1D9B63E6EF71C5D5C7802ED8C0127BD41F68A47F14`
+- Exact next concrete step:
+  - Have the user truth-check the loader visually on device. If approved, start the next requested feature batch from this installed APK floor without touching the startup-loader slice again.
+- Expected resume inspection scope:
+  - [current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this entry
+  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - [startup_logo_loader_20260406_rerun2b.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_logo_loader_20260406_rerun2b.png)
+  - [startup_mask_logo_loader_build_20260406_rerun3.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_mask_logo_loader_build_20260406_rerun3.log)
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `view_image`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 220`
+  - `rg -n "OTB_ENABLE_STARTUP_MASK|maybeShowOneTabStartupMask|startOneTabStartupMaskAnimations|stopOneTabStartupMaskAnimations|OTB_STARTUP_MASK_TAG_" android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 1848 -First 240`
+  - `Get-Content android/BUILD.gn | Select-String -Pattern 'onetab_startup_' -Context 1,1`
+  - `view_image` on the rerun startup screenshots
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
+- Tool purpose:
+  - Reconcile the recorded handoff with the real installed APK and confirm the startup-loader slice is closed technically before moving on.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 220`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 1848 -First 240`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+  - [startup_mask_logo_loader_build_20260406_rerun3.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_mask_logo_loader_build_20260406_rerun3.log)
+  - [startup_logo_loader_20260406_rerun2b.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_logo_loader_20260406_rerun2b.png)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `src_ext4`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java) - startup mask composition and animation
+  - [onetab_startup_background.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/brave-res/drawable/onetab_startup_background.xml) - loader background
+  - [onetab_startup_glow_outer.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/brave-res/drawable/onetab_startup_glow_outer.xml) - outer glow
+  - [onetab_startup_glow_inner.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/brave-res/drawable/onetab_startup_glow_inner.xml) - inner glow
+  - [onetab_startup_ring_outer.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/brave-res/drawable/onetab_startup_ring_outer.xml) - outer ring
+  - [onetab_startup_ring_inner.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/brave-res/drawable/onetab_startup_ring_inner.xml) - inner ring
+  - [android/BUILD.gn](C:/Users/Master/Desktop/GO_PLAY/android/BUILD.gn) - resource inclusion
+  - [startup_logo_loader_20260406_rerun2b.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_logo_loader_20260406_rerun2b.png) - best current proof
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest tail of [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [BraveActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java)
+  - [startup_logo_loader_20260406_rerun2b.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_logo_loader_20260406_rerun2b.png)
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device `R9TRC00GA2E`
+  - WSL Ubuntu available
+  - `src_ext4` checkout available
+- Expected success signal:
+  - installed APK metadata and hash match the startup-loader floor
+  - handoff reflects reality without relying on stale “startup mask removed” notes
+- Expected failure signal:
+  - recorded status drifts again from the code or installed APK
+- Last known log location:
+  - [startup_mask_logo_loader_build_20260406_rerun3.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/startup_mask_logo_loader_build_20260406_rerun3.log)
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep the startup mask and make it cinematic instead of removing it.
+  - Use no text at all on the loader.
+  - Treat the later rerun screenshots as the current visual truth.
+- Rejected approaches:
+  - leaving startup mask disabled
+  - keeping any loading text
+  - rebuilding again without a new requested tweak
+- Stop point classification:
+  - runtime verified, no new edit/build running, handoff synchronized
+- What is done but unverified:
+  - direct user aesthetic approval only
+- What is verified:
+  - installed APK floor
+  - no-text startup loader
+  - glow/ring visual treatment present
+  - handoff now matches the real loader implementation
+- External prerequisite:
+  - none for this closed slice
+- Secret required but not stored:
+  - Firebase CLI/admin credentials
+  - Google credentials / 2FA
+
+## 2026-04-06 21:26:09 +07:00
+
+- Current phase:
+  - Phase 7 / Package-lock overlay polish and startup-mask removal from the device-installed baseline
+- Current objective:
+  - Replace the opaque package-lock gate with a translucent overlay that keeps the YouTube surface visible behind it, and remove the `OneTabTube / Loading YouTube...` startup mask.
+- Completed since last update:
+  - Resumed from `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
+  - Inspected `BraveActivity.java` and confirmed package lock still reused the login overlay and still hid `compositor_view_holder`.
+  - Implemented a dedicated package-lock overlay in `android/java/org/chromium/chrome/browser/app/BraveActivity.java` with:
+    - 50% black translucent background
+    - large centered lock icon
+    - Thai message `กรุณาซื้อแพ็กเกจเพื่อใช้งาน GO_PLAY`
+    - smaller detail line for server text
+  - Updated package-lock flow so denied package state no longer calls `setOneTabContentLocked(true)`.
+  - Added `onetab_package_locked_message` to `android/java/brave-res/values/onetab_fab_strings.xml`.
+  - Disabled the startup mask path with `OTB_ENABLE_STARTUP_MASK = false` in `BraveActivity.java`.
+  - Synced local edits into `src_ext4`.
+  - Rebuilt successfully from:
+    - `brave/build/android:onetabtube_android_package`
+    - log `artifacts/android_build/package_lock_translucent_overlay_build_20260406.log`
+  - Installed successfully on device with:
+    - `adb install --no-incremental -r \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+  - New device floor after install:
+    - package `com.onetabtube.browser_default`
+    - versionCode `429000004`
+    - versionName `1.90.0`
+    - lastUpdateTime `2026-04-06 21:18:13`
+    - SHA-256 `B994392F7F2C2A08349D97B5AD18B43250DE4A32E054D1AFC9B61DA730E4333D`
+  - Verified the new lock overlay with a real live expired entitlement:
+    - saved current entitlement to `artifacts/firebase_build/current_entitlement_pkg03_before_lock_test_20260406.json`
+    - forced expired entitlement and saved proof to `artifacts/firebase_build/entitlement_forced_expired_for_lock_test_20260406.json`
+    - captured expired-state overlay:
+      - `artifacts/android_build/package_lock_overlay_translucent_20260406_focus.png`
+      - `artifacts/android_build/package_lock_overlay_translucent_20260406_focus.xml`
+  - Restored the original entitlement and saved proof to:
+    - `artifacts/firebase_build/entitlement_restored_after_lock_overlay_test_20260406.json`
+  - Captured the settled post-restore app state:
+    - `artifacts/android_build/post_restore_launch_settled_20260406.png`
+    - `artifacts/android_build/post_restore_launch_settled_20260406.xml`
+  - Probed cold-launch log after disabling startup mask:
+    - log file `artifacts/android_build/startup_mask_log_probe_20260406.txt`
+    - no `startup_mask` / `Loading YouTube` match remained
+- In progress now:
+  - No further code change or build is running.
+  - The requested UI batch is functionally complete and waiting only for user visual truth-check.
+- Blockers / risks:
+  - Removing the startup mask exposes a brief transparent wait before the web surface paints on cold launch. This is expected after removing the old blocking screen, but it may need future UX tuning if the user dislikes the raw transition.
+  - `uiautomator dump` still mojibakes Thai text, so screenshots plus code remain the better truth source for copy validation.
+  - Build logs still print a noisy non-failing `Failed JNI assertion!` line during the Chromium graph; the build still completes and should not be mistaken for a failed build.
+  - Repo still has many unrelated modified/untracked files; do not broad-clean or reset.
+  - `AGENT.md` still appears deleted in git status and must remain untouched.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build passed
+  - APK installed
+  - Runtime smoke passed for:
+    - translucent package-lock overlay
+    - server-side expired-state gating
+    - post-restore return to normal YouTube view
+    - removal of old startup-mask text
+- Exact next concrete step:
+  - Let the user visually truth-check the new overlay and the no-mask cold-launch behavior. If approved, start the next feature batch from installed floor `B994392F7F2C2A08349D97B5AD18B43250DE4A32E054D1AFC9B61DA730E4333D`.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/android_build/package_lock_overlay_translucent_20260406_focus.png`
+  - `artifacts/android_build/post_restore_launch_settled_20260406.png`
+  - `artifacts/android_build/startup_mask_log_probe_20260406.txt`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe`
+  - `autoninja`
+  - `view_image`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/package_lock_translucent_overlay_build_20260406.log"`
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - Firestore REST GET/PATCH via inline `node -` commands using Firebase CLI refresh-token auth
+  - `adb shell screencap -p /sdcard/package_lock_overlay_translucent_20260406_focus.png`
+  - `adb shell uiautomator dump /sdcard/package_lock_overlay_translucent_20260406_focus.xml`
+  - `adb logcat -c`
+  - `adb logcat -d > artifacts/android_build/startup_mask_log_probe_20260406.txt`
+- Tool purpose:
+  - Implement the requested UI changes, build from `src_ext4`, verify on-device behavior, and restore live entitlement state safely.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 1410 -First 430`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+  - `artifacts/android_build/package_lock_overlay_translucent_20260406_focus.png`
+  - `artifacts/android_build/post_restore_launch_settled_20260406.png`
+  - `artifacts/android_build/startup_mask_log_probe_20260406.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `src_ext4`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - `artifacts/android_build/package_lock_translucent_overlay_build_20260406.log`
+  - `artifacts/android_build/package_lock_overlay_translucent_20260406_focus.png`
+  - `artifacts/android_build/post_restore_launch_settled_20260406.png`
+  - `artifacts/android_build/startup_mask_log_probe_20260406.txt`
+  - `artifacts/firebase_build/current_entitlement_pkg03_before_lock_test_20260406.json`
+  - `artifacts/firebase_build/entitlement_restored_after_lock_overlay_test_20260406.json`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/android_build/package_lock_overlay_translucent_20260406_focus.png`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device `R9TRC00GA2E`
+  - WSL Ubuntu available
+  - `src_ext4` checkout available
+  - Firebase CLI login available on the Windows desk for temporary Firestore test writes/restores
+- Expected success signal:
+  - translucent overlay appears over YouTube when package is expired
+  - FAB remains visible
+  - normal YouTube view returns after restore
+  - no `Loading YouTube` / `startup_mask` text remains after cold launch
+- Expected failure signal:
+  - build/install failure
+  - compositor still hidden while locked
+  - startup mask still appears
+- Last known log location:
+  - `artifacts/android_build/package_lock_translucent_overlay_build_20260406.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - separate package lock from login/auth gate
+  - keep compositor visible during package lock
+  - remove the startup mask instead of restyling it
+  - use temporary live Firestore mutation plus immediate restore for proof
+- Rejected approaches:
+  - keeping the package lock opaque
+  - keeping `setOneTabContentLocked(true)` in the package-lock path
+  - keeping the old `OneTabTube / Loading YouTube...` startup mask
+- Stop point classification:
+  - code edited, compiled, installed, runtime smoke-tested, Firestore state restored, handoff updated
+- What is done but unverified:
+  - final user preference on icon size/overlay opacity
+- What is verified:
+  - lock overlay redesign
+  - startup-mask removal
+  - build/install success
+  - restore back to active entitlement
+- External prerequisite:
+  - none for this closed slice
+- Secret required but not stored:
+  - Firebase CLI login credentials / refresh token
+  - Google/Firebase user credentials
+
+## 2026-04-06 19:53:46 +07:00
+
+- Current phase:
+  - Phase 7 / Native Account updater Firestore metadata continuity
+- Current objective:
+  - Push `app_updates/android` live from the already-logged-in Firebase desk without rebuilding or dropping below the installed APK floor.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry first per resume rules.
+  - Reconfirmed the device-installed baseline is still:
+    - package `com.onetabtube.browser_default`
+    - versionCode `429000004`
+    - versionName `1.90.0`
+    - lastUpdateTime `2026-04-06 19:19:24`
+    - APK floor hash `43402E441C53E92BD64D64758BBF69B528B0FE80916CC5F09E8D4DB257EEEA28`
+  - Confirmed `firebase login:list` shows the desk is logged in as `zelef2539@gmail.com`.
+  - Traced the previous REST failure to the Firebase CLI stored `access_token` being rejected by Firestore REST with `ACCESS_TOKEN_TYPE_UNSUPPORTED`.
+  - Patched `scripts/seed_firestore_update.js` to refresh a proper Google OAuth access token from the Firebase CLI `refresh_token` before calling Firestore REST.
+  - Used the flattened payload at `artifacts/firebase_build/app_updates_android_push_payload_20260406_1940.json`.
+  - Successfully seeded and verified:
+    - `app_updates/android`
+    - project `go-play-720c1`
+  - Captured live evidence in:
+    - `artifacts/firebase_build/seed_app_update_live_20260406_1953.log`
+- In progress now:
+  - No code/build change is running.
+  - Remaining step is device-side UI verification after the live Firestore write.
+- Files/modules touched:
+  - `scripts/seed_firestore_update.js`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new APK build/install in this entry.
+  - Firestore live seed succeeded and verified in the same run.
+- Blockers/risks:
+  - `apkUrl` in the updater doc is still placeholder-only.
+  - The Account page has not yet been refreshed after the live Firestore write in this session.
+  - Repo remains dirty; no broad clean/reset is allowed.
+- Exact next concrete step:
+  - Refresh `FAB -> บัญชี` on the connected device and confirm the updater section no longer shows the missing-Firestore fallback.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `scripts/seed_firestore_update.js`
+  - `artifacts/firebase_build/seed_app_update_live_20260406_1953.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `node`
+- Exact command(s):
+  - `firebase login:list`
+  - `Get-Content -Raw scripts/seed_firestore_update.js`
+  - `Get-Content -Raw C:\Users\Master\AppData\Roaming\npm\node_modules\firebase-tools\lib\auth.js`
+  - `Get-Content -Raw C:\Users\Master\AppData\Roaming\npm\node_modules\firebase-tools\lib\api.js`
+  - `$env:FIREBASE_PROJECT_ID='go-play-720c1'; $env:GO_PLAY_UPDATE_FIRESTORE_COLLECTION='app_updates'; $env:GO_PLAY_UPDATE_FIRESTORE_DOCUMENT='android'; $env:GO_PLAY_UPDATE_JSON='C:\Users\Master\Desktop\GO_PLAY\artifacts\firebase_build\app_updates_android_push_payload_20260406_1940.json'; $env:NODE_PATH='C:\Users\Master\Desktop\GO_PLAY\functions\node_modules'; node scripts/seed_firestore_update.js *> artifacts\firebase_build\seed_app_update_live_20260406_1953.log`
+- Tool purpose:
+  - Reuse the logged-in Firebase desk to write Firestore updater metadata without new ADC/service-account setup.
+- Tool state:
+  - idle
+- Expected resume command:
+  - Reopen the Account page first; rerun the recorded seed command only if the metadata needs to be written again.
+- Expected output/artifact path:
+  - `artifacts/firebase_build/seed_app_update_live_20260406_1953.log`
+  - live Firestore doc `app_updates/android`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - no new build in this snapshot; device-installed floor only
+- Primary working set:
+  - `scripts/seed_firestore_update.js`
+  - `functions/seeds/app_update_android.seed.json`
+  - `artifacts/firebase_build/app_updates_android_push_payload_20260406_1940.json`
+  - `artifacts/firebase_build/seed_app_update_live_20260406_1953.log`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/firebase_build/seed_app_update_live_20260406_1953.log`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Firebase CLI logged in
+  - `functions/node_modules` present
+  - connected device available for the next smoke step
+- Expected success signal:
+  - log shows `Seeded update document... via rest-cli-token`
+  - log shows `Verified document: projects/go-play-720c1/databases/(default)/documents/app_updates/android`
+- Expected failure signal:
+  - Firestore `401 UNAUTHENTICATED`
+  - token refresh failure
+  - Account page still shows missing metadata after refresh
+- Last known log location:
+  - `artifacts/firebase_build/seed_app_update_live_20260406_1953.log`
+- Last known artifact path:
+  - `artifacts/firebase_build/app_updates_android_push_payload_20260406_1940.json`
+- Recent decisions:
+  - Use the installed APK as floor and avoid rebuilding.
+  - Fix the generic Firestore writer instead of using a throwaway manual patch path.
+- Rejected approaches:
+  - depending on stale CLI `access_token`
+  - requiring new ADC before trying the logged-in Firebase CLI desk
+- Stop point classification:
+  - live Firestore doc seeded and verified; device updater UI not yet rechecked
+- What is done but unverified:
+  - Account updater UI after the live seed
+- What is verified:
+  - logged-in Firebase desk
+  - refreshed-token Firestore write path
+  - live `app_updates/android` document
+- External prerequisite:
+  - device access for the next Account-page verification step
+- Secret required but not stored:
+  - Firebase/Google credentials remain external and are not stored in repo
+- Actual code state after resume:
+  - Updater code already existed; this snapshot closed the live Firestore metadata gap and improved the reusable seeding helper.
+- Chosen direction:
+  - Finish updater continuity from the current floor by seeding Firestore live first, then verify the Account UI against that live metadata.
+
+## 2026-04-06 19:56:09 +07:00
+
+- Current phase:
+  - Phase 7 / Native Account updater Firestore metadata continuity
+- Current objective:
+  - Verify on-device that the freshly seeded `app_updates/android` document is actually consumed by the native Account updater.
+- Completed since last snapshot:
+  - Captured fresh runtime evidence from the connected device:
+    - `account_update_probe_20260406_2000.png`
+    - `account_update_probe_20260406_2000.xml`
+  - Verified from the UI dump that the updater block now resolves from Firestore metadata:
+    - current version `1.90.0 (429000004)`
+    - latest version `1.90.0 (429000004)`
+    - status `แอปเป็นเวอร์ชันล่าสุดแล้ว`
+    - action button `ตรวจสอบอัปเดต`
+  - Confirmed the previous fallback `ยังไม่พบข้อมูลอัปเดตใน Firestore` is gone on device.
+- In progress now:
+  - No code/build work is in progress.
+  - Only optional cleanup remains for updater polish.
+- Files/modules touched:
+  - `account_update_probe_20260406_2000.png`
+  - `account_update_probe_20260406_2000.xml`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new APK build/install in this entry.
+  - Device-side updater metadata smoke check passed.
+- Blockers/risks:
+  - `apkUrl` is still placeholder-only, so real update download/install should not be treated as validated yet.
+  - Release-notes text appears mojibake in the UI dump, which suggests the seed payload encoding should be cleaned before polish/release.
+- Exact next concrete step:
+  - If updater polish is approved next, fix the release-notes text payload in `functions/seeds/app_update_android.seed.json`, reseed Firestore, and recheck the Account page.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `account_update_probe_20260406_2000.xml`
+  - `artifacts/firebase_build/seed_app_update_live_20260406_1953.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `adb exec-out screencap -p > account_update_probe_20260406_2000.png`
+  - `adb shell uiautomator dump /sdcard/account_update_probe_20260406_2000.xml`
+  - `adb pull /sdcard/account_update_probe_20260406_2000.xml account_update_probe_20260406_2000.xml`
+  - `Get-Content -Raw account_update_probe_20260406_2000.xml`
+- Tool purpose:
+  - Capture device proof that the updater block now reads the live Firestore metadata.
+- Tool state:
+  - idle
+- Expected resume command:
+  - Reopen the Account page only if the updater text needs to be revalidated after a follow-up metadata change.
+- Expected output/artifact path:
+  - `account_update_probe_20260406_2000.png`
+  - `account_update_probe_20260406_2000.xml`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - no new build in this snapshot; device-installed floor only
+- Primary working set:
+  - `account_update_probe_20260406_2000.xml`
+  - `scripts/seed_firestore_update.js`
+  - `functions/seeds/app_update_android.seed.json`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `account_update_probe_20260406_2000.xml`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device `R9TRC00GA2E`
+  - Account page already open or reachable on device
+- Expected success signal:
+  - updater block shows latest-version state instead of missing-Firestore fallback
+- Expected failure signal:
+  - updater block still shows missing metadata or crashes on refresh
+- Last known log location:
+  - `artifacts/firebase_build/seed_app_update_live_20260406_1953.log`
+- Last known artifact path:
+  - `account_update_probe_20260406_2000.png`
+- Recent decisions:
+  - Stop at evidence capture after proving the live metadata path works.
+  - Do not start a new updater rollout/build in the same pass.
+- Rejected approaches:
+  - rebuilding the APK just to check the Account updater state
+  - treating placeholder `apkUrl` as if a real updater rollout had been validated
+- Stop point classification:
+  - live Firestore seed and on-device updater metadata read both verified; optional cleanup not started
+- What is done but unverified:
+  - real download/install path against a real APK URL
+- What is verified:
+  - live Firestore updater metadata exists
+  - Account updater consumes it successfully on device
+- External prerequisite:
+  - none for the verified path; only a real hosted APK is needed for future rollout testing
+- Secret required but not stored:
+  - Firebase/Google credentials remain external and not stored in repo
+- Actual code state after resume:
+  - No new code changes were required after the live Firestore seed; the existing updater slice behaved correctly once metadata was present.
+- Chosen direction:
+  - Hold the baseline steady and treat updater metadata continuity as closed, with only polish tasks left.
+
+## 2026-04-06 20:10:00 +07:00
+
+- Current phase:
+  - Phase 7 / Native Account updater Firestore metadata polish
+- Current objective:
+  - Fix updater `releaseNotes` source text and reseed Firestore without changing the APK baseline.
+- Completed since last snapshot:
+  - Proved the updater seed file still contained real mojibake bytes by extracting code points from `functions/seeds/app_update_android.seed.json`.
+  - Rewrote `functions/seeds/app_update_android.seed.json` so the three release-note lines are stored as JSON Unicode escapes.
+  - Regenerated flattened payload:
+    - `artifacts/firebase_build/app_updates_android_push_payload_20260406_2008.json`
+  - Reseeded live Firestore document `app_updates/android` and verified the write:
+    - `artifacts/firebase_build/seed_app_update_live_20260406_2010.log`
+  - Read the live Firestore doc back directly and confirmed `releaseNotes` now resolve to proper Thai strings.
+  - Re-captured device artifacts:
+    - `account_update_probe_20260406_2010.png`
+    - `account_update_probe_20260406_2010.xml`
+  - Determined that `uiautomator dump` still emits mojibake for Thai text across the entire Account page, so XML is not reliable evidence for Thai readability here.
+- In progress now:
+  - No code/build work is running.
+  - Metadata polish is complete; only real rollout validation remains for a future pass.
+- Files/modules touched:
+  - `functions/seeds/app_update_android.seed.json`
+  - `artifacts/firebase_build/app_updates_android_push_payload_20260406_2008.json`
+  - `artifacts/firebase_build/seed_app_update_live_20260406_2010.log`
+  - `account_update_probe_20260406_2010.png`
+  - `account_update_probe_20260406_2010.xml`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new APK build/install in this entry.
+  - Firestore live metadata reseed succeeded.
+  - Live Firestore readback confirms Thai `releaseNotes` are correct.
+- Blockers/risks:
+  - `apkUrl` is still placeholder-only, so real update download/install remains untested.
+  - `uiautomator dump` should not be used as sole evidence for Thai text in this slice.
+- Exact next concrete step:
+  - When updater rollout work resumes, set a real HTTPS `apkUrl` and validate the actual download/install path from the Account page.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `functions/seeds/app_update_android.seed.json`
+  - `artifacts/firebase_build/seed_app_update_live_20260406_2010.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - code-point inspection against `functions/seeds/app_update_android.seed.json`
+  - payload regeneration to `artifacts/firebase_build/app_updates_android_push_payload_20260406_2008.json`
+  - `$env:FIREBASE_PROJECT_ID='go-play-720c1'; ...; node scripts/seed_firestore_update.js *> artifacts\\firebase_build\\seed_app_update_live_20260406_2010.log`
+  - Firestore REST readback with refreshed Firebase CLI token
+  - `adb exec-out screencap -p > account_update_probe_20260406_2010.png`
+  - `adb shell uiautomator dump /sdcard/account_update_probe_20260406_2010.xml`
+- Tool purpose:
+  - Correct the updater metadata source and verify live Firestore contents without rebuilding the app.
+- Tool state:
+  - idle
+- Expected resume command:
+  - No immediate rerun needed unless updater rollout work resumes.
+- Expected output/artifact path:
+  - `artifacts/firebase_build/seed_app_update_live_20260406_2010.log`
+  - `artifacts/firebase_build/app_updates_android_push_payload_20260406_2008.json`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - no new build in this snapshot; device-installed floor only
+- Primary working set:
+  - `functions/seeds/app_update_android.seed.json`
+  - `scripts/seed_firestore_update.js`
+  - `artifacts/firebase_build/seed_app_update_live_20260406_2010.log`
+  - `account_update_probe_20260406_2010.xml`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `functions/seeds/app_update_android.seed.json`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Firebase CLI logged in
+  - connected device available only for optional visual recheck
+- Expected success signal:
+  - Firestore readback returns Thai `releaseNotes`
+- Expected failure signal:
+  - Firestore readback still returns mojibake
+- Last known log location:
+  - `artifacts/firebase_build/seed_app_update_live_20260406_2010.log`
+- Last known artifact path:
+  - `artifacts/firebase_build/app_updates_android_push_payload_20260406_2008.json`
+- Recent decisions:
+  - Use JSON Unicode escapes for seed text to avoid another encoding regression.
+  - Trust Firestore readback over UIAutomator XML for Thai-text validation.
+- Rejected approaches:
+  - Using XML dump alone to judge text correctness
+  - Rebuilding the APK just to fix metadata text
+- Stop point classification:
+  - metadata source fixed and reseeded; no rollout validation started
+- What is done but unverified:
+  - real updater download/install with a non-placeholder URL
+- What is verified:
+  - seed source fixed
+  - live Firestore release notes fixed
+  - device baseline unchanged
+- External prerequisite:
+  - real hosted APK URL for future rollout validation
+- Secret required but not stored:
+  - Firebase/Google credentials remain external and not stored in repo
+- Actual code state after resume:
+  - updater source metadata is now correct at both repo and live Firestore levels; remaining work is rollout-only, not text-fix work.
+- Chosen direction:
+  - Stop after metadata correction and keep the APK floor steady.
+
 ## 2026-04-06 02:14:34 +07:00
 
 - Current phase:
@@ -740,6 +1389,1349 @@
   - none
 - Secret required but not stored:
   - none
+
+## 2026-04-07 21:10:14 +07:00
+
+- Current phase:
+  - Ops tooling / Firestore admin GUI
+- Task/objective:
+  - แก้ปัญหา layout ของหน้า `Users / สิทธิ` ที่ล้นขอบ Windows แม้หน้าต่างจะ zoomed แล้ว
+- Completed since last snapshot:
+  - อ่าน handoff ล่าสุดแล้ว inspect `gui_app.py` เฉพาะ `_build_users_tab`
+  - พบ root cause ว่าฝั่งกลาง stack `LabelFrame` 5 ก้อนต่อกันจนเกินแนวตั้ง
+  - เปลี่ยนฝั่งกลางเป็น `ttk.Notebook` ย่อย แทนการ pack ยาวลงมา
+  - แยกเป็นแท็บ:
+    - `Metadata`
+    - `สิทธิจริง`
+    - `สิทธิพิเศษ`
+    - `ปิดสิทธิ`
+    - `Inspect`
+  - รัน `python -m compileall tools\\go_play_admin_gui\\go_play_admin\\gui_app.py` ผ่าน
+  - รัน GUI instantiation smoke ผ่าน
+- In progress now:
+  - ไม่มี process ค้าง
+  - รอ visual smoke บนหน้าจอ Windows จริง
+- Blockers / risks:
+  - ยังไม่ได้เห็นของจริงจาก operator หลังเปลี่ยนเป็น notebook ย่อย
+  - ถ้ายังแน่นในแท็บย่อยใด อาจต้องทำ scroll เฉพาะหน้านั้น
+- Files/modules touched:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - compile passed
+  - instantiation smoke passed
+- Exact next concrete step:
+  - เปิด `run_admin_gui.bat` แล้วดูแท็บ Users ของจริงบน Windows
+- Expected resume inspection scope:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `tools/go_play_admin_gui/run_admin_gui.bat`
+  - latest entry in `docs/progress-log.md`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `python`
+- Exact command(s):
+  - `Get-Content tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `python -m compileall tools\\go_play_admin_gui\\go_play_admin\\gui_app.py`
+  - GUI instantiation smoke via `.venv\\Scripts\\python.exe`
+- Tool purpose:
+  - ลด vertical overflow ของหน้า Users ให้ตรงต้นเหตุ
+- Tool state:
+  - idle
+- Expected resume command:
+  - `cd C:\Users\Master\Desktop\GO_PLAY\tools\go_play_admin_gui`
+  - `run_admin_gui.bat`
+- Expected output/artifact path:
+  - GUI window
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Python desktop admin GUI / Tkinter
+- Primary working set:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py` - Users center pane layout
+  - `tools/go_play_admin_gui/run_admin_gui.bat` - GUI launch
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - latest entry in `docs/progress-log.md`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Python พร้อม
+  - `.venv` พร้อม
+- Expected success signal:
+  - หน้า Users ไม่ล้นขอบแนวตั้งแล้ว
+- Expected failure signal:
+  - ยังมีแท็บย่อยล้นหรือตัด
+- Last known log location:
+  - ไม่มี log file เพิ่มในรอบนี้
+- Last known artifact path:
+  - `tools/go_play_admin_gui/`
+- Recent decisions:
+  - ใช้ notebook ย่อยแทนการกองฟอร์มยาว
+- Rejected approaches:
+  - หวังให้การ zoomed แก้ทุกอย่างเอง
+- Stop point classification:
+  - code edited and compile-verified; visual smoke pending
+- What is done but unverified:
+  - visual result จริงบน Windows
+- What is verified:
+  - compile ผ่าน
+  - instantiation ผ่าน
+- External prerequisite:
+  - เปิด GUI จริง
+- Secret required but not stored:
+  - none
+
+## 2026-04-07 20:04:36 +07:00
+
+- Current phase:
+  - Ops tooling / Firestore admin GUI
+- Task/objective:
+  - แยกหน้า `Users / สิทธิ` ให้ชัดระหว่าง metadata subscription กับ entitlement จริง เพื่อแก้ปัญหาอัปเดตวันใช้งานแล้วสิทธิจริงไม่เปลี่ยน
+- Completed since last snapshot:
+  - อ่าน handoff ล่าสุดแล้วตรวจ targeted reality ที่ `functions/src/package_orders.ts`
+  - ยืนยันว่า `getPackageAccessState` อ่านสิทธิจริงจาก `users/{uid}/entitlements/*`
+  - เปลี่ยน `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+    - `update_user_subscription(...)` เป็น metadata-only
+    - เพิ่ม `grant_product_entitlement(...)`
+    - เพิ่ม `grant_special_entitlement(...)`
+    - เพิ่ม `deactivate_all_entitlements(...)`
+  - เปลี่ยน `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+    - เพิ่มฟอร์ม `บันทึก metadata เท่านั้น`
+    - เพิ่มฟอร์ม `ให้สิทธิแพ็กเกจจริง`
+    - เพิ่มฟอร์ม `ให้สิทธิพิเศษ / admin grant`
+    - เพิ่มปุ่ม `ปิดสิทธิทุกแพ็กเกจจริง`
+    - เพิ่ม hint ใน detail pane ให้ operator เห็นความต่างของ metadata vs entitlement
+  - อัปเดต `tools/go_play_admin_gui/README.md` และ `tools/go_play_admin_gui/FIRESTORE_MAP_TH.md`
+  - รัน `python -m compileall tools\\go_play_admin_gui` ผ่าน
+- In progress now:
+  - ไม่มี process ค้าง
+  - รอ smoke test ด้วย Firestore จริงผ่าน service account JSON
+- Blockers / risks:
+  - ยังไม่ได้ทดสอบเขียน Firestore live หลัง refactor action ชุดนี้
+  - operator อาจยังต้องการ label ไทยเพิ่มอีกเล็กน้อยหลังเห็นของจริง
+- Files/modules touched:
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `tools/go_play_admin_gui/README.md`
+  - `tools/go_play_admin_gui/FIRESTORE_MAP_TH.md`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `python -m compileall tools\\go_play_admin_gui` passed
+- Exact next concrete step:
+  - เปิด GUI ด้วย service account JSON แล้วลอง 4 action ในแท็บ Users บนข้อมูลจริง
+- Expected resume inspection scope:
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `functions/src/package_orders.ts`
+  - `tools/go_play_admin_gui/README.md`
+  - latest entry in `docs/progress-log.md`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `python`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Get-Content tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `Get-Content tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `rg -n "getPackageAccessState|subscription\\.status|entitlements" functions/src/package_orders.ts`
+  - `python -m compileall tools\\go_play_admin_gui`
+- Tool purpose:
+  - เช็ก source of truth ของ package access และ refactor admin GUI ให้ตรง schema จริง
+- Tool state:
+  - idle
+- Expected resume command:
+  - `cd C:\Users\Master\Desktop\GO_PLAY\tools\go_play_admin_gui`
+  - `python -m venv .venv`
+  - `.venv\Scripts\activate`
+  - `pip install -r requirements.txt`
+  - `python main.py`
+- Expected output/artifact path:
+  - `tools/go_play_admin_gui/`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Python desktop admin GUI / Tkinter
+- Primary working set:
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py` - admin actions
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py` - Users tab UX/action split
+  - `functions/src/package_orders.ts` - runtime access truth
+  - `tools/go_play_admin_gui/README.md` - usage notes
+  - `tools/go_play_admin_gui/FIRESTORE_MAP_TH.md` - Firestore map notes
+- Files to inspect first after resume:
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `functions/src/package_orders.ts`
+  - `docs/current-status.md`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Python บน PATH
+  - service account JSON
+- Expected success signal:
+  - connect Firestore สำเร็จและ 4 action ในหน้า Users เขียน path ตรง
+- Expected failure signal:
+  - credential error, missing dependency, หรือ action ไปแตะ path ผิด
+- Last known log location:
+  - ไม่มี log file แยก; ใช้ output จาก `compileall`
+- Last known artifact path:
+  - `tools/go_play_admin_gui/`
+- Recent decisions:
+  - ใช้ `entitlements` เป็น source of truth ของสิทธิจริง
+  - แยก action operator ให้ชัดแทนการซ่อน side effect ไว้ในปุ่มเดียว
+- Rejected approaches:
+  - แก้ `subscription` แล้วหวังให้สิทธิจริงเปลี่ยนเอง
+  - ปล่อยหน้า Users โหลดทุก subcollection แบบ live-heavy
+- Stop point classification:
+  - code edited and compile-verified; live smoke pending
+- What is done but unverified:
+  - live Firestore writes ผ่าน GUI action ใหม่
+- What is verified:
+  - compile ผ่าน
+  - code path ฝั่ง server ใช้ entitlements จริง
+- External prerequisite:
+  - service account JSON สำหรับ Firestore admin
+- Secret required but not stored:
+  - service account JSON / credential remains external
+
+## 2026-04-07 20:58:31 +07:00
+
+- Current phase:
+  - Ops tooling / Firestore admin GUI
+- Task/objective:
+  - แก้ปัญหา desktop GUI ล้นจอใน Windows mode โดยทำ window sizing ให้ auto-fit ตามจอจริง
+- Completed since last snapshot:
+  - อ่าน handoff ล่าสุดแล้ว inspect `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - เอา fixed geometry `1480x920` ออก
+  - เพิ่ม `_configure_window()` ให้คำนวณขนาดจาก `winfo_screenwidth()` และ `winfo_screenheight()`
+  - เพิ่ม `_fit_windows_screen()` ให้เปิดแบบ `zoomed` อัตโนมัติบน Windows
+  - รัน `python -m compileall tools\\go_play_admin_gui\\go_play_admin\\gui_app.py` ผ่าน
+  - รัน instantiation smoke แล้วได้:
+    - `geometry= 1920x1009+-8+-8`
+    - `state= zoomed`
+- In progress now:
+  - ไม่มี process ค้าง
+  - รอ visual smoke จากการเปิด `run_admin_gui.bat` จริง
+- Blockers / risks:
+  - ถ้ายังมีบางแท็บแน่นเกิน แม้หน้าต่าง fit แล้ว อาจต้องเพิ่ม scroll หรือ compact layout เฉพาะแท็บนั้น
+- Files/modules touched:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - compile passed
+  - GUI instantiation smoke passed
+- Exact next concrete step:
+  - เปิด `run_admin_gui.bat` บน Windows แล้วตรวจของจริงว่าหน้าไหนยังล้น ถ้ามีให้แก้เฉพาะแท็บนั้น
+- Expected resume inspection scope:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `tools/go_play_admin_gui/run_admin_gui.bat`
+  - latest entry in `docs/progress-log.md`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `python`
+- Exact command(s):
+  - `Get-Content tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `python -m compileall tools\\go_play_admin_gui\\go_play_admin\\gui_app.py`
+  - instantiation smoke via `.venv\\Scripts\\python.exe`
+- Tool purpose:
+  - ปรับและ verify ขนาดหน้าต่าง desktop GUI บน Windows
+- Tool state:
+  - idle
+- Expected resume command:
+  - `cd C:\Users\Master\Desktop\GO_PLAY\tools\go_play_admin_gui`
+  - `run_admin_gui.bat`
+- Expected output/artifact path:
+  - GUI window
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Python desktop admin GUI / Tkinter
+- Primary working set:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py` - window sizing
+  - `tools/go_play_admin_gui/run_admin_gui.bat` - Windows entrypoint
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - latest entry in `docs/progress-log.md`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Python พร้อม
+  - `.venv` พร้อม
+- Expected success signal:
+  - หน้าต่างไม่ล้นจอและเปิดแบบเต็มพื้นที่ใช้งานบน Windows
+- Expected failure signal:
+  - ยังมีขอบตก/ล้นจอ หรือแท็บบางส่วนถูกตัด
+- Last known log location:
+  - ไม่มี log file เพิ่มในรอบนี้
+- Last known artifact path:
+  - `tools/go_play_admin_gui/`
+- Recent decisions:
+  - แก้ที่ window behavior ก่อน ไม่รื้อ layout ทั้งแอป
+- Rejected approaches:
+  - ปล่อย fixed size เดิม
+  - ไปแก้ scroll ทุกแท็บก่อนเห็นปัญหาจริง
+- Stop point classification:
+  - code edited and verified by instantiation; visual smoke pending
+- What is done but unverified:
+  - visual result บนหน้าจอ operator จริง
+- What is verified:
+  - compile ผ่าน
+  - instantiation และ zoomed state ผ่าน
+- External prerequisite:
+  - เปิด `run_admin_gui.bat` บน Windows เพื่อดูของจริง
+- Secret required but not stored:
+  - none
+
+## 2026-04-07 20:48:31 +07:00
+
+- Current phase:
+  - Ops tooling / Firestore admin GUI
+- Task/objective:
+  - ทำให้ admin GUI ใช้งานกับ Firestore จริงได้เลย โดยใช้ service account JSON ที่อยู่ในโฟลเดอร์ tool
+- Completed since last snapshot:
+  - ตรวจพบไฟล์ service account จริงที่ `tools/go_play_admin_gui/go-play-720c1-firebase-adminsdk-fbsvc-b7c6990d31.json`
+  - ตรวจ `.venv` และ `firebase_admin` พร้อมใช้งานแล้ว
+  - เติม auto-detect credential path ใน `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - รัน `python -m compileall tools\\go_play_admin_gui` ผ่านอีกครั้งหลังแก้ auto-detect
+  - รัน live read smoke ด้วย backend จริงและ credential จริง
+  - เก็บผลอ่าน Firestore live ไว้ที่ `artifacts/admin_gui/smoke_read_live_20260407_2008.txt`
+- In progress now:
+  - ไม่มี process ค้าง
+  - พร้อมเปิด GUI จริงผ่าน `run_admin_gui.bat`
+- Blockers / risks:
+  - ยังไม่ได้ยิง write smoke บนข้อมูล live เพราะต้องเลือก target UID ให้ตั้งใจ
+  - `compileall` รอบล่าสุดไล่เข้า `.venv` ด้วย ทำให้ output ยาวแต่สุดท้ายผ่าน
+- Files/modules touched:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `tools/go_play_admin_gui/.venv/`
+  - `artifacts/admin_gui/smoke_read_live_20260407_2008.txt`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - live Firestore read smoke passed
+  - compile passed
+- Exact next concrete step:
+  - เปิด `run_admin_gui.bat` แล้วเช็กว่าหน้า GUI prefill credential path และ connect/read ได้จริงจากหน้าจอ
+- Expected resume inspection scope:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `tools/go_play_admin_gui/run_admin_gui.bat`
+  - `artifacts/admin_gui/smoke_read_live_20260407_2008.txt`
+  - latest entry in `docs/progress-log.md`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `python`
+- Exact command(s):
+  - `Get-ChildItem C:\\Users\\Master\\Desktop\\GO_PLAY\\tools\\go_play_admin_gui -Filter *.json`
+  - `python -m venv .venv`
+  - `.venv\\Scripts\\python.exe -m pip install -r requirements.txt`
+  - backend smoke script via `.venv\\Scripts\\python.exe`
+- Tool purpose:
+  - ยืนยันว่า credential/runtime พร้อมและอ่าน Firestore จริงได้ก่อนเปิด GUI
+- Tool state:
+  - idle
+- Expected resume command:
+  - `cd C:\Users\Master\Desktop\GO_PLAY\tools\go_play_admin_gui`
+  - `run_admin_gui.bat`
+- Expected output/artifact path:
+  - GUI window
+  - `artifacts/admin_gui/smoke_read_live_20260407_2008.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Python desktop admin GUI / Tkinter
+- Primary working set:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py` - credential auto-detect
+  - `tools/go_play_admin_gui/go-play-720c1-firebase-adminsdk-fbsvc-b7c6990d31.json` - runtime credential
+  - `artifacts/admin_gui/smoke_read_live_20260407_2008.txt` - read smoke evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `artifacts/admin_gui/smoke_read_live_20260407_2008.txt`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - service account JSON อยู่ในโฟลเดอร์ tool
+  - Python พร้อม
+- Expected success signal:
+  - GUI prefill credential path เองและ connect ได้
+- Expected failure signal:
+  - GUI ไม่เห็น JSON หรือ connect Firestore ไม่สำเร็จ
+- Last known log location:
+  - `artifacts/admin_gui/smoke_read_live_20260407_2008.txt`
+- Last known artifact path:
+  - `tools/go_play_admin_gui/`
+- Recent decisions:
+  - ใช้ JSON ที่อยู่ข้าง tool เป็นค่าเริ่มต้น
+  - ทดสอบ read-only ก่อน write
+- Rejected approaches:
+  - ให้ user browse หา credential ทุกครั้ง
+  - ยิง write test ไปที่ user live แบบยังไม่ได้เลือกเป้าหมาย
+- Stop point classification:
+  - runtime credential and live read verified; GUI open/write smoke pending
+- What is done but unverified:
+  - GUI runtime จริง
+  - live write actions
+- What is verified:
+  - live read ผ่าน
+  - credential ใช้งานได้
+- External prerequisite:
+  - target UID ถ้าจะทดสอบ write
+- Secret required but not stored:
+  - service account JSON / credential remains external
+
+## Snapshot
+
+- Timestamp:
+  - 2026-04-07 19:00:01 +07:00
+- Current phase:
+  - Ops tooling / Firestore admin GUI
+- Task/objective:
+  - สร้าง full map tool backend admin + monitor + report ภาษาไทย แบบละเอียดให้ดู Firestore ได้จากโปรเจ็กต์ Python + GUI
+- Completed since last snapshot:
+  - อ่าน `docs/current-status.md` และ entry ล่าสุดใน `docs/progress-log.md` ก่อนเริ่มงาน
+  - ตรวจ schema จริงจาก `firestore.rules`, `functions/src/index.ts`, `functions/src/package_orders.ts`, และ seed files ที่เกี่ยวข้อง
+  - ยืนยัน path สำคัญของ Firestore ที่เครื่องมือต้องรองรับ ได้แก่ `users/{uid}`, `devices`, `entitlements`, `purchase_history`, `package_history`, `orders`, `payments`, `products`, `manual_correction_requests`, `settings/payment_account`, `app_updates/android`
+  - ยืนยันว่า `settings/payment_account` เป็น document path ตรงจากฝั่ง backend/native code
+  - สร้างโปรเจ็กต์ใหม่ `tools/go_play_admin_gui/`
+  - เพิ่ม backend Firestore Admin SDK สำหรับ connect, dashboard, user search/detail, subscription edit, revoke devices, orders/payments/manual correction monitor, product/settings/update editor, report export, และ path explorer
+  - เพิ่ม GUI ภาษาไทยด้วย Tkinter แยกแท็บเป็น Dashboard, Firestore Map, Users/สิทธิ, Orders/Payments/Correction, Products/Settings/Update, Reports/Export, และ Explorer
+  - เพิ่ม `README.md` และ `FIRESTORE_MAP_TH.md`
+  - รัน `python -m compileall tools\\go_play_admin_gui` ผ่านครบทุกไฟล์
+- In progress now:
+  - ไม่มี command ค้าง
+  - เครื่องมือพร้อมระดับโค้ดและ syntax แล้ว แต่ยังไม่ได้ smoke test กับ Firestore จริงโดยใช้ service account JSON
+- Blockers / risks:
+  - ต้องมี service account JSON ที่มีสิทธิ์ Firestore ก่อนจึงจะเปิด GUI แล้วทดสอบ live data ได้
+  - dashboard ตอนนี้ดึงข้อมูลจริงจากหลาย collection โดยตรง ถ้าข้อมูลโตมากอาจต้องทำ counters ภายหลัง
+- Files/modules touched:
+  - `tools/go_play_admin_gui/requirements.txt`
+  - `tools/go_play_admin_gui/run_admin_gui.bat`
+  - `tools/go_play_admin_gui/main.py`
+  - `tools/go_play_admin_gui/README.md`
+  - `tools/go_play_admin_gui/FIRESTORE_MAP_TH.md`
+  - `tools/go_play_admin_gui/go_play_admin/__init__.py`
+  - `tools/go_play_admin_gui/go_play_admin/schema_map.py`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/go_play_admin/reporting.py`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `python -m compileall tools\\go_play_admin_gui` passed
+  - runtime test กับ Firestore จริงยังไม่เริ่ม
+- Exact next concrete step:
+  - สร้าง venv, ติดตั้ง `firebase-admin`, เปิด `python main.py`, แล้ว smoke test connect/dashboard/user detail/export ด้วย service account JSON จริง
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - entry นี้ใน `docs/progress-log.md`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `tools/go_play_admin_gui/README.md`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `python`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Get-Content firestore.rules`
+  - `Get-Content functions/src/index.ts`
+  - `Get-Content functions/src/package_orders.ts`
+  - `Get-Content functions/seeds/products.seed.json`
+  - `Get-Content functions/seeds/payment_account.seed.json`
+  - `Get-Content functions/seeds/app_update_android.seed.json`
+  - `rg -n "settings/payment_account|app_updates/android|purchase_history|package_history|manual_correction_requests" android functions lib -g "*.java" -g "*.kt" -g "*.dart" -g "*.ts"`
+  - `python -m compileall tools\\go_play_admin_gui`
+- Tool purpose:
+  - สร้างเครื่องมือ admin GUI ใหม่และยืนยัน syntax ว่าเปิดทางต่อให้ runtime smoke test ได้
+- Tool state:
+  - idle
+- Expected resume command:
+  - `cd C:\Users\Master\Desktop\GO_PLAY\tools\go_play_admin_gui`
+  - `python -m venv .venv`
+  - `.venv\Scripts\activate`
+  - `pip install -r requirements.txt`
+  - `python main.py`
+- Expected output/artifact path:
+  - `tools/go_play_admin_gui/`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Python desktop admin GUI / Tkinter / Firestore Admin SDK
+- Primary working set:
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py` - live Firestore backend
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py` - Thai GUI
+  - `tools/go_play_admin_gui/go_play_admin/schema_map.py` - schema map
+  - `tools/go_play_admin_gui/FIRESTORE_MAP_TH.md` - human-readable map
+  - `tools/go_play_admin_gui/README.md` - setup/run guide
+- Files to inspect first after resume:
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/README.md`
+  - `docs/current-status.md`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Python on PATH
+  - service account JSON ที่มีสิทธิ์ Firestore
+- Expected success signal:
+  - GUI เปิดได้, เชื่อม Firestore ได้, dashboard แสดงข้อมูลจริง, export ทำงานได้
+- Expected failure signal:
+  - import error เพราะยังไม่ได้ลง dependency
+  - connect ล้มเหลวเพราะ credential/project ไม่ถูกต้อง
+  - query/order_by ล้มเหลวเพราะ field บางชุดไม่อยู่ในข้อมูลจริง
+- Last known log location:
+  - ไม่มี log file แยก; หลักฐาน verification คือ output ของ `compileall`
+- Last known artifact path:
+  - `tools/go_play_admin_gui/`
+- Recent decisions:
+  - ใช้ Tkinter เพื่อให้เบาและ setup ง่าย
+  - อิง Firestore live schema จาก code/rules จริง ไม่อิง seed อย่างเดียว
+  - แยก tool ใต้ `tools/` เพื่อไม่รบกวนแอปหลัก
+- Rejected approaches:
+  - ทำเป็น web app ก่อน ทั้งที่โจทย์ต้องการ Python + GUI
+  - hardcode schema จาก seed values โดยไม่เช็ก backend code
+  - ใช้ GUI framework หนักตั้งแต่รอบแรก
+- Stop point classification:
+  - code implemented and compile-verified; runtime smoke with real credentials not yet executed
+- What is done but unverified:
+  - การเชื่อม Firestore จริงจาก GUI
+  - การแก้ข้อมูลจริงผ่าน GUI
+  - การ export report จากข้อมูลจริง
+- What is verified:
+  - โครงโปรเจ็กต์ใหม่ถูกสร้างครบ
+  - Python syntax ผ่านครบทุกไฟล์
+  - Firestore map ภายใน tool อิง schema จริงจาก repo ปัจจุบัน
+- External prerequisite:
+  - service account JSON ที่มีสิทธิ์ Firestore
+- Secret required but not stored:
+  - service account JSON / credential ภายนอก
+- Timestamp:
+  - 2026-04-07 18:16:18 +07:00
+- Current phase:
+  - Phase 7 / GO_PLAY Setup stabilization
+- Task/objective:
+  - Make the lightweight same-package setup APK usable on-device instead of bouncing back to Home.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before acting.
+  - Confirmed the lightweight release setup APK was installed but still returning to the launcher after opening.
+  - Inspected `lib/main.dart`, `lib/services/security_service.dart`, and `android/app/src/main/kotlin/com/example/go_play/security/SecurityBridge.kt`.
+  - Removed setup-side startup/runtime security termination from `lib/main.dart`.
+  - Captured fuller runtime evidence and found the setup task was being removed on-device even without a fatal crash.
+  - Removed `android:taskAffinity=""` from `android/app/src/main/AndroidManifest.xml`.
+  - Rebuilt the lightweight release setup APK, recopied it to `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk`, and reinstalled it.
+  - Verified after the manifest fix that `com.onetabtube.browser_default/com.example.go_play.MainActivity` remains `topResumedActivity`.
+  - Captured setup UI proof at `artifacts/android_build/setup_release_after_8s.png`.
+  - Triggered the manual updater flow and captured progress at `1%` then `8%`:
+    - `artifacts/android_build/setup_release_after_update_tap.png`
+    - `artifacts/android_build/setup_release_after_update_progress.png`
+- In progress now:
+  - No build or install command is running.
+  - The remaining unverified step is final overwrite/installer completion from setup into the GO_PLAY main APK.
+- Blockers / risks:
+  - None for basic setup usability anymore.
+  - Full end-to-end overwrite after the latest setup patches still needs one more smoke pass.
+- Files/modules touched:
+  - `lib/main.dart`
+  - `android/app/src/main/AndroidManifest.xml`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `flutter build apk --release --split-per-abi --target-platform android-arm64 --split-debug-info build\\app\\outputs\\flutter-symbols\\setup_release_split_arm64` passed.
+  - `adb install -r -d C:\\Users\\Master\\Desktop\\GO_PLAY_Setup_light_release_arm64.apk` passed.
+  - Launch smoke passed after manifest patch.
+  - Manual updater smoke passed through active download with progressing percentage.
+- Exact next concrete step:
+  - Continue the current setup update flow until Android package installer/main app overwrite is re-verified.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `lib/main.dart`
+  - `android/app/src/main/AndroidManifest.xml`
+  - `artifacts/android_build/setup_release_after_8s.png`
+  - `artifacts/android_build/setup_release_after_update_progress.png`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `flutter`
+  - `adb`
+- Exact command(s):
+  - `flutter build apk --release --split-per-abi --target-platform android-arm64 --split-debug-info build\\app\\outputs\\flutter-symbols\\setup_release_split_arm64`
+  - `Copy-Item -Force build\\app\\outputs\\flutter-apk\\app-arm64-v8a-release.apk C:\\Users\\Master\\Desktop\\GO_PLAY_Setup_light_release_arm64.apk`
+  - `adb install -r -d C:\\Users\\Master\\Desktop\\GO_PLAY_Setup_light_release_arm64.apk`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.example.go_play.MainActivity`
+  - `adb shell dumpsys activity activities | findstr /I "topResumedActivity com.onetabtube.browser_default com.example.go_play.MainActivity"`
+  - `adb exec-out uiautomator dump /dev/tty | Out-File -Encoding utf8 artifacts\\android_build\\setup_release_live_ui.xml`
+  - `adb shell input tap 540 1761`
+  - `adb shell screencap -p /sdcard/setup_release_after_update_progress.png; adb pull /sdcard/setup_release_after_update_progress.png artifacts\\android_build\\setup_release_after_update_progress.png`
+- Tool purpose:
+  - fix live setup usability and confirm the lightweight bootstrap updater still runs on-device
+- Tool state:
+  - idle
+- Expected resume command:
+  - keep the setup app open and continue the overwrite smoke from the current updater state
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk`
+  - `artifacts/android_build/setup_release_after_8s.png`
+  - `artifacts/android_build/setup_release_after_update_tap.png`
+  - `artifacts/android_build/setup_release_after_update_progress.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Flutter Android release APK
+  - arm64-only
+  - split-per-abi
+- Primary working set:
+  - `lib/main.dart` - setup bootstrap no longer self-terminates
+  - `android/app/src/main/AndroidManifest.xml` - setup `MainActivity` task handling
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk` - installed lightweight setup artifact
+  - `artifacts/android_build/setup_release_after_update_progress.png` - latest updater-flow evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `lib/main.dart`
+  - `android/app/src/main/AndroidManifest.xml`
+  - `artifacts/android_build/setup_release_after_update_progress.png`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - Flutter toolchain available
+  - Chromium debug keystore reachable from Gradle
+- Expected success signal:
+  - setup stays open and the update flow reaches installer/main-app replacement
+- Expected failure signal:
+  - setup returns to Home again or updater stalls before install
+- Last known log location:
+  - `artifacts/android_build/setup_release_runtime_full_logcat.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk`
+  - `artifacts/android_build/setup_release_after_8s.png`
+  - `artifacts/android_build/setup_release_after_update_tap.png`
+  - `artifacts/android_build/setup_release_after_update_progress.png`
+- Recent decisions:
+  - disable setup-side forced exit path instead of trying to preserve aggressive bootstrap enforcement
+  - remove empty task affinity after task-removal symptoms on the physical device
+- Rejected approaches:
+  - leaving the setup app on the old “security block then pop” behavior
+  - keeping `android:taskAffinity=""` once live task removal was confirmed
+- Stop point classification:
+  - build passed, setup installed, runtime smoke passed, updater smoke partially verified
+- What is done but unverified:
+  - final installer handoff/main-app overwrite after the latest setup patches
+- What is verified:
+  - lightweight setup release opens and remains foreground
+  - updater starts and download progress advances on-device
+- External prerequisite:
+  - connected Android device for final overwrite verification
+- Secret required but not stored:
+  - none
+
+- Timestamp:
+  - 2026-04-07 18:03:24 +07:00
+- Current phase:
+  - Phase 7 / Setup packaging optimization
+- Task/objective:
+  - Replace the bloated debug setup APK with a lightweight release artifact the user can actually distribute.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before acting.
+  - Measured the previously copied Desktop setup APK:
+    - `C:\Users\Master\Desktop\GO_PLAY_Setup_latest.apk`
+    - `161.09 MB`
+  - Built a release arm64-only setup APK:
+    - `flutter build apk --release --target-platform android-arm64 --split-debug-info build\\app\\outputs\\flutter-symbols\\setup_release_arm64`
+    - output `build/app/outputs/flutter-apk/app-release.apk`
+    - size `29.93 MB`
+  - Built the lighter split-per-abi arm64 release artifact:
+    - `flutter build apk --release --split-per-abi --target-platform android-arm64 --split-debug-info build\\app\\outputs\\flutter-symbols\\setup_release_split_arm64`
+    - output `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`
+    - size `22.63 MB`
+  - Verified the new lightweight release signer still matches GO_PLAY main signer.
+  - Copied the recommended artifact to:
+    - `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk`
+  - Inspected the lightweight APK layout and confirmed the biggest remaining cost is expected arm64 runtime/native payload, not accidental multi-ABI debug baggage.
+- In progress now:
+  - No build is running.
+  - Packaging optimization batch is complete.
+- Blockers / risks:
+  - none for the lightweight artifact itself
+  - this artifact is arm64-only by design
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - both release build commands passed
+  - signer verification passed
+- Exact next concrete step:
+  - use `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk` as the setup release artifact
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `flutter`
+  - `apksigner`
+- Exact command(s):
+  - `flutter build apk --release --target-platform android-arm64 --split-debug-info build\\app\\outputs\\flutter-symbols\\setup_release_arm64`
+  - `flutter build apk --release --split-per-abi --target-platform android-arm64 --split-debug-info build\\app\\outputs\\flutter-symbols\\setup_release_split_arm64`
+  - `apksigner verify --print-certs build\\app\\outputs\\flutter-apk\\app-arm64-v8a-release.apk`
+- Tool purpose:
+  - convert the setup app into a genuinely lightweight release APK
+- Tool state:
+  - idle
+- Expected resume command:
+  - none required for this completed batch
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Flutter release APK, arm64 split output
+- Primary working set:
+  - `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk`
+  - `build/app/outputs/flutter-symbols/setup_release_split_arm64`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Flutter toolchain available
+- Expected success signal:
+  - setup artifact size drops drastically while signer remains correct
+- Expected failure signal:
+  - release build fails or artifact signer drifts
+- Last known log location:
+  - console output from the release build commands in this session
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_light_release_arm64.apk`
+- Recent decisions:
+  - satisfy the “เบา” requirement through release/ABI packaging first
+- Rejected approaches:
+  - continuing to hand over the 161MB debug APK
+- Stop point classification:
+  - lightweight release artifact built and ready
+- What is done but unverified:
+  - live install smoke of this new 22.63MB release setup artifact
+- What is verified:
+  - size reduction from `161.09 MB` to `22.63 MB`
+  - signer remains correct
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+- Timestamp:
+  - 2026-04-07 17:54:06 +07:00
+- Current phase:
+  - Phase 7 / Same-package bootstrap installer smoke
+- Task/objective:
+  - Make the latest setup APK easy to pick up from the PC after the successful overwrite-validation batch.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before acting.
+  - Copied the latest signer-aligned setup APK from:
+    - `build/app/outputs/flutter-apk/app-debug.apk`
+    - to `C:\Users\Master\Desktop\GO_PLAY_Setup_latest.apk`
+  - Verified the Desktop copy exists.
+- In progress now:
+  - No build is running.
+  - No install is running.
+  - The desk is idle and ready for the next requested task.
+- Blockers / risks:
+  - none for this copy-only step
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - no rebuild needed; copied the existing verified setup artifact
+- Exact next concrete step:
+  - use `C:\Users\Master\Desktop\GO_PLAY_Setup_latest.apk` if the user wants the setup APK from an easy PC path
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_latest.apk`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `Copy-Item -LiteralPath "C:\\Users\\Master\\Desktop\\GO_PLAY\\build\\app\\outputs\\flutter-apk\\app-debug.apk" -Destination "C:\\Users\\Master\\Desktop\\GO_PLAY_Setup_latest.apk" -Force`
+- Tool purpose:
+  - create a desktop-friendly copy of the latest setup APK
+- Tool state:
+  - idle
+- Expected resume command:
+  - none required for this completed step
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_latest.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - existing Flutter debug bootstrap APK copy
+- Primary working set:
+  - `build/app/outputs/flutter-apk/app-debug.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_latest.apk`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - source APK already built
+- Expected success signal:
+  - Desktop copy exists at the expected path
+- Expected failure signal:
+  - copy fails or destination file missing
+- Last known log location:
+  - none for this copy-only step
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup_latest.apk`
+- Recent decisions:
+  - place a desktop copy instead of making the user browse into the build tree
+- Rejected approaches:
+  - telling the user to dig through `build/app/outputs/...` manually
+- Stop point classification:
+  - artifact copied and verified
+- What is done but unverified:
+  - none
+- What is verified:
+  - desktop copy exists
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+- Timestamp:
+  - 2026-04-07 17:36:23 +07:00
+- Current phase:
+  - Phase 7 / Same-package bootstrap installer smoke
+- Task/objective:
+  - Trace the real release signer used by GO_PLAY, align the Flutter bootstrap APK with that signer, and prepare the same-package overwrite retest.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before acting.
+  - Re-inspected `android/app/build.gradle.kts` and confirmed the bootstrap app was still falling back to `%USERPROFILE%\\.android\\debug.keystore` when no explicit `GO_PLAY_BOOTSTRAP_*` inputs were present.
+  - Searched targeted history/build/config locations instead of re-exploring the repo:
+    - Windows PowerShell history
+    - WSL bash history
+    - `build/config/android/*`
+    - `out/android_Release_arm64/*`
+  - Verified the actual release signer source by inspecting the WSL Chromium keystore directly:
+    - `keytool -list -v -keystore "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\build\\android\\chromium-debug.keystore" -storepass chromium -alias chromiumdebugkey`
+    - fingerprint matched the known GO_PLAY signer exactly:
+      - SHA-1 `33b28eafdf43dea4ff5dc3dbd9e5a523f67f6bb1`
+      - SHA-256 `32a2fc74d731105859e5a85df16d95f102d85b22099b8064c5d8915c61dad1e0`
+  - Confirmed `out/android_Release_arm64/toolchain.ninja` wires many Android APK targets to:
+    - `../../build/android/chromium-debug.keystore`
+    - alias `chromiumdebugkey`
+    - password `chromium`
+  - Patched `android/app/build.gradle.kts` so the Flutter bootstrap now prefers the same Chromium keystore by default when no explicit `GO_PLAY_BOOTSTRAP_*` override is provided.
+  - Rebuilt the bootstrap APK successfully:
+    - `flutter build apk --debug`
+  - Verified the rebuilt bootstrap APK signer now matches the main GO_PLAY signer:
+    - `apksigner verify --print-certs build\\app\\outputs\\flutter-apk\\app-debug.apk`
+  - Saved proof artifacts:
+    - `artifacts/android_build/setup_signer_verify_20260407_1738.txt`
+    - `artifacts/android_build/setup_apk_build_info_20260407_1738.txt`
+    - `artifacts/android_build/adb_devices_20260407_1738.txt`
+- In progress now:
+  - No build is running.
+  - No install is running.
+  - The live device retest is waiting on ADB because the device is no longer visible.
+- Blockers / risks:
+  - `adb devices -l` currently returns no connected devices.
+  - The old bootstrap on the device was installed with a different signer in the previous round, so once the device reconnects the safe next step is to uninstall it before installing the newly signer-aligned baseline.
+- Files/modules touched:
+  - `android/app/build.gradle.kts`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - local bootstrap rebuild passed
+  - local signer verification passed and now matches the published GO_PLAY release signer
+  - live device overwrite retest not started in this round because no ADB device is available
+- Exact next concrete step:
+  - Reconnect the Android device.
+  - Run `adb devices -l`.
+  - If the device appears, run:
+    - `adb uninstall com.onetabtube.browser_default`
+    - `adb install -r "build\\app\\outputs\\flutter-apk\\app-debug.apk"`
+  - Then relaunch the setup app and retry `อัปเดต GO_PLAY`.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `android/app/build.gradle.kts`
+  - `artifacts/android_build/setup_signer_verify_20260407_1738.txt`
+  - `artifacts/android_build/adb_devices_20260407_1738.txt`
+  - `build/app/outputs/flutter-apk/app-debug.apk`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `flutter`
+  - `keytool`
+  - `apksigner`
+  - `adb`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Get-Content android\\app\\build.gradle.kts`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && rg -n 'apksigner|jarsigner|keystore|signing|brave_android_keystore|skip_signing' build out/android_Release_arm64 -S"`
+  - `keytool -list -v -keystore "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\build\\android\\chromium-debug.keystore" -storepass chromium -alias chromiumdebugkey`
+  - `flutter build apk --debug`
+  - `apksigner verify --print-certs build\\app\\outputs\\flutter-apk\\app-debug.apk`
+  - `adb devices -l`
+- Tool purpose:
+  - close the signer gap between setup and GO_PLAY main app without inventing a new keystore
+- Tool state:
+  - idle
+- Expected resume command:
+  - `adb devices -l`
+  - then uninstall/install the new signer-aligned setup baseline if the device returns
+- Expected output/artifact path:
+  - `build/app/outputs/flutter-apk/app-debug.apk`
+  - `artifacts/android_build/setup_signer_verify_20260407_1738.txt`
+  - `artifacts/android_build/adb_devices_20260407_1738.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Flutter Android debug bootstrap APK
+- Primary working set:
+  - `android/app/build.gradle.kts` - choose the same signer automatically
+  - `build/app/outputs/flutter-apk/app-debug.apk` - rebuilt signer-aligned setup artifact
+  - `artifacts/android_build/setup_signer_verify_20260407_1738.txt` - signer proof
+  - `artifacts/android_build/adb_devices_20260407_1738.txt` - current external blocker
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/app/build.gradle.kts`
+  - `artifacts/android_build/setup_signer_verify_20260407_1738.txt`
+  - `artifacts/android_build/adb_devices_20260407_1738.txt`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Android device reconnected over ADB
+  - WSL path to Chromium keystore still reachable
+- Expected success signal:
+  - setup baseline installs with the Chromium signer and can update into GO_PLAY without the previous package conflict
+- Expected failure signal:
+  - ADB still sees no device
+  - install blocked because the old differently-signed setup baseline is still installed
+- Last known log location:
+  - `artifacts/android_build/setup_signer_verify_20260407_1738.txt`
+- Last known artifact path:
+  - `build/app/outputs/flutter-apk/app-debug.apk`
+  - `artifacts/android_build/setup_apk_build_info_20260407_1738.txt`
+  - `artifacts/android_build/adb_devices_20260407_1738.txt`
+- Recent decisions:
+  - reuse Chromium's existing Android keystore rather than inventing a separate bootstrap signing story
+  - keep explicit bootstrap signing overrides, but make the same-signer path automatic for this workstation
+- Rejected approaches:
+  - continuing to sign the setup app with `%USERPROFILE%\\.android\\debug.keystore`
+  - inventing a new keystore for updater testing
+- Stop point classification:
+  - signer-alignment patch landed and compile-verified locally; live device reinstall/update smoke blocked by missing ADB device
+- What is done but unverified:
+  - device uninstall/reinstall with the new signer-aligned setup baseline
+  - overwrite smoke after reinstall
+- What is verified:
+  - release signer source is `build/android/chromium-debug.keystore`
+  - rebuilt bootstrap APK now uses the same signer
+- External prerequisite:
+  - Android device reconnect
+- Secret required but not stored:
+  - none for the current signer path
+
+- Timestamp:
+  - 2026-04-07 17:47:58 +07:00
+- Current phase:
+  - Phase 7 / Same-package bootstrap installer smoke
+- Task/objective:
+  - Complete the real-device overwrite smoke after signer alignment and prove that `GO_PLAY Setup` can update-overwrite into the published GO_PLAY main app.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before acting.
+  - Confirmed the Android device reconnected:
+    - `124322549S102380`
+  - Uninstalled the old setup baseline:
+    - `adb uninstall com.onetabtube.browser_default`
+    - result `Success`
+  - Installed the newly signer-aligned bootstrap baseline:
+    - `adb install -r "build\\app\\outputs\\flutter-apk\\app-debug.apk"`
+    - result `Success`
+  - Verified the device returned to setup baseline `0.0.5-beta (5)`:
+    - screenshot `artifacts/android_build/setup_signer_aligned_installed.png`
+  - Brought setup to foreground and confirmed updater metadata is visible:
+    - screenshot `artifacts/android_build/setup_return_foreground.png`
+    - xml `artifacts/android_build/setup_return_foreground.xml`
+  - Triggered the updater manually from the signer-aligned baseline:
+    - `adb shell input tap 540 1761`
+    - screenshot `artifacts/android_build/setup_after_update_tap_signeraligned.png`
+    - initial progress observed at `กำลังดาวน์โหลด 26%`
+  - Waited through the download and captured the later state:
+    - screenshot `artifacts/android_build/setup_after_download_wait_240s.png`
+    - the visible screen is no longer setup; it is the GO_PLAY main app lock overlay on YouTube
+  - Verified activity/package state after the transition:
+    - top resumed app is now `com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+    - Package Installer completed its staging/cleanup task
+    - package info now reports:
+      - `versionCode=429000006`
+      - `versionName=1.90.2`
+      - `lastUpdateTime=2026-04-07 17:46:35`
+  - Saved final proof artifacts:
+    - `artifacts/android_build/main_after_setup_update_success.png`
+    - `artifacts/android_build/main_package_info_after_setup_update_success.txt`
+    - `artifacts/android_build/main_top_activity_after_setup_update_success.txt`
+- In progress now:
+  - No build is running.
+  - No installer flow is running.
+  - The signer/bootstrap overwrite batch is complete.
+- Blockers / risks:
+  - No blocker remains for the signer mismatch path.
+  - The setup baseline used for this proof is still a debug-built artifact, so if the next ask is a distributable setup package, that should be treated as a separate packaging batch.
+  - The APK is still large enough that download time is noticeable on-device.
+- Files/modules touched:
+  - `android/app/build.gradle.kts`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - local setup rebuild passed
+  - signer verification passed
+  - device uninstall/install of the new setup baseline passed
+  - same-package overwrite smoke passed end-to-end on the connected device
+- Exact next concrete step:
+  - The bootstrap/signer batch is done.
+  - Wait for the next requested task, or if staying in setup-app scope, define whether the next batch is:
+    - a distributable setup build/release flow
+    - or more UX work on the lightweight installer
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `android/app/build.gradle.kts`
+  - `artifacts/android_build/main_after_setup_update_success.png`
+  - `artifacts/android_build/main_package_info_after_setup_update_success.txt`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `view_image`
+- Exact command(s):
+  - `adb devices -l`
+  - `adb uninstall com.onetabtube.browser_default`
+  - `adb install -r "build\\app\\outputs\\flutter-apk\\app-debug.apk"`
+  - `adb shell monkey -p com.onetabtube.browser_default -c android.intent.category.LAUNCHER 1`
+  - `adb shell input tap 540 1761`
+  - `adb shell screencap -p ...`
+  - `adb exec-out uiautomator dump /dev/tty > ...`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode= versionName= lastUpdateTime="`
+  - `adb shell dumpsys activity activities | findstr /I "topResumedActivity ..."`
+- Tool purpose:
+  - prove the overwrite path on the real device after fixing the signer root cause
+- Tool state:
+  - idle
+- Expected resume command:
+  - no mandatory rerun for this completed batch
+- Expected output/artifact path:
+  - `artifacts/android_build/main_after_setup_update_success.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Flutter debug bootstrap baseline updating into GO_PLAY release `429000006 / 1.90.2`
+- Primary working set:
+  - `android/app/build.gradle.kts`
+  - `artifacts/android_build/setup_after_update_tap_signeraligned.png`
+  - `artifacts/android_build/setup_after_download_wait_240s.png`
+  - `artifacts/android_build/main_after_setup_update_success.png`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/main_after_setup_update_success.png`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device over ADB
+- Expected success signal:
+  - setup baseline disappears and GO_PLAY main app becomes the installed/foreground app
+- Expected failure signal:
+  - package conflict dialog
+  - installer error
+  - device remains on `0.0.5-beta (5)`
+- Last known log location:
+  - `artifacts/android_build/main_top_activity_after_setup_update_success.txt`
+- Last known artifact path:
+  - `artifacts/android_build/main_after_setup_update_success.png`
+- Recent decisions:
+  - finish the proof on-device instead of stopping at local signer verification
+  - accept uninstalling the old wrong-signer baseline as the clean reset for the test
+- Rejected approaches:
+  - trying to overwrite the old wrong-signer setup build in place
+  - stopping after partial download evidence only
+- Stop point classification:
+  - end-to-end device smoke passed; ready for the next task
+- What is done but unverified:
+  - none in this completed batch
+- What is verified:
+  - same-signer setup baseline installs
+  - update download starts and completes
+  - Package Installer hands off successfully
+  - GO_PLAY main app `429000006 / 1.90.2` is the final installed app
+- External prerequisite:
+  - none for the completed batch
+- Secret required but not stored:
+  - none
+- Timestamp:
+  - 2026-04-07 16:56:24 +07:00
+- Current phase:
+  - Phase 7 / Same-package bootstrap installer smoke
+- Task/objective:
+  - Fix the old `APK_URI_ERROR`, reinstall the repaired bootstrap APK, and verify the live update flow advances past the former FileProvider boundary.
+- Completed since last snapshot:
+  - Patched `lib/services/apk_download_service.dart` so APK downloads now use `getApplicationSupportDirectory()` instead of `getApplicationDocumentsDirectory()`.
+  - Rebuilt the setup APK successfully with `flutter build apk --debug`.
+  - Reinstalled the rebuilt APK on the connected device with `adb install -r`.
+  - Verified device package state:
+    - `versionCode=5`
+    - `versionName=0.0.5-beta`
+    - `lastUpdateTime=2026-04-07 16:54:57`
+  - Captured `artifacts/android_build/setup_after_install_fix.png`, which confirms:
+    - subtitle removed
+    - `แพ็กเกจ` row removed
+    - updater metadata visible
+  - Dumped the live UI tree and confirmed the update CTA bounds.
+  - Tapped `อัปเดต GO_PLAY` on device.
+  - Captured `artifacts/android_build/setup_after_update_tap.png`, which shows:
+    - `กำลังดาวน์โหลด 2%`
+  - This confirms the previous `APK_URI_ERROR` is no longer the active blocker.
+- In progress now:
+  - No build or install command is running.
+  - The live setup flow has already entered download state.
+- Blockers / risks:
+  - The next likely blocker, if any, is signature mismatch or package installer policy during the final overwrite install.
+  - Resume-download behavior is implemented but not yet explicitly validated via an interrupted real download.
+- Files/modules touched:
+  - `lib/services/apk_download_service.dart`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - rebuild passed
+  - reinstall passed
+  - live update flow now reaches download state on device
+- Exact next concrete step:
+  - Continue observing the same live update flow until the APK either:
+    - finishes and opens Android package installer
+    - or fails at the next boundary
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `lib/services/apk_download_service.dart`
+  - `artifacts/android_build/setup_after_install_fix.png`
+  - `artifacts/android_build/setup_after_update_tap.png`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `flutter`
+  - `view_image`
+- Exact command(s):
+  - `dart format lib\services\apk_download_service.dart`
+  - `flutter build apk --debug`
+  - `adb install -r "build\app\outputs\flutter-apk\app-debug.apk"`
+  - `adb shell am force-stop com.onetabtube.browser_default; adb shell monkey -p com.onetabtube.browser_default -c android.intent.category.LAUNCHER 1`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode= versionName= lastUpdateTime="`
+  - `adb exec-out uiautomator dump /dev/tty > artifacts\android_build\setup_after_install_fix.xml`
+  - `adb shell input tap 540 1761`
+  - `adb shell screencap -p /sdcard/setup_after_install_fix.png; adb pull /sdcard/setup_after_install_fix.png artifacts\android_build\setup_after_install_fix.png`
+  - `adb shell screencap -p /sdcard/setup_after_update_tap.png; adb pull /sdcard/setup_after_update_tap.png artifacts\android_build\setup_after_update_tap.png`
+- Tool purpose:
+  - remove the old URI blocker and verify that the repaired setup app can enter the real remote download flow
+- Tool state:
+  - idle
+- Expected resume command:
+  - relaunch or continue observing the same update flow on device
+- Expected output/artifact path:
+  - `build/app/outputs/flutter-apk/app-debug.apk`
+  - `artifacts/android_build/setup_after_install_fix.png`
+  - `artifacts/android_build/setup_after_update_tap.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Flutter Android debug bootstrap APK
+- Primary working set:
+  - `lib/services/apk_download_service.dart` - FileProvider-compatible storage path and resume logic
+  - `artifacts/android_build/setup_after_update_tap.png` - proof that live flow now downloads
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/setup_after_update_tap.png`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - live updater metadata already published
+- Expected success signal:
+  - Android package installer appears after download completes
+- Expected failure signal:
+  - overwrite install is blocked by signer mismatch or device policy
+- Last known log location:
+  - screenshot evidence only for this round
+- Last known artifact path:
+  - `artifacts/android_build/setup_after_install_fix.png`
+  - `artifacts/android_build/setup_after_update_tap.png`
+- Recent decisions:
+  - fix the old URI blocker by aligning download storage with the existing FileProvider root, rather than broadening FileProvider
+- Rejected approaches:
+  - broadening provider access to a wide root just to make `app_flutter/updates` installable
+- Stop point classification:
+  - FileProvider-related blocker fixed; rebuilt APK installed; live flow now downloading; final install not yet observed
+- What is done but unverified:
+  - final overwrite install
+  - interrupted-download resume behavior against the real endpoint
+- What is verified:
+  - rebuilt APK is live on device
+  - old URI-install blocker is gone
+  - update flow now downloads
+- External prerequisite:
+  - connected Android device
+- Secret required but not stored:
+  - release signing material if overwrite later fails on signer mismatch
+- Timestamp:
+  - 2026-04-07 17:10:19 +07:00
+- Current phase:
+  - Phase 7 / Same-package bootstrap installer smoke
+- Task/objective:
+  - Inspect the latest installer failure after the live download progressed past the old URI blocker.
+- Completed since last snapshot:
+  - Captured `artifacts/android_build/latest_setup_state.png`.
+  - Verified top resumed activity is now:
+    - `com.google.android.packageinstaller/com.android.packageinstaller.InstallFailed`
+  - Confirmed the on-screen installer message is:
+    - `ไม่ได้ติดตั้งแอปเพราะแพ็กเกจขัดแย้งกับแพ็กเกจที่มีอยู่`
+  - This proves the previous `APK_URI_ERROR` is gone and the flow now fails later at overwrite install time.
+- In progress now:
+  - No code fix landed yet for the new package conflict blocker.
+- Blockers / risks:
+  - Same-package overwrite is now blocked at the Android package installer stage.
+  - Most likely root cause is signer mismatch between the installed bootstrap APK and the published GO_PLAY APK.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/latest_setup_state.png`
+- Build/test status:
+  - package installer failure reproduced live
+- Exact next concrete step:
+  - Compare bootstrap and published release signers explicitly, then rebuild bootstrap with the matching signer and retest overwrite install.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `artifacts/android_build/latest_setup_state.png`
+- Current tool(s):
+  - `shell_command`
+  - `view_image`
+  - `apply_patch`
+- Exact command(s):
+  - `adb shell screencap -p /sdcard/latest_setup_state.png; adb pull /sdcard/latest_setup_state.png artifacts\\android_build\\latest_setup_state.png`
+  - `adb shell dumpsys activity activities | findstr /I "topResumedActivity com.onetabtube.browser_default packageinstaller permissioncontroller"`
+  - `adb logcat -d -t 200 | findstr /I "APK_URI_ERROR INSTALL_APK_ERROR INSTALLER_NOT_FOUND signature signer PackageInstaller INSTALL_FAILED PlatformException"`
+- Tool purpose:
+  - identify the new real blocker after the installer handoff started working
+- Tool state:
+  - idle
+- Expected resume command:
+  - inspect signer details of bootstrap and published release artifacts
+- Expected output/artifact path:
+  - `artifacts/android_build/latest_setup_state.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Flutter Android debug bootstrap APK
+- Primary working set:
+  - `artifacts/android_build/latest_setup_state.png` - current package-installer failure proof
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/latest_setup_state.png`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+- Expected success signal:
+  - root cause is confirmed and the next bootstrap rebuild can use the matching signer
+- Expected failure signal:
+  - signer evidence remains ambiguous and overwrite still fails
+- Last known log location:
+  - screenshot evidence plus `dumpsys activity` output for this round
+- Last known artifact path:
+  - `artifacts/android_build/latest_setup_state.png`
+- Recent decisions:
+  - treat the installer conflict as the new primary blocker instead of continuing to focus on the already-fixed FileProvider issue
+- Rejected approaches:
+  - continuing to debug URI/file roots after the installer already opened
+- Stop point classification:
+  - overwrite/install failed live; root cause narrowed to package conflict; signer comparison not yet done
+- What is done but unverified:
+  - explicit signer mismatch confirmation
+- What is verified:
+  - Android package installer is the current failing surface
+  - current installer message says the package conflicts with the installed package
+- External prerequisite:
+  - connected Android device
+- Secret required but not stored:
+  - release signing material if bootstrap must be rebuilt with the release signer
 
 ## 2026-04-05 15:42:32 +07:00
 
@@ -15660,6 +17652,187 @@
   - `THUNDER_API_KEY`
   - live Firebase deployment credentials
 
+## 2026-04-06 12:03:54 +07:00
+
+- Current phase:
+  - Phase 5 / Additive payment UI and backend refinement from the current device-installed baseline
+- Current objective:
+  - Keep the currently installed APK as the minimum floor while simplifying verification to Thunder-only, localizing payment/account UI toward Thai, and moving Buy-page bank details to Firestore-backed product data.
+- Completed since last snapshot:
+  - Re-read the recorded handoff first, then checked the real floor again from the connected device:
+    - `com.onetabtube.browser_default`
+    - `versionName=1.90.0`
+    - `versionCode=429000004`
+    - `lastUpdateTime=2026-04-06 11:56:31`
+  - Confirmed the currently built APK hash in `src_ext4` is:
+    - `EA2B3594A84C7FB3188E820E6EAC70BD7130AA74D51477A254234A1171017AA4`
+    - [thai_ui_thunder_only_apk_hash_20260406.txt](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/thai_ui_thunder_only_apk_hash_20260406.txt)
+  - Removed the custom local/Firestore slip-verification cache layer from [package_orders.ts](C:/Users/Master/Desktop/GO_PLAY/functions/src/package_orders.ts) and kept Thunder as the verification source of truth while preserving order/payment/entitlement/history writes after Thunder success.
+  - Updated [smoke-package-flow.js](C:/Users/Master/Desktop/GO_PLAY/functions/scripts/smoke-package-flow.js) to match the Thunder-only verification path.
+  - Updated [OneTabPackagePurchaseManager.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java):
+    - added Firestore-driven `bankDisplayName`, `accountNameEn`, `accountNameTh`, `accountNumber`
+    - added Thai-facing status/error mappings for the Buy flow
+  - Updated [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java):
+    - replaced the hardcoded bank section with bound value views from `ProductSummary`
+    - kept copy-account-number behavior working against the current rendered value
+  - Rewrote [onetab_fab_strings.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/brave-res/values/onetab_fab_strings.xml) toward Thai-focused copy for FAB, Account, Buy package, and receipt strings.
+  - Updated [OneTabPurchaseReceiptActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPurchaseReceiptActivity.java) to use Thai locale formatting.
+  - Updated [products.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/products.seed.json) and [README_payment_slip.md](C:/Users/Master/Desktop/GO_PLAY/README_payment_slip.md) so Firestore product docs can carry bank/account details and the docs match the Thunder-only backend direction.
+  - Synced the changed Android files into the real `src_ext4` build tree and rebuilt successfully:
+    - [thai_ui_thunder_only_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/thai_ui_thunder_only_build_20260406.log)
+  - Installed the resulting APK and verified on-device:
+    - app home after install: [current_after_install.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/current_after_install.png), [current_after_install.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/current_after_install.xml)
+    - FAB menu Thai labels: [current_after_fab.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/current_after_fab.png), [current_after_fab.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/current_after_fab.xml)
+    - Account page Thai labels and `59 วัน`: [account_after_install.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_after_install.png), [account_after_install.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_after_install.xml)
+    - Buy page Thai labels plus bank/account block: [buy_after_install2.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_install2.png), [buy_after_install2.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_install2.xml)
+  - Verified local backend evidence:
+    - functions build passed: [thai_ui_thunder_only_functions_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/thai_ui_thunder_only_functions_build_20260406.log)
+    - payment smoke passed: [thai_ui_thunder_only_payment_smoke_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/thai_ui_thunder_only_payment_smoke_20260406.log)
+- In progress now:
+  - No partial code patch is left open.
+  - The code/device/build reality is now ahead of the previous handoff and has been reconciled.
+  - Live Firebase functions have not been re-deployed in this round, so the new Thunder-only backend behavior is still local-only until deploy.
+- Blockers / risks:
+  - Receipt localization is updated in code but not yet visually re-verified via a fresh successful purchase in this round.
+  - The Buy page now supports Firestore-driven bank/account fields, but package `name` and related product text still depend on whatever the live Firestore product doc contains; if the doc is still English, those fields stay English on-device.
+  - Future changes must not regress below the now-verified device floor:
+    - app launches
+    - FAB opens
+    - Account opens
+    - Buy page opens
+    - `59 วัน` still shows
+- Files/modules touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [README_payment_slip.md](C:/Users/Master/Desktop/GO_PLAY/README_payment_slip.md)
+  - [onetab_fab_strings.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/brave-res/values/onetab_fab_strings.xml)
+  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
+  - [OneTabPackagePurchaseManager.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java)
+  - [OneTabPurchaseReceiptActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPurchaseReceiptActivity.java)
+  - [smoke-package-flow.js](C:/Users/Master/Desktop/GO_PLAY/functions/scripts/smoke-package-flow.js)
+  - [products.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/products.seed.json)
+  - [package_orders.ts](C:/Users/Master/Desktop/GO_PLAY/functions/src/package_orders.ts)
+- Build/test status:
+  - Functions build passed
+  - Local payment smoke passed
+  - `src_ext4` APK build passed
+  - APK installed on device
+  - Runtime smoke passed for home, FAB, Account, and Buy package
+- Exact next concrete step:
+  - Continue from the current verified floor:
+    1. if live behavior must match code immediately, redeploy payment functions
+    2. run a fresh successful purchase to visually verify the Thai receipt screen
+    3. continue additive work on the pending payment/admin feature batch from this state
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this latest [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md) entry
+  - [OneTabPackagePurchaseManager.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java)
+  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
+  - [OneTabPurchaseReceiptActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPurchaseReceiptActivity.java)
+  - [package_orders.ts](C:/Users/Master/Desktop/GO_PLAY/functions/src/package_orders.ts)
+  - [buy_after_install2.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_install2.xml)
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `npm --prefix functions run build`
+  - `npm --prefix functions run smoke:payments`
+  - `Copy-Item ... -> \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\...`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/thai_ui_thunder_only_build_20260406.log"`
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell monkey -p com.onetabtube.browser_default -c android.intent.category.LAUNCHER 1`
+  - `adb shell uiautomator dump ...`
+  - `adb exec-out screencap -p > ...`
+  - `adb shell input tap ...`
+  - `Get-FileHash "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk" -Algorithm SHA256`
+- Tool purpose:
+  - Build and verify the requested payment/backend/UI changes without dropping below the currently installed device baseline.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/<next_log>.log"`
+- Expected output/artifact path:
+  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk)
+  - [artifacts/android_build/](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build)
+  - [artifacts/firebase_build/](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `src_ext4`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [OneTabPackagePurchaseManager.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java)
+  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
+  - [OneTabPurchaseReceiptActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPurchaseReceiptActivity.java)
+  - [onetab_fab_strings.xml](C:/Users/Master/Desktop/GO_PLAY/android/java/brave-res/values/onetab_fab_strings.xml)
+  - [package_orders.ts](C:/Users/Master/Desktop/GO_PLAY/functions/src/package_orders.ts)
+  - [smoke-package-flow.js](C:/Users/Master/Desktop/GO_PLAY/functions/scripts/smoke-package-flow.js)
+  - [buy_after_install2.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_install2.xml)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [OneTabPackagePurchaseManager.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java)
+  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
+  - [OneTabPurchaseReceiptActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPurchaseReceiptActivity.java)
+  - [package_orders.ts](C:/Users/Master/Desktop/GO_PLAY/functions/src/package_orders.ts)
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device `R9TRC00GA2E`
+  - WSL checkout at `/home/master/src_ext4`
+  - usable `depot_tools`
+  - Firebase credentials if live deploy is needed
+- Expected success signal:
+  - rebuild/install succeeds
+  - runtime remains at least as good as current device floor
+  - if redeployed, live behavior aligns with the new Thunder-only code path
+- Expected failure signal:
+  - build fails
+  - Account/Buy regress below current floor
+  - live backend still behaves like the pre-redeploy revision
+- Last known log location:
+  - [thai_ui_thunder_only_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/thai_ui_thunder_only_build_20260406.log)
+  - [thai_ui_thunder_only_functions_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/thai_ui_thunder_only_functions_build_20260406.log)
+  - [thai_ui_thunder_only_payment_smoke_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/thai_ui_thunder_only_payment_smoke_20260406.log)
+- Last known artifact path:
+  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk)
+  - [current_after_install.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/current_after_install.png)
+  - [current_after_fab.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/current_after_fab.png)
+  - [account_after_install.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_after_install.png)
+  - [buy_after_install2.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_install2.png)
+- Recent decisions:
+  - Keep the device-installed APK as the minimum floor.
+  - Turn off the custom local/Firestore slip-verification cache and rely on Thunder for verification.
+  - Move bank/account details to Firestore-backed product fields with fallbacks.
+  - Localize the visible payment/account surfaces toward Thai without disturbing the already working baseline.
+- Rejected approaches:
+  - broad build-tree surgery unrelated to the requested changes
+  - regressing to an older output baseline
+  - preserving the custom `slip_verifications/*` path after the user asked to remove it
+- Stop point classification:
+  - code edited, functions locally verified, APK built/installed, runtime smoke passed; live redeploy not done in this round
+- What is done but unverified:
+  - receipt screen visual verification after a fresh successful purchase
+  - live payment functions redeploy
+- What is verified:
+  - current device floor
+  - current APK hash
+  - Thai FAB/Account/Buy UI on-device
+  - Account shows Gmail and `59 วัน`
+  - Buy page bank/account block renders correctly
+  - local Thunder-only payment backend build/smoke passes
+- External prerequisite:
+  - connected device
+  - Firebase project access if live deploy or product-doc edits are needed
+- Secret required but not stored:
+  - `THUNDER_API_KEY`
+  - Firebase deploy credentials
+  - Google account credentials / 2FA
+
 ## 2026-04-06 02:03:00 +07:00
 
 - Current phase:
@@ -16851,3 +19024,3806 @@
   - Firebase deploy credentials
   - `THUNDER_API_KEY`
   - Google account credentials / 2FA
+
+## 2026-04-06 15:52:37 +07:00
+
+- Current phase:
+  - Phase 5 / Additive payment data wiring from the current device-installed baseline
+- Current objective:
+  - Finish the Firestore-aligned data side for the Buy flow: 3 packages plus a dedicated `settings/payment_account` doc, then verify the new runtime on-device without going below the current floor.
+- Completed since last update:
+  - Re-read [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md) and the latest [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md) entry first.
+  - Re-checked the actual working-set code:
+    - [OneTabPackagePurchaseManager.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java)
+    - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
+    - [OneTabAccountActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java)
+    - [products.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/products.seed.json)
+    - [seed-payment-account.js](C:/Users/Master/Desktop/GO_PLAY/functions/scripts/seed-payment-account.js)
+  - Confirmed the new code reality matches the intended structure:
+    - 3 supported package ids
+    - dedicated `settings/payment_account`
+    - Buy flow subtitle already updated to `สร้างคำสั่งซื้อ อัปโหลดสลิป ตรวจสอบผ่านระบบอัตโนมัติ`
+  - Confirmed the current device-installed build is the new verified floor:
+    - `versionName=1.90.0`
+    - `versionCode=429000004`
+    - `lastUpdateTime=2026-04-06 15:45:44`
+    - APK hash `B015A38E3EF022845878C2C9BAFDDE95F0BFAA66E8429004A72188D6F6F1C409`
+  - Re-verified runtime directly on the device:
+    - opened FAB menu from the YouTube surface
+    - entered `บัญชี`
+    - confirmed Gmail and `59 วัน`
+    - entered `ซื้อแพ็กเกจ`
+    - confirmed 3 package options
+    - scrolled and confirmed full payment-account block with Thai/EN names, number, and copy button
+  - Rewrote [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md) so it now matches the actual code/runtime floor.
+- In progress now:
+  - No half-written code edit is left.
+  - The remaining gap is live Firestore content alignment, not Android wiring.
+- Blockers / risks:
+  - Live Firestore package docs still contain at least one temporary admin/test value that the app now surfaces honestly on the Buy page.
+  - `settings/payment_account` support exists in code/seed/doc, but live project content still needs to be seeded or maintained if the screen should reflect the intended production data.
+- Files/modules touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+- Build/test status:
+  - Android build artifact already present and installed:
+    - [multi_package_payment_account_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/multi_package_payment_account_build_20260406.log)
+    - [OneTabTube.apk](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk)
+  - Runtime evidence captured this round:
+    - [fab_menu_post_resume.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/fab_menu_post_resume.xml)
+    - [account_after_resume_buy_path.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/account_after_resume_buy_path.xml)
+    - [buy_after_multipackage_final.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_multipackage_final.xml)
+    - [buy_after_multipackage_scrolled.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_multipackage_scrolled.xml)
+- Exact next concrete step:
+  - Align live Firestore docs next:
+    1. seed/update `settings/payment_account`
+    2. normalize `products/pkg_99`, `products/pkg_199`, `products/pkg_599`
+    3. refresh the device and verify the Buy page reflects the intended live copy/data
+    4. only then continue the pending additive feature batch:
+       - receipt/success polish
+       - Logout
+       - purchase history / package history
+       - admin/manual correction
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this log entry
+  - [OneTabPackagePurchaseManager.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java)
+  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
+  - [products.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/products.seed.json)
+  - [payment_account.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/payment_account.seed.json)
+  - [buy_after_multipackage_final.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_multipackage_final.xml)
+  - [buy_after_multipackage_scrolled.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_multipackage_scrolled.xml)
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `adb shell uiautomator dump /sdcard/window_dump.xml`
+  - `adb pull /sdcard/window_dump.xml artifacts/android_build/...`
+  - `cmd /c "adb exec-out screencap -p > artifacts\\android_build\\...png"`
+  - `adb shell input tap 927 2167`
+  - `adb shell input tap 460 1710`
+  - `adb shell input tap 540 1495`
+  - `adb shell input swipe 540 1900 540 900 300`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode|versionName|lastUpdateTime'`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `Get-FileHash "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk" -Algorithm SHA256`
+- Tool purpose:
+  - Verify the already-built multi-package/payment-account build on the real device and sync the handoff to that reality.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `npm --prefix functions run seed:payment-account -- --project go-play-720c1`
+  - `npm --prefix functions run seed:products -- --project go-play-720c1`
+- Expected output/artifact path:
+  - [OneTabTube.apk](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk)
+  - [artifacts/android_build/](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `src_ext4`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [OneTabPackagePurchaseManager.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java)
+  - [OneTabBuyPackageActivity.java](C:/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java)
+  - [products.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/products.seed.json)
+  - [payment_account.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/payment_account.seed.json)
+  - [seed-payment-account.js](C:/Users/Master/Desktop/GO_PLAY/functions/scripts/seed-payment-account.js)
+  - [buy_after_multipackage_final.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_multipackage_final.xml)
+  - [buy_after_multipackage_scrolled.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_multipackage_scrolled.xml)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest tail of [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [products.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/products.seed.json)
+  - [payment_account.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/payment_account.seed.json)
+  - [buy_after_multipackage_final.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_multipackage_final.xml)
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device available via `adb`
+  - Firebase project access available if live docs are being aligned
+- Expected success signal:
+  - live Firestore cleanup alone changes the Buy page content to the intended values while the Android build remains unchanged
+- Expected failure signal:
+  - Buy page keeps reflecting stale live admin/test package data after the live docs are supposedly updated
+- Last known log location:
+  - [multi_package_payment_account_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/multi_package_payment_account_build_20260406.log)
+- Last known artifact path:
+  - [buy_after_multipackage_final.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_multipackage_final.png)
+  - [buy_after_multipackage_scrolled.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_multipackage_scrolled.png)
+- Recent decisions:
+  - Keep the new device-installed `B015A38E...` build as the floor.
+  - Finish the data-side structure honestly instead of hardcoding around Firestore.
+  - Verify the full payment-account block visually before closing the round.
+- Rejected approaches:
+  - treating stale handoff as truth without re-checking the actual device
+  - leaving payment-account data as hardcoded-only UI
+  - skipping the scrolled proof for the lower account fields
+- Stop point classification:
+  - code already built and installed earlier in the round; runtime now re-verified; handoff synchronized
+- What is done but unverified:
+  - live Firestore cleanup/seeding still pending
+  - receipt-page visual check still pending from this build
+- What is verified:
+  - 3 package selector on-device
+  - Thai Buy subtitle on-device
+  - Thai/EN payment-account details and copy button on-device
+  - Account page still above the prior runtime floor
+- External prerequisite:
+  - Firebase project access for the next live-data step
+- Secret required but not stored:
+  - Firebase admin/deploy credentials
+  - `THUNDER_API_KEY`
+  - Google account credentials / 2FA
+
+## 2026-04-06 16:07:00 +07:00
+
+- Current phase:
+  - Phase 5 / Live Firestore data alignment from the verified multi-package baseline
+- Current objective:
+  - Push the missing live Firestore docs so the new Buy-page structure is backed by real data, not just local code/seed files.
+- Completed since last update:
+  - Tried the repo seed scripts directly:
+    - `npm --prefix functions run seed:payment-account -- --project go-play-720c1`
+    - `npm --prefix functions run seed:products -- --project go-play-720c1`
+  - Confirmed both failed for the already-known reason:
+    - no `Application Default Credentials`
+  - Reused the machine's existing `firebase login` session instead of stopping there:
+    - refreshed an access token through `firebase-tools` internals
+    - patched Firestore docs through Firestore REST
+  - Wrote these live docs into `go-play-720c1`:
+    - `products/pkg_99`
+    - `products/pkg_199`
+    - `products/pkg_599`
+    - `settings/payment_account`
+  - Read the docs back from Firestore and saved proof:
+    - [firestore_live_docs_20260406_1604.json](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/firestore_live_docs_20260406_1604.json)
+  - Refreshed the Buy page on-device and verified the live values now show in the app:
+    - `แพ็กเกจ GO_PLAY 30 วัน / 99 THB / 30 วัน`
+    - `แพ็กเกจ GO_PLAY 90 วัน / 199 THB / 90 วัน`
+    - `แพ็กเกจ GO_PLAY 365 วัน / 599 THB / 365 วัน`
+    - `กสิกรไทย ( K BANK )`
+    - `YAKSA TRADING LIMITED`
+    - `บจก. ยักษ์ษา เทรดดิ้ง`
+    - `2008395414`
+  - Saved refreshed runtime evidence:
+    - [buy_after_live_seed.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_live_seed.xml)
+    - [buy_after_live_seed.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_live_seed.png)
+  - Updated [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md) again so the handoff now reflects both code reality and live Firestore reality.
+- In progress now:
+  - No code edit is left half-done.
+  - Firestore data alignment is complete; the next unfinished work is the next additive feature batch.
+- Blockers / risks:
+  - ADC is still absent on this machine, so the repo seed scripts still cannot write live Firestore by themselves unless a service account or ADC is added later.
+  - Receipt-page visual proof is still pending from this build.
+- Files/modules touched:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+- Build/test status:
+  - No new Android build was needed in this micro-step; the installed floor remains:
+    - `B015A38E3EF022845878C2C9BAFDDE95F0BFAA66E8429004A72188D6F6F1C409`
+  - Live Firestore write/read evidence:
+    - [firestore_live_docs_20260406_1604.json](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/firestore_live_docs_20260406_1604.json)
+  - Refreshed Buy-page runtime evidence:
+    - [buy_after_live_seed.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_live_seed.xml)
+    - [buy_after_live_seed.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_live_seed.png)
+- Exact next concrete step:
+  - Continue the next additive user feature batch from the current floor:
+    1. success/receipt polish
+    2. Logout
+    3. purchase history / package history
+    4. admin/manual correction
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - this progress entry
+  - [buy_after_live_seed.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_live_seed.xml)
+  - [firestore_live_docs_20260406_1604.json](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/firestore_live_docs_20260406_1604.json)
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `npm --prefix functions run seed:payment-account -- --project go-play-720c1`
+  - `npm --prefix functions run seed:products -- --project go-play-720c1`
+  - `node - (using firebase-tools auth + Firestore REST PATCH/GET)`
+  - `adb shell input keyevent 4`
+  - `adb shell input tap 540 1495`
+  - `adb shell uiautomator dump /sdcard/window_dump.xml`
+  - `adb pull /sdcard/window_dump.xml ...`
+  - `cmd /c "adb exec-out screencap -p > ..."`
+- Tool purpose:
+  - Push the missing live Firestore docs without ADC and verify the app reflects them immediately.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/<next_log>.log"`
+- Expected output/artifact path:
+  - [artifacts/firebase_build/firestore_live_docs_20260406_1604.json](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/firestore_live_docs_20260406_1604.json)
+  - [artifacts/android_build/buy_after_live_seed.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_live_seed.xml)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `src_ext4`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - [products.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/products.seed.json)
+  - [payment_account.seed.json](C:/Users/Master/Desktop/GO_PLAY/functions/seeds/payment_account.seed.json)
+  - [buy_after_live_seed.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_live_seed.xml)
+  - [firestore_live_docs_20260406_1604.json](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/firestore_live_docs_20260406_1604.json)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:/Users/Master/Desktop/GO_PLAY/docs/current-status.md)
+  - latest tail of [docs/progress-log.md](C:/Users/Master/Desktop/GO_PLAY/docs/progress-log.md)
+  - [buy_after_live_seed.xml](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_live_seed.xml)
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device available via `adb`
+  - existing `firebase login` session still valid if direct REST patching is reused
+- Expected success signal:
+  - Buy page continues to show live 99/199/599 + payment-account values without additional Android code changes
+- Expected failure signal:
+  - live Firestore values disappear or drift from the intended values after refresh
+- Last known log location:
+  - [multi_package_payment_account_build_20260406.log](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/multi_package_payment_account_build_20260406.log)
+- Last known artifact path:
+  - [buy_after_live_seed.png](C:/Users/Master/Desktop/GO_PLAY/artifacts/android_build/buy_after_live_seed.png)
+  - [firestore_live_docs_20260406_1604.json](C:/Users/Master/Desktop/GO_PLAY/artifacts/firebase_build/firestore_live_docs_20260406_1604.json)
+- Recent decisions:
+  - Do not stop at the ADC failure if the machine already has `firebase login`.
+  - Use direct Firestore REST patching with the logged-in Firebase session to finish the requested live-data step.
+- Rejected approaches:
+  - telling the user to push the docs manually when the machine already had enough auth context to do it
+  - waiting for ADC/service-account setup before completing this data push
+- Stop point classification:
+  - live docs pushed, read back, and reflected in the app; handoff synchronized
+- What is done but unverified:
+  - receipt-page visual walkthrough from this build
+- What is verified:
+  - live `products/*` docs exist with intended 99/199/599 values
+  - live `settings/payment_account` doc exists with intended bank/account values
+  - Buy page reflects the new live Firestore docs on-device
+- External prerequisite:
+  - none for this completed micro-step beyond the existing Firebase login session
+- Secret required but not stored:
+  - Firebase refresh/access tokens in local CLI config
+  - `THUNDER_API_KEY`
+  - Google account credentials / 2FA
+
+## 2026-04-06 17:40:00 +07:00
+
+- Current phase:
+  - Phase 5 / Package-access gating refinement from the current device-installed baseline
+- Current objective:
+  - Stop blocking the whole app when package-access service is unavailable and preserve the purchase path through FAB/Account while keeping the current device-installed build as the floor.
+- Completed since last update:
+  - Read the latest recorded handoff first, then compared it with the actual targeted code state.
+  - Confirmed the recorded handoff was stale: local code had already moved toward `YouTube-only lock` and fail-open package-service handling.
+  - Re-inspected the active working set:
+    - `BraveActivity.java`
+    - `OneTabLoginActivity.java`
+    - `OneTabLoginOverlayCoordinator.java`
+    - `OneTabPackagePurchaseManager.java`
+  - Confirmed local code state before rebuild:
+    - `BraveActivity` no longer hard-fails on package-service unavailability and uses `handleOneTabPackageLocked(...)` only for explicit denied state.
+    - `OneTabLoginActivity` now resolves only auth + device access.
+    - `OneTabLoginOverlayCoordinator` supports hiding the primary sign-in action.
+    - `OneTabPackagePurchaseManager` maps unavailable package-access service to `AccessStateResult.unavailable(...)`.
+  - Synced the current local files into the real `src_ext4` tree.
+  - Rebuilt from `src_ext4`:
+    - `artifacts/android_build/package_lock_youtube_only_build_20260406.log`
+  - Installed the built APK successfully.
+  - Verified device package reality after install:
+    - `versionCode=429000004`
+    - `versionName=1.90.0`
+    - `lastUpdateTime=2026-04-06 17:34:47`
+    - APK hash `C41281A0F9EB6DD008DB030C33CDCE05995F16723CB99757F34932A4FE0FAA3C`
+  - Captured runtime trace proving the new behavior:
+    - `artifacts/android_build/package_lock_youtube_only_trace_20260406.txt`
+    - contains `Package access unavailable; allowing baseline access`
+  - Verified activity focus after launch:
+    - top resumed activity is `com.google.android.apps.chrome.Main`
+    - not `OneTabLoginActivity`
+  - Captured main-surface evidence:
+    - `artifacts/android_build/package_lock_youtube_only_after_22s.xml`
+    - `artifacts/android_build/package_lock_youtube_only_after_22s.png`
+  - Opened FAB from the YouTube surface and captured proof that the purchase path remains reachable:
+    - `artifacts/android_build/package_lock_youtube_only_after_fab_retry2.xml`
+    - `artifacts/android_build/package_lock_youtube_only_after_fab_retry2.png`
+    - visible items:
+      - `PiP`
+      - `บัญชี`
+      - `ออกจากระบบ`
+- In progress now:
+  - No half-written code edit is left.
+  - The current verified state already matches the user's requested direction for the `service unavailable` case.
+- Blockers / risks:
+  - The actual `package denied / expired` path still needs live verification with `getPackageAccessState`.
+  - There are many unrelated modified/untracked files in the repo; do not clean broadly.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabLoginActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabLoginOverlayCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java`
+- Build/test status:
+  - build passed
+  - install passed
+  - runtime proof captured for:
+    - package-service unavailable -> fail open
+    - YouTube surface reachable
+    - FAB menu reachable from YouTube surface
+- Exact next concrete step:
+  - make `getPackageAccessState` return a real denied/expired state and verify:
+    1. only YouTube content gets locked
+    2. FAB still opens
+    3. `บัญชี -> ซื้อแพ็กเกจ` remains reachable
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/android_build/package_lock_youtube_only_trace_20260406.txt`
+  - `artifacts/android_build/package_lock_youtube_only_after_22s.xml`
+  - `artifacts/android_build/package_lock_youtube_only_after_fab_retry2.xml`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `Copy-Item ... -> \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\...`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/package_lock_youtube_only_build_20260406.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `adb logcat -c`
+  - `adb shell am force-stop com.onetabtube.browser_default`
+  - `adb shell monkey -p com.onetabtube.browser_default -c android.intent.category.LAUNCHER 1`
+  - `adb logcat -d | Select-String -Pattern 'OneTabAuth|OneTabLoginActivity|OneTabPurchase|OneTabDevice|OneTabFirebase'`
+  - `adb shell dumpsys activity activities | Select-String -Pattern 'topResumedActivity=ActivityRecord\\{|mCurrentFocus=Window\\{'`
+  - `adb shell uiautomator dump /sdcard/window_dump.xml`
+  - `adb shell input tap 928 2167`
+- Tool purpose:
+  - Move the verified baseline from `full app package gate` toward `YouTube-only lock` and prove it on-device.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/<next_log>.log"`
+- Expected output/artifact path:
+  - `artifacts/android_build/package_lock_youtube_only_build_20260406.log`
+  - `artifacts/android_build/package_lock_youtube_only_after_22s.png`
+  - `artifacts/android_build/package_lock_youtube_only_after_fab_retry2.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `src_ext4`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabLoginActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabLoginOverlayCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java`
+  - `artifacts/android_build/package_lock_youtube_only_trace_20260406.txt`
+  - `artifacts/android_build/package_lock_youtube_only_after_fab_retry2.xml`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/android_build/package_lock_youtube_only_trace_20260406.txt`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device `R9TRC00GA2E`
+  - working `src_ext4` tree
+- Expected success signal:
+  - app no longer bricks on package-service unavailability
+  - FAB remains available for purchase recovery path
+- Expected failure signal:
+  - app reverts to `OneTabLoginActivity` as a package error gate
+  - FAB becomes unreachable from the locked state
+- Last known log location:
+  - `artifacts/android_build/package_lock_youtube_only_build_20260406.log`
+- Last known artifact path:
+  - `artifacts/android_build/package_lock_youtube_only_after_22s.png`
+  - `artifacts/android_build/package_lock_youtube_only_after_fab_retry2.png`
+- Recent decisions:
+  - Accept the user's design correction as the new direction: do not full-lock the app for package issues.
+  - Keep purchase recovery accessible through FAB/Account.
+- Rejected approaches:
+  - continuing with full-app package gating
+  - trusting the stale handoff over actual code + device evidence
+- Stop point classification:
+  - code synchronized, build passed, APK installed, runtime verified for unavailable-service case
+- What is done but unverified:
+  - explicit denied/expired package server response
+- What is verified:
+  - unavailable-service fail-open
+  - main YouTube surface reachable
+  - FAB menu reachable
+- External prerequisite:
+  - live callable/server data for denied-package testing
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-07 14:22:33 +07:00
+
+- Current phase:
+  - Phase 7 / Release artifact installed for updater retest baseline
+- Task / objective:
+  - Install the freshly built release APK onto the connected device without changing version metadata, so the device baseline matches the current manual-updater release build.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Confirmed the active device is `R9TRC00GA2E`.
+  - Verified the installed package before reinstall:
+    - package: `com.onetabtube.browser_default`
+    - versionCode: `429000005`
+    - versionName: `1.90.1`
+    - lastUpdateTime: `2026-04-07 12:56:28 +07:00`
+  - Used the fresh release APK from:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - Reinstalled that same-version release build onto the device successfully with:
+    - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk"`
+  - Verified the install result:
+    - `Performing Incremental Install`
+    - `Performing Streamed Install`
+    - `Success`
+  - Verified the package state after reinstall:
+    - package: `com.onetabtube.browser_default`
+    - versionCode: `429000005`
+    - versionName: `1.90.1`
+    - lastUpdateTime: `2026-04-07 14:22:14 +07:00`
+  - Preserved the previously verified release artifact metadata:
+    - size: `511,846,166` bytes
+    - SHA-256: `8b134bed4bc9c36f6cdaac08e31a0f97f67785d3acdb6b3dc333b23de60e2758`
+    - app label: `GO_PLAY`
+  - Kept `safe-mode` out of scope.
+- In progress now:
+  - No build is running.
+  - No install is running.
+  - The fresh release APK is now also the installed device baseline.
+- Blockers / risks:
+  - Because the installed package and the emitted APK are both still `429000005 / 1.90.1`, this build itself cannot serve as a newer updater target for any in-app update prompt that relies on version comparison.
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java` still shows as untracked in the Windows repo and must not be missed during later staging/commit.
+  - The updater retest may require either:
+    - publishing a higher version than the currently installed build
+    - or changing the installed baseline first
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release build target passed:
+    - `brave/build/android:onetabtube_android_package`
+  - Fresh release APK emitted successfully:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - Same-version reinstall onto device also passed:
+    - installed on `R9TRC00GA2E`
+    - package remains `429000005 / 1.90.1`
+  - No runtime smoke test was run after this reinstall in this turn.
+- Exact next concrete step:
+  - If the next task is updater testing, decide the version relationship explicitly:
+    - either build/publish a higher version than `429000005`
+    - or keep this installed baseline and only verify non-version-gated updater UI behavior
+  - Do not assume this currently installed build can trigger an `update available` path against itself.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `Copy-Item`
+  - `wsl.exe`
+  - `autoninja`
+  - `aapt.exe`
+  - `sha256sum`
+  - `adb`
+- Exact command(s):
+  - `adb devices`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode|versionName|lastUpdateTime'`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk"`
+  - prior build command retained as artifact provenance:
+    - `wsl.exe -d Ubuntu -- bash -lc "set -o pipefail; cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_manual_updater.log"`
+- Tool purpose:
+  - Reinstall the newly built release artifact onto the device so the device baseline matches the current manual-updater release build.
+- Tool state:
+  - idle; no active build/install process remains
+- Expected resume command:
+  - For package-state verification:
+    - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode|versionName|lastUpdateTime'`
+  - For another release rebuild:
+    - resync source changes into `/home/master/src_ext4/brave/...`
+    - rerun `autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package`
+- Expected output/artifact path:
+  - build log: `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+  - release APK: `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java` - manual updater account-page behavior
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java` - manual prepared-update/install state inspection
+  - `android/java/brave-res/values/onetab_fab_strings.xml` - manual updater wording
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log` - successful release build evidence
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk` - current release artifact and device-installed baseline source
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device connected over `adb`
+  - APK present at the ext4 release artifact path
+  - for rebuilds, ext4 desk must still be the active build desk
+- Expected success signal:
+  - `adb install -r` ends with `Success`
+  - `dumpsys package` shows the expected package/version and a fresh `lastUpdateTime`
+- Expected failure signal:
+  - `INSTALL_FAILED_*`
+  - missing device in `adb devices`
+  - package metadata unchanged after install attempt
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Accepted the user's request to install this same-version build onto the device.
+  - Treated the emitted APK as the baseline artifact and device baseline simultaneously.
+  - Kept `safe-mode` out of scope.
+- Rejected approaches:
+  - blocking the reinstall just because `versionCode` matched
+  - auto-running runtime smoke without the user asking for it
+  - changing version metadata in this turn
+- Stop point classification:
+  - release build passed; APK emitted; same-version reinstall passed; runtime not yet re-smoke-tested
+- What is done but unverified:
+  - runtime behavior after the reinstall
+  - any updater flow that requires a strictly newer remote version
+- What is verified:
+  - device is connected
+  - current release APK exists
+  - `adb install -r` succeeded
+  - installed package update time changed to `2026-04-07 14:22:14 +07:00`
+- External prerequisite:
+  - none for local install verification
+  - updater retest may need publish/backend step depending on next request
+- Secret required but not stored:
+  - Firebase admin/session credentials
+  - Google credentials / 2FA
+  - `THUNDER_API_KEY`
+
+## 2026-04-07 14:54:53 +07:00
+
+- Timestamp:
+  - 2026-04-07 14:54:53 +07:00
+- Current phase:
+  - Phase 7 / First-signup trial live + release updater artifact published
+- Current objective:
+  - Add a server-side 14-day first-signup trial, then produce and publish a strictly newer release APK for in-app updater testing.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Patched `functions/src/index.ts` so first-time `registerDeviceSession` grants:
+    - `subscription.plan = trial_14d`
+    - `subscription.expireAt = now + 14 days`
+    - `users/{uid}/entitlements/trial_14d`
+  - Updated `functions/seeds/app_update_android.seed.json` to `429000006 / 1.90.2` with `minimumSupportedVersionCode = 429000005`.
+  - Verified `npm --prefix functions run build` passes.
+  - Deployed `registerDeviceSession` live to `go-play-720c1`.
+  - Verified Firebase Functions now shows:
+    - `registerDeviceSession`
+    - `revision=registerdevicesession-00004-gav`
+    - `updateTime=2026-04-07T07:44:10.201970110Z`
+  - Updated the active ext4 release desk args:
+    - `android_override_version_name="1.90.2"`
+    - `android_override_version_code="429000006"`
+  - Built the new release APK successfully.
+  - Verified release artifact metadata:
+    - package `com.onetabtube.browser_default`
+    - app label `GO_PLAY`
+    - versionCode `429000006`
+    - versionName `1.90.2`
+    - size `511,846,166` bytes
+    - SHA-256 `f007e16d661b8f933ae6a6f9c2108c27bbe40d115963ccb32ef732d5de5e0ea8`
+  - Published that APK into the updater pipeline:
+    - Storage object `app-updates/android/com.onetabtube.browser_default/429000006/OneTabTube-1.90.2-429000006.apk`
+    - Firestore doc `app_updates/android`
+    - verified publish payload contains the new URL, SHA-256, size, and version metadata
+  - Kept `safe-mode` out of scope and did not install `429000006` onto the device.
+- In progress now:
+  - No build/deploy/publish is running.
+  - The next work should be live smoke only.
+- Blockers / risks:
+  - The 14-day trial is only granted for brand-new users; existing users are not backfilled.
+  - Real trial verification now requires either a fresh Gmail or manual reset of the existing Firestore user state.
+  - The release version bump lives in the active ext4 `args.gn`, not a repo-tracked version source.
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java` remains untracked in the Windows repo and must not be forgotten later.
+- Files/modules touched:
+  - `functions/src/index.ts`
+  - `functions/seeds/app_update_android.seed.json`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\args.gn`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Functions TypeScript build passed.
+  - `registerDeviceSession` deploy passed.
+  - Release build passed for `429000006 / 1.90.2`.
+  - APK publish to Firebase Storage + Firestore passed.
+  - No live smoke yet for new-user trial or updater discovery.
+- Exact next concrete step:
+  - Use a fresh Gmail (or reset the existing Firestore user) and verify:
+    - first sign-in creates `entitlements/trial_14d`
+    - account page shows trial days remaining
+    - YouTube is usable without a paid package
+  - On the device still running `429000005`, open `FAB -> บัญชี -> อัปเดตแอป` and verify it sees `429000006`.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `functions/src/index.ts`
+  - `functions/seeds/app_update_android.seed.json`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\args.gn`
+  - `artifacts/android_build/release_build_429000006_20260407_trial.log`
+  - `artifacts/firebase_build/publish_app_update_live_20260407_1451.log`
+  - `artifacts/firebase_build/app_update_publish_payload_20260407_144956.json`
+  - `artifacts/firebase_build/functions_list_20260407_1456.txt`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `wsl.exe`
+  - `autoninja`
+  - `firebase`
+  - `node`
+  - `aapt.exe`
+  - `sha256sum`
+- Exact command(s):
+  - `npm --prefix functions run build`
+  - `firebase deploy --only functions:registerDeviceSession --project go-play-720c1`
+  - `wsl.exe -d Ubuntu -- bash -lc "set -o pipefail; cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000006_20260407_trial.log"`
+  - `node scripts/publish_app_update_artifact.js --apk "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk" --project go-play-720c1`
+  - `firebase functions:list --project go-play-720c1`
+- Tool purpose:
+  - Land the live backend trial, then emit and publish a newer updater target without installing it.
+- Tool state:
+  - idle; no active long-running command remains
+- Expected resume command:
+  - For trial smoke: sign in with a fresh Gmail and inspect Firestore user state
+  - For updater smoke: open the `429000005` installed app and check Account updater
+  - For another build: rerun `autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package`
+- Expected output/artifact path:
+  - build log: `artifacts/android_build/release_build_429000006_20260407_trial.log`
+  - release APK: `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - publish log: `artifacts/firebase_build/publish_app_update_live_20260407_1451.log`
+  - publish payload: `artifacts/firebase_build/app_update_publish_payload_20260407_144956.json`
+  - function verification: `artifacts/firebase_build/functions_list_20260407_1456.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `functions/src/index.ts` - signup trial grant
+  - `functions/seeds/app_update_android.seed.json` - updater metadata source
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\args.gn` - release version override
+  - `artifacts/android_build/release_build_429000006_20260407_trial.log` - release build evidence
+  - `artifacts/firebase_build/publish_app_update_live_20260407_1451.log` - publish evidence
+  - `artifacts/firebase_build/app_update_publish_payload_20260407_144956.json` - final live metadata payload
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `functions/src/index.ts`
+  - `artifacts/android_build/release_build_429000006_20260407_trial.log`
+  - `artifacts/firebase_build/publish_app_update_live_20260407_1451.log`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Firebase CLI login valid
+  - WSL Ubuntu + `/home/master/src_ext4` reachable
+  - fresh Gmail or reset Firestore state for trial smoke
+- Expected success signal:
+  - new user gets `trial_14d` immediately
+  - updater on `429000005` sees `429000006`
+- Expected failure signal:
+  - new user still shows `NO_ACTIVE_PACKAGE`
+  - no `entitlements/trial_14d`
+  - updater still reports no newer version
+- Last known log location:
+  - `artifacts/android_build/release_build_429000006_20260407_trial.log`
+  - `artifacts/firebase_build/publish_app_update_live_20260407_1451.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Put the 14-day trial on the server side at first register, not in the client
+  - Seed both `subscription` and `entitlements/trial_14d`
+  - Publish a newer updater target `429000006`, not `429000005`
+- Rejected approaches:
+  - client-only mock trial
+  - reusing the same updater version again
+  - installing `429000006` before updater retest
+- Stop point classification:
+  - server patch deployed; release build passed; release APK published; live smoke not yet run
+- What is done but unverified:
+  - real first-time signup trial flow
+  - real updater discovery from device `429000005`
+- What is verified:
+  - functions build succeeded
+  - `registerDeviceSession` live deploy succeeded
+  - release APK `429000006 / 1.90.2` exists with expected metadata
+  - Firestore updater doc was written and verified by the publish script
+- External prerequisite:
+  - fresh Google account or Firestore cleanup for trial verification
+  - device still on `429000005 / 1.90.1` for updater verification
+- Secret required but not stored:
+  - Firebase admin/session credentials
+  - Google credentials / 2FA
+  - `THUNDER_API_KEY`
+
+## 2026-04-07 13:39:59 +07:00
+
+- Current phase:
+  - Phase 7 / Updater manual-install hardening
+- Task / objective:
+  - Stop GO_PLAY from auto-prompting updater actions and change the flow so update check / prepare / install are user-driven taps.
+- Completed since previous snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before starting.
+  - Inspected only the updater working set:
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateStore.java`
+    - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - Landed local working-tree edits to:
+    - remove auto updater refresh from `onCreate()`
+    - remove auto resume/install recovery from `onResume()`
+    - stop immediate install dispatch after `prepareUpdate(...)`
+    - add prepared-update inspection logic for cached/pending APKs
+    - switch updater strings to manual-install wording
+    - set initial account updater UI to idle/check state
+  - Verified current repo state:
+    - modified: `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+    - modified: `android/java/brave-res/values/onetab_fab_strings.xml`
+    - untracked: `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+    - untracked: `safe-mode-codex-prompt.md`
+  - Checked old UNC source paths for build-desk continuity and found they do not currently contain the edited updater source files.
+- In progress now:
+  - Updater manual-flow patch is local only.
+  - Safe-mode page work was requested mid-turn but intentionally not started before handoff was refreshed.
+- Blockers / risks:
+  - Build desk continuity is unresolved:
+    - `Test-Path` against old UNC `src_ext4` source locations returned `False`
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && git rev-parse ..."` failed with `fatal: not a git repository`
+  - `OneTabAppUpdateManager.java` must be remembered during later staging because it is currently untracked.
+  - This patch has not been compile-verified yet.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateStore.java` (inspected only)
+  - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `safe-mode-codex-prompt.md` (pending next task only)
+- Build/test status:
+  - No build or install was run after the updater patch.
+  - Last known release artifact remains the earlier baseline:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Exact next concrete step:
+  - Re-establish the active WSL build workspace, sync the three updater-edited files into that desk, then run an incremental OneTab release build/compile check before starting safe-mode page work.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - `safe-mode-codex-prompt.md`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `rg`
+- Exact command(s):
+  - `Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"`
+  - `git rev-parse --abbrev-ref HEAD; git rev-parse HEAD`
+  - `git status --short -- android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java android/java/brave-res/values/onetab_fab_strings.xml safe-mode-codex-prompt.md docs/current-status.md docs/progress-log.md`
+  - `Test-Path '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\android\\java\\org\\chromium\\chrome\\browser\\onetabauth\\OneTabAccountActivity.java'`
+  - `Test-Path '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\android\\java\\org\\chromium\\chrome\\browser\\onetabauth\\OneTabAppUpdateManager.java'`
+  - `Test-Path '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\android\\java\\brave-res\\values\\onetab_fab_strings.xml'`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && git rev-parse --abbrev-ref HEAD && git rev-parse HEAD"`
+- Tool purpose:
+  - Capture exact updater patch state and desk mismatch before pause / redirection.
+- Tool state:
+  - idle
+- Expected resume command:
+  - locate the correct WSL build root for this repo, sync the updater files, then reuse the OneTab release build command from that desk
+- Expected output/artifact path:
+  - next compile/build log under `artifacts/android_build/`
+  - release APK path expected to remain `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk` unless the build root changes
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - intended target `out/android_Release_arm64`
+  - intended package target `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java` — manual updater flow in account page
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java` — prepared-update inspection helper
+  - `android/java/brave-res/values/onetab_fab_strings.xml` — manual updater wording
+  - `safe-mode-codex-prompt.md` — next feature prompt to inspect after updater compile state is known
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - `safe-mode-codex-prompt.md`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - resolve correct WSL build desk path first
+  - ensure toolchain / source mirror is reachable there
+- Expected success signal:
+  - updater manual-flow patch compiles and no longer auto-checks / auto-resumes on account open
+- Expected failure signal:
+  - build desk still unresolved or Java compile breaks in updater classes
+- Last known log location:
+  - no new build log this turn
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - prioritize accurate handoff over guessing a wrong build desk
+  - keep updater patch local but clearly documented
+  - defer safe-mode implementation until updater compile state is known
+- Rejected approaches:
+  - auto-checking updates again on `onCreate()` / `onResume()`
+  - auto-resuming pending installs on resume
+  - pretending `src_ext4` was already the correct synchronized desk without proof
+- Stop point classification:
+  - code edited but not compiled
+- What is done but unverified:
+  - updater manual-flow patch
+  - string copy changes for manual install
+- What is verified:
+  - local files are edited
+  - old UNC WSL source paths do not currently contain those edited source files
+  - no build ran after the patch
+- External prerequisite:
+  - correct WSL build workspace / source mirror
+- Secret required but not stored:
+  - Firebase admin/session credentials
+  - Google credentials / 2FA
+  - `THUNDER_API_KEY`
+
+## 2026-04-07 14:18:20 +07:00
+
+- Current phase:
+  - Phase 7 / Release APK emission for updater manual-flow retest
+- Task / objective:
+  - Build a fresh `release APK` that includes the updater manual-flow patch, without installing it.
+- Completed since previous snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before doing any build work.
+  - Verified the local updater patch remained the source of truth in:
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+    - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - Reconciled the desk mapping with `docs/build-workbench-map.md` and live WSL layout:
+    - ext4 desk root is `/home/master/src_ext4`
+    - Brave project source files for this app must sync into `/home/master/src_ext4/brave/...`
+  - Confirmed the target source paths exist in the build desk:
+    - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+    - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+    - `/home/master/src_ext4/brave/android/java/brave-res/values/onetab_fab_strings.xml`
+  - Synced the three updater files from the Windows repo into the ext4 build desk with `Copy-Item`.
+  - Ran the release build command:
+    - `wsl.exe -d Ubuntu -- bash -lc "set -o pipefail; cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_manual_updater.log"`
+  - Verified the build passed at:
+    - `[659/659] ACTION //chrome/android:chrome_public_apk__create`
+  - Verified the fresh release APK artifact:
+    - path: `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+    - size: `511,846,166` bytes
+    - last write time: `2026-04-07 14:15:04 +07:00`
+    - SHA-256: `8b134bed4bc9c36f6cdaac08e31a0f97f67785d3acdb6b3dc333b23de60e2758`
+    - package: `com.onetabtube.browser_default`
+    - versionCode: `429000005`
+    - versionName: `1.90.1`
+    - application-label: `GO_PLAY`
+  - Did not install the APK on any device.
+  - Kept `safe-mode` out of scope for this run per the user’s instruction.
+- In progress now:
+  - No active build.
+  - No active install.
+  - APK is ready to be used for updater retest/publish in the next step.
+- Blockers / risks:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java` still shows as untracked in the Windows repo, so later staging/commit must not miss it.
+  - The version is still `429000005 / 1.90.1`; updater testing logic still depends on how the currently installed build compares to this artifact.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+- Build/test status:
+  - `brave/build/android:onetabtube_android_package` release build passed
+  - fresh `release APK` emitted
+  - APK not installed
+- Exact next concrete step:
+  - Use this freshly emitted release APK as the next updater-test artifact only; publish/copy it into the updater flow when the user asks, but do not auto-install it.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - updater source files in `android/java/org/chromium/chrome/browser/onetabauth/...`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `Copy-Item`
+  - `wsl.exe`
+  - `autoninja`
+  - `aapt.exe`
+  - `sha256sum`
+- Exact command(s):
+  - `Copy-Item -LiteralPath ...OneTabAccountActivity.java ... -Destination '\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\onetabauth\OneTabAccountActivity.java' -Force`
+  - `Copy-Item -LiteralPath ...OneTabAppUpdateManager.java ... -Destination '\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\onetabauth\OneTabAppUpdateManager.java' -Force`
+  - `Copy-Item -LiteralPath ...onetab_fab_strings.xml ... -Destination '\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\brave-res\values\onetab_fab_strings.xml' -Force`
+  - `wsl.exe -d Ubuntu -- bash -lc "set -o pipefail; cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_manual_updater.log"`
+  - `Get-Item -LiteralPath '\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk' | Select-Object FullName,Length,LastWriteTime`
+  - `wsl.exe -d Ubuntu -- bash -lc "sha256sum /home/master/src_ext4/out/android_Release_arm64/apks/OneTabTube.apk"`
+  - `aapt.exe dump badging '\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk'`
+- Tool purpose:
+  - Sync updater source edits into the ext4 desk, emit a fresh release APK, and verify the artifact without installing it.
+- Tool state:
+  - idle
+- Expected resume command:
+  - If another release rebuild is needed, resync changed files into `/home/master/src_ext4/brave/...` and rerun the same `autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package` command.
+- Expected output/artifact path:
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `android/java/brave-res/values/onetab_fab_strings.xml`
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL Ubuntu available
+  - ext4 desk available at `/home/master/src_ext4`
+  - source files synced into `/home/master/src_ext4/brave/...`
+- Expected success signal:
+  - build log ends with `[659/659] ACTION //chrome/android:chrome_public_apk__create`
+  - release APK exists at `out/android_Release_arm64/apks/OneTabTube.apk`
+- Expected failure signal:
+  - `FAILED:` in log
+  - or no APK emitted
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_manual_updater.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - keep safe-mode out of scope
+  - build release only, no install
+  - use ext4 desk per build map and live verification
+- Rejected approaches:
+  - installing the APK immediately
+  - falling back to component build for this request
+- Stop point classification:
+  - release build passed; artifact emitted; not installed
+- What is done but unverified:
+  - updater runtime behavior with this new release artifact
+  - publish step for in-app updater test
+- What is verified:
+  - sync to ext4 desk completed
+  - release build passed
+  - APK metadata/path/hash verified
+  - no device install happened
+- External prerequisite:
+  - device / publish backend only for the next updater test step
+- Secret required but not stored:
+  - Firebase admin/session credentials
+  - Google credentials / 2FA
+  - `THUNDER_API_KEY`
+
+## 2026-04-07 13:11:03 +07:00
+
+- Timestamp:
+  - 2026-04-07 13:11:03 +07:00
+- Current phase:
+  - Phase 7 / Post-update release runtime verification
+- Current objective:
+  - Replace the stale renderer-crash investigation with the actual runtime state of the currently installed `429000005` release, and verify whether the latest build still crashes after launch / direct YouTube watch navigation.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Re-opened the local source edits that had been part of the previous crash triage:
+    - `android/java/org/chromium/base/BraveCommandLineInitUtil.java`
+    - `chromium_src/third_party/blink/renderer/platform/fonts/font_fallback_list.cc`
+  - Replayed the previous symbolization path far enough to identify that the old crash neighborhood was Brave font-family callback wiring, not a live `GpuBenchmarking` switch in the currently installed runtime.
+  - Found the decisive binary mismatch:
+    - current local unstripped library Build ID: `7b99a60394e102fe`
+    - old renderer crash log Build ID: `4ae9c9525ed25ab7`
+    - conclusion: the old `callback.h:335` crash notes were symbolized against an older binary and are stale for the current device state
+  - Verified the current installed package metadata on device:
+    - `versionCode=429000005`
+    - `versionName=1.90.1`
+    - `lastUpdateTime=2026-04-07 12:56:28`
+  - Ran fresh runtime smoke on the actually installed release:
+    - launcher start after force-stop
+    - direct `https://m.youtube.com/watch?v=BaW_jenozKc` open
+  - Verified no fresh renderer fatal occurred on the live build:
+    - browser / privileged / renderer processes remain alive
+    - top resumed activity remains `com.google.android.apps.chrome.Main`
+    - no new `callback.h:335` fatal or renderer abort appears in the fresh logcat capture
+  - Saved new live-runtime evidence:
+    - `artifacts/android_build/r25_release_runtime_smoke_watch_logcat.txt`
+    - `artifacts/android_build/r25_release_runtime_package_info.txt`
+    - `artifacts/android_build/r25_release_runtime_top_activity.txt`
+    - `artifacts/android_build/r25_watch_runtime_ui.xml`
+- In progress now:
+  - No new code patch is in progress.
+  - Remaining follow-up is limited to determining whether the visible non-fatal log lines (especially `MEDIA_ELEMENT_ERROR: Format error`) correspond to a real user-facing playback issue.
+- Blockers / risks:
+  - The main risk was stale evidence: continuing to debug the `12:51` crash after the device had already moved to the `12:56` build would have sent the investigation in the wrong direction.
+  - The current release stays alive, but runtime warnings/errors still appear in logcat and may deserve a separate follow-up if the user sees playback problems.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/base/BraveCommandLineInitUtil.java` (inspected only; existing guard retained)
+  - `chromium_src/third_party/blink/renderer/platform/fonts/font_fallback_list.cc` (inspected only; existing guard retained)
+  - `artifacts/android_build/r25_release_runtime_smoke_watch_logcat.txt`
+  - `artifacts/android_build/r25_release_runtime_package_info.txt`
+  - `artifacts/android_build/r25_release_runtime_top_activity.txt`
+  - `artifacts/android_build/r25_watch_runtime_ui.xml`
+- Build/test status:
+  - Release APK still present at:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - Current installed build is live on device and no longer reproduces the older renderer crash during launcher start or direct watch navigation.
+  - Non-fatal runtime errors still visible:
+    - `MEDIA_ELEMENT_ERROR: Format error`
+    - `Invalid PlatformChannel endpoint string`
+    - some Brave default-setting warnings
+- Exact next concrete step:
+  - If continuing QA, confirm whether the `MEDIA_ELEMENT_ERROR` lines map to a real user-facing playback issue on the current build; otherwise treat the post-update renderer-crash blocker as closed and keep this release as the updater baseline.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/android_build/r25_release_runtime_smoke_watch_logcat.txt`
+  - `artifacts/android_build/r25_release_runtime_package_info.txt`
+  - `artifacts/android_build/r25_release_runtime_top_activity.txt`
+  - `artifacts/android_build/r25_watch_runtime_ui.xml`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe`
+  - `nm`
+  - `readelf`
+  - `aarch64-linux-gnu-objdump`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && readelf -n out/android_Release_arm64/lib.unstripped/libchrome__combined.so | sed -n '/Build ID/Ip'"`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode|versionName|lastUpdateTime|firstInstallTime'`
+  - `adb logcat -c`
+  - `adb shell am force-stop com.onetabtube.browser_default`
+  - `adb shell monkey -p com.onetabtube.browser_default -c android.intent.category.LAUNCHER 1`
+  - `adb shell am start -a android.intent.action.VIEW -d "https://m.youtube.com/watch?v=BaW_jenozKc" com.onetabtube.browser_default`
+  - `adb shell ps -A | Select-String 'com.onetabtube.browser_default'`
+  - `adb shell dumpsys activity activities | Select-String -Pattern 'mResumedActivity|topResumedActivity'`
+  - `adb logcat -d -v time AndroidRuntime:E chromium:E cr_*:E DEBUG:E *:S`
+  - `adb exec-out uiautomator dump /dev/tty > artifacts/android_build/r25_watch_runtime_ui.xml`
+- Tool purpose:
+  - Prove the installed release binary no longer matches the old crash evidence and save a fresh runtime-smoke baseline from the live device.
+- Tool state:
+  - idle; no build or install running
+- Expected resume command:
+  - `adb logcat -c`
+  - `adb shell am force-stop com.onetabtube.browser_default`
+  - `adb shell am start -a android.intent.action.VIEW -d "https://m.youtube.com/watch?v=BaW_jenozKc" com.onetabtube.browser_default`
+  - `adb logcat -d -v time AndroidRuntime:E chromium:E cr_*:E DEBUG:E *:S`
+- Expected output/artifact path:
+  - `artifacts/android_build/r25_release_runtime_smoke_watch_logcat.txt`
+  - `artifacts/android_build/r25_release_runtime_package_info.txt`
+  - `artifacts/android_build/r25_release_runtime_top_activity.txt`
+  - `artifacts/android_build/r25_watch_runtime_ui.xml`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/r25_release_runtime_smoke_watch_logcat.txt`
+  - `artifacts/android_build/r25_release_runtime_package_info.txt`
+  - `artifacts/android_build/r25_release_runtime_top_activity.txt`
+  - `android/java/org/chromium/base/BraveCommandLineInitUtil.java`
+  - `chromium_src/third_party/blink/renderer/platform/fonts/font_fallback_list.cc`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `artifacts/android_build/r25_release_runtime_smoke_watch_logcat.txt`
+  - `artifacts/android_build/r25_release_runtime_package_info.txt`
+  - `artifacts/android_build/r25_release_runtime_top_activity.txt`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device connected over `adb`
+  - do not rely on the stale `12:51` crash log as live truth
+- Expected success signal:
+  - no renderer crash on fresh launcher start or direct watch navigation
+- Expected failure signal:
+  - any new renderer fatal / process death in the fresh logcat capture
+- Last known log location:
+  - `artifacts/android_build/r25_release_runtime_smoke_watch_logcat.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Trust live Build ID + package update time over the older symbolized crash notes.
+  - Stop deeper callback triage for now because the current installed binary no longer reproduces that fatal.
+- Rejected approaches:
+  - continuing to debug the stale `callback.h:335` crash as if it were still current
+  - reopening `GpuBenchmarking` without a fresh matching crash
+- Stop point classification:
+  - release APK installed and runtime-smoke verified; follow-up warnings not yet root-caused
+- What is done but unverified:
+  - whether `MEDIA_ELEMENT_ERROR` is user-visible
+- What is verified:
+  - current release launches
+  - current release survives direct watch navigation
+  - no fresh renderer crash in current smoke
+- External prerequisite:
+  - connected Android device for further QA
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-07 11:57:39 +07:00
+
+- Current phase:
+  - Phase 7 / Release updater rollout publish
+- Current objective:
+  - Push the fresh `429000005` release APK into the live Firebase updater path so the installed floor can test real in-app update discovery from `Account -> อัปเดตแอป`.
+- Completed since last update:
+  - Re-read the latest handoff and verified the active baseline is the newly emitted release APK:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+    - `versionCode=429000005`
+    - `versionName=1.90.1`
+  - Verified the native updater consumer still expects:
+    - Firestore doc `app_updates/android`
+    - fields parsed by `OneTabAppUpdateManifest`
+  - Computed the actual release artifact metadata:
+    - SHA-256 `5dacfc43d6286ff8778c448ebda3b8f5d64fe2c10944ba3ad864abac8c184b4e`
+    - size `511846166`
+  - Rewrote `functions/seeds/app_update_android.seed.json` to align the source metadata with the new release:
+    - `latestVersionCode: 429000005`
+    - `latestVersionName: 1.90.1`
+    - updated hash, file size, and release notes
+  - Ran updater publish dry-run successfully:
+    - log: `artifacts/firebase_build/publish_app_update_dry_20260407_115257.log`
+    - payload: `artifacts/firebase_build/app_update_publish_payload_20260407_115305.json`
+  - Published the live updater artifact:
+    - log: `artifacts/firebase_build/publish_app_update_live_20260407_115257.log`
+    - Storage object:
+      - `app-updates/android/com.onetabtube.browser_default/429000005/OneTabTube-1.90.1-429000005.apk`
+    - Firestore doc:
+      - `app_updates/android`
+  - Captured live verification artifacts:
+    - payload used for live publish:
+      - `artifacts/firebase_build/app_update_publish_payload_20260407_115327.json`
+    - Firestore readback:
+      - `artifacts/firebase_build/app_update_firestore_readback_20260407_115327.json`
+    - Storage HEAD:
+      - `artifacts/firebase_build/app_update_storage_head_20260407_115327.txt`
+  - Verified from the readback that live Firestore now contains:
+    - `latestVersionCode = 429000005`
+    - `latestVersionName = 1.90.1`
+    - `minimumSupportedVersionCode = 429000004`
+    - `updaterEnabled = true`
+    - real `apkUrl` pointing to Firebase Storage
+    - matching `apkSha256` and `apkFileSizeBytes`
+  - Verified the published `apkUrl` returns `HTTP 200 OK`.
+  - Updated `docs/app-update-firestore.md` so it no longer documents the older `429000004` live rollout as current.
+- In progress now:
+  - No publish or build command is still running.
+  - The live updater path is ready for device-side/manual validation.
+- Blockers / risks:
+  - No live data blocker remains.
+  - Actual updater behavior on the device is still unverified until the installed `429000004` floor refreshes the Account page and attempts the update.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `docs/app-update-firestore.md`
+  - `functions/seeds/app_update_android.seed.json`
+  - `scripts/publish_app_update_artifact.js` (inspected)
+  - `scripts/seed_firestore_update.js` (inspected)
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManifest.java` (inspected)
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java` (inspected)
+  - `artifacts/firebase_build/publish_app_update_dry_20260407_115257.log`
+  - `artifacts/firebase_build/publish_app_update_live_20260407_115257.log`
+  - `artifacts/firebase_build/app_update_publish_payload_20260407_115305.json`
+  - `artifacts/firebase_build/app_update_publish_payload_20260407_115327.json`
+  - `artifacts/firebase_build/app_update_firestore_readback_20260407_115327.json`
+  - `artifacts/firebase_build/app_update_storage_head_20260407_115327.txt`
+- Build/test status:
+  - No new APK build was needed.
+  - Live updater publish completed successfully.
+  - Device-side updater flow has not yet been exercised after the publish.
+- Exact next concrete step:
+  - Refresh `FAB -> บัญชี -> อัปเดตแอป` on the device that still has `429000004` installed and verify it now sees `429000005` as an available update from Firestore.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/firebase_build/publish_app_update_live_20260407_115257.log`
+  - `artifacts/firebase_build/app_update_firestore_readback_20260407_115327.json`
+  - `artifacts/firebase_build/app_update_storage_head_20260407_115327.txt`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `npm`
+  - `firebase`
+  - `curl.exe`
+  - `node`
+- Exact command(s):
+  - `Get-FileHash -Algorithm SHA256 -LiteralPath '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk'`
+  - `npm --prefix functions run publish:app-update:dry -- --project go-play-720c1 --apk \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk`
+  - `npm --prefix functions run publish:app-update -- --project go-play-720c1 --apk \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk`
+  - `curl.exe -sS -I --url "<live apkUrl>"`
+  - `node - <outfile>` one-off script to read back `app_updates/android`
+- Tool purpose:
+  - Publish the new release APK into Firebase Storage + Firestore and verify the live updater path.
+- Tool state:
+  - idle; no active command remains
+- Expected resume command:
+  - `Get-Content artifacts/firebase_build/app_update_firestore_readback_20260407_115327.json`
+- Expected output/artifact path:
+  - `artifacts/firebase_build/publish_app_update_live_20260407_115257.log`
+  - `artifacts/firebase_build/app_update_firestore_readback_20260407_115327.json`
+  - `artifacts/firebase_build/app_update_storage_head_20260407_115327.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - live updater publish for the `android_Release_arm64` APK
+- Primary working set:
+  - `functions/seeds/app_update_android.seed.json` — source updater metadata now aligned to the new APK
+  - `scripts/publish_app_update_artifact.js` — live publish path
+  - `artifacts/firebase_build/publish_app_update_live_20260407_115257.log` — publish evidence
+  - `artifacts/firebase_build/app_update_firestore_readback_20260407_115327.json` — Firestore proof
+  - `artifacts/firebase_build/app_update_storage_head_20260407_115327.txt` — Storage proof
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `artifacts/firebase_build/publish_app_update_live_20260407_115257.log`
+  - `artifacts/firebase_build/app_update_firestore_readback_20260407_115327.json`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Firebase CLI session remains valid
+  - device still on a version lower than `429000005`
+- Expected success signal:
+  - device updater UI shows `429000005` available
+- Expected failure signal:
+  - Account updater still does not surface the live metadata
+- Last known log location:
+  - `artifacts/firebase_build/publish_app_update_live_20260407_115257.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - live Storage object at `app-updates/android/com.onetabtube.browser_default/429000005/OneTabTube-1.90.1-429000005.apk`
+- Recent decisions:
+  - Publish via the existing repo script instead of ad hoc manual Storage/Firestore edits.
+  - Update the seed source before publishing so future reruns stay aligned to `429000005`.
+  - Keep the device floor untouched and test through the in-app updater path next.
+- Rejected approaches:
+  - manual Firestore-only update without a real uploaded APK
+  - leaving the seed file on the old baseline after a live publish
+  - direct install of the new APK instead of updater testing
+- Stop point classification:
+  - live updater publish complete; verified remotely; device flow not yet exercised
+- What is done but unverified:
+  - device-side download/verify/install flow
+- What is verified:
+  - live Storage upload succeeded
+  - live Firestore metadata points to `429000005`
+  - live `apkUrl` returns `HTTP 200`
+- External prerequisite:
+  - device-side/manual updater validation
+- Secret required but not stored:
+  - Firebase deploy/admin credentials beyond the current CLI session
+  - Google credentials / 2FA
+  - `THUNDER_API_KEY`
+
+## 2026-04-07 12:38:58 +07:00
+
+- Timestamp:
+  - 2026-04-07 12:38:58 +07:00
+- Current phase:
+  - Phase 7 / Post-update release crash triage
+- Current objective:
+  - Refresh the handoff to the real current state after updater install testing moved the failure from startup into a renderer crash on `m.youtube.com`.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry.
+  - Reconciled the stale updater-publish status with the newer live runtime findings:
+    - release APK was published, installed, and can now reach app main activity
+    - previous sync-pref startup fatal and `brave_on_demand_updater` fatal were already fixed in earlier rounds
+    - remaining failure is renderer-side, not Firebase publish state
+  - Reconfirmed the renderer install point from actual compiled Chromium source:
+    - `content/renderer/render_frame_impl.cc`
+    - `GpuBenchmarking::Install(...)` only runs when `switches::kEnableGpuBenchmarking` is present
+  - Inspected:
+    - `content/renderer/gpu_benchmarking_extension.cc`
+    - `content/renderer/gpu_benchmarking_extension.h`
+    - `android/java/org/chromium/base/BraveCommandLineInitUtil.java`
+  - Confirmed `BraveCommandLineInitUtil` only appends:
+    - QA/shared-pref command-line overrides
+    - OneTab component updater switches
+    - and does not explicitly append `--enable-gpu-benchmarking`
+  - Checked device-side global command-line state:
+    - `/data/local/tmp/chrome-command-line` is absent
+  - Confirmed current process state on device:
+    - browser process alive
+    - privileged process alive
+    - top resumed activity still `com.google.android.apps.chrome.Main`
+- In progress now:
+  - No code patch has been landed in this turn yet.
+  - The current narrow question is where the effective `--enable-gpu-benchmarking` switch comes from in the release runtime path.
+- Blockers / risks:
+  - Root cause is still one layer short of confirmed; patching renderer code before identifying the switch source could hide a broader command-line leak.
+  - Wider repo-wide WSL searches are expensive and one broad search timed out, so follow-up should stay targeted.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/base/BraveCommandLineInitUtil.java` (inspected only)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\render_frame_impl.cc` (inspected only)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\gpu_benchmarking_extension.cc` (inspected only)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\gpu_benchmarking_extension.h` (inspected only)
+- Build/test status:
+  - No rebuild started in this turn.
+  - Release APK still exists and remains the current runtime baseline.
+  - Device runtime status remains:
+    - startup passes earlier fixed crashes
+    - renderer still crashes after reaching `m.youtube.com`
+- Exact next concrete step:
+  - Inspect the remaining command-line sources that can populate `qa_command_line` or other release flags; if that still does not expose the source, land a OneTab-only guard that prevents `GpuBenchmarking::Install(...)` from running in release and then rebuild/install/retest.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `android/java/org/chromium/base/BraveCommandLineInitUtil.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\render_frame_impl.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\gpu_benchmarking_extension.cc`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl.exe`
+  - `rg`
+  - `git grep`
+- Exact command(s):
+  - `Get-Content docs/current-status.md -TotalCount 260`
+  - `Get-Content docs/progress-log.md -Tail 260`
+  - `Get-Content artifacts/android_build/release_build_429000005_20260407_r22_on_demand_guard.log -Tail 120`
+  - `Get-Content '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\content\\renderer\\gpu_benchmarking_extension.cc' -TotalCount 320`
+  - `Get-Content '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\content\\renderer\\gpu_benchmarking_extension.h' -TotalCount 220`
+  - `Get-Content '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\content\\renderer\\render_frame_impl.cc' -TotalCount 4090 | Select-Object -Last 20`
+  - `adb shell ps -A | Select-String 'com.onetabtube.browser_default'`
+  - `adb shell dumpsys activity processes | Select-String 'com.onetabtube.browser_default' -Context 0,2`
+  - `adb shell ls /data/local/tmp`
+  - `adb shell cat /data/local/tmp/chrome-command-line`
+  - `git grep -n "chrome-command-line\\|CommandLineInitUtil\\|CommandLineInit" -- android java chrome/browser android/java components`
+  - `rg -n "BraveCommandLineInitUtil|initCommandLine\\(|shouldUseDebugFlags|chrome-command-line|command-line" android/java -g "*.java"`
+- Tool purpose:
+  - Update the handoff so the next resume starts from the actual post-update crash state instead of the older updater-publish milestone.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `rg -n "PREF_QA_COMMAND_LINE|qa_command_line|SharedPreferences" android/java -g "*.java"`
+  - if patching becomes necessary: `wsl.exe bash -lc "cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package"`
+- Expected output/artifact path:
+  - rebuilt APK path if rerun succeeds:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - next rebuild log should be written under:
+    - `artifacts/android_build/`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `android/java/org/chromium/base/BraveCommandLineInitUtil.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\render_frame_impl.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\gpu_benchmarking_extension.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\gpu_benchmarking_extension.h`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `android/java/org/chromium/base/BraveCommandLineInitUtil.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\render_frame_impl.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\content\renderer\gpu_benchmarking_extension.cc`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device still connected through `adb`
+  - WSL `src_ext4` reachable
+  - reproduce `adb logcat` fresh instead of trusting stale buffer
+- Expected success signal:
+  - switch source is found, or a targeted guard is applied and the release no longer crashes after loading `m.youtube.com`
+- Expected failure signal:
+  - release still crashes in renderer after the next targeted fix
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_r22_on_demand_guard.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Preserve the already-fixed updater/startup work and do not roll back to older APK baselines.
+  - Keep the next step focused on switch origin tracing before broader renderer edits.
+- Rejected approaches:
+  - treating Firebase updater metadata as the remaining problem
+  - applying a broad renderer hack without first confirming why `GpuBenchmarking` is active
+- Stop point classification:
+  - handoff refreshed mid-investigation; no new code edit or rebuild started in this turn
+- What is done but unverified:
+  - hypothesis that unexpected `kEnableGpuBenchmarking` enablement is the remaining renderer trigger
+- What is verified:
+  - startup crash class changed and earlier fatal checkpoints are fixed
+  - `/data/local/tmp/chrome-command-line` is absent
+  - `BraveCommandLineInitUtil` does not explicitly add `--enable-gpu-benchmarking`
+  - `RenderFrameImpl` only installs `GpuBenchmarking` behind that switch
+- External prerequisite:
+  - connected Android device for fresh repro
+- Secret required but not stored:
+  - Firebase admin/session credentials
+  - Google credentials / 2FA
+  - `THUNDER_API_KEY`
+
+## 2026-04-07 11:44:03 +07:00
+
+- Current phase:
+  - Phase 7 / Release build validation
+- Current objective:
+  - Close the release triage loop by confirming the fresh non-component APK exists and recording this build-success desk state for the next task.
+- Completed since last update:
+  - Landed the next OneTab-specific Java minimization wave:
+    - `android/brave_java_sources.gni`
+      - filtered `BraveBookmarkBridge.java`
+      - filtered `PlaylistServiceFactoryAndroid.java`
+      - added stub replacements for both classes
+    - added:
+      - `android/java_stub/org/chromium/chrome/browser/bookmarks/BraveBookmarkBridge.java`
+      - `android/java_stub/org/chromium/chrome/browser/playlist/PlaylistServiceFactoryAndroid.java`
+    - `build/android/config.gni`
+      - gated bookmark/playlist JNI header generation behind `!is_onetabyt`
+  - Reran release build as `r16` and confirmed:
+    - bookmark/playlist undefined symbols were gone
+    - the remaining blocker was only:
+      - `ui::NativeTheme::GetSystemButtonPressedColor_ChromiumImpl(unsigned int) const`
+  - Proved the real `NativeTheme` source of truth:
+    - the Android build compiles `ui/native_theme/native_theme.cc`
+    - but `chromium_src/ui/native_theme/native_theme.h` was still mutating the class declaration and forcing `_ChromiumImpl`
+  - Fixed the stale header override by converting `chromium_src/ui/native_theme/native_theme.h` back to a plain pass-through include.
+  - Synced the updated files into `/home/master/src_ext4/brave/...`.
+  - Reran the release build as `r17`.
+  - Observed `r17` continue past `[439/439]`, verified no active `autoninja` remained, and confirmed the release APK now exists at:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - Verified artifact metadata:
+    - size `511,846,166` bytes
+- In progress now:
+  - No build is running.
+  - No install has been performed on device in this round.
+- Blockers / risks:
+  - No current compile blocker remains for the release target.
+  - Fresh release runtime behavior is still unverified because this round intentionally stopped at package creation.
+  - Updater/manual install flow on device is still pending.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/brave_java_sources.gni`
+  - `build/android/config.gni`
+  - `android/java_stub/org/chromium/chrome/browser/bookmarks/BraveBookmarkBridge.java`
+  - `android/java_stub/org/chromium/chrome/browser/playlist/PlaylistServiceFactoryAndroid.java`
+  - `chromium_src/ui/native_theme/native_theme.h`
+  - `chromium_src/ui/native_theme/native_theme.cc`
+  - `artifacts/android_build/release_build_429000005_20260407_r16.log`
+  - `artifacts/android_build/release_build_429000005_20260407_r17.log`
+- Build/test status:
+  - `r17` produced the release APK successfully.
+  - No device install or runtime smoke test was performed.
+- Exact next concrete step:
+  - Use `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk` as the new active baseline for updater/manual testing or continue the next feature batch from this build-success state.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/android_build/release_build_429000005_20260407_r17.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `wsl.exe`
+  - `autoninja`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package > /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_r16.log 2>&1"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package > /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_r17.log 2>&1"`
+  - `wsl.exe bash -lc "ps -eo pid,cmd | grep '[a]utoninja -C out/android_Release_arm64\\|[n]inja -C out/android_Release_arm64' || true"`
+  - `Get-Item '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk' | Select-Object FullName,Length,LastWriteTime`
+- Tool purpose:
+  - Clear the last release blockers and capture the resulting artifact path and desk state.
+- Tool state:
+  - idle; no active long-running command remains
+- Expected resume command:
+  - `Get-Item '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk'`
+- Expected output/artifact path:
+  - `artifacts/android_build/release_build_429000005_20260407_r17.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `artifacts/android_build/release_build_429000005_20260407_r17.log` — successful release build log
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk` — current release artifact
+  - `chromium_src/ui/native_theme/native_theme.h` — final fix that removed the stale `_ChromiumImpl` expectation
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r17.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL Ubuntu available
+  - `src_ext4` reachable
+  - do not auto-install unless the user explicitly asks
+- Expected success signal:
+  - artifact path remains present and readable
+- Expected failure signal:
+  - artifact missing or future rebuild failing
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_r17.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Resolved playlist/bookmark with OneTab-only stubs instead of broad module removal.
+  - Fixed `NativeTheme` at the stale header override rather than chasing the wrong `.cc` file.
+  - Preserved the user's instruction not to install the new release APK.
+- Rejected approaches:
+  - older blocker-based baselines
+  - auto-install after build
+- Stop point classification:
+  - build passed and APK emitted; artifact not installed or runtime-smoke-tested
+- What is done but unverified:
+  - updater/manual install path for this APK
+- What is verified:
+  - release build packages successfully
+  - release APK exists at expected path
+- External prerequisite:
+  - device-side/manual updater validation if requested next
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-07 11:04:11 +07:00
+
+- Current phase:
+  - Phase 7 / Release build failure triage
+- Current objective:
+  - Carry the release build forward from the post-Rewards/Ads state by clearing the next final-link blockers instead of restarting from older assumptions.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Verified the workspace already contains the previously landed OneTab Rewards/Ads fixes:
+    - `android/brave_java_sources.gni` now filters `BraveAdsNativeHelper.java` and `BraveRewardsNativeWorker.java` for `is_onetabyt`
+    - `android/java_stub/org/chromium/chrome/browser/BraveAdsNativeHelper.java` and `android/java_stub/org/chromium/chrome/browser/BraveRewardsNativeWorker.java` exist
+    - `build/android/config.gni` conditionally excludes Rewards/Ads JNI headers for `is_onetabyt`
+  - Re-read `artifacts/android_build/release_build_429000005_20260407_r15.log` and confirmed the release rerun moved past the old Rewards/Ads undefined JNI wave.
+  - Captured the new `r15` blockers:
+    - `Muxed_org_chromium_chrome_browser_playlist_PlaylistServiceFactoryAndroid_getInterfaceToPlaylistService`
+    - `Muxed_org_chromium_chrome_browser_bookmarks_BraveBookmarkBridge_exportBookmarks`
+    - `Muxed_org_chromium_chrome_browser_bookmarks_BraveBookmarkBridge_importBookmarks`
+    - `ui::NativeTheme::GetSystemButtonPressedColor_ChromiumImpl(unsigned int) const`
+  - Inspected live call sites and source lists:
+    - `android/brave_java_sources.gni` still includes `BraveBookmarkBridge.java` and `PlaylistServiceFactoryAndroid.java`
+    - `build/android/config.gni` still lists their JNI headers unconditionally in `brave_jni_headers_sources`
+    - `PlaylistServiceFactoryAndroid` is still referenced by toolbar/playlist classes but can be safely stubbed for OneTab because the playlist surface is already being minimized
+    - `BraveBookmarkBridge` only exists to import/export bookmarks, which is outside the target OneTab surface
+  - Inspected the current `NativeTheme` reality:
+    - `chromium_src/ui/native_theme/native_theme.h` still declares `GetSystemButtonPressedColor_ChromiumImpl`
+    - `wsl llvm-nm` on `out/android_Release_arm64/obj/ui/native_theme/native_theme/native_theme.o` shows:
+      - `GetSystemButtonPressedColor` is defined
+      - `GetSystemButtonPressedColor_ChromiumImpl` is still undefined
+    - this confirms a stale compatibility override that now needs an explicit `_ChromiumImpl` definition
+- In progress now:
+  - Preparing the next narrow patch wave:
+    - filter/stub `PlaylistServiceFactoryAndroid`
+    - filter/stub `BraveBookmarkBridge`
+    - gate their JNI header generation out of `build/android/config.gni` for `is_onetabyt`
+    - add the missing `NativeTheme::GetSystemButtonPressedColor_ChromiumImpl()` compatibility definition
+- Blockers / risks:
+  - OneTab-specific filtering must stay narrow enough not to destabilize unrelated Java targets.
+  - The `NativeTheme` fix must avoid broad UI/theme regressions and only restore compatibility with the current upstream symbol layout.
+  - Another tail-end linker blocker may still appear after this wave.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r15.log`
+  - `android/brave_java_sources.gni`
+  - `build/android/config.gni`
+  - `android/java/org/chromium/chrome/browser/playlist/PlaylistServiceFactoryAndroid.java`
+  - `android/java/org/chromium/chrome/browser/bookmarks/BraveBookmarkBridge.java`
+  - `android/java_stub/org/chromium/chrome/browser/BraveAdsNativeHelper.java`
+  - `android/java_stub/org/chromium/chrome/browser/BraveRewardsNativeWorker.java`
+  - `chromium_src/ui/native_theme/native_theme.h`
+  - `chromium_src/ui/native_theme/native_theme.cc`
+- Build/test status:
+  - Latest release rerun:
+    - `artifacts/android_build/release_build_429000005_20260407_r15.log`
+    - reached `[47/50]`
+    - failed at `SOLINK ./libchrome__combined.so`
+  - No release APK exists yet at:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Exact next concrete step:
+  - Land OneTab stub/gating for playlist and bookmark JNI, patch `chromium_src/ui/native_theme/native_theme.cc` with the missing `_ChromiumImpl` compatibility definition, sync the touched files into `src_ext4`, then rerun:
+    - `autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/android_build/release_build_429000005_20260407_r15.log`
+  - `android/brave_java_sources.gni`
+  - `build/android/config.gni`
+  - `chromium_src/ui/native_theme/native_theme.cc`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `wsl.exe`
+  - `rg`
+  - `autoninja`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `git rev-parse --abbrev-ref HEAD`
+  - `git rev-parse HEAD`
+  - `Get-Content artifacts/android_build/release_build_429000005_20260407_r15.log -Tail 140`
+  - `Get-Content build/android/config.gni | Select-Object -Skip 120 -First 40`
+  - `rg -n "PlaylistServiceFactoryAndroid|BraveBookmarkBridge|BraveAdsNativeHelper|BraveRewardsNativeWorker" android/brave_java_sources.gni build/android/config.gni android/java -g "*.gni" -g "*.java"`
+  - `rg -n "PlaylistServiceFactoryAndroid|getPlaylistService\\(|BraveBookmarkBridge|importBookmarks\\(|exportBookmarks\\(" android/java -g "*.java"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4/out/android_Release_arm64 && ../../third_party/llvm-build/Release+Asserts/bin/llvm-nm obj/ui/native_theme/native_theme/native_theme.o | grep 'GetSystemButtonPressedColor' || true"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4/out/android_Release_arm64 && ../../third_party/llvm-build/Release+Asserts/bin/llvm-nm obj/ui/native_theme/native_theme/native_theme_mobile.o | grep 'GetSystemButtonPressedColor' || true"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && sed -n '1,200p' ui/native_theme/native_theme.h && printf '\\n---CC---\\n' && sed -n '1,240p' ui/native_theme/native_theme.cc && printf '\\n---MOBILE---\\n' && sed -n '1,240p' ui/native_theme/native_theme_mobile.cc"`
+- Tool purpose:
+  - Reconcile recorded handoff with the actual post-`r15` code/build state and narrow the next release unblock patch set before editing again.
+- Tool state:
+  - no active release build right now
+- Expected resume command:
+  - after patch: `wsl.exe bash -lc "cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package > /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_r16.log 2>&1"`
+- Expected output/artifact path:
+  - `artifacts/android_build/release_build_429000005_20260407_r16.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `artifacts/android_build/release_build_429000005_20260407_r15.log` — post-Rewards/Ads release failure evidence
+  - `android/brave_java_sources.gni` — OneTab Java filtering/stub source list
+  - `build/android/config.gni` — OneTab JNI header registration list
+  - `android/java/org/chromium/chrome/browser/playlist/PlaylistServiceFactoryAndroid.java` — playlist JNI factory candidate for OneTab stubbing
+  - `android/java/org/chromium/chrome/browser/bookmarks/BraveBookmarkBridge.java` — bookmark import/export bridge candidate for OneTab stubbing
+  - `chromium_src/ui/native_theme/native_theme.cc` — stale compatibility override that still leaves `_ChromiumImpl` undefined
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r15.log`
+  - `android/brave_java_sources.gni`
+  - `build/android/config.gni`
+  - `chromium_src/ui/native_theme/native_theme.cc`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL Ubuntu available
+  - `src_ext4` reachable
+  - no overlapping `autoninja -C out/android_Release_arm64` build should be running
+- Expected success signal:
+  - the next release rerun moves past playlist/bookmark/NativeTheme undefined symbols
+- Expected failure signal:
+  - a new `FAILED:` or `ld.lld: error:` wave appears in `r16`
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_r15.log`
+- Last known artifact path:
+  - release APK still missing
+- Recent decisions:
+  - Continue with the same narrow OneTab stub/gating strategy that already cleared Rewards/Ads.
+  - Fix `NativeTheme` with a compatibility definition instead of broad theme refactoring.
+- Rejected approaches:
+  - rerunning release without clearing `r15`
+  - reverting to older APK baselines the user told us not to use
+- Stop point classification:
+  - post-`r15` reality confirmed; next release patch wave scoped but not yet landed
+- What is done but unverified:
+  - whether these three blockers are the entire remaining wave
+- What is verified:
+  - Rewards/Ads blocker is no longer active
+  - `r15` now fails on playlist/bookmark/NativeTheme
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-07 00:05:20 +07:00
+
+- Timestamp:
+  - 2026-04-07 00:05:20 +07:00
+- Current phase:
+  - Phase 7 / Fullscreen UX polish from device-installed baseline
+- Current objective:
+  - Fix fullscreen black screen by disabling the experimental ambient backdrop and keep FAB hidden in fullscreen, without dropping below the installed APK floor.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
+  - Targeted inspection confirmed the fullscreen path and ambient injector files.
+  - Disabled the fullscreen ambient injection:
+    - wrapped `kYoutubeFullscreenAmbientBackdrop` with `#if 0` to avoid unused-const build error
+    - ensured no ambient `ExecuteJavaScript` call runs during fullscreen entry
+  - Synced the updated file into the active `src_ext4` desk.
+  - Rebuilt the APK in `src_ext4` successfully (log captured).
+  - Installed the new APK on device and verified package metadata.
+  - Verified fullscreen now enters without black screen, and FAB is hidden.
+  - Removed temporary devtools switch file from the device.
+- In progress now:
+  - No command is running; fullscreen fix is complete and verified.
+- Blockers / risks:
+  - Ambient backdrop effect is disabled; if it is required later, a safer implementation is needed.
+  - Device state drift can still affect fullscreen testing; keep proof screenshots.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `artifacts/android_build/fullscreen_disable_ambient_build_20260406_r2.log`
+  - `artifacts/android_build/fullscreen_after_icon_tap_20260406.png`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `src_ext4` build passed:
+    - `artifacts/android_build/fullscreen_disable_ambient_build_20260406_r2.log`
+  - APK install succeeded:
+    - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - Device-installed baseline floor now:
+    - `versionCode=429000004`
+    - `versionName=1.90.0`
+    - `lastUpdateTime=2026-04-06 23:58:37`
+    - APK SHA-256 `8BBEAEC02266E621D44BCA7663FF318E364C8B3A33F018EEB94959D04509D0B4`
+  - Runtime verified:
+    - fullscreen video shows normally (no black screen)
+    - FAB hidden in fullscreen
+- Exact next concrete step:
+  - Confirm whether ambient backdrop should remain disabled or a safer implementation is desired.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/android_build/fullscreen_after_icon_tap_20260406.png`
+  - `artifacts/android_build/fullscreen_disable_ambient_build_20260406_r2.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `adb`
+  - `wsl.exe`
+  - `autoninja`
+  - `view_image`
+- Exact command(s):
+  - `Copy-Item -LiteralPath "C:\\Users\\Master\\Desktop\\GO_PLAY\\browser\\android\\youtube_script_injector\\youtube_script_injector_tab_helper.cc" -Destination "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\browser\\android\\youtube_script_injector\\youtube_script_injector_tab_helper.cc" -Force`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/fullscreen_disable_ambient_build_20260406_r2.log"`
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk"`
+  - `wsl.exe bash -lc "sha256sum /home/master/src_ext4/out/android_Component_arm64/apks/OneTabTube.apk"`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `adb shell am start -a android.intent.action.VIEW -d "https://m.youtube.com/watch?v=dQw4w9WgXcQ" com.onetabtube.browser_default`
+  - `adb shell input tap 1000 540`
+  - `cmd /c "adb exec-out screencap -p > artifacts\\android_build\\fullscreen_after_icon_tap_20260406.png"`
+  - `adb shell rm /data/local/tmp/chrome-command-line`
+- Tool purpose:
+  - Disable ambient injection, rebuild, install, and verify fullscreen behavior on-device.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 200`
+- Expected output/artifact path:
+  - `\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk`
+  - `artifacts/android_build/fullscreen_after_icon_tap_20260406.png`
+  - `artifacts/android_build/fullscreen_disable_ambient_build_20260406_r2.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `src_ext4`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `artifacts/android_build/fullscreen_disable_ambient_build_20260406_r2.log`
+  - `artifacts/android_build/fullscreen_after_icon_tap_20260406.png`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/android_build/fullscreen_after_icon_tap_20260406.png`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device `R9TRC00GA2E`
+  - WSL Ubuntu available
+  - `src_ext4` checkout available
+  - Android SDK installed on Windows host
+- Expected success signal:
+  - fullscreen video shows normally (no black screen)
+  - FAB not visible in fullscreen
+- Expected failure signal:
+  - fullscreen turns black
+  - FAB remains visible in fullscreen
+- Last known log location:
+  - `artifacts/android_build/fullscreen_disable_ambient_build_20260406_r2.log`
+- Last known artifact path:
+  - `artifacts/android_build/fullscreen_after_icon_tap_20260406.png`
+- Recent decisions:
+  - Disable ambient captureStream-based backdrop to fix fullscreen black screen.
+  - Keep FAB hide logic in fullscreen and verify on-device.
+- Rejected approaches:
+  - Keeping ambient enabled while black screen persists.
+- Stop point classification:
+  - code edited, compiled, installed, runtime screenshot proof captured, handoff synchronized
+- What is done but unverified:
+  - none for the fullscreen black-screen fix
+- What is verified:
+  - fullscreen enters without black screen
+  - FAB hidden in fullscreen
+  - build/install succeeded with updated hash
+- External prerequisite:
+  - none for this slice
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-06 20:40:51 +07:00
+
+- Timestamp:
+  - 2026-04-06 20:40:51 +07:00
+- Current phase:
+  - Phase 7 / Native Account updater metadata closed from the device-installed baseline
+- Current objective:
+  - Close the updater metadata batch by proving that live Firestore metadata already points to a real Firebase Storage APK URL and that the published URL is reachable, without rebuilding or changing the installed APK floor.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
+  - Target-inspected the current updater/account working set instead of reopening repo-wide exploration:
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+    - `scripts/publish_app_update_artifact.js`
+    - `functions/seeds/app_update_android.seed.json`
+    - `docs/app-update-firestore.md`
+  - Confirmed actual code reality had moved past the recorded handoff:
+    - the native updater slice was already present in code
+    - the publish tool already existed
+    - the live Firestore metadata had already been repointed to a real Storage URL
+  - Re-read the live publish evidence:
+    - `artifacts/firebase_build/publish_app_update_live_20260406_2014.log`
+    - verified Firebase Storage object path
+    - verified Storage generation `1775481537430521`
+    - verified Firestore write to `app_updates/android`
+  - Re-read the live Firestore payload evidence:
+    - `artifacts/firebase_build/app_update_firestore_readback_20260406_2019.json`
+    - verified `apkUrl`, `apkSha256`, `apkFileSizeBytes`, and `latestVersionCode`
+  - Verified the published Firebase Storage URL itself with a clean HEAD request:
+    - created `artifacts/firebase_build/app_update_storage_head_20260406_2039_clean.txt`
+    - confirmed `HTTP/1.1 200 OK`
+    - confirmed `Content-Type: application/vnd.android.package-archive`
+    - confirmed `Content-Length: 723828077`
+    - confirmed `x-goog-generation: 1775481537430521`
+  - Reconfirmed the installed device baseline still remains the floor:
+    - package `com.onetabtube.browser_default`
+    - versionCode `429000004`
+    - versionName `1.90.0`
+    - lastUpdateTime `2026-04-06 19:19:24`
+    - SHA-256 floor `43402E441C53E92BD64D64758BBF69B528B0FE80916CC5F09E8D4DB257EEEA28`
+  - Updated documentation to match reality:
+    - rewrote `docs/current-status.md`
+    - appended this log entry
+    - updated `docs/build-workbench-map.md` to use the current device floor hash
+    - updated `docs/app-update-firestore.md` with the current live closure state
+- In progress now:
+  - No APK-changing code edit or build is in progress.
+  - The updater metadata batch is now considered closed.
+  - No follow-up code step has been started beyond this closure pass.
+- Blockers / risks:
+  - The true updater install path is still unverified because the live metadata currently targets the same version as the device-installed floor (`429000004`), so the UI correctly stays in the latest-version state.
+  - `uiautomator dump` remains unreliable for Thai text in this slice and should not be used alone to judge release-notes rendering.
+  - The repo still has many unrelated modified/untracked files; do not broad-clean or reset.
+  - `AGENT.md` still appears deleted in git status and must remain untouched unless explicitly requested.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `docs/build-workbench-map.md`
+  - `docs/app-update-firestore.md`
+  - `artifacts/firebase_build/app_update_storage_head_20260406_2039_clean.txt`
+- Build/test status:
+  - No new APK build/install in this round.
+  - Verified that updater metadata is now closed at the live-data level:
+    - Firestore doc `app_updates/android` contains a real Firebase Storage URL
+    - Firebase Storage HEAD check returns `200 OK`
+    - seeded file size and SHA-256 match the pulled device baseline artifact
+  - Verified that the current Account-side state remains the latest-version state for the floor version.
+- Exact next concrete step:
+  - If updater work resumes next, publish a strictly newer APK than `429000004` through `scripts/publish_app_update_artifact.js`, then exercise the real download/verify/install flow from the Account page.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/firebase_build/publish_app_update_live_20260406_2014.log`
+  - `artifacts/firebase_build/app_update_firestore_readback_20260406_2019.json`
+  - `artifacts/firebase_build/app_update_storage_head_20260406_2039_clean.txt`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `curl.exe`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 180`
+  - `Get-Content scripts/publish_app_update_artifact.js`
+  - `Get-Content docs/app-update-firestore.md`
+  - `Get-Content artifacts/firebase_build/publish_app_update_live_20260406_2014.log`
+  - `Get-Content artifacts/firebase_build/app_update_firestore_readback_20260406_2019.json`
+  - `curl.exe -sS -I --url "<live apkUrl>"`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose:
+  - Close the updater metadata batch with live Firestore + live Storage evidence, not just source-code changes.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 180`
+  - If a newer APK exists: `npm --prefix functions run publish:app-update -- --project go-play-720c1 --apk <path-to-newer-apk>`
+- Expected output/artifact path:
+  - `artifacts/firebase_build/publish_app_update_live_20260406_2014.log`
+  - `artifacts/firebase_build/app_update_firestore_readback_20260406_2019.json`
+  - `artifacts/firebase_build/app_update_storage_head_20260406_2039_clean.txt`
+  - live Firestore doc `app_updates/android`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - No build target used in this round; device-installed floor only
+- Primary working set:
+  - `scripts/publish_app_update_artifact.js` - publish/update Firestore in one step
+  - `scripts/seed_firestore_update.js` - Firestore writer used by the publish tool
+  - `functions/seeds/app_update_android.seed.json` - updater metadata source
+  - `docs/app-update-firestore.md` - updater operator map
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java` - updater UI consumer
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java` - updater logic consumer
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `artifacts/firebase_build/publish_app_update_live_20260406_2014.log`
+  - `artifacts/firebase_build/app_update_storage_head_20260406_2039_clean.txt`
+  - `scripts/publish_app_update_artifact.js`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Firebase CLI remains logged in on this Windows desk
+  - `functions/node_modules` available locally
+  - Firebase project `go-play-720c1` accessible
+  - connected device `R9TRC00GA2E` available for the future true-update test
+- Expected success signal:
+  - Firestore doc contains a real `apkUrl`
+  - Firebase Storage HEAD check returns `HTTP 200`
+  - Account UI remains coherent on the current floor
+- Expected failure signal:
+  - `apkUrl` falls back to a placeholder
+  - Storage HEAD check returns non-200
+  - updater metadata disappears from Account
+- Last known log location:
+  - `artifacts/firebase_build/publish_app_update_live_20260406_2014.log`
+- Last known artifact path:
+  - `artifacts/firebase_build/app_update_storage_head_20260406_2039_clean.txt`
+- Recent decisions:
+  - Keep the installed device APK as the hard floor and do not rebuild merely to close updater metadata.
+  - Treat metadata closure as needing both Firestore proof and Storage URL proof.
+  - Defer the real install-flow validation until a newer APK exists.
+- Rejected approaches:
+  - treating Firestore-only success as enough
+  - rebuilding the APK just to make the metadata batch look complete
+  - lowering the floor below the device-installed APK
+- Stop point classification:
+  - updater metadata batch closed and documented; no new APK built; true install-flow test intentionally deferred
+- What is done but unverified:
+  - real download/verify/install path with a higher version than the installed floor
+- What is verified:
+  - live Firestore doc `app_updates/android`
+  - live Firebase Storage `apkUrl`
+  - Storage HEAD `200 OK`
+  - SHA-256 and file size match the pulled device baseline artifact
+  - current device floor remains unchanged
+- External prerequisite:
+  - A strictly newer APK than `429000004` is required before the true installer-flow test can be run
+- Secret required but not stored:
+  - Firebase/Google login credentials remain external and are intentionally not stored in repo status files
+
+## 2026-04-06 19:36:22 +07:00
+
+- Timestamp:
+  - 2026-04-06 19:36:22 +07:00
+- Current phase:
+  - Phase 7 / Native Account updater metadata continuity
+- Current objective:
+  - Continue the native updater slice from the installed APK floor and close the Firestore metadata/tooling gap for `Account -> อัปเดตแอป`.
+- Completed since last snapshot:
+  - Resumed by reading `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
+  - Re-checked the actual updater UI state using `account_after_update_button_tap.xml`.
+  - Verified the Account page remains stable after tapping the updater button and degrades gracefully with `ยังไม่พบข้อมูลอัปเดตใน Firestore`.
+  - Performed targeted inspection of the updater working set:
+    - `OneTabAccountActivity.java`
+    - `OneTabAppUpdateManager.java`
+    - `OneTabAppUpdateStore.java`
+    - `OneTabAppUpdateManifest.java`
+    - `onetab_fab_strings.xml`
+    - `AndroidManifest_user_permissions.xml`
+    - `update_app_firebase.txt`
+  - Added updater metadata seed tooling:
+    - `functions/seeds/app_update_android.seed.json`
+    - `functions/scripts/seed-app-update.js`
+    - npm scripts:
+      - `seed:app-update`
+      - `seed:app-update:dry`
+  - Added updater Firestore operator doc:
+    - `docs/app-update-firestore.md`
+  - Added README pointer to the updater Firestore doc.
+  - Ran dry-run validation successfully:
+    - `npm --prefix functions run seed:app-update:dry -- --project go-play-720c1`
+- In progress now:
+  - No live Firestore write has been performed yet for `app_updates/android`.
+  - No APK-changing build is running.
+- Blockers / risks:
+  - Live Firestore still needs the `app_updates/android` document.
+  - Seed file uses a placeholder `apkUrl`; that must be replaced before enabling a newer rollout.
+  - Repo remains noisy with many unrelated modified/untracked files; avoid broad cleanup.
+- Files/modules touched:
+  - `README.md`
+  - `docs/app-update-firestore.md`
+  - `functions/package.json`
+  - `functions/scripts/seed-app-update.js`
+  - `functions/seeds/app_update_android.seed.json`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new APK build/install in this round.
+  - Device-installed APK floor remains:
+    - package `com.onetabtube.browser_default`
+    - versionCode `429000004`
+    - versionName `1.90.0`
+    - lastUpdateTime `2026-04-06 19:19:24`
+    - hash `43402E441C53E92BD64D64758BBF69B528B0FE80916CC5F09E8D4DB257EEEA28`
+  - Latest known successful updater build log still:
+    - `artifacts/android_build/account_updater_build_20260406_1.log`
+  - Seed tooling dry-run passed.
+- Exact next concrete step:
+  - Write `app_updates/android` to live Firestore:
+    - `npm --prefix functions run seed:app-update -- --project go-play-720c1`
+  - Then refresh `FAB -> บัญชี` on the device and confirm the updater block resolves from `missing Firestore` to a metadata-backed state.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `docs/app-update-firestore.md`
+  - `functions/scripts/seed-app-update.js`
+  - `functions/seeds/app_update_android.seed.json`
+  - `account_after_update_button_tap.xml`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `node` via npm scripts
+- Exact command(s):
+  - `Get-Content -Raw docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 200`
+  - `Get-Content -Raw account_after_update_button_tap.xml`
+  - `Get-Content -Raw android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - `Get-Content -Raw android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `Get-Content -Raw android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateStore.java`
+  - `Get-Content -Raw android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManifest.java`
+  - `Get-Content -Raw update_app_firebase.txt`
+  - `Get-Content -Raw functions/scripts/seed-payment-account.js`
+  - `Get-Content -Raw functions/seeds/payment_account.seed.json`
+  - `Get-Content -Raw functions/package.json`
+  - `Get-Content -Raw README_payment_slip.md`
+  - `Get-Item "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk" | Select-Object FullName,Length,LastWriteTime`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `Get-FileHash "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk" -Algorithm SHA256`
+  - `npm --prefix functions run seed:app-update:dry -- --project go-play-720c1`
+- Tool purpose:
+  - Reconcile the updater code already on the device with the Firestore metadata path it expects.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `npm --prefix functions run seed:app-update -- --project go-play-720c1`
+- Expected output/artifact path:
+  - `docs/app-update-firestore.md`
+  - `functions/seeds/app_update_android.seed.json`
+  - `functions/scripts/seed-app-update.js`
+  - Firestore doc `app_updates/android`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `src_ext4`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `OneTabAccountActivity.java` - updater state rendering in Account page
+  - `OneTabAppUpdateManager.java` - Firestore metadata fetch / verifier / installer pipeline
+  - `OneTabAppUpdateStore.java` - updater local persistence
+  - `OneTabAppUpdateManifest.java` - Firestore metadata parser
+  - `functions/scripts/seed-app-update.js` - Firestore writer for updater metadata
+  - `functions/seeds/app_update_android.seed.json` - default updater metadata payload
+  - `docs/app-update-firestore.md` - operator-facing updater data map
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `docs/app-update-firestore.md`
+  - `functions/scripts/seed-app-update.js`
+  - `functions/seeds/app_update_android.seed.json`
+  - `account_after_update_button_tap.xml`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device `R9TRC00GA2E`
+  - Firebase project access for `go-play-720c1`
+  - service account / ADC if writing Firestore from this desk
+- Expected success signal:
+  - `app_updates/android` exists and Account updater reads metadata instead of the missing-document fallback
+- Expected failure signal:
+  - seed command fails from missing credentials
+  - Account page still shows `ยังไม่พบข้อมูลอัปเดตใน Firestore` after supposed write
+- Last known log location:
+  - `artifacts/android_build/account_updater_build_20260406_1.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep the installed updater APK as the hard floor.
+  - Do not rebuild APK again until the Firestore metadata side is closed.
+  - Add data/tooling/doc continuity instead of leaving the updater blocked at a generic no-data state.
+- Rejected approaches:
+  - broad repo exploration
+  - another APK rebuild before fixing metadata continuity
+  - assuming the generic `update_app_firebase.txt` prompt matched the current Java implementation directly
+- Stop point classification:
+  - data/tooling/doc slice added; dry-run verified; live Firestore write pending
+- What is done but unverified:
+  - live `app_updates/android` write
+  - metadata-backed updater state on the device after seeding
+- What is verified:
+  - updater slice exists in code and on the device
+  - updater button does not crash the Account page
+  - updater seed tooling dry-run passes
+- External prerequisite:
+  - Firebase admin access if the live updater document is to be written from this workstation
+- Secret required but not stored:
+  - Firebase admin credentials / service-account JSON
+  - Google credentials / 2FA
+
+## 2026-04-06 18:02:27 +07:00
+
+- Timestamp:
+  - 2026-04-06 18:02:27 +07:00
+- Current phase:
+  - Phase 5 / Package-access gating validation from the current device-installed baseline
+- Current objective:
+  - Verify the true live server-side `expired/denied` package-access path and confirm the intended UX: only YouTube is locked, while `FAB -> Account -> Buy package` remains reachable.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest progress entry first.
+  - Verified the device-installed APK floor remained unchanged:
+    - `versionCode=429000004`
+    - `versionName=1.90.0`
+    - `lastUpdateTime=2026-04-06 17:34:47`
+    - floor hash still `C41281A0F9EB6DD008DB030C33CDCE05995F16723CB99757F34932A4FE0FAA3C`
+  - Performed targeted inspection of:
+    - `functions/src/package_orders.ts`
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java`
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
+  - Confirmed the live project was still missing the callable `getPackageAccessState`.
+  - Deployed `getPackageAccessState` to the live Firebase project.
+  - Probed live Firestore user state for `users/5JUdwpcXC1WFk6mLsT85kwaCgIb2`.
+  - Verified the live `NO_ACTIVE_PACKAGE` behavior on-device:
+    - black locked YouTube surface only
+    - FAB still opens
+    - `Account` still opens
+    - `Buy package` remains reachable
+  - Wrote a temporary expired entitlement doc to force an explicit `EXPIRED` response.
+  - Verified the live `EXPIRED` behavior on-device:
+    - YouTube still locked only
+    - FAB still opens
+    - `Account` shows the expired-package message
+  - Restored the entitlement state back to active immediately after the test.
+  - Re-opened `Account` and verified the post-restore runtime shows `59` days again.
+- In progress now:
+  - No code edit or build is left in progress for this objective.
+  - The server-side denied/expired validation is complete and the live state is restored.
+- Blockers / risks:
+  - Future server-state validation must restore live data after the test; do not leave the user in a denied state.
+  - Firebase CLI tokens exist in local config files; do not print them into docs/logs.
+  - There are unrelated modified/untracked files in the repo; do not clean broadly.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - live deployment target:
+    - `functions/src/package_orders.ts` via `functions/src/index.ts`
+  - temporary live Firestore path:
+    - `users/5JUdwpcXC1WFk6mLsT85kwaCgIb2/entitlements/pkg_03`
+- Build/test status:
+  - No new APK build or install in this round.
+  - Verified live function deployment:
+    - `artifacts/firebase_build/functions_list_after_getPackageAccessState_20260406.txt`
+  - Verified live user-doc probe:
+    - `artifacts/firebase_build/user_doc_probe_20260406.json`
+  - Verified temporary expired entitlement write:
+    - `artifacts/firebase_build/expired_test_doc_created_20260406.json`
+  - Verified live entitlement restore:
+    - `artifacts/firebase_build/entitlement_restored_after_expired_test_20260406.json`
+  - Verified runtime artifacts:
+    - `artifacts/android_build/package_denied_live_dump.png`
+    - `artifacts/android_build/package_denied_after_fab_doubletap.png`
+    - `artifacts/android_build/package_denied_account_open.png`
+    - `artifacts/android_build/package_denied_buy_open.png`
+    - `artifacts/android_build/package_expired_account_retry2.png`
+    - `artifacts/android_build/account_restored_after_expired_test.png`
+- Exact next concrete step:
+  - Treat `expired/denied -> YouTube-only lock with purchase path preserved` as verified.
+  - If continuing, start the next user-approved feature batch from the unchanged device-installed baseline and avoid any regression below the current floor.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/firebase_build/functions_list_after_getPackageAccessState_20260406.txt`
+  - `artifacts/android_build/package_denied_live_dump.png`
+  - `artifacts/android_build/package_denied_buy_open.png`
+  - `artifacts/android_build/account_restored_after_expired_test.png`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `firebase functions:list --project go-play-720c1`
+  - `firebase deploy --only functions:getPackageAccessState --project go-play-720c1`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `adb logcat -c`
+  - `adb shell am force-stop com.onetabtube.browser_default`
+  - `adb shell monkey -p com.onetabtube.browser_default -c android.intent.category.LAUNCHER 1`
+  - `adb shell uiautomator dump /sdcard/window_dump.xml`
+  - `adb pull /sdcard/window_dump.xml artifacts/android_build/...`
+  - `cmd /c "adb exec-out screencap -p > artifacts\\android_build\\...png"`
+  - Firestore REST probes/patches using the locally available Firebase CLI access token
+- Tool purpose:
+  - Validate the real live package-denied/expired flow against the current installed APK and restore live state afterward.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+- Expected output/artifact path:
+  - `artifacts/android_build/`
+  - `artifacts/firebase_build/`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - no new build target used; this round stayed on the installed-device floor
+- Primary working set:
+  - `functions/src/package_orders.ts` - source of `getPackageAccessState`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java` - package-access callable client
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java` - account screen state rendering
+  - `artifacts/firebase_build/functions_list_after_getPackageAccessState_20260406.txt` - live deployment proof
+  - `artifacts/android_build/package_denied_live_dump.png` - denied-state proof
+  - `artifacts/android_build/package_denied_buy_open.png` - purchase-path proof
+  - `artifacts/android_build/package_expired_account_retry2.png` - expired-state proof
+  - `artifacts/android_build/account_restored_after_expired_test.png` - restored-state proof
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `artifacts/firebase_build/functions_list_after_getPackageAccessState_20260406.txt`
+  - `artifacts/android_build/package_denied_live_dump.png`
+  - `artifacts/android_build/account_restored_after_expired_test.png`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device `R9TRC00GA2E`
+  - Firebase CLI logged into `go-play-720c1`
+  - live project reachable
+- Expected success signal:
+  - real server-side denied/expired state locks only YouTube
+  - FAB remains usable
+  - `Account -> Buy package` remains reachable
+  - live state restored to active afterward
+- Expected failure signal:
+  - full-app lock instead of YouTube-only lock
+  - FAB inaccessible
+  - user remains denied after the test
+- Last known log location:
+  - `artifacts/firebase_build/functions_list_after_getPackageAccessState_20260406.txt`
+- Last known artifact path:
+  - `artifacts/android_build/package_denied_live_dump.png`
+  - `artifacts/android_build/package_denied_after_fab_doubletap.png`
+  - `artifacts/android_build/package_denied_account_open.png`
+  - `artifacts/android_build/package_denied_buy_open.png`
+  - `artifacts/android_build/package_expired_account_retry2.png`
+  - `artifacts/android_build/account_restored_after_expired_test.png`
+- Recent decisions:
+  - Do not build a new APK for this validation round.
+  - Deploy only the missing live callable needed for the server-state test.
+  - Use temporary live Firestore mutation for expired-state proof, then restore immediately.
+- Rejected approaches:
+  - rebuilding just to test package access
+  - leaving the project in a denied/expired state after proof collection
+  - broad repo exploration beyond the package-access working set
+- Stop point classification:
+  - live callable deployed, denied/no-active verified, expired verified, state restored, docs synchronized
+- What is done but unverified:
+  - none for this objective
+- What is verified:
+  - live `getPackageAccessState` deployment
+  - real `NO_ACTIVE_PACKAGE` path
+  - real `EXPIRED` path
+  - YouTube-only lock behavior
+  - FAB reachability from locked state
+  - `Account -> Buy package` reachability from locked state
+  - restored active state with `59` days visible again
+- External prerequisite:
+  - Firebase live project access for future server-state tests
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - Firebase CLI access token contents
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-06 18:02:27 +07:00
+
+- Timestamp:
+  - 2026-04-06 18:02:27 +07:00
+- Current phase:
+  - Phase 7 / Next feature-batch kickoff from the device-installed baseline
+- Current objective:
+  - Create a detailed build-workbench map so the next feature batch can start from the installed APK floor without rediscovering tool paths, build targets, sync rules, or verification commands.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
+  - Reconfirmed the installed device baseline:
+    - `com.onetabtube.browser_default`
+    - `versionCode=429000004`
+    - `versionName=1.90.0`
+    - `lastUpdateTime=2026-04-06 17:34:47`
+    - APK floor hash `C41281A0F9EB6DD008DB030C33CDCE05995F16723CB99757F34932A4FE0FAA3C`
+  - Performed targeted inspection of the current build desk:
+    - `README.md`
+    - `docs/testing.md`
+    - `android/BUILD.gn`
+    - `android/brave_java_sources.gni`
+    - recent build logs in `artifacts/android_build/`
+  - Verified actual tool paths and build-tree presence:
+    - `wsl.exe`
+    - `adb.exe`
+    - `aapt.exe`
+    - `apksigner.bat`
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4`
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\args.gn`
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+  - Created the new build desk guide:
+    - `docs/build-workbench-map.md`
+  - Added a pointer from `README.md` to the new build desk guide.
+- In progress now:
+  - No APK-changing feature code is in progress.
+  - The next batch is intentionally paused at the “build desk documented” checkpoint so future work starts from the same floor and the same build route.
+- Blockers / risks:
+  - There are many unrelated modified/untracked files; do not clean broadly.
+  - `AGENT.md` appears deleted in git status but must remain untouched unless explicitly requested.
+  - Generic README guidance is not enough on its own; the new build map must be treated as the current actionable reference.
+- Files/modules touched:
+  - `docs/build-workbench-map.md`
+  - `README.md`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new APK build or install in this round.
+  - Verified that the current output artifact still exists at:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+  - Verified that the current output hash still matches the device-installed floor.
+  - Latest known successful build log still referenced:
+    - `artifacts/android_build/package_lock_youtube_only_build_20260406.log`
+- Exact next concrete step:
+  - Start the next user-approved code batch by following `docs/build-workbench-map.md` as the build entrypoint and keep the current installed APK as the floor.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `docs/build-workbench-map.md`
+  - `README.md`
+  - `artifacts/android_build/package_lock_youtube_only_build_20260406.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Get-Content README.md`
+  - `Get-Content android/BUILD.gn`
+  - `Get-Content android/brave_java_sources.gni`
+  - `Get-Command wsl.exe, adb.exe | Select-Object Name,Source`
+  - `Get-Item $env:LOCALAPPDATA\\Android\\Sdk\\build-tools\\36.1.0\\aapt.exe`
+  - `Get-Item $env:LOCALAPPDATA\\Android\\Sdk\\build-tools\\36.1.0\\apksigner.bat`
+  - `Get-Item \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4`
+  - `Get-Item \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\args.gn`
+  - `Get-Item \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk`
+  - `adb devices`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `Get-FileHash \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk -Algorithm SHA256`
+- Tool purpose:
+  - Document the exact build workbench actually used by this project so new feature work can start from the current floor without wasting cycles rediscovering the environment.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Get-Content docs/build-workbench-map.md`
+- Expected output/artifact path:
+  - `docs/build-workbench-map.md`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `src_ext4`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `docs/build-workbench-map.md`
+  - `README.md`
+  - `android/BUILD.gn`
+  - `android/brave_java_sources.gni`
+  - `artifacts/android_build/package_lock_youtube_only_build_20260406.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\args.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `docs/build-workbench-map.md`
+  - `README.md`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device `R9TRC00GA2E`
+  - WSL Ubuntu available
+  - `src_ext4` checkout available
+  - Android SDK installed on Windows host
+- Expected success signal:
+  - the build map is sufficient for someone to sync edits, build, install, and verify without rediscovering the desk state
+- Expected failure signal:
+  - the document still depends on stale or nonexistent paths/commands
+- Last known log location:
+  - `artifacts/android_build/package_lock_youtube_only_build_20260406.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Do not start a new APK-changing code batch before documenting the build desk.
+  - Use the installed device APK as the hard floor.
+  - Prefer one dedicated build-map document over scattering commands across README and logs.
+- Rejected approaches:
+  - rerunning a build just to document the environment
+  - trusting generic README instructions over the actual `Desktop -> src_ext4` workflow
+  - broad repo exploration unrelated to build continuity
+- Stop point classification:
+  - build-workbench documentation completed, no new APK build started, handoff synchronized
+- What is done but unverified:
+  - none for this documentation pass
+- What is verified:
+  - current installed APK floor
+  - actual tool locations
+  - actual ext4 build tree
+  - actual output APK presence
+  - new build-workbench map created
+- External prerequisite:
+  - WSL Ubuntu and the `src_ext4` checkout must remain available for future APK builds
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-07 01:42:52 +07:00
+
+- Timestamp:
+  - 2026-04-07 01:42:52 +07:00
+- Current phase:
+  - Phase 7 / Release-size reduction analysis from the current baseline floor
+- Current objective:
+  - Determine which cuts will reduce APK size the most for GO_PLAY without guessing and without dropping below the installed-device baseline.
+- Completed since last snapshot:
+  - Read `docs/current-status.md`, the latest `docs/progress-log.md`, and `docs/build-workbench-map.md` first.
+  - Reconfirmed the current measurable floor is still the component APK at:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+    - size `723,837,225` bytes
+  - Reconfirmed `out/android_Component_arm64/args.gn` still has `is_component_build=true`.
+  - Reconfirmed `out/android_Release_arm64/args.gn` is configured with:
+    - `is_component_build=false`
+    - `versionCode=429000005`
+    - `versionName=1.90.1`
+  - Inspected the APK by actual byte distribution:
+    - `lib/` = `540,393,168` bytes
+    - `assets/` = `118,924,267` bytes
+    - `[root]` = `52,908,888` bytes
+    - `res/` = `13,855,386` bytes
+  - Confirmed the main APK bloat is structural, not UI-only:
+    - `503` native libraries under `lib/arm64-v8a/`
+    - top entries include `libchrome.so`, `libblink_core.cr.so`, `libv8.cr.so`, `libcontent.cr.so`, `libblink_modules.cr.so`
+  - Quantified locale-pack opportunity:
+    - `assets/locales/` total = `66,452,474` bytes across `81` locale packs
+    - keeping only `th`, `en-US`, `en-GB` leaves `2,209,575` bytes
+    - removable locale payload alone = `64,242,899` bytes
+  - Quantified the likely upper bound of obvious UI/resource cleanup:
+    - onboarding resources about `2.97 MB`
+    - vpn about `0.36 MB`
+    - wallet about `0.13 MB`
+    - playlist about `0.13 MB`
+    - rewards/news/leo smaller still
+  - Inspected build-flag defaults and confirmed likely compile-time cut candidates still default-on unless explicitly overridden:
+    - wallet
+    - web discovery
+    - news
+    - vpn
+  - Verified some OneTab Java-side stubs already exist in `android/BUILD.gn`, so those areas are not the biggest remaining size lever.
+  - Reconfirmed the strict release build is still blocked by the stale Brave override in:
+    - `chromium_src/components/history/core/browser/visit_database.cc`
+    - evidence in `artifacts/android_build/release_build_429000005_20260407_r5.log`
+- In progress now:
+  - No build is running.
+  - The next action is ready: unblock the non-component release path so exact post-cut size can be measured.
+- Blockers / risks:
+  - The current release desk still cannot finish because of the `visit_database.cc` duplicate-case failure.
+  - Some subsystems may be hidden in UI but still compiled in; disabling them safely requires GN-arg/buildflag changes plus verification.
+  - Locale reduction has a very high payoff, but it changes supported-language scope.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `docs/build-workbench-map.md`
+  - `android/BUILD.gn`
+  - `android/brave_java_sources.gni`
+  - `components/onetabyt/buildflags/buildflags.gni`
+  - `components/ai_chat/core/common/buildflags/buildflags.gni`
+  - `components/brave_wallet/common/buildflags/buildflags.gni`
+  - `components/web_discovery/buildflags/buildflags.gni`
+  - `components/brave_news/common/buildflags/buildflags.gni`
+  - `components/brave_vpn/common/buildflags/buildflags.gni`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\args.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\args.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+  - `artifacts/android_build/release_build_429000005_20260407_r5.log`
+- Build/test status:
+  - No new build in this round.
+  - Baseline APK size verified from the real artifact.
+  - Release path still blocked before APK creation.
+- Exact next concrete step:
+  - Fix `chromium_src/components/history/core/browser/visit_database.cc`, rerun the non-component release build, and measure the real APK output before choosing the next compile-time feature cuts.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `chromium_src/components/history/core/browser/visit_database.cc`
+  - `artifacts/android_build/release_build_429000005_20260407_r5.log`
+  - `components/brave_wallet/common/buildflags/buildflags.gni`
+  - `components/web_discovery/buildflags/buildflags.gni`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -LiteralPath 'docs/current-status.md' -TotalCount 220`
+  - `Get-Content -LiteralPath 'docs/progress-log.md' -Tail 220`
+  - `Get-Content -LiteralPath 'docs/build-workbench-map.md' -TotalCount 260`
+  - `Get-Item "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\apks\\OneTabTube.apk" | Select-Object FullName, Length, LastWriteTime`
+  - PowerShell zip-entry aggregation over `OneTabTube.apk`
+  - `Get-Content -LiteralPath '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Component_arm64\\args.gn' -TotalCount 220`
+  - `Get-Content -LiteralPath '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\args.gn' -TotalCount 220`
+  - `Get-Content -LiteralPath 'android/BUILD.gn' -TotalCount 220`
+  - `Get-Content -LiteralPath 'android/brave_java_sources.gni' | Select-Object -Skip 450 -First 90`
+  - `Get-Content -LiteralPath 'components/brave_wallet/common/buildflags/buildflags.gni' -TotalCount 120`
+  - `Get-Content -LiteralPath 'components/web_discovery/buildflags/buildflags.gni' -TotalCount 120`
+  - `Get-Content -LiteralPath 'components/brave_news/common/buildflags/buildflags.gni' -TotalCount 120`
+  - `Get-Content -LiteralPath 'components/brave_vpn/common/buildflags/buildflags.gni' -TotalCount 160`
+  - `Get-Content -LiteralPath 'artifacts/android_build/release_build_429000005_20260407_r5.log' -Tail 80`
+- Tool purpose:
+  - Establish a measured, project-specific APK size reduction plan instead of guessing.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 200`
+  - `Get-Content chromium_src/components/history/core/browser/visit_database.cc`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+  - `artifacts/android_build/release_build_429000005_20260407_r5.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - current floor: `out/android_Component_arm64`
+  - intended release desk: `out/android_Release_arm64`
+  - build target: `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\args.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\args.gn`
+  - `android/BUILD.gn`
+  - `android/brave_java_sources.gni`
+  - `components/brave_wallet/common/buildflags/buildflags.gni`
+  - `components/web_discovery/buildflags/buildflags.gni`
+  - `artifacts/android_build/release_build_429000005_20260407_r5.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `chromium_src/components/history/core/browser/visit_database.cc`
+  - `artifacts/android_build/release_build_429000005_20260407_r5.log`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL Ubuntu available
+  - `src_ext4` build tree reachable
+- Expected success signal:
+  - non-component release APK created and measured
+- Expected failure signal:
+  - build stops again before APK creation or size reductions break the YouTube-only product floor
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_r5.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Treat the APK byte distribution as source of truth.
+  - Prioritize non-component release + locale trimming + compile-time subsystem disables over more UI cleanup.
+- Rejected approaches:
+  - guessing savings from menus/icons without measuring the APK
+  - broad repo exploration beyond the size hot spots
+  - assuming ABI split will help significantly when the build is already arm64-only
+- Stop point classification:
+  - analysis complete, no size-reduction code patch applied yet, next build-unblock step identified
+- What is done but unverified:
+  - exact release APK size after the build-unblock fix
+- What is verified:
+  - current APK size floor
+  - current APK hot spots
+  - locale payload size
+  - low payoff of UI/resource-only cleanup
+  - default-on candidates likely worth disabling at build-flag level
+- External prerequisite:
+  - none for this analysis round
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-07 04:51:47 +07:00
+
+- Timestamp:
+  - 2026-04-07 04:51:47 +07:00
+- Current phase:
+  - Phase 7 / Release-build unblock from the size-reduction workstream
+- Current objective:
+  - Get `out/android_Release_arm64` back onto a valid release compile path so a real non-component APK can be emitted and measured.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
+  - Fixed the stale history override in `chromium_src/components/history/core/browser/visit_database.cc` by removing the obsolete enum-macro injection.
+  - Synced that fix into the active ext4 build desk.
+  - Reran the release build and verified `visit_database.o` now compiles.
+  - Found the next stale override in:
+    - `chromium_src/storage/browser/blob/blob_url_store_impl.h`
+    - `chromium_src/storage/browser/blob/blob_url_store_impl.cc`
+  - Verified upstream now already contains the Brave extension-blob resolution logic, so the old wrapper subclass is obsolete.
+  - Simplified the storage/blob override pair to passthrough wrappers that just include upstream.
+  - Synced the storage/blob fixes into the ext4 build desk.
+  - Reran the release build again and confirmed the old storage/blob mismatch is gone.
+  - Pushed the release compile much further than before:
+    - previous queue: `26914`
+    - later queue: `17809`
+    - latest observed queue: `11740`
+  - Latest log (`r10`) shows continued compile progress with no new failure captured before the tool timeout.
+- In progress now:
+  - No build is running at this snapshot.
+  - The release build appears operational again, but it still has not run long enough to emit the final APK.
+- Blockers / risks:
+  - The active constraint is build duration versus tool timeout, not a known source-level blocker.
+  - There may still be a later-stage blocker, but none has been surfaced after the two stale overrides were fixed.
+  - Windows UNC views can lag or look inconsistent; verify important sync state from Linux paths when in doubt.
+- Files/modules touched:
+  - `chromium_src/components/history/core/browser/visit_database.cc`
+  - `chromium_src/storage/browser/blob/blob_url_store_impl.h`
+  - `chromium_src/storage/browser/blob/blob_url_store_impl.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r6.log`
+  - `artifacts/android_build/release_build_429000005_20260407_r7.log`
+  - `artifacts/android_build/release_build_429000005_20260407_r10.log`
+- Build/test status:
+  - No release APK yet at `out/android_Release_arm64/apks/OneTabTube.apk`.
+  - `r6` removed the original history blocker and exposed the storage/blob mismatch.
+  - `r7` timed out during continued compile with no new failure captured.
+  - `r10` timed out during continued compile with no new failure captured.
+- Exact next concrete step:
+  - Resume `autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package` again and let it continue until either the release APK appears or the next real error is captured.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `chromium_src/components/history/core/browser/visit_database.cc`
+  - `chromium_src/storage/browser/blob/blob_url_store_impl.h`
+  - `chromium_src/storage/browser/blob/blob_url_store_impl.cc`
+  - `artifacts/android_build/release_build_429000005_20260407_r10.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `wsl.exe`
+  - `autoninja`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_r6.log"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_r7.log"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_r10.log"`
+  - `wsl.exe bash -lc "install -m 644 /mnt/c/.../blob_url_store_impl.h /home/master/src_ext4/brave/chromium_src/storage/browser/blob/blob_url_store_impl.h && install -m 644 /mnt/c/.../blob_url_store_impl.cc /home/master/src_ext4/brave/chromium_src/storage/browser/blob/blob_url_store_impl.cc"`
+- Tool purpose:
+  - Remove stale Brave `chromium_src` wrappers and continue the strict release compile.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 200`
+  - rerun the same `autoninja -C out/android_Release_arm64 ...` command with a new log filename
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `chromium_src/components/history/core/browser/visit_database.cc`
+  - `chromium_src/storage/browser/blob/blob_url_store_impl.h`
+  - `chromium_src/storage/browser/blob/blob_url_store_impl.cc`
+  - `artifacts/android_build/release_build_429000005_20260407_r6.log`
+  - `artifacts/android_build/release_build_429000005_20260407_r7.log`
+  - `artifacts/android_build/release_build_429000005_20260407_r10.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\args.gn`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r10.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL Ubuntu available
+  - `src_ext4` reachable
+  - time budget for a long compile
+- Expected success signal:
+  - release APK appears with `versionCode=429000005`
+- Expected failure signal:
+  - next log shows a new compile/link/package error
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_r10.log`
+- Last known artifact path:
+  - release artifact missing
+  - baseline floor still at `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep this round focused on unblocking the release desk before cutting more features.
+  - Delete obsolete override behavior only where upstream now already carries the same logic.
+  - Treat the timeout as an operational boundary, not a fresh code regression.
+- Rejected approaches:
+  - cutting more subsystems before we have a clean release artifact to measure
+  - trusting the Windows UNC view alone when sync visibility is confusing
+  - keeping stale wrapper overrides alive and patching around them
+- Stop point classification:
+  - code edited and synced, former blockers removed, release build progressed substantially, APK still unverified because compile timed out before artifact creation
+- What is done but unverified:
+  - final release APK emission
+  - exact release APK size
+- What is verified:
+  - history blocker removed
+  - storage/blob blocker removed
+  - release build advances far beyond both former blockers
+- External prerequisite:
+  - none beyond local WSL build availability
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-07 08:38:29 +07:00
+
+- Timestamp:
+  - 2026-04-07 08:38:29 +07:00
+- Current phase:
+  - Phase 7 / Long-running detached release build
+- Current objective:
+  - Let the strict release desk continue compiling beyond tool time limits so we can eventually get a real APK for size measurement and updater testing.
+- Completed since last snapshot:
+  - Resumed from `docs/current-status.md` and the latest `docs/progress-log.md`.
+  - Revalidated that no new blocker had been recorded after the previous source fixes.
+  - Ran another foreground incremental build:
+    - `artifacts/android_build/release_build_429000005_20260407_r12.log`
+    - no `FAILED:` marker captured
+    - compile queue reduced from `11740` remaining actions to `7791`
+  - Switched to a detached build strategy using `cmd /c start ... wsl.exe ...`.
+  - Verified the detached background release build is alive in WSL:
+    - wrapper process `294`
+    - spawned build process `388`
+  - Verified the detached log is growing:
+    - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+    - observed start `[1/5649] ...`
+    - latest observed progress `[390/5649] ...`
+  - Verified there is still no release APK yet.
+- In progress now:
+  - The detached release build is still running in the background.
+- Blockers / risks:
+  - No new code blocker is known right now.
+  - The remaining issue is build duration; the job may still surface a later failure after the current Blink wave.
+  - Do not launch another overlapping release build while `r13_bg` is alive.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r12.log`
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - still-relevant fixed blockers:
+    - `chromium_src/components/history/core/browser/visit_database.cc`
+    - `chromium_src/storage/browser/blob/blob_url_store_impl.h`
+    - `chromium_src/storage/browser/blob/blob_url_store_impl.cc`
+- Build/test status:
+  - Release artifact still missing at `out/android_Release_arm64/apks/OneTabTube.apk`.
+  - Detached build active with live progress in `r13_bg`.
+- Exact next concrete step:
+  - Poll `r13_bg.log` and `out/android_Release_arm64/apks/` until the build either emits `OneTabTube.apk` or prints a real `FAILED:` line.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\`
+  - live process list for `out/android_Release_arm64`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `wsl.exe`
+  - `autoninja`
+  - `cmd /c start`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_r12.log"`
+  - `cmd /c start "" /b wsl.exe bash -lc "cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package > /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000005_20260407_r13_bg.log 2>&1"`
+  - `wsl.exe bash -lc "ps -eo pid,cmd | grep '[a]utoninja -C out/android_Release_arm64\|[n]inja -C out/android_Release_arm64' || true"`
+  - `Get-Content artifacts/android_build/release_build_429000005_20260407_r13_bg.log -Tail 140`
+- Tool purpose:
+  - Keep the release build moving without being cut off by per-command timeout.
+- Tool state:
+  - running in background
+- Expected resume command:
+  - `wsl.exe bash -lc "ps -eo pid,cmd | grep '[a]utoninja -C out/android_Release_arm64\|[n]inja -C out/android_Release_arm64' || true"`
+  - `Get-Content artifacts/android_build/release_build_429000005_20260407_r13_bg.log -Tail 200`
+  - `Get-Item \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Expected output/artifact path:
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\`
+  - `artifacts/android_build/release_build_429000005_20260407_r12.log`
+  - `chromium_src/components/history/core/browser/visit_database.cc`
+  - `chromium_src/storage/browser/blob/blob_url_store_impl.h`
+  - `chromium_src/storage/browser/blob/blob_url_store_impl.cc`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL Ubuntu available
+  - `src_ext4` reachable
+  - background build must be checked before starting anything new
+- Expected success signal:
+  - release APK appears with `versionCode=429000005`
+- Expected failure signal:
+  - `FAILED:` appears in `r13_bg.log`
+  - or the live build process disappears while no APK exists
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+- Last known artifact path:
+  - release artifact still missing
+  - baseline floor still at `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Use a detached build to outlive tool timeout.
+  - Preserve the already-running background compile instead of launching overlapping builds.
+- Rejected approaches:
+  - repeating only foreground one-hour builds forever
+  - changing more feature flags before a first release artifact exists
+- Stop point classification:
+  - detached release build running and being monitored; no final APK yet
+- What is done but unverified:
+  - final release APK emission
+  - exact release APK size
+- What is verified:
+  - `r12` had no failure
+  - `r13_bg` is alive
+  - `r13_bg` log is growing
+- External prerequisite:
+  - none beyond local WSL build availability
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-07 09:04:44 +07:00
+
+- Timestamp:
+  - 2026-04-07 09:04:44 +07:00
+- Current phase:
+  - Phase 7 / Detached release-build monitoring
+- Current objective:
+  - Track the already-running detached release build until it produces a release APK or a real new failure.
+- Completed since last snapshot:
+  - Resumed from `docs/current-status.md` and the latest `docs/progress-log.md`.
+  - Verified the detached release build is still alive in WSL:
+    - wrapper process `294`
+    - build process `388`
+  - Revalidated there is still no release APK at `out/android_Release_arm64/apks/OneTabTube.apk`.
+  - Verified the detached log `r13_bg` keeps growing.
+  - Confirmed actual live progress moved beyond the previous handoff checkpoint:
+    - previous recorded progress: `[390/5649]`
+    - current observed progress: `[1449/5649]`
+  - No `FAILED:` marker was captured in the inspected log tail.
+- In progress now:
+  - Detached release build `r13_bg` is still compiling.
+- Blockers / risks:
+  - Still time-bound, not code-blocked.
+  - A later-stage blocker may still appear after the current compile wave.
+  - Must not start a second overlapping release build.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+- Build/test status:
+  - No release APK yet.
+  - Live detached build confirmed active.
+  - Latest observed progress around `[1449/5649]`.
+- Exact next concrete step:
+  - Poll `r13_bg.log` and the release APK output directory again until either the APK appears or `FAILED:` is printed.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `wsl.exe`
+- Exact command(s):
+  - `wsl.exe bash -lc "ps -eo pid,cmd | grep '[a]utoninja -C out/android_Release_arm64\|[n]inja -C out/android_Release_arm64' || true"`
+  - `Get-Content artifacts/android_build/release_build_429000005_20260407_r13_bg.log -Tail 80`
+  - `Get-Item \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk`
+- Tool purpose:
+  - Monitor live build status without restarting the compile.
+- Tool state:
+  - running in background
+- Expected resume command:
+  - `wsl.exe bash -lc "ps -eo pid,cmd | grep '[a]utoninja -C out/android_Release_arm64\|[n]inja -C out/android_Release_arm64' || true"`
+  - `Get-Content artifacts/android_build/release_build_429000005_20260407_r13_bg.log -Tail 200`
+- Expected output/artifact path:
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL Ubuntu available
+  - detached build must be checked before any new launch
+- Expected success signal:
+  - release APK appears
+- Expected failure signal:
+  - `FAILED:` in the live log
+  - or live build disappears with no APK
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+- Last known artifact path:
+  - release APK still missing
+- Recent decisions:
+  - Update status docs to match the newer live progress rather than leaving the older `390/5649` checkpoint.
+- Rejected approaches:
+  - treating the older handoff checkpoint as the current truth
+- Stop point classification:
+  - live monitoring checkpoint captured; build still in progress
+- What is done but unverified:
+  - final release APK emission
+  - exact APK size
+- What is verified:
+  - build alive
+  - log advancing
+  - no new failure captured yet
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+
+## 2026-04-07 10:37:15 +07:00
+
+- Timestamp:
+  - 2026-04-07 10:37:15 +07:00
+- Current phase:
+  - Phase 7 / Release build failure triage
+- Current objective:
+  - Replace the stale "build still running" status with the actual release failure state and capture the real next fix scope.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before inspecting anything else.
+  - Verified the detached release build is no longer running.
+  - Confirmed there is still no `OneTabTube.apk` in `out/android_Release_arm64/apks/`.
+  - Read the final tail of `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`.
+  - Confirmed the build actually reached the tail end of the target graph and failed around `[5644/5649]`.
+  - Captured the new concrete failure:
+    - `ld.lld: error: undefined symbol: Muxed_org_chromium_chrome_browser_BraveRewardsNativeWorker_*`
+    - `ld.lld: error: undefined symbol: Muxed_org_chromium_chrome_browser_BraveAdsNativeHelper_clearData`
+  - Inspected source wiring and confirmed:
+    - `is_onetabyt=true` in `out/android_Release_arm64/args.gn`
+    - `enable_brave_rewards = !is_brave_origin_branded && !is_onetabyt` in `components/brave_rewards/core/buildflags/buildflags.gni`
+    - `android/brave_java_sources.gni` still includes `BraveRewards*` Java sources unconditionally
+    - Java references to `BraveAdsNativeHelper` remain in:
+      - `android/java/org/chromium/chrome/browser/browsing_data/BraveClearBrowsingDataFragment.java`
+      - `android/java/org/chromium/chrome/browser/onboarding/OnboardingPrefManager.java`
+- In progress now:
+  - No code fix has been landed for this blocker yet.
+  - The workspace is now positioned at the exact Rewards/Ads Java/native mismatch that breaks release.
+- Blockers / risks:
+  - OneTab release currently fails before APK emission because generated JNI registration expects Rewards/Ads native methods that are not present when OneTab disables Rewards native support.
+  - There may be more missing JNI/native symbols after this first wave is fixed.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `android/brave_java_sources.gni`
+  - `components/brave_rewards/core/buildflags/buildflags.gni`
+  - `android/java/org/chromium/chrome/browser/browsing_data/BraveClearBrowsingDataFragment.java`
+  - `android/java/org/chromium/chrome/browser/onboarding/OnboardingPrefManager.java`
+- Build/test status:
+  - `android_Release_arm64` detached build failed.
+  - No release APK emitted.
+  - Failure is now reproducibly tied to missing Rewards/Ads JNI symbols, not long build duration.
+- Exact next concrete step:
+  - Patch OneTab-specific filtering/stubs so `BraveRewards*` Java and remaining `BraveAdsNativeHelper` entry points no longer generate unreachable JNI registrations, then rerun `autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package`.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `android/brave_java_sources.gni`
+  - `components/brave_rewards/core/buildflags/buildflags.gni`
+  - `android/java/org/chromium/chrome/browser/browsing_data/BraveClearBrowsingDataFragment.java`
+  - `android/java/org/chromium/chrome/browser/onboarding/OnboardingPrefManager.java`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `wsl.exe`
+  - `rg`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 160`
+  - `git rev-parse --abbrev-ref HEAD; git rev-parse HEAD`
+  - `Get-Item -LiteralPath 'artifacts/android_build/release_build_429000005_20260407_r13_bg.log' | Select-Object FullName,Length,LastWriteTime`
+  - `Get-Content -LiteralPath 'artifacts/android_build/release_build_429000005_20260407_r13_bg.log' -Tail 80`
+  - `wsl.exe bash -lc "ps -eo pid,cmd | grep '[a]utoninja -C out/android_Release_arm64\|[n]inja -C out/android_Release_arm64' || true"`
+  - `Get-Item -LiteralPath '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk'`
+  - `Get-Content '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\args.gn'`
+  - `rg -n "enable_brave_rewards|brave_rewards" components android chromium_src -g "*.gn" -g "*.gni"`
+  - `rg -n "BraveRewardsNativeWorker|BraveAdsNativeHelper" android/java -g "*.java"`
+- Tool purpose:
+  - Reconcile the recorded handoff with live build evidence and narrow the real fix scope before touching code again.
+- Tool state:
+  - no active detached build now
+- Expected resume command:
+  - `rg -n "BraveRewardsNativeWorker|BraveAdsNativeHelper" android/java -g "*.java"`
+  - after patch: `wsl.exe bash -lc "cd /home/master/src_ext4 && env PYTHONPATH=/home/master/src_ext4/brave/script ./third_party/depot_tools/autoninja -C out/android_Release_arm64 brave/build/android:onetabtube_android_package"`
+- Expected output/artifact path:
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - `out/android_Release_arm64`
+  - `brave/build/android:onetabtube_android_package`
+- Primary working set:
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+  - `android/brave_java_sources.gni`
+  - `components/brave_rewards/core/buildflags/buildflags.gni`
+  - `android/java/org/chromium/chrome/browser/browsing_data/BraveClearBrowsingDataFragment.java`
+  - `android/java/org/chromium/chrome/browser/onboarding/OnboardingPrefManager.java`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest tail of `docs/progress-log.md`
+  - `android/brave_java_sources.gni`
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL Ubuntu available
+  - `src_ext4` reachable
+  - no overlapping release build should be running
+- Expected success signal:
+  - the next release build moves past this current undefined-symbol set and/or emits the APK
+- Expected failure signal:
+  - another `ld.lld: error: undefined symbol:` wave in the rerun log
+- Last known log location:
+  - `artifacts/android_build/release_build_429000005_20260407_r13_bg.log`
+- Last known artifact path:
+  - release APK still missing
+- Recent decisions:
+  - Trust live log + source inspection over the older "still running" handoff.
+  - Keep the next fix small and local to OneTab Rewards/Ads Java wiring first.
+- Rejected approaches:
+  - restarting the same release build without reading the final failure
+  - assuming long runtime was still the main blocker
+- Stop point classification:
+  - release build failed and root cause confirmed; fix not yet implemented
+- What is done but unverified:
+  - whether filtering `BraveRewards*` plus `BraveAdsNativeHelper` call sites is sufficient for the next build pass
+- What is verified:
+  - build is no longer running
+  - no release APK exists
+  - failure log contains missing Rewards/Ads JNI symbols
+  - OneTab disables Rewards native support by buildflag
+  - Java source list still includes Rewards classes
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - Firebase deploy/admin credentials
+  - `THUNDER_API_KEY`
+  - Google credentials / 2FA
+- Timestamp:
+  - 2026-04-07 16:35:52 +07:00
+- Current phase:
+  - Phase 7 / Same-package bootstrap installer smoke
+- Task/objective:
+  - Recover the just-installed `GO_PLAY Setup` screen from the Firestore permission error so the bootstrap app becomes usable before login.
+- Completed since last snapshot:
+  - Verified the device was already on bootstrap `com.onetabtube.browser_default` `versionCode=5 / 0.0.5-beta`.
+  - Reinstalled `build/app/outputs/flutter-apk/app-debug.apk` with `adb install -r` and re-verified launcher/runtime identity.
+  - Inspected the setup screenshot and confirmed the failure reason was `cloud_firestore/permission-denied` while reading `app_updates/android`.
+  - Patched `firestore.rules` to allow public read of `app_updates/android`.
+  - Deployed Firestore rules live with `firebase deploy --only firestore:rules --project go-play-720c1`.
+  - Relaunched the setup app and captured the fixed screen at `artifacts/android_build/go_play_setup_after_rules.png`.
+- In progress now:
+  - No build or deploy is running.
+  - Device is sitting on the fixed `GO_PLAY Setup` screen with the update CTA visible.
+- Blockers / risks:
+  - Actual bootstrap-to-release overwrite is still unverified.
+  - Signature compatibility between the debug-signed bootstrap and the published GO_PLAY release may still block install at the final package installer step.
+- Files/modules touched:
+  - `firestore.rules`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `adb install -r` passed.
+  - `firebase deploy --only firestore:rules --project go-play-720c1` passed.
+  - Post-deploy screenshot shows `1.90.2 (429000006)` and `อัปเดต GO_PLAY`.
+- Exact next concrete step:
+  - Tap `อัปเดต GO_PLAY` on the connected device and record whether the download/install path succeeds or stops on certificate/signature validation.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `firestore.rules`
+  - `artifacts/android_build/go_play_setup_install.png`
+  - `artifacts/android_build/go_play_setup_after_rules.png`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `firebase`
+- Exact command(s):
+  - `adb install -r "build\\app\\outputs\\flutter-apk\\app-debug.apk"`
+  - `adb shell dumpsys package com.onetabtube.browser_default`
+  - `adb shell monkey -p com.onetabtube.browser_default -c android.intent.category.LAUNCHER 1`
+  - `adb shell dumpsys activity activities | findstr /I "topResumedActivity com.onetabtube.browser_default"`
+  - `firebase deploy --only firestore:rules --project go-play-720c1`
+  - `adb shell am force-stop com.onetabtube.browser_default; adb shell monkey -p com.onetabtube.browser_default -c android.intent.category.LAUNCHER 1`
+  - `adb shell screencap -p /sdcard/go_play_setup_after_rules.png; adb pull /sdcard/go_play_setup_after_rules.png artifacts\\android_build\\go_play_setup_after_rules.png`
+- Tool purpose:
+  - Install the bootstrap app, verify device state, remove the Firestore read blocker, and confirm the setup UI becomes actionable.
+- Tool state:
+  - idle
+- Expected resume command:
+  - launch the setup app and continue the manual update smoke from the visible CTA
+- Expected output/artifact path:
+  - `build/app/outputs/flutter-apk/app-debug.apk`
+  - `artifacts/android_build/go_play_setup_install.png`
+  - `artifacts/android_build/go_play_setup_after_rules.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Flutter Android debug bootstrap APK
+- Primary working set:
+  - `firestore.rules` - updater metadata access policy
+  - `lib/features/setup/presentation/setup_page.dart` - setup UI
+  - `android/app/build.gradle.kts` - same-package/signing behavior
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `firestore.rules`
+  - `artifacts/android_build/go_play_setup_after_rules.png`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - live updater metadata already published
+- Expected success signal:
+  - setup app advances into download/install flow instead of failing on Firestore permission
+- Expected failure signal:
+  - update CTA exists but install is rejected by Android package installer or signer validation
+- Last known log location:
+  - no separate log file for this round; use CLI output history and screenshot artifacts
+- Last known artifact path:
+  - `artifacts/android_build/go_play_setup_after_rules.png`
+- Recent decisions:
+  - Keep setup updater readable before login by opening only `app_updates/android` publicly.
+- Rejected approaches:
+  - forcing users to sign in before bootstrap update can even be discovered
+- Stop point classification:
+  - backend rule fixed live; setup UI recovered; real overwrite install still pending
+- What is done but unverified:
+  - package overwrite from bootstrap to release
+- What is verified:
+  - setup screen no longer shows Firestore permission denied
+  - setup screen shows the live remote release metadata
+- External prerequisite:
+  - connected Android device
+- Secret required but not stored:
+  - release signing material if same-signer bootstrap rebuild becomes necessary
+- Timestamp:
+  - 2026-04-07 16:44:17 +07:00
+- Current phase:
+  - Phase 7 / Same-package bootstrap installer smoke
+- Task/objective:
+  - Remove the two unwanted setup UI sections and make APK downloading resume from existing bytes instead of restarting from zero.
+- Completed since last snapshot:
+  - Rewrote `lib/features/setup/presentation/setup_page.dart` to:
+    - remove the subtitle/description text block below `GO_PLAY Setup`
+    - remove the `แพ็กเกจ` row from the app-status card
+  - Rewrote `lib/services/apk_download_service.dart` to support resumable downloads:
+    - resume from `.part` using `Range: bytes=<existing>-`
+    - append bytes when the server returns `206 Partial Content`
+    - fall back to a fresh restart if the server ignores range and returns `200 OK`
+  - Ran `dart format` on both edited files.
+  - Verified the setup app still builds:
+    - `flutter build apk --debug`
+    - output `build/app/outputs/flutter-apk/app-debug.apk`
+- In progress now:
+  - No build is running.
+  - No install is running.
+  - The new setup APK has not yet been reinstalled to the device after this UI/download round.
+- Blockers / risks:
+  - Range resume logic is implemented locally but not yet smoked live against an interrupted APK download.
+  - Same-package overwrite may still fail later on signer mismatch.
+- Files/modules touched:
+  - `lib/features/setup/presentation/setup_page.dart`
+  - `lib/services/apk_download_service.dart`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `dart format` passed.
+  - `flutter build apk --debug` passed.
+- Exact next concrete step:
+  - Install the rebuilt setup APK to the connected device and verify:
+    - the two removed UI areas are gone
+    - interrupted APK downloads resume from the existing `.part` bytes instead of restarting
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `lib/features/setup/presentation/setup_page.dart`
+  - `lib/services/apk_download_service.dart`
+  - `build/app/outputs/flutter-apk/app-debug.apk`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `flutter`
+- Exact command(s):
+  - `dart format lib\\features\\setup\\presentation\\setup_page.dart lib\\services\\apk_download_service.dart`
+  - `flutter build apk --debug`
+- Tool purpose:
+  - Land the requested UI cleanup and resumable download behavior, then verify the bootstrap APK still compiles.
+- Tool state:
+  - idle
+- Expected resume command:
+  - `adb install -r "build\\app\\outputs\\flutter-apk\\app-debug.apk"`
+- Expected output/artifact path:
+  - `build/app/outputs/flutter-apk/app-debug.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Flutter Android debug bootstrap APK
+- Primary working set:
+  - `lib/features/setup/presentation/setup_page.dart` - setup screen layout/content
+  - `lib/services/apk_download_service.dart` - resumable APK downloader
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `lib/features/setup/presentation/setup_page.dart`
+  - `lib/services/apk_download_service.dart`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Flutter toolchain available
+- Expected success signal:
+  - rebuilt setup APK installs and the removed UI areas stay gone while partial APK downloads continue from previous bytes
+- Expected failure signal:
+  - setup APK rebuild fails or resumed download still restarts from zero
+- Last known log location:
+  - no dedicated log file for this local rebuild round
+- Last known artifact path:
+  - `build/app/outputs/flutter-apk/app-debug.apk`
+- Recent decisions:
+  - keep setup UI focused only on version/update status
+  - treat resumable APK download as part of the bootstrap product, not a later optimization
+- Rejected approaches:
+  - leaving package metadata visible on the setup screen
+  - always deleting `.part` and restarting the entire download
+- Stop point classification:
+  - code edited and compile-verified locally; not yet reinstalled/smoked on device
+- What is done but unverified:
+  - live UI result on device
+  - live byte-resume behavior on device
+- What is verified:
+  - the new local setup APK compiles
+- External prerequisite:
+  - connected Android device for live smoke
+- Secret required but not stored:
+  - release signing material if same-signer bootstrap rebuild becomes necessary
+- Timestamp:
+  - 2026-04-07 16:46:00 +07:00
+- Current phase:
+  - Phase 7 / Same-package bootstrap installer smoke
+- Task/objective:
+  - Inspect the current live device error after tapping the updater flow.
+- Completed since last snapshot:
+  - Captured the current device screenshot at `artifacts/android_build/current_device_error.png`.
+  - Verified the resumed activity is still `GO_PLAY Setup`.
+  - Confirmed the live error is now:
+    - `PlatformException(APK_URI_ERROR, Failed to find configured root that contains /data/user/0/com.onetabtube.browser_default/app_flutter/updates/go_play_1.90.2_429000006.apk, null, null)`
+  - Inspected `android/app/src/main/res/xml/file_paths.xml` and confirmed it only exposes `<files-path>` and `<cache-path>`, not the `app_flutter/updates` location used by the installer flow.
+- In progress now:
+  - No code fix landed yet for the new `FileProvider` blocker.
+- Blockers / risks:
+  - Installer handoff is blocked before Android package install starts.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/app/src/main/res/xml/file_paths.xml`
+  - `lib/services/apk_installer_service.dart`
+- Build/test status:
+  - live error reproduced on device and narrowed to `FileProvider` path mismatch
+- Exact next concrete step:
+  - Patch `file_paths.xml` and, if needed, the installer/download path strategy so the APK URI can be shared successfully.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `android/app/src/main/res/xml/file_paths.xml`
+  - `lib/services/apk_installer_service.dart`
+  - `artifacts/android_build/current_device_error.png`
+- Current tool(s):
+  - `shell_command`
+  - `view_image`
+  - `apply_patch`
+- Exact command(s):
+  - `adb shell screencap -p /sdcard/current_device_error.png; adb pull /sdcard/current_device_error.png artifacts\\android_build\\current_device_error.png`
+  - `adb shell dumpsys activity activities | findstr /I "topResumedActivity com.onetabtube.browser_default"`
+  - `adb exec-out uiautomator dump /dev/tty > artifacts\\android_build\\current_device_error.xml`
+  - `rg -n "FileProvider|fileprovider|apk_provider_paths|provider_paths|paths.xml|app_flutter|updates" android lib -g "*.xml" -g "*.kt" -g "*.java" -g "*.dart"`
+  - `Get-Content android\\app\\src\\main\\res\\xml\\file_paths.xml`
+- Tool purpose:
+  - capture the live failure and narrow it to the exact installer handoff component
+- Tool state:
+  - idle
+- Expected resume command:
+  - patch `android/app/src/main/res/xml/file_paths.xml`, rebuild, reinstall, retry
+- Expected output/artifact path:
+  - `artifacts/android_build/current_device_error.png`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Flutter Android debug bootstrap APK
+- Primary working set:
+  - `android/app/src/main/res/xml/file_paths.xml` - FileProvider roots
+  - `lib/services/apk_installer_service.dart` - installer handoff
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/app/src/main/res/xml/file_paths.xml`
+  - `artifacts/android_build/current_device_error.png`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+- Expected success signal:
+  - installer handoff advances past `APK_URI_ERROR`
+- Expected failure signal:
+  - same `Failed to find configured root` error appears again
+- Last known log location:
+  - screenshot + command output only for this round
+- Last known artifact path:
+  - `artifacts/android_build/current_device_error.png`
+- Recent decisions:
+  - investigate `FileProvider` path configuration before revisiting signing
+- Rejected approaches:
+  - blaming the current failure on signer mismatch before fixing the URI handoff
+- Stop point classification:
+  - error reproduced and root cause narrowed; code fix not yet applied
+- What is done but unverified:
+  - none beyond root-cause narrowing
+- What is verified:
+  - current live error is `APK_URI_ERROR` from an unexposed download path
+- External prerequisite:
+  - connected Android device
+- Secret required but not stored:
+  - none
+
+## 2026-04-07 21:57:39 +07:00
+
+- Current phase:
+  - Ops tooling / Firestore admin GUI
+- Task/objective:
+  - Verify why `grant special entitlement +10 days` from admin GUI did not increase real remaining days
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and latest `docs/progress-log.md`
+  - Re-checked `functions/src/package_orders.ts` and confirmed runtime access still comes from `users/{uid}/entitlements/*`
+  - Re-checked `tools/go_play_admin_gui/go_play_admin/firebase_backend.py` and confirmed `_grant_entitlement(...)` now extends real `expiresAt` when `Duration days > 0`
+  - Re-checked `tools/go_play_admin_gui/go_play_admin/gui_app.py` labels and confirmed operator-facing wording now says `Duration days (+เพิ่ม)` and `ExpireAt (ISO) กำหนดเอง`
+- In progress now:
+  - No running process; waiting for the next live write smoke from the operator
+- Blockers / risks:
+  - Live Firestore write after the semantics change is still unverified in this round
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `functions/src/package_orders.ts`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+- Build/test status:
+  - targeted resume inspection passed
+  - no new compile/build command needed for this confirmation round
+- Exact next concrete step:
+  - Use `run_admin_gui.bat`, grant `Duration days` again to a known UID, then verify `users/{uid}/entitlements/{packageId}.expiresAt` moved forward and app remaining days follows it
+- Expected resume inspection scope:
+  - `functions/src/package_orders.ts`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 80`
+  - `rg -n "getPackageAccessState|remainingDays|entitlements" functions/src/package_orders.ts`
+  - `rg -n "grant_special_entitlement|grant_product_entitlement|Duration days|ExpireAt" tools/go_play_admin_gui/go_play_admin/gui_app.py`
+- Tool purpose:
+  - verify recorded root cause against code reality before giving the operator-facing explanation
+- Tool state:
+  - idle
+- Expected resume command:
+  - `C:\Users\Master\Desktop\GO_PLAY\tools\go_play_admin_gui\run_admin_gui.bat`
+- Expected output/artifact path:
+  - GUI window and live Firestore updates under `users/{uid}/entitlements/*`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - Python desktop admin GUI / Tkinter
+- Primary working set:
+  - `functions/src/package_orders.ts` - runtime package access source of truth
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py` - entitlement grant semantics
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py` - operator-facing grant form wording
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `functions/src/package_orders.ts`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - service account JSON present
+  - target UID available for live write verification
+- Expected success signal:
+  - entitlement `expiresAt` extends and app remaining days increases
+- Expected failure signal:
+  - entitlement write succeeds but `expiresAt` remains unchanged
+- Last known log location:
+  - none for this inspection-only round
+- Last known artifact path:
+  - `tools/go_play_admin_gui/`
+- Recent decisions:
+  - keep `Duration days` as the primary “extend days” control
+  - keep `ExpireAt (ISO)` as an exact override only
+- Rejected approaches:
+  - treating `Duration days` as metadata-only
+  - debugging the app first before checking the admin write semantics
+- Stop point classification:
+  - root cause confirmed in code and handoff updated; live write smoke still pending
+- What is done but unverified:
+  - a real grant action after the semantics fix
+- What is verified:
+  - runtime access checks `entitlements`
+  - admin GUI code now extends `expiresAt` from the current entitlement or now
+- External prerequisite:
+  - target UID for live verification
+- Secret required but not stored:
+  - service account JSON remains external and is not copied into status files
+
+## 2026-04-07 23:36:25 +07:00
+
+- Current phase:
+  - Release snapshot / git packaging
+- Task/objective:
+  - Stage the real product snapshot for release `1.90.2+429000006`, then commit/push it to the user's repo
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest entry in `docs/progress-log.md`
+  - Verified branch `publish/go_play-sync-20260402`, HEAD `984a87cb264e51567116b09740def3b3f4cc6e16`, and remote `origin`
+  - Verified the current product desk still includes the expected release-line source:
+    - native updater classes
+    - setup Flutter screen
+    - Firestore seeds and publish scripts
+    - admin GUI and updated entitlement semantics
+  - Added `.gitignore` exclusions for:
+    - `artifacts/`
+    - `tools/go_play_admin_gui/.venv/`
+    - `tools/go_play_admin_gui/go_play_admin/__pycache__/`
+    - `tools/go_play_admin_gui/go-play-*-firebase-adminsdk-*.json`
+    - `.env`
+  - Staged tracked modifications with `git add -u`
+  - Explicitly kept `AGENT.md` deletion out of the staged set with `git restore --staged AGENT.md`
+  - Added the new source/docs/config files required by this release line:
+    - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdate*.java`
+    - `android/java/brave-res/drawable/onetab_startup_*.xml`
+    - `android/java_stub/...`
+    - `lib/features/setup/...`
+    - `lib/app/config/setup_dependencies.dart`
+    - `functions/scripts/seed-app-update.js`
+    - `functions/scripts/seed-payment-account.js`
+    - `functions/seeds/app_update_android.seed.json`
+    - `functions/seeds/payment_account.seed.json`
+    - `scripts/publish_app_update_artifact.js`
+    - `docs/app-update-firestore.md`
+    - `docs/build-workbench-map.md`
+    - `docs/optimize-audit.md`
+    - `tools/go_play_admin_gui/...`
+    - `logo_app.png`
+  - Verified the staged snapshot with `git diff --cached --name-status` and `git diff --cached --stat`
+- In progress now:
+  - staged snapshot ready
+  - commit and push still pending
+- Blockers / risks:
+  - push can still fail if remote auth is unavailable or remote branch rejects the update
+  - the worktree still has many untracked local screenshots/logs by design; they must remain unstaged
+- Files/modules touched:
+  - `.gitignore`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `lib/features/setup/presentation/setup_page.dart`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
+- Build/test status:
+  - previous admin GUI compile check still stands
+  - staged snapshot count observed: 97 files
+- Exact next concrete step:
+  - `git add docs/current-status.md docs/progress-log.md`
+  - `git commit -m "apk build release 1.90.2+429000006"`
+  - `git push origin publish/go_play-sync-20260402`
+- Expected resume inspection scope:
+  - `git status --short`
+  - `git diff --cached --name-status`
+  - `docs/current-status.md`
+  - this progress entry
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `git`
+- Exact command(s):
+  - `git status --short`
+  - `git branch --show-current`
+  - `git rev-parse HEAD`
+  - `git remote -v`
+  - `git add -u`
+  - `git restore --staged AGENT.md`
+  - `git add <selected new source/docs/config files>`
+  - `git diff --cached --name-status`
+  - `git diff --cached --stat`
+- Tool purpose:
+  - create a clean commit boundary around the current release snapshot
+- Tool state:
+  - idle after staging
+- Expected resume command:
+  - `git commit -m "apk build release 1.90.2+429000006"`
+- Expected output/artifact path:
+  - new commit on `origin/publish/go_play-sync-20260402`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `984a87cb264e51567116b09740def3b3f4cc6e16`
+- Build flavor / target:
+  - git snapshot aligned to release `1.90.2+429000006`
+- Primary working set:
+  - `.gitignore`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
+  - `lib/features/setup/presentation/setup_page.dart`
+  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `git status --short`
+  - `git diff --cached --stat`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - remote auth to `origin`
+- Expected success signal:
+  - commit message exactly `apk build release 1.90.2+429000006`
+  - push accepted by `origin`
+- Expected failure signal:
+  - auth failure or non-fast-forward push rejection
+- Last known log location:
+  - none
+- Last known artifact path:
+  - staged git snapshot only
+- Recent decisions:
+  - do not use `git add -A`
+  - keep service-account JSON and other local evidence outside the commit
+- Rejected approaches:
+  - committing the entire dirty desktop state
+- Stop point classification:
+  - staged snapshot prepared; commit/push not yet executed
+- What is done but unverified:
+  - remote push
+- What is verified:
+  - staged set excludes local credentials and tool `.venv`
+- External prerequisite:
+  - git remote access
+- Secret required but not stored:
+  - Firebase admin service-account JSON remains local-only

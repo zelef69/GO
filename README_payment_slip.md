@@ -31,17 +31,45 @@ Seed at least one product document before testing:
 
 Collection: `products`
 
-Document: `products/pkg_599`
+Documents:
+
+- `products/pkg_99`
+- `products/pkg_199`
+- `products/pkg_599`
 
 ```json
 {
-  "name": "Premium 30 Days",
+  "name": "แพ็กเกจ GO_PLAY 365 วัน",
   "price": 599,
   "currency": "THB",
-  "durationDays": 30,
+  "durationDays": 365,
   "active": true
 }
 ```
+
+The Android Buy-package screen now supports up to 3 package slots and reads the
+package pricing/duration from the matching `products/{packageId}` docs:
+
+- `pkg_99`
+- `pkg_199`
+- `pkg_599`
+
+Bank-account details are now read from a separate Firestore document:
+
+Document: `settings/payment_account`
+
+```json
+{
+  "bankDisplayName": "กสิกรไทย ( K BANK )",
+  "accountNameEn": "YAKSA TRADING LIMITED",
+  "accountNameTh": "บจก. ยักษ์ษา เทรดดิ้ง",
+  "accountNumber": "2008395414"
+}
+```
+
+If `settings/payment_account` is still missing, the Android app falls back to
+legacy product fields and then to the built-in default account values so the Buy
+page does not regress below the current baseline.
 
 This repo now includes a seed file and seed script:
 
@@ -68,7 +96,7 @@ object, so the Android client can upload the slip without calling Thunder or
 holding any privileged Storage credentials.
 
 Later, `verifyPackageSlip` validates that the path belongs to the current user
-and order before generating a signed read URL for Thunder.
+and order before generating a Firebase Storage download URL for Thunder.
 
 ## Secrets
 
@@ -132,6 +160,23 @@ npm --prefix functions run seed:products -- --project go-play-720c1
 ```
 
 This upserts the products defined in `functions/seeds/products.seed.json` into the `products` collection.
+
+To keep the bank/account block configurable from Firestore, also seed
+`settings/payment_account` using the contents of:
+
+- `functions/seeds/payment_account.seed.json`
+
+Dry run:
+
+```bash
+npm --prefix functions run seed:payment-account:dry -- --project go-play-720c1
+```
+
+Write the payment-account doc:
+
+```bash
+npm --prefix functions run seed:payment-account -- --project go-play-720c1
+```
 
 If you are using the Firestore emulator, make sure `FIRESTORE_EMULATOR_HOST` is set before running the seed script.
 
@@ -279,8 +324,8 @@ Requirements:
 Server steps:
 
 1. Read the order
-2. Create a signed URL for the uploaded slip
-3. Call Thunder server-to-server
+2. Create a Firebase Storage download URL for the uploaded slip
+3. Call Thunder server-to-server as the verification source of truth
 4. Check:
    - amount match
    - duplicate slip
@@ -300,6 +345,10 @@ The verification function uses readable callable errors for business failures su
 - receiver account mismatch
 - `SLIP_PENDING`
 
+The backend no longer keeps a custom `slip_verifications/*` cache to short-circuit
+verification. Each verification attempt relies on Thunder's response together
+with the live order/payment state stored in Firestore.
+
 ## Manual test flow
 
 1. Sign in to the Android app
@@ -307,7 +356,7 @@ The verification function uses readable callable errors for business failures su
    ```bash
    npm --prefix functions run seed:products
    ```
-3. Call `createPackageOrder({ packageId: "pkg_599" })`
+3. Call `createPackageOrder({ packageId: "pkg_99" | "pkg_199" | "pkg_599" })`
 4. Upload an image slip through the returned `uploadUrl`
 5. Call `verifyPackageSlip({ orderId, storagePath })`
 6. Confirm:
@@ -322,7 +371,8 @@ The verification function uses readable callable errors for business failures su
   - now
   - existing entitlement expiry
 - `matchAccount` is enabled by default
-- `products/{packageId}` is the source of truth for price and duration
+- `products/{packageId}` is the source of truth for package price and duration
+- `settings/payment_account` is the source of truth for the bank-account block
 
 ## Next improvements
 

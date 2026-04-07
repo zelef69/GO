@@ -12,7 +12,9 @@ class ApkDownloadService {
     required int versionCode,
     required String versionName,
   }) async {
-    final baseDir = await getApplicationDocumentsDirectory();
+    // Keep downloaded APKs under the app files/support directory so the
+    // existing FileProvider `<files-path>` can share them with the installer.
+    final baseDir = await getApplicationSupportDirectory();
     final updatesDir = Directory(
       '${baseDir.path}${Platform.pathSeparator}updates',
     );
@@ -31,26 +33,24 @@ class ApkDownloadService {
     void Function(double progress)? onProgress,
   }) async {
     final tempFile = File('${targetFile.path}.part');
-    if (tempFile.existsSync()) {
-      tempFile.deleteSync();
-    }
     if (!targetFile.parent.existsSync()) {
       targetFile.parent.createSync(recursive: true);
     }
 
     try {
-      await _dio.download(
-        apkUrl,
-        tempFile.path,
-        deleteOnError: true,
-        onReceiveProgress: (received, total) {
-          if (onProgress == null || total <= 0) {
-            return;
-          }
-          final progress = (received / total).clamp(0.0, 1.0);
-          onProgress(progress);
-        },
-      );
+      if (tempFile.existsSync() && tempFile.lengthSync() > 0) {
+        await _resumeDownload(
+          apkUrl: apkUrl,
+          tempFile: tempFile,
+          onProgress: onProgress,
+        );
+      } else {
+        await _downloadFresh(
+          apkUrl: apkUrl,
+          tempFile: tempFile,
+          onProgress: onProgress,
+        );
+      }
     } on DioException catch (error) {
       final detail = error.message?.trim();
       throw ApkDownloadException(
@@ -58,7 +58,10 @@ class ApkDownloadService {
             ? 'ดาวน์โหลดไฟล์อัปเดตไม่สำเร็จ'
             : 'ดาวน์โหลดไฟล์อัปเดตไม่สำเร็จ: $detail',
       );
-    } catch (_) {
+    } catch (error) {
+      if (error is ApkDownloadException) {
+        rethrow;
+      }
       throw const ApkDownloadException('ดาวน์โหลดไฟล์อัปเดตไม่สำเร็จ');
     }
 
@@ -70,6 +73,84 @@ class ApkDownloadService {
       targetFile.deleteSync();
     }
     return tempFile.rename(targetFile.path);
+  }
+
+  Future<void> _downloadFresh({
+    required String apkUrl,
+    required File tempFile,
+    void Function(double progress)? onProgress,
+  }) async {
+    if (tempFile.existsSync()) {
+      tempFile.deleteSync();
+    }
+
+    await _dio.download(
+      apkUrl,
+      tempFile.path,
+      deleteOnError: false,
+      onReceiveProgress: (received, total) {
+        if (onProgress == null || total <= 0) {
+          return;
+        }
+        final progress = (received / total).clamp(0.0, 1.0);
+        onProgress(progress);
+      },
+    );
+  }
+
+  Future<void> _resumeDownload({
+    required String apkUrl,
+    required File tempFile,
+    void Function(double progress)? onProgress,
+  }) async {
+    final existingBytes = tempFile.lengthSync();
+    final response = await _dio.get<ResponseBody>(
+      apkUrl,
+      options: Options(
+        responseType: ResponseType.stream,
+        headers: <String, String>{
+          HttpHeaders.rangeHeader: 'bytes=$existingBytes-',
+        },
+      ),
+    );
+
+    final statusCode = response.statusCode ?? 0;
+    if (statusCode == HttpStatus.ok) {
+      await _downloadFresh(
+        apkUrl: apkUrl,
+        tempFile: tempFile,
+        onProgress: onProgress,
+      );
+      return;
+    }
+
+    if (statusCode != HttpStatus.partialContent) {
+      throw ApkDownloadException(
+        'resume download ไม่สำเร็จ (HTTP $statusCode)',
+      );
+    }
+
+    final remainingLength =
+        int.tryParse(
+          response.headers.value(Headers.contentLengthHeader) ?? '',
+        ) ??
+        0;
+    final totalBytes = existingBytes + remainingLength;
+    var receivedBytes = existingBytes;
+
+    final sink = tempFile.openWrite(mode: FileMode.append);
+    try {
+      await for (final chunk in response.data!.stream) {
+        sink.add(chunk);
+        receivedBytes += chunk.length;
+        if (onProgress != null && totalBytes > 0) {
+          final progress = (receivedBytes / totalBytes).clamp(0.0, 1.0);
+          onProgress(progress);
+        }
+      }
+    } finally {
+      await sink.close();
+    }
   }
 }
 

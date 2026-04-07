@@ -1,0 +1,22 @@
+{
+  "app_updates": {
+    "android": {
+      "appId": "com.onetabtube.browser_default",
+      "releaseChannel": "stable",
+      "latestVersionCode": 429000006,
+      "latestVersionName": "1.90.2",
+      "minimumSupportedVersionCode": 429000005,
+      "updaterEnabled": true,
+      "forceUpdate": false,
+      "apkUrl": "https://example.com/go-play/OneTabTube.apk",
+      "apkSha256": "5dacfc43d6286ff8778c448ebda3b8f5d64fe2c10944ba3ad864abac8c184b4e",
+      "apkFileSizeBytes": 511846166,
+      "releaseNotes": [
+        "เมลใหม่รับแพ็กเกจทดลองใช้งาน 14 วันอัตโนมัติ",
+        "อัปเดต release build รอบใหม่สำหรับทดสอบระบบอัปเดตในแอป",
+        "พร้อมใช้กับการอัปโหลด APK ขึ้น Firebase Storage และ Firestore metadata ล่าสุด"
+      ],
+      "rolloutPercent": 100
+    }
+  }
+}

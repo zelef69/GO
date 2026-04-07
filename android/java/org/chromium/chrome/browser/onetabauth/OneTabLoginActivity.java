@@ -30,6 +30,7 @@ public class OneTabLoginActivity extends AppCompatActivity {
     private OneTabFirebaseAuthManager mAuthManager;
     private OneTabDeviceSessionManager mDeviceSessionManager;
     private AppCompatButton mSignInButton;
+    private AppCompatButton mOpenAccountButton;
     private ProgressBar mProgressBar;
     private TextView mStatusView;
 
@@ -46,23 +47,15 @@ public class OneTabLoginActivity extends AppCompatActivity {
             showError(startupError);
         }
 
-        setLoading(true, "Checking your session...");
-        mAuthManager.resolveAuthentication(
-                (authenticated, message) -> {
-                    Log.i(
-                            TAG,
-                            "resolveAuthentication callback authenticated=%s message=%s",
-                            authenticated,
-                            TextUtils.isEmpty(message) ? "<empty>" : message);
-                    if (authenticated) {
-                        resolveDeviceAccess();
-                    } else {
-                        setLoading(false, "");
-                        if (!TextUtils.isEmpty(message)) {
-                            showError(message);
-                        }
-                    }
-                });
+        checkSignedInAccess();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mAuthManager != null && mAuthManager.isSignedInFast()) {
+            checkSignedInAccess();
+        }
     }
 
     @Override
@@ -134,7 +127,7 @@ public class OneTabLoginActivity extends AppCompatActivity {
         card.addView(title, titleParams);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("Sign in with Google before using YouTube.");
+        subtitle.setText(R.string.onetab_login_subtitle);
         subtitle.setTextColor(Color.parseColor("#D9FFFFFF"));
         subtitle.setGravity(Gravity.CENTER);
         subtitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
@@ -146,7 +139,7 @@ public class OneTabLoginActivity extends AppCompatActivity {
 
         mSignInButton = new AppCompatButton(this);
         mSignInButton.setAllCaps(false);
-        mSignInButton.setText("Continue with Google");
+        mSignInButton.setText(R.string.onetab_login_continue_with_google);
         mSignInButton.setTextColor(Color.WHITE);
         mSignInButton.setTypeface(Typeface.DEFAULT_BOLD);
         GradientDrawable buttonBackground = new GradientDrawable();
@@ -157,7 +150,8 @@ public class OneTabLoginActivity extends AppCompatActivity {
         mSignInButton.setOnClickListener(
                 v -> {
                     Log.i(TAG, "Continue with Google clicked");
-                    setLoading(true, "Opening Google sign-in...");
+                    showAccountAction(false);
+                    setLoading(true, getString(R.string.onetab_login_loading_signin));
                     mAuthManager.beginGoogleSignIn(
                             this,
                             (authenticated, message) -> {
@@ -180,6 +174,26 @@ public class OneTabLoginActivity extends AppCompatActivity {
         buttonParams.topMargin = dp(24);
         card.addView(mSignInButton, buttonParams);
 
+        mOpenAccountButton = new AppCompatButton(this);
+        mOpenAccountButton.setAllCaps(false);
+        mOpenAccountButton.setText(R.string.onetab_login_open_account);
+        mOpenAccountButton.setTextColor(Color.WHITE);
+        mOpenAccountButton.setTypeface(Typeface.DEFAULT_BOLD);
+        GradientDrawable outline = new GradientDrawable();
+        outline.setColor(Color.TRANSPARENT);
+        outline.setCornerRadius(dp(18));
+        outline.setStroke(dp(1), Color.parseColor("#66FFFFFF"));
+        mOpenAccountButton.setBackground(outline);
+        mOpenAccountButton.setPadding(dp(18), dp(14), dp(18), dp(14));
+        mOpenAccountButton.setVisibility(View.GONE);
+        mOpenAccountButton.setOnClickListener(
+                unused -> startActivity(new Intent(this, OneTabAccountActivity.class)));
+        LinearLayout.LayoutParams accountButtonParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        accountButtonParams.topMargin = dp(14);
+        card.addView(mOpenAccountButton, accountButtonParams);
+
         mProgressBar = new ProgressBar(this);
         mProgressBar.setVisibility(View.GONE);
         LinearLayout.LayoutParams progressParams =
@@ -199,6 +213,48 @@ public class OneTabLoginActivity extends AppCompatActivity {
         card.addView(mStatusView, statusParams);
 
         return root;
+    }
+
+    private void checkSignedInAccess() {
+        setLoading(true, getString(R.string.onetab_login_loading_session));
+        mAuthManager.resolveAuthentication(
+                (authenticated, message) -> {
+                    Log.i(
+                            TAG,
+                            "resolveAuthentication callback authenticated=%s message=%s",
+                            authenticated,
+                            TextUtils.isEmpty(message) ? "<empty>" : message);
+                    if (authenticated) {
+                        resolveDeviceAccess();
+                    } else {
+                        setLoading(false, "");
+                        showAccountAction(false);
+                        if (!TextUtils.isEmpty(message)) {
+                            showError(message);
+                        }
+                    }
+                });
+    }
+
+    private void resolveDeviceAccess() {
+        setLoading(true, getString(R.string.onetab_login_loading_device_access));
+        OneTabFirebaseSessionStore.Session session = new OneTabFirebaseSessionStore().read();
+        mDeviceSessionManager.ensureAccess(
+                session,
+                (allowed, message) -> {
+                    Log.i(
+                            TAG,
+                            "resolveDeviceAccess callback allowed=%s message=%s",
+                            allowed,
+                            TextUtils.isEmpty(message) ? "<empty>" : message);
+                    if (allowed) {
+                        finishAuthenticated();
+                        return;
+                    }
+                    setLoading(false, "");
+                    showAccountAction(false);
+                    showError(message);
+                });
     }
 
     private void setLoading(boolean loading, String message) {
@@ -224,24 +280,8 @@ public class OneTabLoginActivity extends AppCompatActivity {
         mStatusView.setTextColor(Color.parseColor("#FFB4AB"));
     }
 
-    private void resolveDeviceAccess() {
-        setLoading(true, "Checking device access...");
-        OneTabFirebaseSessionStore.Session session = new OneTabFirebaseSessionStore().read();
-        mDeviceSessionManager.ensureAccess(
-                session,
-                (allowed, message) -> {
-                    Log.i(
-                            TAG,
-                            "resolveDeviceAccess callback allowed=%s message=%s",
-                            allowed,
-                            TextUtils.isEmpty(message) ? "<empty>" : message);
-                    if (allowed) {
-                        finishAuthenticated();
-                        return;
-                    }
-                    setLoading(false, "");
-                    showError(message);
-                });
+    private void showAccountAction(boolean visible) {
+        mOpenAccountButton.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
     private void finishAuthenticated() {

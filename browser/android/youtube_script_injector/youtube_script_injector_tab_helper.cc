@@ -430,6 +430,311 @@ constexpr char16_t kYoutubeSearchInputContrast[] =
 }());
 )OTBSEARCH";
 
+#if 0
+constexpr char16_t kYoutubeFullscreenAmbientBackdrop[] =
+    uR"OTBAMBIENT(
+(function() {
+  if (window.__onetabtubeFullscreenAmbientInstalled) {
+    return;
+  }
+  window.__onetabtubeFullscreenAmbientInstalled = true;
+
+  const ROOT_ATTR = 'data-onetabtube-ambient-root';
+  const OVERLAY_ID = 'onetabtube-fullscreen-ambient';
+  const STYLE_ID = 'onetabtube-fullscreen-ambient-style';
+  let applyTimer = 0;
+  let boundSourceVideo = null;
+  let boundBackgroundVideo = null;
+  let boundStream = null;
+
+  function log(event, detail) {
+    try {
+      console.info(
+          'OTB_FULLSCREEN_AMBIENT event=' + event
+          + (detail ? ' ' + String(detail) : ''));
+    } catch (e) {}
+  }
+
+  function ensureStyle() {
+    if (document.getElementById(STYLE_ID)) {
+      return;
+    }
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = ''
+        + '[' + ROOT_ATTR + '] {'
+        + ' background: #000 !important;'
+        + ' overflow: hidden !important;'
+        + '}'
+        + '[' + ROOT_ATTR + '] > #' + OVERLAY_ID + ' {'
+        + ' position: absolute !important;'
+        + ' inset: 0 !important;'
+        + ' overflow: hidden !important;'
+        + ' pointer-events: none !important;'
+        + ' z-index: 0 !important;'
+        + ' background: #000 !important;'
+        + '}'
+        + '[' + ROOT_ATTR + '] > #' + OVERLAY_ID + ' > video {'
+        + ' position: absolute !important;'
+        + ' inset: -14% !important;'
+        + ' width: 128% !important;'
+        + ' height: 128% !important;'
+        + ' object-fit: cover !important;'
+        + ' transform: scale(1.08) !important;'
+        + ' filter: blur(72px) saturate(1.18) brightness(0.82) !important;'
+        + ' opacity: 0.88 !important;'
+        + '}'
+        + '[' + ROOT_ATTR + '] > :not(#' + OVERLAY_ID + ') {'
+        + ' position: relative !important;'
+        + ' z-index: 1 !important;'
+        + '}';
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function fullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function ambientRoot() {
+    const fullscreenRoot = fullscreenElement();
+    if (!fullscreenRoot || !(fullscreenRoot instanceof HTMLElement)) {
+      return null;
+    }
+    if (fullscreenRoot instanceof HTMLVideoElement) {
+      return null;
+    }
+    return fullscreenRoot;
+  }
+
+  function currentVideo(root) {
+    if (root && typeof root.querySelector === 'function') {
+      const scopedVideo = root.querySelector('video');
+      if (scopedVideo instanceof HTMLVideoElement) {
+        return scopedVideo;
+      }
+    }
+    const fallbackVideo = document.querySelector('video');
+    return fallbackVideo instanceof HTMLVideoElement ? fallbackVideo : null;
+  }
+
+  function releaseStream() {
+    if (boundBackgroundVideo) {
+      try {
+        boundBackgroundVideo.pause();
+      } catch (e) {}
+      try {
+        boundBackgroundVideo.srcObject = null;
+      } catch (e) {}
+    }
+    if (boundStream) {
+      try {
+        for (const track of boundStream.getTracks()) {
+          track.stop();
+        }
+      } catch (e) {}
+    }
+    boundSourceVideo = null;
+    boundBackgroundVideo = null;
+    boundStream = null;
+  }
+
+  function ensureOverlay(root) {
+    ensureStyle();
+    root.setAttribute(ROOT_ATTR, '1');
+    if (!root.dataset.onetabtubeAmbientOriginalPosition) {
+      const computedPosition = window.getComputedStyle(root).position;
+      root.dataset.onetabtubeAmbientOriginalPosition = computedPosition || '';
+      if (!computedPosition || computedPosition === 'static') {
+        root.style.setProperty('position', 'relative', 'important');
+      }
+    }
+    let overlay = root.querySelector('#' + OVERLAY_ID);
+    if (overlay instanceof HTMLElement) {
+      return overlay;
+    }
+    overlay = document.createElement('div');
+    overlay.id = OVERLAY_ID;
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const backdropVideo = document.createElement('video');
+    backdropVideo.muted = true;
+    backdropVideo.defaultMuted = true;
+    backdropVideo.autoplay = true;
+    backdropVideo.loop = true;
+    backdropVideo.playsInline = true;
+    backdropVideo.setAttribute('muted', '');
+    backdropVideo.setAttribute('playsinline', '');
+    backdropVideo.setAttribute('disableRemotePlayback', '');
+    overlay.appendChild(backdropVideo);
+
+    root.insertBefore(overlay, root.firstChild);
+    return overlay;
+  }
+
+  function bindCapturedStream(backgroundVideo, sourceVideo) {
+    if (!(backgroundVideo instanceof HTMLVideoElement)
+        || !(sourceVideo instanceof HTMLVideoElement)) {
+      releaseStream();
+      return;
+    }
+    if (boundSourceVideo === sourceVideo
+        && boundBackgroundVideo === backgroundVideo
+        && boundStream) {
+      return;
+    }
+
+    releaseStream();
+
+    const captureStream =
+        sourceVideo.captureStream || sourceVideo.mozCaptureStream;
+    if (typeof captureStream !== 'function') {
+      log('capture_unsupported');
+      return;
+    }
+
+    try {
+      const stream = captureStream.call(sourceVideo);
+      if (!stream) {
+        log('capture_empty');
+        return;
+      }
+      boundSourceVideo = sourceVideo;
+      boundBackgroundVideo = backgroundVideo;
+      boundStream = stream;
+      backgroundVideo.srcObject = stream;
+      const maybePromise = backgroundVideo.play();
+      if (maybePromise && typeof maybePromise.catch === 'function') {
+        maybePromise.catch(() => {});
+      }
+      log('capture_bound');
+    } catch (e) {
+      releaseStream();
+      log('capture_failed', e && e.message ? e.message : 'unknown');
+    }
+  }
+
+  function teardownAmbient(reason) {
+    clearTimeout(applyTimer);
+    applyTimer = 0;
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (overlay && overlay.parentElement) {
+      const root = overlay.parentElement;
+      overlay.remove();
+      if (root instanceof HTMLElement && root.hasAttribute(ROOT_ATTR)) {
+        const originalPosition =
+            root.dataset.onetabtubeAmbientOriginalPosition || '';
+        if (!originalPosition || originalPosition === 'static') {
+          root.style.removeProperty('position');
+        } else {
+          root.style.setProperty('position', originalPosition);
+        }
+        delete root.dataset.onetabtubeAmbientOriginalPosition;
+        root.removeAttribute(ROOT_ATTR);
+      }
+    }
+    releaseStream();
+    if (reason) {
+      log('teardown', reason);
+    }
+  }
+
+  function applyAmbient(reason) {
+    const root = ambientRoot();
+    const sourceVideo = currentVideo(root);
+    if (!root || !sourceVideo) {
+      teardownAmbient(reason || 'no_fullscreen_root');
+      return;
+    }
+
+    const overlay = ensureOverlay(root);
+    const backgroundVideo =
+        overlay ? overlay.querySelector('video') : null;
+    if (!(backgroundVideo instanceof HTMLVideoElement)) {
+      teardownAmbient('missing_background_video');
+      return;
+    }
+
+    bindCapturedStream(backgroundVideo, sourceVideo);
+    log('apply', reason || 'unknown');
+  }
+
+  function scheduleApply(reason) {
+    clearTimeout(applyTimer);
+    applyTimer = setTimeout(() => applyAmbient(reason), 90);
+  }
+
+  document.addEventListener(
+      'fullscreenchange', () => scheduleApply('fullscreenchange'), true);
+  document.addEventListener(
+      'webkitfullscreenchange',
+      () => scheduleApply('webkitfullscreenchange'),
+      true);
+  document.addEventListener(
+      'yt-navigate-finish', () => scheduleApply('yt_navigate_finish'), true);
+  document.addEventListener(
+      'playing', () => scheduleApply('playing'), true);
+  document.addEventListener(
+      'loadedmetadata', () => scheduleApply('loadedmetadata'), true);
+  document.addEventListener(
+      'emptied', () => scheduleApply('emptied'), true);
+  window.addEventListener('pageshow', () => scheduleApply('pageshow'), true);
+  window.addEventListener('focus', () => scheduleApply('focus'), true);
+
+  if (typeof MutationObserver === 'function') {
+    const root = document.body || document.documentElement;
+    if (root) {
+      const observer = new MutationObserver(() => {
+        if (fullscreenElement()) {
+          scheduleApply('mutation');
+        }
+      });
+      observer.observe(root, {childList: true, subtree: true});
+    }
+  }
+
+  scheduleApply('initial');
+}());
+)OTBAMBIENT";
+#endif
+
+constexpr char16_t kYoutubeTransientOverlaySuppression[] =
+    uR"OTBOVERLAY(
+(function() {
+  if (window.__onetabtubeTransientOverlaySuppressionInstalled) {
+    return;
+  }
+  window.__onetabtubeTransientOverlaySuppressionInstalled = true;
+
+  const STYLE_ID = 'onetabtube-transient-overlay-style';
+  const CSS_TEXT = [
+    '.ytp-bezel',
+    '.ytp-bezel-text-wrapper',
+    '.ytp-bezel-text',
+    '.ytp-doubletap-ui',
+    '.ytp-doubletap-ui-legacy'
+  ].join(', ') + ' {'
+      + ' display: none !important;'
+      + ' opacity: 0 !important;'
+      + ' visibility: hidden !important;'
+      + '}';
+
+  function ensureStyle() {
+    if (document.getElementById(STYLE_ID)) {
+      return;
+    }
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = CSS_TEXT;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  document.addEventListener('DOMContentLoaded', ensureStyle, true);
+  document.addEventListener('yt-navigate-finish', ensureStyle, true);
+  window.addEventListener('pageshow', ensureStyle, true);
+  ensureStyle();
+}());
+)OTBOVERLAY";
+
 [[maybe_unused]] constexpr char16_t kYoutubeAdRequestGuard[] =
     uR"(
 (function() {
@@ -4477,6 +4782,8 @@ void YouTubeScriptInjectorTabHelper::PrimaryMainDocumentElementAvailable() {
           : kYoutubeMediaSessionControls;
   contents->GetPrimaryMainFrame()->ExecuteJavaScript(kYoutubeSearchInputContrast,
                                                      base::NullCallback());
+  contents->GetPrimaryMainFrame()->ExecuteJavaScript(
+      kYoutubeTransientOverlaySuppression, base::NullCallback());
   contents->GetPrimaryMainFrame()->ExecuteJavaScript(kYoutubePlaybackStability,
                                                      base::NullCallback());
   contents->GetPrimaryMainFrame()->ExecuteJavaScript(

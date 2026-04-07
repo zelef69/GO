@@ -8,10 +8,16 @@
   "scripts": {
     "build": "tsc",
     "deploy": "firebase deploy --only functions",
-    "deploy:payments": "firebase deploy --only functions:createPackageOrder,functions:verifyPackageSlip",
+    "deploy:payments": "firebase deploy --only functions:createPackageOrder,functions:getPackageAccessState,functions:verifyPackageSlip",
     "serve": "firebase emulators:start --only functions,firestore,storage",
     "seed:products": "node scripts/seed-products.js",
     "seed:products:dry": "node scripts/seed-products.js --dry-run",
+    "seed:payment-account": "node scripts/seed-payment-account.js",
+    "seed:payment-account:dry": "node scripts/seed-payment-account.js --dry-run",
+    "seed:app-update": "node scripts/seed-app-update.js",
+    "seed:app-update:dry": "node scripts/seed-app-update.js --dry-run",
+    "publish:app-update": "node ../scripts/publish_app_update_artifact.js",
+    "publish:app-update:dry": "node ../scripts/publish_app_update_artifact.js --dry-run",
     "seed:entitlement": "node scripts/seed-entitlement.js",
     "seed:entitlement:dry": "node scripts/seed-entitlement.js --dry-run",
     "smoke:payments": "node scripts/smoke-package-flow.js"

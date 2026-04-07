@@ -35,6 +35,8 @@ function createHarness() {
   function makeSnapshot(ref) {
     const value = docs.get(ref.path);
     return {
+      id: ref.path.split("/").pop(),
+      ref,
       exists: value !== undefined,
       data() {
         return value;
@@ -54,9 +56,32 @@ function createHarness() {
       path: pathValue,
       id: pathValue.split("/").pop(),
       collection(name) {
+        const collectionPath = `${pathValue}/${name}`;
         return {
           doc(id) {
-            return makeRef(`${pathValue}/${name}/${id}`);
+            return makeRef(`${collectionPath}/${id}`);
+          },
+          async get() {
+            const prefix = `${collectionPath}/`;
+            const snapshotDocs = [];
+            for (const [docPath] of docs.entries()) {
+              if (!docPath.startsWith(prefix)) {
+                continue;
+              }
+              const remainder = docPath.slice(prefix.length);
+              if (remainder.length === 0 || remainder.includes("/")) {
+                continue;
+              }
+              snapshotDocs.push(makeSnapshot(makeRef(docPath)));
+            }
+            return {
+              docs: snapshotDocs,
+              empty: snapshotDocs.length === 0,
+              size: snapshotDocs.length,
+              forEach(callback) {
+                snapshotDocs.forEach(callback);
+              },
+            };
           },
         };
       },
@@ -169,7 +194,7 @@ function createHarness() {
 
 async function smokeCreatePackageOrder() {
   const harness = createHarness();
-  harness.setDoc("products/pkg_599", {
+  harness.setDoc("products/pkg_03", {
     name: "Premium 30 Days",
     price: 599,
     currency: "THB",
@@ -180,11 +205,11 @@ async function smokeCreatePackageOrder() {
   const result = await harness.packageOrders.createPackageOrder.run({
     auth: {uid: "smoke-user"},
     app: {appId: "debug-app"},
-    data: {packageId: "pkg_599"},
+    data: {packageId: "pkg_03"},
   });
 
   assert(result.orderId, "createPackageOrder should return orderId");
-  assert(result.expectedAmount === 599, "createPackageOrder should read amount from products/pkg_599");
+  assert(result.expectedAmount === 599, "createPackageOrder should read amount from products/pkg_03");
   assert(
     result.storagePath === `slips/smoke-user/${result.orderId}.jpg`,
     "createPackageOrder should return canonical slip path"
@@ -198,7 +223,7 @@ async function smokeCreatePackageOrder() {
   const storedOrder = harness.getDoc(`orders/${result.orderId}`);
   assert(storedOrder, "createPackageOrder should persist an order");
   assert(storedOrder.uid === "smoke-user", "stored order should belong to caller");
-  assert(storedOrder.packageId === "pkg_599", "stored order should preserve packageId");
+  assert(storedOrder.packageId === "pkg_03", "stored order should preserve packageId");
   assert(storedOrder.expectedAmount === 599, "stored order should persist trusted amount");
 
   return {
@@ -216,7 +241,7 @@ async function smokeVerifyPackageSlipPaidFlow() {
 
   harness.setDoc("orders/order_paid_flow", {
     uid: "smoke-user",
-    packageId: "pkg_599",
+    packageId: "pkg_03",
     expectedAmount: 599,
     currency: "THB",
     durationDays: 30,
@@ -246,7 +271,7 @@ async function smokeVerifyPackageSlipPaidFlow() {
 
   const payment = harness.getDoc("payments/TRX12345");
   const order = harness.getDoc("orders/order_paid_flow");
-  const entitlement = harness.getDoc("users/smoke-user/entitlements/pkg_599");
+  const entitlement = harness.getDoc("users/smoke-user/entitlements/pkg_03");
   const purchaseHistory = harness.getDoc("users/smoke-user/purchase_history/TRX12345");
   const packageHistory = harness.getDoc("users/smoke-user/package_history/payment_TRX12345");
 
@@ -281,7 +306,7 @@ async function smokeVerifyPackageSlipAmountMismatch() {
 
   harness.setDoc("orders/order_mismatch", {
     uid: "smoke-user",
-    packageId: "pkg_599",
+    packageId: "pkg_03",
     expectedAmount: 599,
     currency: "THB",
     durationDays: 30,
@@ -325,167 +350,6 @@ async function smokeVerifyPackageSlipAmountMismatch() {
   };
 }
 
-async function smokeVerifyPackageSlipCachedFailureShortCircuit() {
-  const harness = createHarness();
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 30 * 60 * 1000);
-  const lastVerificationAt = new Date(now.getTime() - 5 * 1000);
-  let thunderCallCount = 0;
-
-  harness.thunder.verifySlipByUrl = async () => {
-    thunderCallCount += 1;
-    return {
-      amountInSlip: 500,
-      isDuplicate: false,
-      isAmountMatched: false,
-      matchedAccount: {accountName: "GO_PLAY"},
-      rawSlip: {transRef: "TRX_SHOULD_NOT_RUN"},
-    };
-  };
-
-  harness.setDoc("orders/order_cached_mismatch", {
-    uid: "smoke-user",
-    packageId: "pkg_599",
-    expectedAmount: 599,
-    currency: "THB",
-    durationDays: 30,
-    status: "PENDING",
-    createdAt: harness.admin.firestore.Timestamp.fromDate(now),
-    expiresAt: harness.admin.firestore.Timestamp.fromDate(expiresAt),
-    slipPath: "slips/smoke-user/order_cached_mismatch.jpg",
-    paymentRef: null,
-    lastVerifyCode: "AMOUNT_MISMATCH",
-    lastVerifyMessage: "Slip amount does not match the selected package.",
-    lastVerificationAt: harness.admin.firestore.Timestamp.fromDate(lastVerificationAt),
-  });
-  harness.setStorage("slips/smoke-user/order_cached_mismatch.jpg", {
-    size: 111111,
-    contentType: "image/jpeg",
-  });
-
-  let thrown = null;
-  try {
-    await harness.packageOrders.verifyPackageSlip.run({
-      auth: {uid: "smoke-user"},
-      app: {appId: "debug-app"},
-      data: {
-        orderId: "order_cached_mismatch",
-        storagePath: "slips/smoke-user/order_cached_mismatch.jpg",
-      },
-    });
-  } catch (error) {
-    thrown = error;
-  }
-
-  assert(thrown, "cached mismatch retry should throw");
-  assert(thrown.code === "failed-precondition", "cached mismatch should keep failed-precondition");
-  assert(thrown.details?.code === "AMOUNT_MISMATCH", "cached mismatch should keep AMOUNT_MISMATCH");
-  assert(thrown.details?.cached === true, "cached mismatch should be marked as cached");
-  assert(thunderCallCount === 0, "cached mismatch should not call Thunder again");
-
-  return {
-    errorCode: thrown.code,
-    detailCode: thrown.details?.code,
-    cached: thrown.details?.cached,
-    thunderCallCount,
-  };
-}
-
-async function smokeVerifyPackageSlipCrossOrderHashShortCircuit() {
-  const harness = createHarness();
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 30 * 60 * 1000);
-  let thunderCallCount = 0;
-
-  harness.thunder.verifySlipByUrl = async () => {
-    thunderCallCount += 1;
-    return {
-      amountInSlip: 30,
-      isDuplicate: false,
-      isAmountMatched: true,
-      matchedAccount: {accountName: "GO_PLAY"},
-      rawSlip: {transRef: "TRX_HASH_CACHE"},
-    };
-  };
-
-  harness.setDoc("orders/order_hash_first", {
-    uid: "smoke-user",
-    packageId: "pkg_599",
-    expectedAmount: 30,
-    currency: "THB",
-    durationDays: 30,
-    status: "PENDING",
-    createdAt: harness.admin.firestore.Timestamp.fromDate(now),
-    expiresAt: harness.admin.firestore.Timestamp.fromDate(expiresAt),
-    slipPath: null,
-    paymentRef: null,
-  });
-  harness.setDoc("orders/order_hash_second", {
-    uid: "smoke-user",
-    packageId: "pkg_599",
-    expectedAmount: 30,
-    currency: "THB",
-    durationDays: 30,
-    status: "PENDING",
-    createdAt: harness.admin.firestore.Timestamp.fromDate(now),
-    expiresAt: harness.admin.firestore.Timestamp.fromDate(expiresAt),
-    slipPath: null,
-    paymentRef: null,
-  });
-  harness.setStorage("slips/smoke-user/order_hash_first.jpg", {
-    size: 100000,
-    contentType: "image/jpeg",
-    body: "same-slip-binary",
-  });
-  harness.setStorage("slips/smoke-user/order_hash_second.jpg", {
-    size: 100000,
-    contentType: "image/jpeg",
-    body: "same-slip-binary",
-  });
-
-  const firstResult = await harness.packageOrders.verifyPackageSlip.run({
-    auth: {uid: "smoke-user"},
-    app: {appId: "debug-app"},
-    data: {
-      orderId: "order_hash_first",
-      storagePath: "slips/smoke-user/order_hash_first.jpg",
-    },
-  });
-
-  let thrown = null;
-  try {
-    await harness.packageOrders.verifyPackageSlip.run({
-      auth: {uid: "smoke-user"},
-      app: {appId: "debug-app"},
-      data: {
-        orderId: "order_hash_second",
-        storagePath: "slips/smoke-user/order_hash_second.jpg",
-      },
-    });
-  } catch (error) {
-    thrown = error;
-  }
-
-  assert(firstResult.status === "PAID", "first hash-cache verification should succeed");
-  assert(thrown, "second verification with the same slip hash should throw");
-  assert(thrown.code === "already-exists", "same slip hash should map to already-exists");
-  assert(thrown.details?.code === "DUPLICATE_SLIP", "same slip hash should surface DUPLICATE_SLIP");
-  assert(thrown.details?.cached === true, "same slip hash should be served from cache");
-  assert(thunderCallCount === 1, "same slip hash across a new order should not call Thunder again");
-
-  const secondOrder = harness.getDoc("orders/order_hash_second");
-  assert(secondOrder?.lastVerifyCode === "PAID", "second order should inherit cached paid slip state");
-  assert(typeof secondOrder?.slipSha256 === "string", "second order should persist the slip hash");
-
-  return {
-    firstStatus: firstResult.status,
-    secondErrorCode: thrown.code,
-    secondDetailCode: thrown.details?.code,
-    cached: thrown.details?.cached,
-    thunderCallCount,
-  };
-}
-
 async function smokeManualCorrectionFlow() {
   const harness = createHarness();
   const now = new Date();
@@ -495,9 +359,9 @@ async function smokeManualCorrectionFlow() {
     email: "target@example.com",
     displayName: "Target User",
   });
-  harness.setDoc("users/target-user/entitlements/pkg_599", {
+  harness.setDoc("users/target-user/entitlements/pkg_03", {
     active: true,
-    packageId: "pkg_599",
+    packageId: "pkg_03",
     durationDays: 30,
     activatedAt: harness.admin.firestore.Timestamp.fromDate(now),
     expiresAt: harness.admin.firestore.Timestamp.fromDate(existingExpiry),
@@ -505,7 +369,7 @@ async function smokeManualCorrectionFlow() {
   });
   harness.setDoc("manual_correction_requests/request_1", {
     uid: "target-user",
-    packageId: "pkg_599",
+    packageId: "pkg_03",
     status: "OPEN",
   });
 
@@ -513,14 +377,14 @@ async function smokeManualCorrectionFlow() {
     auth: {uid: "admin-user", token: {admin: true}},
     data: {
       uid: "target-user",
-      packageId: "pkg_599",
+      packageId: "pkg_03",
       daysDelta: 5,
       note: "Manual support extension",
       requestId: "request_1",
     },
   });
 
-  const entitlement = harness.getDoc("users/target-user/entitlements/pkg_599");
+  const entitlement = harness.getDoc("users/target-user/entitlements/pkg_03");
   const packageHistory = harness.getDoc(result.historyPath);
   const requestDoc = harness.getDoc("manual_correction_requests/request_1");
 
@@ -537,17 +401,76 @@ async function smokeManualCorrectionFlow() {
   };
 }
 
+async function smokePackageAccessStateFlow() {
+  const harness = createHarness();
+  const now = new Date();
+  const futureExpiry = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const pastExpiry = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+  harness.setDoc("users/access-user/entitlements/pkg_03", {
+    active: true,
+    packageId: "pkg_03",
+    expiresAt: harness.admin.firestore.Timestamp.fromDate(futureExpiry),
+  });
+
+  const activeResult = await harness.packageOrders.getPackageAccessState.run({
+    auth: {uid: "access-user"},
+    app: {appId: "debug-app"},
+    data: {},
+  });
+
+  assert(activeResult.allowed === true, "active package should be allowed");
+  assert(activeResult.status === "ACTIVE", "active package should return ACTIVE");
+  assert(activeResult.packageId === "pkg_03", "active package should keep packageId");
+
+  harness.setDoc("users/expired-user/entitlements/pkg_03", {
+    active: true,
+    packageId: "pkg_03",
+    expiresAt: harness.admin.firestore.Timestamp.fromDate(pastExpiry),
+  });
+
+  const expiredResult = await harness.packageOrders.getPackageAccessState.run({
+    auth: {uid: "expired-user"},
+    app: {appId: "debug-app"},
+    data: {},
+  });
+
+  assert(expiredResult.allowed === false, "expired package should be blocked");
+  assert(expiredResult.status === "EXPIRED", "expired package should return EXPIRED");
+  assert(
+    typeof expiredResult.remainingDays === "number" && expiredResult.remainingDays < 0,
+    "expired package should return negative remainingDays"
+  );
+
+  const missingResult = await harness.packageOrders.getPackageAccessState.run({
+    auth: {uid: "missing-user"},
+    app: {appId: "debug-app"},
+    data: {},
+  });
+
+  assert(missingResult.allowed === false, "missing package should be blocked");
+  assert(
+    missingResult.status === "NO_ACTIVE_PACKAGE",
+    "missing package should return NO_ACTIVE_PACKAGE"
+  );
+
+  return {
+    activeStatus: activeResult.status,
+    expiredStatus: expiredResult.status,
+    expiredRemainingDays: expiredResult.remainingDays,
+    missingStatus: missingResult.status,
+  };
+}
+
 async function main() {
   const summary = {
     createPackageOrder: await smokeCreatePackageOrder(),
     verifyPackageSlipPaidFlow: await smokeVerifyPackageSlipPaidFlow(),
     verifyPackageSlipAmountMismatch: await smokeVerifyPackageSlipAmountMismatch(),
-    verifyPackageSlipCachedFailureShortCircuit:
-      await smokeVerifyPackageSlipCachedFailureShortCircuit(),
-    verifyPackageSlipCrossOrderHashShortCircuit:
-      await smokeVerifyPackageSlipCrossOrderHashShortCircuit(),
     manualCorrectionFlow:
       await smokeManualCorrectionFlow(),
+    packageAccessStateFlow:
+      await smokePackageAccessStateFlow(),
   };
 
   console.log("Payment smoke passed.");

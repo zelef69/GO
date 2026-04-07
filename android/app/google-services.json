@@ -7,18 +7,18 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:777514708716:android:5055108496405e627c7fc9",
+        "mobilesdk_app_id": "1:777514708716:android:3dd12e985da0971c7c7fc9",
         "android_client_info": {
-          "package_name": "com.example.go_play"
+          "package_name": "com.onetabtube.browser_default"
         }
       },
       "oauth_client": [
         {
-          "client_id": "777514708716-s56b12j1tqc2g2sv9vf458lj02beaekp.apps.googleusercontent.com",
+          "client_id": "777514708716-uc7c3t03n8p5miu4prkh6p4jnr5uvg8m.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.go_play",
-            "certificate_hash": "8229b49a09509b511d5d82f0f246d7ebbdaaeccd"
+            "package_name": "com.onetabtube.browser_default",
+            "certificate_hash": "33b28eafdf43dea4ff5dc3dbd9e5a523f67f6bb1"
           }
         },
         {

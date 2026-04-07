@@ -6,12 +6,6 @@
 #ifndef BRAVE_CHROMIUM_SRC_UI_NATIVE_THEME_NATIVE_THEME_H_
 #define BRAVE_CHROMIUM_SRC_UI_NATIVE_THEME_NATIVE_THEME_H_
 
-#define GetSystemButtonPressedColor                                   \
-  GetSystemButtonPressedColor_ChromiumImpl(SkColor base_color) const; \
-  virtual SkColor GetSystemButtonPressedColor
-
 #include <ui/native_theme/native_theme.h>  // IWYU pragma: export
-
-#undef GetSystemButtonPressedColor
 
 #endif  // BRAVE_CHROMIUM_SRC_UI_NATIVE_THEME_NATIVE_THEME_H_

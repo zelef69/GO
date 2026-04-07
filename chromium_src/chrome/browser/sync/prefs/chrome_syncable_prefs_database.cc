@@ -9,6 +9,7 @@
 #include <string_view>
 
 #include "base/containers/fixed_flat_map.h"
+#include "components/search_engines/search_engines_pref_names.h"
 
 namespace browser_sync {
 namespace {
@@ -47,6 +48,8 @@ enum {
   kProfileContentSettingsPartitionedExceptionsFingerprintingV2 = 300027,
   kProfileContentSettingsPartitionedExceptionsBraveShields = 300028,
   kProfileContentSettingsPartitionedExceptionsBraveSpeedreader = 300029,
+  kSyncedDefaultPrivateSearchProviderGUID = 300030,
+  kSyncedDefaultPrivateSearchProviderData = 300031,
 };
 }  // namespace brave_syncable_prefs_ids
 
@@ -197,6 +200,14 @@ const auto& BraveSyncablePreferences() {
             kProfileContentSettingsPartitionedExceptionsTrackers,
         syncer::PREFERENCES, sync_preferences::PrefSensitivity::kNone,
         sync_preferences::MergeBehavior::kMergeableDict}},
+      {prefs::kSyncedDefaultPrivateSearchProviderGUID,
+       {brave_syncable_prefs_ids::kSyncedDefaultPrivateSearchProviderGUID,
+        syncer::PREFERENCES, sync_preferences::PrefSensitivity::kNone,
+        sync_preferences::MergeBehavior::kNone}},
+      {prefs::kSyncedDefaultPrivateSearchProviderData,
+       {brave_syncable_prefs_ids::kSyncedDefaultPrivateSearchProviderData,
+        syncer::PREFERENCES, sync_preferences::PrefSensitivity::kNone,
+        sync_preferences::MergeBehavior::kNone}},
   });
   return kBraveSyncablePrefsAllowList;
 }

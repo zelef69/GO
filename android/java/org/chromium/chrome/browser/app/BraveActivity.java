@@ -40,6 +40,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.MainThread;
@@ -169,9 +170,12 @@ import org.chromium.chrome.browser.misc_metrics.MiscAndroidMetricsFactory;
 import org.chromium.chrome.browser.media.FullscreenVideoPictureInPictureController;
 import org.chromium.chrome.browser.multiwindow.BraveMultiWindowUtils;
 import org.chromium.chrome.browser.onetabauth.OneTabFirebaseAuthManager;
+import org.chromium.chrome.browser.onetabauth.OneTabFirebaseAppCheckManager;
 import org.chromium.chrome.browser.onetabauth.OneTabDeviceSessionManager;
 import org.chromium.chrome.browser.onetabauth.OneTabLoginActivity;
 import org.chromium.chrome.browser.onetabauth.OneTabLoginOverlayCoordinator;
+import org.chromium.chrome.browser.onetabauth.OneTabFirebaseSessionStore;
+import org.chromium.chrome.browser.onetabauth.OneTabPackagePurchaseManager;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
@@ -317,6 +321,7 @@ public abstract class BraveActivity extends ChromeActivity
             "https://github.com/brave/brave-browser/wiki/Web-compatibility-reports";
     private static final String KEY_RESUME_MEDIA_SESSION =
             "org.chromium.chrome.browser.app.KEY_RESUME_MEDIA_SESSION";
+    private static final String OTB_AUTH_LOG_TAG = "OneTabAuth";
 
     private static final int DAYS_4 = 4;
     private static final int DAYS_7 = 7;
@@ -348,13 +353,16 @@ public abstract class BraveActivity extends ChromeActivity
     private static final int PIP_EXIT_TO_WATCH_PAGE_DELAY_MS = 250;
     private static final int PIP_EXIT_TO_WATCH_PAGE_MAX_AGE_MS = 3000;
     private static final int PIP_RECENT_WATCH_PAGE_RETURN_GRACE_MS = 5000;
+    private static final long OTB_FULLSCREEN_UI_SYNC_INTERVAL_MS = 250L;
     private static final long OTB_DEFERRED_ENTITLEMENT_INIT_DELAY_MS = 2500;
     private static final long OTB_SAFE_BROWSING_INIT_DELAY_MS = 1500;
+    private static final boolean OTB_ENABLE_STARTUP_MASK = true;
     private static final long OTB_STARTUP_MASK_TIMEOUT_MS = 15000;
     private static final int OTB_LOGIN_ACTIVITY_REQUEST_CODE = 0x4F48;
     private static final String OTB_PERF_TAG = "OneTabTubePerf";
     private static final String OTB_DEVTOOLS_SOCKET_PREFIX = "chrome";
     private static final String OTB_ENABLE_DEVTOOLS_SWITCH = "onetabtube-enable-devtools";
+    private static final String OTB_STARTUP_MASK_TAG_LOGO = "otb_startup_mask_logo";
     private boolean mIsVerification;
     public boolean mIsDeepLink;
     private BraveWalletService mBraveWalletService;
@@ -393,17 +401,36 @@ public abstract class BraveActivity extends ChromeActivity
     private boolean mResetOneTabHomeAfterColdLauncherStart;
     private boolean mShowOneTabStartupMaskAfterColdLauncherStart;
     @Nullable private FrameLayout mOneTabStartupMaskView;
+    @Nullable private FrameLayout mOneTabPackageLockedOverlayView;
+    @Nullable private TextView mOneTabPackageLockedDetailView;
     @Nullable private OneTabFabMenuCoordinator mOneTabFabMenuCoordinator;
     @Nullable private OneTabFirebaseAuthManager mOneTabFirebaseAuthManager;
+    @Nullable private OneTabFirebaseAppCheckManager mOneTabFirebaseAppCheckManager;
     @Nullable private OneTabDeviceSessionManager mOneTabDeviceSessionManager;
+    @Nullable private OneTabPackagePurchaseManager mOneTabPackagePurchaseManager;
     @Nullable private OneTabLoginOverlayCoordinator mOneTabLoginOverlayCoordinator;
     @Nullable private TabModelSelectorTabObserver mOneTabStartupMaskObserver;
     private boolean mOneTabAuthResolved;
     private boolean mOneTabAuthCheckInProgress;
     private boolean mOneTabAuthGatePendingNavigation;
     private boolean mOneTabLoginActivityLaunched;
+    private boolean mOneTabPackageAccessBlocked;
     private final Runnable mHideOneTabStartupMaskRunnable =
             () -> hideOneTabStartupMask("timeout");
+    private final Runnable mOneTabFullscreenUiSyncRunnable =
+            new Runnable() {
+                @Override
+                public void run() {
+                    if (!OneTabYouTubeMode.isEnabled() || isFinishing() || isDestroyed()) {
+                        return;
+                    }
+                    syncOneTabCleanModeUi();
+                    View decorView = getWindow() != null ? getWindow().getDecorView() : null;
+                    if (decorView != null) {
+                        decorView.postDelayed(this, OTB_FULLSCREEN_UI_SYNC_INTERVAL_MS);
+                    }
+                }
+            };
 
     private View mQuickSearchEnginesView;
 
@@ -521,6 +548,7 @@ public abstract class BraveActivity extends ChromeActivity
         if (!oneTabEnabled) {
             maybeExecuteLeoVoicePrompt();
         }
+        startOneTabFullscreenUiSync();
     }
 
     @Override
@@ -533,6 +561,7 @@ public abstract class BraveActivity extends ChromeActivity
                 && BraveVpnUtils.isVpnFeatureSupported(BraveActivity.this)) {
             BraveVpnNativeWorker.getInstance().removeObserver(this);
         }
+        stopOneTabFullscreenUiSync();
         super.onPauseWithNative();
     }
 
@@ -685,6 +714,7 @@ public abstract class BraveActivity extends ChromeActivity
         if (mAppUpdateManager != null) {
             mAppUpdateManager.unregisterListener(mInstallStateUpdatedListener);
         }
+        stopOneTabFullscreenUiSync();
         super.onDestroyInternal();
         cleanUpWalletNativeServices();
         cleanUpMiscAndroidMetrics();
@@ -693,6 +723,7 @@ public abstract class BraveActivity extends ChromeActivity
     @Override
     public void onPictureInPictureModeChanged(boolean inPicture, Configuration newConfig) {
         super.onPictureInPictureModeChanged(inPicture, newConfig);
+        syncOneTabCleanModeUi();
         if (inPicture) {
             clearPendingReturnToWatchPageAfterPictureInPictureExit("entered_pip");
         }
@@ -1212,6 +1243,11 @@ public abstract class BraveActivity extends ChromeActivity
 
         if (OneTabYouTubeMode.isEnabled()) {
             PostTask.postTask(TaskTraits.UI_DEFAULT, this::enforceOneTabYouTubeMode);
+            if (mOneTabPackageAccessBlocked
+                    && !mOneTabAuthCheckInProgress
+                    && !mOneTabLoginActivityLaunched) {
+                PostTask.postTask(TaskTraits.UI_DEFAULT, this::resolveOneTabPackageAccess);
+            }
         }
         maybeScheduleReturnToWatchPageAfterPictureInPictureExit("on_resume");
         syncOneTabCleanModeUi();
@@ -1265,8 +1301,14 @@ public abstract class BraveActivity extends ChromeActivity
         if (mOneTabFirebaseAuthManager == null) {
             mOneTabFirebaseAuthManager = new OneTabFirebaseAuthManager();
         }
+        if (mOneTabFirebaseAppCheckManager == null) {
+            mOneTabFirebaseAppCheckManager = new OneTabFirebaseAppCheckManager();
+        }
         if (mOneTabDeviceSessionManager == null) {
             mOneTabDeviceSessionManager = new OneTabDeviceSessionManager();
+        }
+        if (mOneTabPackagePurchaseManager == null) {
+            mOneTabPackagePurchaseManager = new OneTabPackagePurchaseManager();
         }
         if (mOneTabLoginOverlayCoordinator == null) {
             mOneTabLoginOverlayCoordinator = new OneTabLoginOverlayCoordinator();
@@ -1317,20 +1359,77 @@ public abstract class BraveActivity extends ChromeActivity
         if (mOneTabDeviceSessionManager == null) {
             mOneTabAuthCheckInProgress = false;
             mOneTabAuthResolved = false;
-            launchOneTabLoginActivity("Unable to validate device access right now.");
+            launchOneTabLoginActivity("ยังตรวจสอบสิทธิ์อุปกรณ์ไม่ได้ในขณะนี้");
             return;
         }
 
         mOneTabDeviceSessionManager.ensureAccess(
                 (allowed, message) -> {
-                    mOneTabAuthCheckInProgress = false;
                     if (allowed) {
+                        resolveOneTabPackageAccess();
+                        return;
+                    }
+
+                    mOneTabAuthCheckInProgress = false;
+                    mOneTabAuthResolved = false;
+                    launchOneTabLoginActivity(message);
+                });
+    }
+
+    private void resolveOneTabPackageAccess() {
+        ensureOneTabAuthComponents();
+        if (mOneTabFirebaseAppCheckManager == null || mOneTabPackagePurchaseManager == null) {
+            Log.w(OTB_AUTH_LOG_TAG, "Package access components unavailable; allowing baseline access");
+            handleOneTabAuthenticated();
+            return;
+        }
+
+        OneTabFirebaseSessionStore.Session session = new OneTabFirebaseSessionStore().read();
+        if (TextUtils.isEmpty(session.idToken)) {
+            mOneTabAuthCheckInProgress = false;
+            mOneTabAuthResolved = false;
+            launchOneTabLoginActivity("กรุณาเข้าสู่ระบบใหม่ก่อนใช้งาน GO_PLAY");
+            return;
+        }
+
+        mOneTabFirebaseAppCheckManager.resolveAppCheckToken(
+                (success, token, message) -> {
+                    if (!success || TextUtils.isEmpty(token)) {
+                        Log.w(
+                                OTB_AUTH_LOG_TAG,
+                                "Package access App Check unavailable; allowing baseline access message=%s",
+                                TextUtils.isEmpty(message) ? "<empty>" : message);
                         handleOneTabAuthenticated();
                         return;
                     }
 
-                    mOneTabAuthResolved = false;
-                    launchOneTabLoginActivity(message);
+                    PostTask.postTask(
+                            TaskTraits.BEST_EFFORT_MAY_BLOCK,
+                            () -> {
+                                OneTabPackagePurchaseManager.AccessStateResult result =
+                                        mOneTabPackagePurchaseManager.fetchPackageAccessState(
+                                                session.idToken, token);
+                                PostTask.postTask(
+                                        TaskTraits.UI_DEFAULT,
+                                        () -> {
+                                            if (!result.success) {
+                                                Log.w(
+                                                        OTB_AUTH_LOG_TAG,
+                                                        "Package access unavailable; allowing baseline access message=%s",
+                                                        TextUtils.isEmpty(result.message)
+                                                                ? "<empty>"
+                                                                : result.message);
+                                                handleOneTabAuthenticated();
+                                                return;
+                                            }
+                                            if (result.allowed) {
+                                                handleOneTabAuthenticated();
+                                                return;
+                                            }
+
+                                            handleOneTabPackageLocked(result.message);
+                                        });
+                            });
                 });
     }
 
@@ -1338,12 +1437,23 @@ public abstract class BraveActivity extends ChromeActivity
         mOneTabAuthResolved = true;
         mOneTabAuthCheckInProgress = false;
         mOneTabLoginActivityLaunched = false;
+        mOneTabPackageAccessBlocked = false;
         setOneTabContentLocked(false);
+        hideOneTabPackageLockedOverlay();
         hideOneTabLoginOverlay();
         if (mOneTabAuthGatePendingNavigation) {
             mOneTabAuthGatePendingNavigation = false;
             PostTask.postTask(TaskTraits.UI_DEFAULT, this::enforceOneTabYouTubeMode);
         }
+    }
+
+    private void handleOneTabPackageLocked(@Nullable String message) {
+        mOneTabAuthResolved = true;
+        mOneTabAuthCheckInProgress = false;
+        mOneTabLoginActivityLaunched = false;
+        mOneTabPackageAccessBlocked = true;
+        setOneTabContentLocked(false);
+        showOneTabPackageLockedOverlay(message);
     }
 
     private void launchOneTabLoginActivity(@Nullable String message) {
@@ -1353,6 +1463,8 @@ public abstract class BraveActivity extends ChromeActivity
         if (mOneTabLoginActivityLaunched) {
             return;
         }
+        hideOneTabPackageLockedOverlay();
+        hideOneTabLoginOverlay();
         mOneTabLoginActivityLaunched = true;
         Intent intent = new Intent(this, OneTabLoginActivity.class);
         if (!TextUtils.isEmpty(message)) {
@@ -1366,6 +1478,7 @@ public abstract class BraveActivity extends ChromeActivity
             return;
         }
         ensureOneTabAuthComponents();
+        hideOneTabPackageLockedOverlay();
         setOneTabContentLocked(true);
         pauseOneTabPlaybackForAuthGate();
         mOneTabLoginOverlayCoordinator.show(
@@ -1375,7 +1488,8 @@ public abstract class BraveActivity extends ChromeActivity
                         return;
                     }
                     mOneTabAuthCheckInProgress = true;
-                    mOneTabLoginOverlayCoordinator.setLoading(true, "Opening Google sign-in...");
+                    mOneTabLoginOverlayCoordinator.setPrimaryActionVisible(true);
+                    mOneTabLoginOverlayCoordinator.setLoading(true, "กำลังเปิด Google Sign-in…");
                     mOneTabFirebaseAuthManager.beginGoogleSignIn(
                             this,
                             (authenticated, authMessage) -> {
@@ -1388,7 +1502,103 @@ public abstract class BraveActivity extends ChromeActivity
                                 }
                             });
                 });
+        mOneTabLoginOverlayCoordinator.setPrimaryActionVisible(true);
         mOneTabLoginOverlayCoordinator.setLoading(loading, message);
+    }
+
+    private void showOneTabPackageLockedOverlay(@Nullable String message) {
+        if (!OneTabYouTubeMode.isEnabled()) {
+            return;
+        }
+        ensureOneTabAuthComponents();
+        pauseOneTabPlaybackForAuthGate();
+        hideOneTabLoginOverlay();
+
+        ViewGroup overlayContainer = findViewById(R.id.compositor_view_holder);
+        if (overlayContainer == null) {
+            overlayContainer = findViewById(android.R.id.content);
+        }
+        if (overlayContainer == null) {
+            return;
+        }
+
+        if (mOneTabPackageLockedOverlayView == null) {
+            FrameLayout overlay = new FrameLayout(this);
+            overlay.setClickable(true);
+            overlay.setFocusable(true);
+            overlay.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+            overlay.setBackgroundColor(Color.parseColor("#80000000"));
+
+            LinearLayout content = new LinearLayout(this);
+            content.setOrientation(LinearLayout.VERTICAL);
+            content.setGravity(Gravity.CENTER_HORIZONTAL);
+            content.setPadding(dp(24), dp(24), dp(24), dp(24));
+
+            FrameLayout.LayoutParams contentParams =
+                    new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+            contentParams.gravity = Gravity.CENTER;
+            overlay.addView(content, contentParams);
+
+            ImageView lockView = new ImageView(this);
+            lockView.setImageResource(android.R.drawable.ic_lock_lock);
+            lockView.setAdjustViewBounds(true);
+            lockView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            lockView.setAlpha(0.96f);
+            LinearLayout.LayoutParams lockParams =
+                    new LinearLayout.LayoutParams(dp(112), dp(112));
+            content.addView(lockView, lockParams);
+
+            TextView messageView = new TextView(this);
+            messageView.setText(R.string.onetab_package_locked_message);
+            messageView.setGravity(Gravity.CENTER);
+            messageView.setTextColor(Color.WHITE);
+            messageView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+            messageView.setPadding(0, dp(20), 0, 0);
+            content.addView(
+                    messageView,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            TextView detailView = new TextView(this);
+            detailView.setGravity(Gravity.CENTER);
+            detailView.setTextColor(Color.parseColor("#E6FFFFFF"));
+            detailView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            detailView.setPadding(dp(12), dp(12), dp(12), 0);
+            detailView.setVisibility(View.GONE);
+            content.addView(
+                    detailView,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            mOneTabPackageLockedOverlayView = overlay;
+            mOneTabPackageLockedDetailView = detailView;
+        }
+
+        if (mOneTabPackageLockedOverlayView.getParent() == null) {
+            overlayContainer.addView(
+                    mOneTabPackageLockedOverlayView,
+                    new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+
+        if (mOneTabPackageLockedDetailView != null) {
+            if (TextUtils.isEmpty(message)) {
+                mOneTabPackageLockedDetailView.setVisibility(View.GONE);
+            } else {
+                mOneTabPackageLockedDetailView.setVisibility(View.VISIBLE);
+                mOneTabPackageLockedDetailView.setText(message);
+            }
+        }
+
+        mOneTabPackageLockedOverlayView.setVisibility(View.VISIBLE);
+        mOneTabPackageLockedOverlayView.bringToFront();
+        mOneTabPackageLockedOverlayView.setTranslationZ(dp(48));
+        mOneTabPackageLockedOverlayView.setElevation(dp(48));
     }
 
     private void setOneTabContentLocked(boolean locked) {
@@ -1396,6 +1606,16 @@ public abstract class BraveActivity extends ChromeActivity
         if (compositorViewHolder != null) {
             compositorViewHolder.setVisibility(locked ? View.INVISIBLE : View.VISIBLE);
         }
+    }
+
+    private void hideOneTabPackageLockedOverlay() {
+        if (mOneTabPackageLockedOverlayView != null) {
+            mOneTabPackageLockedOverlayView.setVisibility(View.GONE);
+        }
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void pauseOneTabPlaybackForAuthGate() {
@@ -1480,7 +1700,46 @@ public abstract class BraveActivity extends ChromeActivity
             mOneTabFabMenuCoordinator = new OneTabFabMenuCoordinator(this);
         }
 
-        mOneTabFabMenuCoordinator.refresh(getActivityTab());
+        Tab activityTab = getActivityTab();
+        mOneTabFabMenuCoordinator.setForceHidden(shouldForceHideOneTabFab(activityTab));
+        mOneTabFabMenuCoordinator.refresh(activityTab);
+    }
+
+    private boolean shouldForceHideOneTabFab(@Nullable Tab tab) {
+        if (!OneTabYouTubeMode.isEnabled()) {
+            return false;
+        }
+        if (isInPictureInPictureMode()) {
+            return true;
+        }
+        WebContents webContents = tab != null ? tab.getWebContents() : null;
+        if (webContents != null) {
+            if (webContents.hasActiveEffectivelyFullscreenVideo()) {
+                return true;
+            }
+            if (BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(webContents)) {
+                return true;
+            }
+        }
+        FullscreenManager fullscreenManager = getFullscreenManager();
+        return fullscreenManager != null && fullscreenManager.getPersistentFullscreenMode();
+    }
+
+    private void startOneTabFullscreenUiSync() {
+        if (!OneTabYouTubeMode.isEnabled() || getWindow() == null) {
+            return;
+        }
+        View decorView = getWindow().getDecorView();
+        decorView.removeCallbacks(mOneTabFullscreenUiSyncRunnable);
+        decorView.post(mOneTabFullscreenUiSyncRunnable);
+    }
+
+    private void stopOneTabFullscreenUiSync() {
+        if (getWindow() == null) {
+            return;
+        }
+        View decorView = getWindow().getDecorView();
+        decorView.removeCallbacks(mOneTabFullscreenUiSyncRunnable);
     }
 
     private void ensureOneTabDevToolsServerStarted() {
@@ -1616,7 +1875,9 @@ public abstract class BraveActivity extends ChromeActivity
     }
 
     private boolean shouldTrackOneTabStartupMaskForTab(@Nullable Tab tab, @Nullable GURL url) {
-        if (!OneTabYouTubeMode.isEnabled() || !mShowOneTabStartupMaskAfterColdLauncherStart) {
+        if (!OneTabYouTubeMode.isEnabled()
+                || !OTB_ENABLE_STARTUP_MASK
+                || !mShowOneTabStartupMaskAfterColdLauncherStart) {
             return false;
         }
 
@@ -1634,7 +1895,16 @@ public abstract class BraveActivity extends ChromeActivity
     }
 
     private void maybeShowOneTabStartupMask() {
-        if (!OneTabYouTubeMode.isEnabled() || !mShowOneTabStartupMaskAfterColdLauncherStart) {
+        if (!OneTabYouTubeMode.isEnabled()) {
+            return;
+        }
+
+        if (!OTB_ENABLE_STARTUP_MASK) {
+            hideOneTabStartupMask("disabled");
+            return;
+        }
+
+        if (!mShowOneTabStartupMaskAfterColdLauncherStart) {
             return;
         }
 
@@ -1655,22 +1925,20 @@ public abstract class BraveActivity extends ChromeActivity
         if (mOneTabStartupMaskView == null) {
             FrameLayout mask = new FrameLayout(this);
             mask.setClickable(true);
-            mask.setBackgroundColor(Color.parseColor("#0F0F0F"));
-            mask.setContentDescription("Loading YouTube");
+            mask.setBackgroundColor(Color.BLACK);
+            mask.setContentDescription("GO_PLAY startup");
 
-            TextView label = new TextView(this);
-            label.setGravity(Gravity.CENTER);
-            label.setTextColor(Color.WHITE);
-            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-            label.setText("OneTabTube\nLoading YouTube...");
-            label.setContentDescription("Loading YouTube");
+            ImageView logoView = new ImageView(this);
+            logoView.setTag(OTB_STARTUP_MASK_TAG_LOGO);
+            logoView.setImageResource(R.drawable.onetab_fab_logo);
+            logoView.setAdjustViewBounds(true);
+            logoView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            logoView.setAlpha(1.00f);
+            FrameLayout.LayoutParams logoParams =
+                    new FrameLayout.LayoutParams(dp(180), dp(180));
+            logoParams.gravity = Gravity.CENTER;
+            mask.addView(logoView, logoParams);
 
-            FrameLayout.LayoutParams labelParams =
-                    new FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT);
-            labelParams.gravity = Gravity.CENTER;
-            mask.addView(label, labelParams);
             mOneTabStartupMaskView = mask;
         }
 
@@ -1683,6 +1951,9 @@ public abstract class BraveActivity extends ChromeActivity
         }
         mOneTabStartupMaskView.setVisibility(View.VISIBLE);
         mOneTabStartupMaskView.bringToFront();
+        mOneTabStartupMaskView.setTranslationZ(dp(40));
+        mOneTabStartupMaskView.setElevation(dp(40));
+        startOneTabStartupMaskAnimations();
         Log.i(OTB_PERF_TAG, "event=startup_mask show=1");
         getWindow().getDecorView().removeCallbacks(mHideOneTabStartupMaskRunnable);
         getWindow()
@@ -1696,9 +1967,17 @@ public abstract class BraveActivity extends ChromeActivity
         mShowOneTabStartupMaskAfterColdLauncherStart = false;
 
         if (mOneTabStartupMaskView != null && mOneTabStartupMaskView.getVisibility() != View.GONE) {
+            stopOneTabStartupMaskAnimations();
             Log.i(OTB_PERF_TAG, "event=startup_mask hide_reason=%s", reason);
             mOneTabStartupMaskView.setVisibility(View.GONE);
         }
+    }
+
+    private void startOneTabStartupMaskAnimations() {
+        stopOneTabStartupMaskAnimations();
+    }
+
+    private void stopOneTabStartupMaskAnimations() {
     }
 
     /**
@@ -3342,9 +3621,10 @@ public abstract class BraveActivity extends ChromeActivity
         if (requestCode == OTB_LOGIN_ACTIVITY_REQUEST_CODE) {
             mOneTabLoginActivityLaunched = false;
             if (resultCode == RESULT_OK) {
-                handleOneTabAuthenticated();
+                resolveOneTabPackageAccess();
             } else {
                 mOneTabAuthResolved = false;
+                mOneTabPackageAccessBlocked = false;
                 setOneTabContentLocked(true);
             }
             return;

@@ -71,6 +71,12 @@ public class OneTabLoginOverlayCoordinator {
         }
     }
 
+    public void setPrimaryActionVisible(boolean visible) {
+        if (mSignInButton != null) {
+            mSignInButton.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
+    }
+
     public void showError(String message) {
         if (mStatusView == null) {
             return;
@@ -139,7 +145,7 @@ public class OneTabLoginOverlayCoordinator {
         card.addView(title, titleParams);
 
         TextView subtitle = new TextView(activity);
-        subtitle.setText("Sign in with Google before using YouTube.");
+        subtitle.setText(R.string.onetab_login_subtitle);
         subtitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         subtitle.setTextColor(Color.parseColor("#D9FFFFFF"));
         subtitle.setGravity(Gravity.CENTER);
@@ -152,7 +158,7 @@ public class OneTabLoginOverlayCoordinator {
 
         AppCompatButton signInButton = new AppCompatButton(activity);
         signInButton.setAllCaps(false);
-        signInButton.setText("Continue with Google");
+        signInButton.setText(R.string.onetab_login_continue_with_google);
         signInButton.setTextColor(Color.WHITE);
         signInButton.setTypeface(Typeface.DEFAULT_BOLD);
         GradientDrawable buttonBackground = new GradientDrawable();

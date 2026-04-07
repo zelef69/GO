@@ -1,7 +1,7 @@
 class AppConfig {
   const AppConfig._();
 
-  static const String appTitle = 'GO_PLAY YouTube Browser';
+  static const String appTitle = 'GO_PLAY Setup';
   static const String appVersion = String.fromEnvironment(
     'GO_PLAY_APP_VERSION',
     defaultValue: '0.0.2-beta+2',
@@ -32,7 +32,7 @@ class AppConfig {
   );
   static const String updateAppId = String.fromEnvironment(
     'GO_PLAY_UPDATE_APP_ID',
-    defaultValue: 'com.example.go_play',
+    defaultValue: 'com.onetabtube.browser_default',
   );
   static const String filterAssetPath = 'assets/filters/basic.txt';
   static const String braveListCatalogUrl =

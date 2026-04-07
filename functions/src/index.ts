@@ -12,6 +12,9 @@ const usersCollection = db.collection("users");
 
 const DEFAULT_PLAN = "default";
 const DEFAULT_MAX_DEVICES = 10;
+const SIGNUP_TRIAL_PACKAGE_ID = "trial_14d";
+const SIGNUP_TRIAL_DURATION_DAYS = 14;
+const SIGNUP_TRIAL_SOURCE = "signup-trial";
 
 type SubscriptionStatus = "active" | "expired" | "blocked";
 type ValidationCode =
@@ -92,6 +95,23 @@ function toDate(value: unknown): Date | null {
 
 function addDays(base: Date, days: number): Date {
   return new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function buildSignupTrialEntitlement(
+  activatedAt: Date,
+  expiresAt: Date
+): FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> {
+  return {
+    active: true,
+    packageId: SIGNUP_TRIAL_PACKAGE_ID,
+    source: SIGNUP_TRIAL_SOURCE,
+    sourceOrderId: "",
+    paymentRef: "",
+    durationDays: SIGNUP_TRIAL_DURATION_DAYS,
+    activatedAt: admin.firestore.Timestamp.fromDate(activatedAt),
+    expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
 }
 
 function serializeError(error: unknown): Record<string, unknown> {
@@ -216,7 +236,7 @@ async function upsertUserProfileAndDefaults(
 
   if (!userSnap.exists) {
     const createdAt = now;
-    const initialExpireAt = createdAt;
+    const initialExpireAt = addDays(createdAt, SIGNUP_TRIAL_DURATION_DAYS);
     tx.set(
       userRef,
       {
@@ -224,7 +244,7 @@ async function upsertUserProfileAndDefaults(
         displayName: profile.displayName,
         photoURL: profile.photoURL,
         subscription: {
-          plan: DEFAULT_PLAN,
+          plan: SIGNUP_TRIAL_PACKAGE_ID,
           status: "active",
           startAt: admin.firestore.Timestamp.fromDate(createdAt),
           expireAt: admin.firestore.Timestamp.fromDate(initialExpireAt),
@@ -242,6 +262,11 @@ async function upsertUserProfileAndDefaults(
       },
       {merge: true}
     );
+    tx.set(
+      userRef.collection("entitlements").doc(SIGNUP_TRIAL_PACKAGE_ID),
+      buildSignupTrialEntitlement(createdAt, initialExpireAt),
+      {merge: true}
+    );
     return {
       ref: userRef,
       data: {
@@ -249,7 +274,7 @@ async function upsertUserProfileAndDefaults(
         displayName: profile.displayName,
         photoURL: profile.photoURL,
         subscription: {
-          plan: DEFAULT_PLAN,
+          plan: SIGNUP_TRIAL_PACKAGE_ID,
           status: "active",
           startAt: now,
           expireAt: initialExpireAt,
@@ -262,7 +287,7 @@ async function upsertUserProfileAndDefaults(
         },
       },
       subscription: {
-        plan: DEFAULT_PLAN,
+        plan: SIGNUP_TRIAL_PACKAGE_ID,
         status: "active",
         startAt: createdAt,
         expireAt: initialExpireAt,
@@ -335,13 +360,14 @@ export const registerDeviceSession = onCall(async (request) => {
       const userRef = usersCollection.doc(uid);
       const userSnap = await tx.get(userRef);
 
+      const initialExpireAt = addDays(now, SIGNUP_TRIAL_DURATION_DAYS);
       const isNewUser = !userSnap.exists;
       const subscription = isNewUser ?
         {
-          plan: DEFAULT_PLAN,
+          plan: SIGNUP_TRIAL_PACKAGE_ID,
           status: "active" as SubscriptionStatus,
           startAt: now,
-          expireAt: now,
+          expireAt: initialExpireAt,
           maxDevices: DEFAULT_MAX_DEVICES,
           extraDays: 0,
           version: 1,
@@ -437,6 +463,14 @@ export const registerDeviceSession = onCall(async (request) => {
         },
         {merge: true}
       );
+
+      if (isNewUser) {
+        tx.set(
+          userRef.collection("entitlements").doc(SIGNUP_TRIAL_PACKAGE_ID),
+          buildSignupTrialEntitlement(now, initialExpireAt),
+          {merge: true}
+        );
+      }
 
       return {
         sessionId: targetSessionRef.id,
@@ -821,6 +855,7 @@ export {
 
 export {
   createPackageOrder,
+  getPackageAccessState,
   submitManualCorrectionRequest,
   applyManualPackageCorrection,
   verifyPackageSlip,

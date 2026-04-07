@@ -37,6 +37,11 @@ NUL
 /coverage/
 node_modules/
 functions/lib/
+artifacts/
+tools/go_play_admin_gui/.venv/
+tools/go_play_admin_gui/go_play_admin/__pycache__/
+tools/go_play_admin_gui/go-play-*-firebase-adminsdk-*.json
+.env
 
 # Symbolication related
 app.*.symbols
