@@ -22828,6 +22828,136 @@
 - Secret required but not stored:
   - Firebase admin service-account JSON remains local-only
 
+## 2026-04-07 23:47:08 +07:00
+
+- Current phase:
+  - Release size audit / OneTabTube APK reduction planning
+- Current objective:
+  - Audit the main OneTabTube release APK and identify the largest low-risk size reductions
+- Completed since last snapshot:
+  - Re-read handoff before resuming
+  - Verified actual repo HEAD is `727dc21a5ab0433d722046ed79c9b0278272560a`
+  - Verified main release APK path:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - Verified APK size:
+    - `511,846,166` bytes
+  - Verified release args already use:
+    - `is_component_build=false`
+    - `target_cpu="arm64"`
+  - Measured top APK contributors:
+    - `lib/arm64-v8a/libchrome.so` `331,156,040`
+    - `resources.arsc` `41,707,452`
+    - `assets/brave_resources.pak` `33,168,800`
+    - `assets/resources.pak` `8,492,149`
+  - Measured locale payload:
+    - `81` locale packs
+    - `66,452,474` bytes total
+    - keeping `th`, `en-US`, `en-GB` would leave `2,209,575` bytes
+    - estimated direct savings about `64,242,899` bytes
+  - Verified these buildflags are still default-on for OneTabTube:
+    - wallet
+    - news
+    - vpn
+    - web discovery
+- In progress now:
+  - No code changes to size-reduction paths yet
+  - The work is at decision stage: choose the first implementation pass with the best APK-size ROI and lowest product risk
+- Blockers / risks:
+  - `libchrome.so` dominates the package, so superficial UI-only cleanup is not enough
+  - feature buildflag reductions need rebuild evidence before claiming real APK delta
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `docs/optimize-audit.md`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\args.gn`
+  - `android/BUILD.gn`
+  - `build/android/config.gni`
+  - `components/brave_wallet/common/buildflags/buildflags.gni`
+  - `components/brave_news/common/buildflags/buildflags.gni`
+  - `components/brave_vpn/common/buildflags/buildflags.gni`
+  - `components/web_discovery/buildflags/buildflags.gni`
+- Build/test status:
+  - no new build run in this round
+  - current verified artifact remains the existing `android_Release_arm64` APK
+- Exact next concrete step:
+  - implement locale pruning for OneTabTube first
+  - then gate wallet/news/vpn/web discovery with `!is_onetabyt`
+  - rebuild `android_Release_arm64` and compare APK size delta
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest progress entry
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\args.gn`
+  - `android/BUILD.gn`
+  - `build/android/config.gni`
+  - Brave feature buildflag files listed above
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Item \\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk`
+  - `Get-Content \\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\args.gn`
+  - PowerShell zip-entry inspection for APK composition
+  - `rg -n "enable_brave_wallet|enable_brave_news|enable_brave_vpn|enable_web_discovery_native" ...`
+- Tool purpose:
+  - gather measurable APK composition evidence before choosing the first size-reduction patch
+- Tool state:
+  - completed for the audit round
+- Expected resume command:
+  - `rg -n "enable_brave_wallet|enable_brave_news|enable_brave_vpn|enable_web_discovery_native" android build components`
+- Expected output/artifact path:
+  - existing artifact at `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\args.gn`
+  - `android/BUILD.gn`
+  - `build/android/config.gni`
+  - `components/brave_wallet/common/buildflags/buildflags.gni`
+  - `components/brave_news/common/buildflags/buildflags.gni`
+  - `components/brave_vpn/common/buildflags/buildflags.gni`
+  - `components/web_discovery/buildflags/buildflags.gni`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\\android_Release_arm64\\args.gn`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL output path accessible
+- Expected success signal:
+  - first implementation pass removes tens of MB, not just cosmetic KB-level resources
+- Expected failure signal:
+  - patch lands but release APK stays effectively unchanged
+- Last known log location:
+  - none for this audit-only round
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - switch the discussion target from the Flutter setup app back to the real OneTabTube release APK
+  - prioritize locale pruning over speculative deep refactors
+- Rejected approaches:
+  - repeating already-finished `non-component arm64` guidance
+  - treating UI hiding as the main size strategy
+- Stop point classification:
+  - audit complete; no implementation started
+- What is done but unverified:
+  - projected savings from turning off wallet/news/vpn/web discovery
+- What is verified:
+  - current release size
+  - top contributors
+  - locale payload size
+  - default-on feature buildflags listed above
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
 ## 2026-04-07 23:40:30 +07:00
 
 - Current phase:
@@ -22917,3 +23047,958 @@
   - target UID for the next live admin verification
 - Secret required but not stored:
   - Firebase admin service-account JSON remains local-only
+
+## 2026-04-08 00:07:40 +07:00
+
+- Current phase:
+  - Release size reduction / locale pruning implementation
+- Task/objective:
+  - Finish the first safe high-impact APK shrink pass by shipping only Thai + English locales in the main OneTabTube release
+- Completed since last snapshot:
+  - Re-read the stale size-audit handoff and compared it against the active build desk reality
+  - Confirmed the working change already lives in `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - Verified the active change restricts `generate_ui_locale_resources("ui_locale_string_resources")` to:
+    - `en-GB`
+    - `en-US`
+    - `th`
+  - Verified the active change also restricts `${_variant}_locale_pak_assets` packaging to the same 3 locales
+  - Rebuilt the release packaging target successfully with:
+    - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create`
+  - Verified the final packaged APK now contains only 3 locale packs with total locale payload `2,209,575` bytes
+  - Verified the main release APK shrank from `511,846,166` bytes to `447,599,248` bytes
+  - Saved the build evidence to:
+    - `artifacts/android_build/onetabtube_release_locale_prune_20260407.log`
+  - Mirrored the live BUILD.gn change into:
+    - `patches/chrome-android-BUILD.gn.patch`
+- In progress now:
+  - No long-running build is active
+  - Locale pruning pass is complete; only handoff synchronization remained
+- Blockers / risks:
+  - Intermediate build steps still repack many locale targets before the final APK packaging stage, so build time is not reduced proportionally
+  - Runtime verification of Thai/English UI selection on-device is still pending
+  - Repo-side patch application on a brand-new upstream sync was not re-tested in this round
+- Files/modules touched:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `patches/chrome-android-BUILD.gn.patch`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `gn gen out/android_Release_arm64` passed
+  - `chrome/android:chrome_public_apk__create` passed
+  - direct APK zip inspection passed
+- Exact next concrete step:
+  - Stop after this locale pass unless the user requests the next size pass; if they do, start with OneTabTube-only gating for wallet/news/vpn/web discovery and rebuild `android_Release_arm64`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest progress entry
+  - `patches/chrome-android-BUILD.gn.patch`
+  - `artifacts/android_build/onetabtube_release_locale_prune_20260407.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `wsl.exe`
+  - `autoninja`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/gn gen out/android_Release_arm64"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_locale_prune_20260407.log"`
+- Tool purpose:
+  - Regenerate the release package after locale pruning and verify the shipped artifact contents
+- Tool state:
+  - completed
+- Expected resume command:
+  - `Get-Item \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk`
+  - PowerShell zip-entry inspection of `assets/locales/*`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn` - active locale filtering
+  - `patches/chrome-android-BUILD.gn.patch` - repo-side mirror
+  - `artifacts/android_build/onetabtube_release_locale_prune_20260407.log` - build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - `patches/chrome-android-BUILD.gn.patch`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 build desk accessible
+- Expected success signal:
+  - release APK contains only the 3 target locale packs and shows a large size drop
+- Expected failure signal:
+  - full locale set still present in packaged APK
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts/android_build\onetabtube_release_locale_prune_20260407.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - move locale pruning to `chrome/android/BUILD.gn` packaging scope instead of `locales.gni`
+  - count this task as complete only after verifying final APK contents, not just after code edit
+- Rejected approaches:
+  - global locale-list mutation in `build/config/locales.gni`
+- Stop point classification:
+  - implementation complete; build verified; waiting for next requested optimization target
+- What is done but unverified:
+  - fresh patch application in a brand-new upstream sync
+  - runtime locale switching smoke on device
+- What is verified:
+  - live build file change
+  - repo patch mirror
+  - release build success
+  - final APK locale contents
+  - final APK size reduction
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+## 2026-04-08 03:12:56 +07:00
+
+- Current phase:
+  - Release size reduction / buildflag-gating stabilization
+- Task/objective:
+  - Make `is_onetabyt` disable pass (Wallet/News/VPN/WebDiscovery) build-clean first, then defer packaging compression to next batch
+- Completed since last snapshot:
+  - Revalidated and kept OneTab buildflags disabled for wallet/news/vpn/web_discovery
+  - Preserved policy + Brave Origin metadata C++ guards for feature-off builds
+  - Added Brave News Android native fallback source wiring for OneTab when news disabled
+  - Stabilized Java compile graph by adding missing JNI wrapper stubs:
+    - wallet: `AssetRatioServiceFactoryJni`, `BlockchainRegistryFactoryJni`, `BraveWalletServiceFactoryJni`, `SwapServiceFactoryJni`, `BraveWalletProviderDelegateImplHelperJni`, `ConnectAccountFragmentJni`, `BraveDappPermissionPromptDialogJni`, `WalletNativeUtilsJni`
+    - vpn: `BraveVpnNativeWorkerJni`, `BraveVpnServiceFactoryAndroidJni`
+  - Added decentralized DNS annotation + settings stubs for OneTab wallet-off path to resolve compile + R8 keep-rules
+  - Adjusted `android/brave_java_sources.gni` to use targeted OneTab filters/stubs instead of broad wallet/vpn pruning that broke compile
+  - Synced edits to ext4 build desk and rebuilt successfully
+- In progress now:
+  - No running command; pass is complete at build level
+- Blockers / risks:
+  - Disabled-feature runtime paths depend on stubs; manual runtime smoke is still pending
+  - APK size can still be reduced further only by packaging compression policy (explicitly deferred)
+- Files/modules touched:
+  - `android/brave_java_sources.gni`
+  - `browser/brave_news/sources.gni`
+  - `browser/brave_news/android/brave_news_controller_factory_android_stub.cc`
+  - `browser/brave_origin/brave_origin_service_factory.cc`
+  - `browser/policy/brave_simple_policy_map.h`
+  - `components/brave_wallet/common/buildflags/buildflags.gni`
+  - `components/brave_news/common/buildflags/buildflags.gni`
+  - `components/brave_vpn/common/buildflags/buildflags.gni`
+  - `components/web_discovery/buildflags/buildflags.gni`
+  - `android/java_stub/org/chromium/chrome/browser/brave_news/BraveNewsControllerFactory.java`
+  - `android/java_stub/org/chromium/chrome/browser/crypto_wallet/*.java` (JNI stubs)
+  - `android/java_stub/org/chromium/chrome/browser/vpn/*.java` (JNI stubs)
+  - `android/java_stub/org/chromium/chrome/browser/decentralized_dns/*.java` (annotation stubs)
+  - `android/java_stub/org/chromium/chrome/browser/decentralized_dns/settings/*.java` (settings stubs)
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `gn gen out/android_Release_arm64` passed
+  - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create` passed
+  - Artifact:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+    - size `409,522,774` bytes
+- Exact next concrete step:
+  - Start next batch on APK packaging compression policy to reduce shipped size further, without touching the now-stable feature-disable wiring
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest progress entry
+  - `android/brave_java_sources.gni`
+  - `artifacts/android_build/onetabtube_release_disable_wallet_news_vpn_webdiscovery_20260408_fix6.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `wsl.exe`
+  - `autoninja`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/gn gen out/android_Release_arm64"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_disable_wallet_news_vpn_webdiscovery_20260408_fix6.log"`
+- Tool purpose:
+  - Validate that requested feature-disable pass is build-stable
+- Tool state:
+  - completed
+- Expected resume command:
+  - `Get-Content docs/current-status.md -TotalCount 200`
+  - `Get-Item \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/brave_java_sources.gni`
+  - `components/brave_wallet/common/buildflags/buildflags.gni`
+  - `components/brave_news/common/buildflags/buildflags.gni`
+  - `components/brave_vpn/common/buildflags/buildflags.gni`
+  - `components/web_discovery/buildflags/buildflags.gni`
+  - `android/java_stub/org/chromium/chrome/browser/crypto_wallet/*Jni.java`
+  - `android/java_stub/org/chromium/chrome/browser/vpn/*Jni.java`
+  - `artifacts/android_build/onetabtube_release_disable_wallet_news_vpn_webdiscovery_20260408_fix6.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/brave_java_sources.gni`
+  - `artifacts/android_build/onetabtube_release_disable_wallet_news_vpn_webdiscovery_20260408_fix6.log`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - ext4 desk and depot_tools availability
+- Expected success signal:
+  - target emits `OneTabTube.apk` without Java/R8 failure
+- Expected failure signal:
+  - unresolved Java symbols or R8 warning-as-error stop
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_disable_wallet_news_vpn_webdiscovery_20260408_fix6.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - prioritized build pass closure before compression work
+  - used targeted stub strategy instead of broad source pruning
+- Rejected approaches:
+  - broad OneTab wallet/vpn Java exclusion that caused cascading compile breakage
+- Stop point classification:
+  - build passed, artifact produced, runtime smoke not yet executed
+- What is done but unverified:
+  - runtime interaction with disabled-feature entry points
+- What is verified:
+  - feature-disable pass compiles and packages successfully
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - signing / external credentials remain out of repo
+
+## 2026-04-08 04:17:48 +07:00
+
+- Current phase:
+  - Release size reduction / packaging-compression planning
+- Task/objective:
+  - Draft a concrete compression policy plan before implementation, based on active ext4 build desk reality
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and latest `docs/progress-log.md` entry per resume protocol.
+  - Verified current release desk args:
+    - `out/android_Release_arm64/args.gn` has `is_official_build=false`.
+  - Mapped compression control points:
+    - `build/android/gyp/apkbuilder.py` (`--best-compression`, `--uncompress-dex`, `--library-always-compress`)
+    - `build/config/android/internal_rules.gni` (where args are forwarded)
+    - `chrome/android/chrome_public_apk_tmpl.gni` (`library_always_compress` wiring)
+    - `build/android/gyp/write_build_config.py` (`native.library_always_compress`)
+  - Profiled current APK composition and compression ratio:
+    - `lib/arm64-v8a/libchrome.so` uncompressed, `319,294,024` bytes
+    - `classes.dex` uncompressed, `10,592,968` bytes
+    - `resources.arsc` uncompressed, `41,705,480` bytes
+  - Verified manifest does not explicitly set `extractNativeLibs` in current build output.
+- In progress now:
+  - No long-running command.
+  - Planning only; implementation not started.
+- Blockers/risks:
+  - Native-lib compression can impact install/runtime if loader/extraction expectations are not met.
+  - Max compression can improve download size but increase install/start latency.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new build was run in this snapshot.
+  - Last known successful build artifact remains:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Exact next concrete step:
+  - Execute Stage-1 compression experiment behind OneTab-only gating and rebuild `chrome/android:chrome_public_apk__create`, then run install + launch smoke validation.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `build/config/android/internal_rules.gni`
+  - `chrome/android/chrome_public_apk_tmpl.gni`
+  - `build/android/gyp/apkbuilder.py`
+- Current tool(s):
+  - `shell_command`
+  - `wsl.exe`
+  - `apply_patch`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && rg --line-number --glob '!out/**' 'library_always_compress|best-compression|uncompress-dex|uncompress-shared-libraries' build chrome"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && sed -n '2780,2875p' build/config/android/internal_rules.gni"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && sed -n '540,650p' chrome/android/chrome_public_apk_tmpl.gni"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && third_party/android_sdk/public/build-tools/36.1.0/aapt dump xmltree out/android_Release_arm64/apks/OneTabTube.apk AndroidManifest.xml | rg -n 'extractNativeLibs|E: application|uses-sdk|minSdkVersion|targetSdkVersion'"`
+- Tool purpose:
+  - Capture exact compression knobs and risk boundaries before coding changes.
+- Tool state:
+  - Completed.
+- Expected resume command:
+  - `Get-Content docs/current-status.md -TotalCount 220`
+  - `Get-Content docs/progress-log.md -Tail 140`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && rg -n 'library_always_compress|best-compression|uncompress-dex' build/config/android/internal_rules.gni chrome/android/chrome_public_apk_tmpl.gni build/android/gyp/apkbuilder.py"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `build/config/android/internal_rules.gni` — forwarding compression args
+  - `build/android/gyp/apkbuilder.py` — zip policy implementation
+  - `chrome/android/chrome_public_apk_tmpl.gni` — OneTab target wiring point
+  - `out/android_Release_arm64/args.gn` — current build mode flags
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - `build/config/android/internal_rules.gni`
+  - `chrome/android/chrome_public_apk_tmpl.gni`
+- Command run from:
+  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 desk available at `/home/master/src_ext4`
+- Expected success signal:
+  - Compression policy changes build clean and reduce APK bytes while app installs/runs.
+- Expected failure signal:
+  - Install failure, native load crash, or update-flow regression after compression changes.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_disable_wallet_news_vpn_webdiscovery_20260408_fix6.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Separate compression batch from feature-disable stabilization.
+  - Do staged A/B with rollback after each compression knob.
+- Rejected approaches:
+  - Broad removals/pruning before policy-level compression validation.
+- Stop point classification:
+  - plan drafted, ready for implementation batch.
+- What is done but unverified:
+  - Estimated savings are measured analytically, not yet proven by rebuilt compression-policy APK.
+- What is verified:
+  - Current build desk composition and compression control locations.
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - signing credentials remain external
+
+## 2026-04-08 04:25:24 +07:00
+
+- Current phase:
+  - Release size reduction / packaging-compression Stage-1 (best-compression)
+- Task/objective:
+  - Implement Stage-1 compression policy (`best-compression`) for OneTab release and verify actual APK delta
+- Completed since last snapshot:
+  - Patched packaging arg forwarding in ext4 desk:
+    - `build/config/android/internal_rules.gni`
+    - changed condition from `is_official_build` to `is_official_build || is_onetabyt` for `--best-compression`
+  - Ran release regenerate + build:
+    - `gn gen out/android_Release_arm64`
+    - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create`
+  - Verified generated action command contains `--best-compression`.
+  - Measured APK size change:
+    - old `409,522,774`
+    - new `409,076,310`
+    - delta `-446,464` bytes
+- In progress now:
+  - No running command.
+  - Waiting to execute Stage-2 (higher-impact compression knobs with runtime validation).
+- Blockers/risks:
+  - Stage-1 gain is small by design.
+  - Stage-2 can affect install/runtime and must be validated on device.
+- Files/modules touched:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\build\config\android\internal_rules.gni`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `gn gen` passed
+  - `chrome_public_apk__create` passed
+  - runtime smoke not executed in this snapshot
+- Exact next concrete step:
+  - Start Stage-2 A/B for native/dex compression in OneTab-only scope, then rebuild and run install/launch smoke
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\build\config\android\internal_rules.gni`
+  - `artifacts/android_build/onetabtube_release_best_compression_onetab_20260408.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/gn gen out/android_Release_arm64 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_best_compression_onetab_20260408.log"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/ninja -C out/android_Release_arm64 -t commands chrome/android:chrome_public_apk__create | rg -- '--best-compression|apkbuilder.py'"`
+- Tool purpose:
+  - Confirm compression-policy wiring and quantify real output impact.
+- Tool state:
+  - Completed.
+- Expected resume command:
+  - `Get-Item \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk`
+  - `Get-Content artifacts/android_build/onetabtube_release_best_compression_onetab_20260408.log -Tail 80`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\build\config\android\internal_rules.gni`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\build\android/gyp/apkbuilder.py`
+  - `artifacts/android_build/onetabtube_release_best_compression_onetab_20260408.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - `docs/progress-log.md` latest section
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\build\config\android\internal_rules.gni`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 build desk available
+- Expected success signal:
+  - `--best-compression` appears in package action and APK rebuild passes
+- Expected failure signal:
+  - package action missing flag or build fails in create step
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_best_compression_onetab_20260408.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep Stage-1 limited to policy wiring only.
+  - Defer risky knobs to Stage-2 with runtime smoke gates.
+- Rejected approaches:
+  - Doing native compression and dex compression in same step as Stage-1.
+- Stop point classification:
+  - Stage-1 implemented and verified; waiting for Stage-2 execution
+- What is done but unverified:
+  - Stage-2 runtime behavior
+- What is verified:
+  - Stage-1 build pass + size delta measurement
+- External prerequisite:
+  - connected test device for Stage-2 smoke
+- Secret required but not stored:
+  - signing/service secrets remain external
+
+## 2026-04-08 05:13:18 +07:00
+
+- Current phase:
+  - Runtime regression fix / FAB PiP action stabilization
+- Task/objective:
+  - Fix user-reported issue: FAB PiP button unusable
+- Completed since last snapshot:
+  - Read latest handoff (`docs/current-status.md`, latest `docs/progress-log.md`) before resume.
+  - Inspected actual FAB PiP code path and found strict `isPictureInPictureAvailable()` gating.
+  - Patched FAB PiP flow in `OneTabFabMenuCoordinator`:
+    - availability now checks attemptability (`tab + PiP enabled + webContents`) instead of strict native-ready state.
+    - click action now calls `enterPictureInPicture()` first.
+    - added fallback `setFullscreen()` when native PiP availability is still false at click time.
+  - Synced patched file to ext4 desk.
+  - Rebuilt `chrome_public_apk__create` (success).
+  - Installed APK to device (success) and launched app (status ok).
+- In progress now:
+  - Waiting user manual validation for FAB PiP behavior on watch page.
+- Blockers/risks:
+  - Still needs user runtime confirmation under real gesture/video contexts.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - release build passed
+  - install passed
+  - launch sanity passed
+- Exact next concrete step:
+  - User runs FAB PiP flow on device; if failure persists, capture exact behavior and continue at helper/toolbar parity.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `artifacts/android_build/onetabtube_release_fab_pip_fix_20260408.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_fab_pip_fix_20260408.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Ship immediate FAB PiP fix and validate deployability.
+- Tool state:
+  - Completed; waiting runtime verification.
+- Expected resume command:
+  - `Get-Content artifacts/android_build/onetabtube_release_fab_pip_fix_20260408.log -Tail 120`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java` — FAB PiP path
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` — PiP helper behavior reference
+  - `artifacts/android_build/onetabtube_release_fab_pip_fix_20260408.log` — build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 desk present
+  - connected adb device
+- Expected success signal:
+  - FAB PiP tap works without being blocked by false-unavailable state.
+- Expected failure signal:
+  - FAB PiP still no-op/unavailable in watch page context.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_fab_pip_fix_20260408.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Fix trigger-gating first before deeper media-control changes.
+- Rejected approaches:
+  - keeping FAB disabled by strict native readiness check.
+- Stop point classification:
+  - code patched + built + installed; awaiting user runtime verification.
+- What is done but unverified:
+  - full PiP scenario correctness across all video contexts.
+- What is verified:
+  - compile/install/launch on patched FAB flow.
+- External prerequisite:
+  - user executes PiP interaction on device.
+- Secret required but not stored:
+  - signing/service secrets remain external.
+
+## 2026-04-08 05:32:11 +07:00
+
+- Current phase:
+  - Runtime regression fix / PiP unlock-refocus stabilization
+- Task/objective:
+  - Fix user-reported issue: after screen unlock, PiP appears unfocused/not full video frame
+- Completed since last snapshot:
+  - Investigated `BraveActivity` lifecycle hooks tied to PiP transitions.
+  - Added OneTab PiP refocus retry strategy:
+    - new retry delays: 220ms, 520ms, 900ms
+    - new helpers:
+      - `scheduleOneTabPictureInPictureRefresh(reason)`
+      - `refreshOneTabPictureInPictureParams(reason)`
+    - invoked from:
+      - `onPictureInPictureModeChanged(..., inPicture=true)`
+      - `onPictureInPictureUiStateChanged(...)`
+      - `onResume()` when already in PiP
+  - Synced patched `BraveActivity.java` to ext4 desk.
+  - Built release APK successfully.
+  - Installed APK successfully and launch sanity passed.
+- In progress now:
+  - Waiting user validation of lock/unlock PiP scenario.
+- Blockers/risks:
+  - Need real device interaction to confirm unlock behavior improvement.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - release build passed
+  - install passed
+  - launch sanity passed
+- Exact next concrete step:
+  - User runs repro: video -> PiP -> lock -> unlock and reports result; if still failing, capture targeted logcat and tune.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Deploy lifecycle-based PiP refocus fix.
+- Tool state:
+  - Completed; runtime repro validation pending.
+- Expected resume command:
+  - `Get-Content artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log -Tail 120`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - adb device connected
+  - ext4 desk available
+- Expected success signal:
+  - PiP remains video-focused after unlock.
+- Expected failure signal:
+  - PiP still unfocused/not full after unlock.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_pip_refocus_after_unlock_20260408.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Use PiP param refresh retries on lifecycle events instead of re-entering fullscreen loops.
+- Rejected approaches:
+  - force fullscreen request churn in unlock path.
+- Stop point classification:
+  - patched + built + installed; waiting runtime unlock verification.
+- What is done but unverified:
+  - unlock-path visual correctness in PiP.
+- What is verified:
+  - compile/install/launch pipeline.
+- External prerequisite:
+  - user lock/unlock PiP interaction on device.
+- Secret required but not stored:
+  - signing/service credentials remain external.
+
+## 2026-04-08 05:19:56 +07:00
+
+- Current phase:
+  - Runtime regression fix / FAB PiP reliability hardening
+- Task/objective:
+  - Resolve remaining user report: FAB PiP still cannot enter PiP
+- Completed since last snapshot:
+  - Re-inspected FAB PiP action path and updated trigger strategy in `OneTabFabMenuCoordinator`.
+  - Implemented robust FAB PiP sequence:
+    - call `setFullscreen(webContents)` on tap,
+    - call `enterPictureInPicture(webContents)` immediately,
+    - schedule additional `enterPictureInPicture` retries at +220ms and +480ms.
+  - Synced changed file to ext4 build desk.
+  - Rebuilt release target successfully.
+  - Reinstalled APK on device and verified launch (`Status: ok`).
+- In progress now:
+  - Waiting user runtime verification on FAB PiP.
+- Blockers/risks:
+  - Remaining failure, if any, is likely state-machine timing in runtime only and requires live log capture while tapping FAB.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - release build passed
+  - install passed
+  - launch sanity passed
+- Exact next concrete step:
+  - User retests FAB PiP on watch page; if still fail, capture filtered logcat during tap and patch by observed state transition.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest progress entry
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `artifacts/android_build/onetabtube_release_fab_pip_retryfix_20260408.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_fab_pip_retryfix_20260408.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Deploy FAB PiP retry hardening to real device quickly.
+- Tool state:
+  - Completed.
+- Expected resume command:
+  - `Get-Content artifacts/android_build/onetabtube_release_fab_pip_retryfix_20260408.log -Tail 120`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java` — retry trigger path
+  - `artifacts/android_build/onetabtube_release_fab_pip_retryfix_20260408.log` — compile evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - adb device connected
+  - ext4 desk mounted
+- Expected success signal:
+  - PiP enters from FAB in watch flow.
+- Expected failure signal:
+  - PiP still does not enter from FAB after retry sequence.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_fab_pip_retryfix_20260408.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Increase FAB action robustness with delayed retries instead of one-shot path.
+- Rejected approaches:
+  - waiting for strict native availability before allowing FAB tap.
+- Stop point classification:
+  - patched + built + installed; awaiting runtime verification.
+- What is done but unverified:
+  - user-facing FAB PiP success.
+- What is verified:
+  - compile/install/launch pipeline after patch.
+- External prerequisite:
+  - user interaction test on device.
+- Secret required but not stored:
+  - signing/service secrets remain external.
+
+## 2026-04-08 05:02:53 +07:00
+
+- Current phase:
+  - Runtime regression fix / PiP-watch-page stabilization
+- Task/objective:
+  - Resolve user-reported PiP regressions: black PiP entry, broken watch-page expand, mismatched controls
+- Completed since last snapshot:
+  - Investigated active PiP stack and found fullscreen-driven re-entry loops across:
+    - `youtube_script_injector_tab_helper.cc`
+    - `BraveYouTubeScriptInjectorNativeHelper.java`
+    - `BraveFullscreenVideoPictureInPictureController.java`
+    - `BraveActivity.java`
+    - toolbar/FAB PiP entry points
+  - Applied targeted stabilization patch:
+    - Toolbar/FAB PiP actions now call `enterPictureInPicture()` directly.
+    - Java helper no longer aborts PiP after fullscreen timeout; now falls back to PiP attempt.
+    - Native C++ callback removed recursive fullscreen retry before PiP.
+    - PiP wrapper removed forced fullscreen re-request while already in PiP.
+    - BraveActivity PiP-exit watch-return logic now depends on `activeFullscreen` only.
+  - Synced changed files to ext4 desk and rebuilt release artifact successfully.
+  - Installed updated APK and validated launch sanity on device.
+- In progress now:
+  - No running command.
+  - Waiting for interactive PiP scenario validation.
+- Blockers/risks:
+  - Need real interaction verification for PiP expand and control mapping.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - release build target passed
+  - install passed
+  - launch passed
+- Exact next concrete step:
+  - Run PiP interaction matrix on device and inspect logcat if any remaining mismatch occurs
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/android_build/onetabtube_release_pip_fix_20260408.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_pip_fix_20260408.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Build and deploy patched PiP behavior for runtime validation.
+- Tool state:
+  - Completed.
+- Expected resume command:
+  - `Get-Content artifacts/android_build/onetabtube_release_pip_fix_20260408.log -Tail 120`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - `docs/progress-log.md` latest
+  - `artifacts/android_build/onetabtube_release_pip_fix_20260408.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected adb device
+  - ext4 desk available
+- Expected success signal:
+  - PiP entry/expand/control behavior is stable
+- Expected failure signal:
+  - black PiP or wrong media control mapping persists
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_pip_fix_20260408.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - reduce fullscreen choreography and keep PiP path deterministic
+- Rejected approaches:
+  - preserving recursive fullscreen retry path
+- Stop point classification:
+  - patched + built + installed; behavior validation on interactive scenarios pending
+- What is done but unverified:
+  - real PiP expand/control correctness after user interaction
+- What is verified:
+  - patched APK compiles and launches
+- External prerequisite:
+  - user-triggered PiP scenarios on device
+- Secret required but not stored:
+  - signing/service credentials remain external
+
+## 2026-04-08 04:32:32 +07:00
+
+- Current phase:
+  - Release size reduction / packaging-compression Stage-3 complete
+- Task/objective:
+  - Execute staged compression batch (Stage-1 to Stage-3) and validate build + device install/launch
+- Completed since last snapshot:
+  - Stage-1 applied:
+    - `build/config/android/internal_rules.gni`
+    - enabled `--best-compression` for `is_onetabyt`
+  - Stage-2 applied:
+    - `chrome/android/chrome_public_apk_tmpl.gni`
+    - added `libchrome.so` to `library_always_compress` for OneTab
+  - Stage-3 applied:
+    - `build/config/android/internal_rules.gni`
+    - forced `_uncompress_dex = false` for `is_onetabyt`
+  - Rebuilt after each stage and verified generated packaging command:
+    - includes `--best-compression`
+    - includes `--library-always-compress=["libchrome.so","libchrome_crashpad_handler.so"]`
+    - no longer includes `--uncompress-dex`
+  - Installed latest APK on connected device and launched app successfully.
+  - Size progression:
+    - baseline before this batch: `409,522,774`
+    - after Stage-1: `409,076,310`
+    - after Stage-2+3: `210,068,054`
+    - total reduction from baseline: `199,454,720` bytes
+- In progress now:
+  - No running command.
+  - Waiting for next instruction (functional smoke or publish path).
+- Blockers/risks:
+  - Need broader runtime QA (YouTube playback/login/updater) before declaring production-ready compression policy.
+- Files/modules touched:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\build\config\android\internal_rules.gni`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome/android/chrome_public_apk_tmpl.gni`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `chrome_public_apk__create` passed after Stage-1/2/3
+  - `adb install -r` passed
+  - `am start -W` passed with `Status: ok`
+- Exact next concrete step:
+  - Run functional smoke checklist on this compressed APK:
+    - login gate
+    - YouTube open/playback
+    - FAB account/buy entry
+    - updater check flow
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - Stage logs under `artifacts/android_build/`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/gn gen out/android_Release_arm64 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_stage3_libchrome_and_dex_compress_20260408.log"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./brave/vendor/depot_tools/ninja -C out/android_Release_arm64 -t commands chrome/android:chrome_public_apk__create | rg -- '--library-always-compress|--best-compression|--uncompress-dex|apkbuilder.py'"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell pidof com.onetabtube.browser_default`
+- Tool purpose:
+  - Apply compression and verify real deployability on connected device.
+- Tool state:
+  - Completed.
+- Expected resume command:
+  - `Get-Item \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk`
+  - `adb shell pidof com.onetabtube.browser_default`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\build\config\android\internal_rules.gni`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome/android/chrome_public_apk_tmpl.gni`
+  - `artifacts/android_build/onetabtube_release_stage3_libchrome_and_dex_compress_20260408.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - `docs/progress-log.md` latest
+  - `artifacts/android_build/onetabtube_release_stage3_libchrome_and_dex_compress_20260408.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 desk + adb device connected
+- Expected success signal:
+  - size near ~210MB with successful install/launch
+- Expected failure signal:
+  - install/launch crash after compression
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_stage3_libchrome_and_dex_compress_20260408.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Proceeded through Stage-2/3 in same batch after Stage-1 success.
+- Rejected approaches:
+  - stopping at Stage-1 despite low gain.
+- Stop point classification:
+  - implementation complete for current compression batch; functional QA pending
+- What is done but unverified:
+  - full feature smoke beyond install/launch
+- What is verified:
+  - build + package + install + launch sanity
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - signing/service secrets remain external

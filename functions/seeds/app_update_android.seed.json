@@ -3,9 +3,9 @@
     "android": {
       "appId": "com.onetabtube.browser_default",
       "releaseChannel": "stable",
-      "latestVersionCode": 429000006,
-      "latestVersionName": "1.90.2",
-      "minimumSupportedVersionCode": 429000005,
+      "latestVersionCode": 429000007,
+      "latestVersionName": "1.90.3",
+      "minimumSupportedVersionCode": 429000006,
       "updaterEnabled": true,
       "forceUpdate": false,
       "apkUrl": "https://example.com/go-play/OneTabTube.apk",

@@ -2,6 +2,24 @@ diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
 index 432a235c4081327daf699f6c41e09f2091ae31a0..7410d2f8b1f4f4fdfd68d8b9bde5320d89686cd6 100644
 --- a/chrome/android/BUILD.gn
 +++ b/chrome/android/BUILD.gn
+@@ -125,7 +125,16 @@ if (_is_default_toolchain) {
+   }
+ 
+   generate_ui_locale_resources("ui_locale_string_resources") {
+-    ui_locales = platform_pak_locales
++    _chrome_android_locales = platform_pak_locales
++    if (is_onetabyt) {
++      _chrome_android_locales = []
++      _chrome_android_locales = [
++        "en-GB",
++        "en-US",
++        "th",
++      ]
++    }
++    ui_locales = _chrome_android_locales
+   }
+ 
+   # Resources which are needed in the base module manifest's application tag
 @@ -163,6 +163,7 @@ if (_is_default_toolchain) {
        "java/res_chromium_base/mipmap-xxxhdpi/layered_app_icon_background.png",
        "java/res_chromium_base/values/channel_constants.xml",
@@ -50,7 +68,26 @@ index 432a235c4081327daf699f6c41e09f2091ae31a0..7410d2f8b1f4f4fdfd68d8b9bde5320d
  
      # Dep needed to ensure override works properly.
      deps = [ ":chrome_base_module_resources" ]
-@@ -1871,6 +1877,7 @@ if (_is_default_toolchain) {
+@@ -1871,7 +1886,18 @@ if (_is_default_toolchain) {
+       renaming_sources = []
+       renaming_destinations = []
+ 
+-      foreach(_locale, platform_pak_locales) {
++      _chrome_android_locales = platform_pak_locales
++      if (is_onetabyt) {
++        _chrome_android_locales = []
++        _chrome_android_locales = [
++          "en-GB",
++          "en-US",
++          "th",
++        ]
++      }
++
++      foreach(_locale, _chrome_android_locales) {
+         foreach(_gender_suffix, gender_suffixes) {
+           renaming_sources += [ "$target_gen_dir/${_variant}_paks/locales/${_locale}${_gender_suffix}.pak" ]
+           renaming_destinations += [ "locales/${_locale}${_gender_suffix}.pak" ]
+@@ -1888,6 +1914,7 @@ if (_is_default_toolchain) {
          ":${_variant}_locale_pak_assets",
          ":${_variant}_paks",
        ]
@@ -68,7 +105,7 @@ index 432a235c4081327daf699f6c41e09f2091ae31a0..7410d2f8b1f4f4fdfd68d8b9bde5320d
 +    }
    }
 
-  @@ -2129,6 +2136,7 @@ if (_is_default_toolchain) {
+@@ -2129,6 +2136,7 @@ if (_is_default_toolchain) {
        "//third_party/androidx:androidx_annotation_annotation_experimental_java",
        "//third_party/androidx:androidx_browser_browser_java",
      ]

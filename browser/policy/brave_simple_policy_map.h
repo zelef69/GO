@@ -25,6 +25,7 @@
 #include "brave/components/query_filter/pref_names.h"
 #include "brave/components/speedreader/common/buildflags/buildflags.h"
 #include "brave/components/tor/buildflags/buildflags.h"
+#include "brave/components/web_discovery/buildflags/buildflags.h"
 #include "build/build_config.h"
 #include "components/policy/core/browser/configuration_policy_handler.h"
 #include "components/policy/policy_constants.h"
@@ -98,8 +99,10 @@ inline constexpr PolicyToPreferenceMapEntry kBraveSimplePolicyMap[] = {
      base::Value::Type::BOOLEAN},
     {policy::key::kBravePlaylistEnabled, playlist::kPlaylistEnabledPref,
      base::Value::Type::BOOLEAN},
+#if BUILDFLAG(ENABLE_WEB_DISCOVERY_NATIVE)
     {policy::key::kBraveWebDiscoveryEnabled, kWebDiscoveryEnabled,
      base::Value::Type::BOOLEAN},
+#endif
 #if BUILDFLAG(ENABLE_BRAVE_NEWS)
     {policy::key::kBraveNewsDisabled,
      brave_news::prefs::kBraveNewsDisabledByPolicy, base::Value::Type::BOOLEAN},

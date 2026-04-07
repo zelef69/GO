@@ -1,114 +1,115 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-07 23:40:30 +07:00
+  - 2026-04-08 05:32:11 +07:00
 - Current phase:
-  - Release snapshot pushed / post-push handoff
+  - Runtime regression fix / PiP unlock-refocus stabilization
 - Current objective:
-  - บันทึกสถานะหลัง push release snapshot `1.90.2+429000006` ให้ตรงกับ HEAD ล่าสุด และชี้ next step ที่ยังค้างจริง
+  - Fix issue after screen unlock where PiP appears unfocused/not full video frame
 - Completed since last update:
-  - Curated a clean staged snapshot instead of using `git add -A`
-  - Committed the staged release snapshot with:
-    - `apk build release 1.90.2+429000006`
-  - Pushed the commit to:
-    - `origin/publish/go_play-sync-20260402`
-  - New pushed HEAD:
-    - `594c51efd`
+  - Resumed from latest handoff and inspected actual lifecycle handling for PiP around `onResume`, `onPictureInPictureModeChanged`, and PiP UI state callbacks.
+  - Implemented unlock/refocus hardening in `BraveActivity`:
+    - Added PiP refresh retry constants:
+      - `OTB_PIP_REFRESH_RETRY_DELAY_1_MS = 220`
+      - `OTB_PIP_REFRESH_RETRY_DELAY_2_MS = 520`
+      - `OTB_PIP_REFRESH_RETRY_DELAY_3_MS = 900`
+    - Added `scheduleOneTabPictureInPictureRefresh(reason)` and `refreshOneTabPictureInPictureParams(reason)` helpers.
+    - Triggers refresh sequence:
+      - on entering PiP in `onPictureInPictureModeChanged(...)`
+      - on `onPictureInPictureUiStateChanged(...)`
+      - on `onResume()` when activity is already in PiP (unlock/resume path)
+    - Refresh only applies when in PiP and video signal is still detectable (`activeFullscreen` OR `fullscreenRequested` OR `isPictureInPictureAvailable`).
+  - Synced updated file to ext4 build workspace.
+  - Built release target successfully.
+  - Installed updated APK on connected device successfully.
+  - Launch sanity passed.
 - In progress now:
-  - No running process
-  - Working tree still has local untracked screenshots/logs plus unstaged `AGENT.md` deletion that were intentionally kept out of the pushed snapshot
+  - Waiting user validation on the exact repro path:
+    - play video -> enter PiP -> lock screen -> unlock -> verify PiP frame remains focused/full.
 - Files/modules touched:
-  - `.gitignore`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
   - `docs/current-status.md`
   - `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
-  - `lib/features/setup/presentation/setup_page.dart`
-  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
-  - `tools/go_play_admin_gui/go_play_admin/gui_app.py`
 - Build/test status:
-  - main release snapshot has been committed and pushed
-  - no new build/test command was run after the push itself
-  - admin GUI entitlement-semantic live write smoke is still pending
+  - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create` passed
+  - `adb install -r` passed (`Success`)
+  - `adb shell am start -W ...` passed (`Status: ok`)
 - Blockers/risks:
-  - local worktree is still dirty from screenshots, dumps, and debug evidence
-  - `AGENT.md` remains deleted in the worktree but was intentionally not included in the pushed snapshot
+  - Final confirmation still requires device-side manual unlock flow.
+  - If issue persists, next step is logcat-driven tuning of retry timing and/or explicit rebind trigger in media controller path.
 - Next concrete step:
-  - If resuming product work, start from the real pending item:
-    - run admin GUI live write smoke for `Duration days (+เพิ่ม)` and verify `users/{uid}/entitlements/{packageId}.expiresAt` moves forward
+  - User retests unlock flow with current build.
+  - If still broken: capture targeted logcat tags around `OneTabTubePerf`, `YouTubeNativeHelper`, `BravePipWrapper` during lock/unlock cycle and patch based on observed state.
 - Expected resume inspection scope:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `git status --short`
-  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
-  - `functions/src/package_orders.ts`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log`
 - Current tool(s):
-  - `shell_command`
   - `apply_patch`
-  - `git`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
 - Exact command(s):
-  - `git status --short`
-  - `git commit -m "apk build release 1.90.2+429000006"`
-  - `git push origin publish/go_play-sync-20260402`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
 - Tool purpose:
-  - package and publish the current release-line source snapshot
+  - Add PiP unlock refocus retries and deploy patch for runtime validation.
 - Tool state:
-  - completed for the push path
+  - Completed (code/build/install/launch sanity); runtime repro verification pending.
 - Expected resume command:
-  - `git status --short`
-  - `C:\Users\Master\Desktop\GO_PLAY\tools\go_play_admin_gui\run_admin_gui.bat`
+  - `Get-Content artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log -Tail 120`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
 - Expected output/artifact path:
-  - remote branch updated at `origin/publish/go_play-sync-20260402`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `594c51efd`
+  - `727dc21a5ab0433d722046ed79c9b0278272560a`
 - Build flavor / target:
-  - repo snapshot aligned to release `1.90.2+429000006`
+  - `android_Release_arm64`
 - Primary working set:
-  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py` - entitlement grant semantics
-  - `tools/go_play_admin_gui/go_play_admin/gui_app.py` - operator-facing grant form wording
-  - `functions/src/package_orders.ts` - runtime access source of truth
-  - `docs/current-status.md` - latest handoff
-  - `docs/progress-log.md` - append-only audit trail
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — lifecycle + PiP refresh strategy
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` — PiP availability/fullscreen signals reference
+  - `artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log` — build evidence
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk` — deployed artifact
 - Files to inspect first after resume:
   - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `git status --short`
-  - `tools/go_play_admin_gui/go_play_admin/firebase_backend.py`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
 - Command run from:
-  - repo root `C:\Users\Master\Desktop\GO_PLAY`
+  - `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - service account JSON present locally for admin GUI
-  - target UID available for live verification
+  - WSL ext4 build desk available at `/home/master/src_ext4`
+  - adb device connected
 - Expected success signal:
-  - entitlement `expiresAt` extends and app remaining days increases after admin GUI grant
+  - After lock/unlock while in PiP, window remains focused on video content (no partial/unfocused frame).
 - Expected failure signal:
-  - entitlement write succeeds but `expiresAt` stays unchanged
+  - PiP returns in unfocused/not-full-video state after unlock.
 - Last known log location:
-  - none for the push step itself
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_pip_refocus_after_unlock_20260408.log`
 - Last known artifact path:
-  - remote pushed commit `594c51efd` on `origin/publish/go_play-sync-20260402`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
 - Recent decisions:
-  - keep the pushed snapshot focused on product code/docs/config
-  - keep local credentials and evidence files out of git
+  - Prefer lifecycle-based PiP param re-sync on unlock path instead of adding more fullscreen request churn.
 - Rejected approaches:
-  - `git add -A` on the full dirty desktop state
-  - committing service-account JSON or local screenshots
+  - Forcing fullscreen re-entry loops from unlock callbacks.
 - Stop point classification:
-  - release snapshot committed and pushed; next product validation step pending
+  - code edited + release built + APK installed; manual runtime unlock validation pending
 - What is done but unverified:
-  - admin GUI live write smoke after the semantic fix
+  - real-device unlock scenario correctness after patch
 - What is verified:
-  - release snapshot commit exists locally and on origin
-  - pushed commit message is `apk build release 1.90.2+429000006`
+  - compile/install/launch path of this patch
 - External prerequisite:
-  - target UID for entitlement smoke verification
+  - user executes lock/unlock PiP test on device
 - Secret required but not stored:
-  - Firebase admin service-account JSON remains local-only and intentionally not committed
+  - signing/service credentials remain external
 - Actual code state after resume:
-  - pushed source is aligned to release `1.90.2+429000006`
-  - local desk still has extra evidence files not part of the pushed snapshot
+  - PiP refresh now retried at multiple intervals on enter/resume/ui-state events for OneTab mode.
 - Chosen direction:
-  - treat the release snapshot as published and resume from the pending entitlement-validation work next
+  - Validate unlock behavior; if still failing, move to targeted logcat-driven tuning.

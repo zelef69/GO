@@ -5157,26 +5157,17 @@ void YouTubeScriptInjectorTabHelper::MaybeEnterPictureInPictureAfterFullscreenRe
 
   const bool active_fullscreen =
       web_contents()->HasActiveEffectivelyFullscreenVideo();
-  if (!active_fullscreen && !fullscreen_request_retry_pending_) {
-    fullscreen_request_retry_pending_ = true;
-    LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_fullscreen_timeout_retry";
-    SetFullscreenRequested(false);
-    MaybeSetFullscreen();
-    return;
-  }
-
   if (!active_fullscreen) {
     LOG(INFO)
-        << "OTB_PIP event=enter_picture_in_picture_fullscreen_timeout_delegate_to_java_helper";
+        << "OTB_PIP event=enter_picture_in_picture_delegate_to_java_helper_no_fullscreen";
     fullscreen_request_retry_pending_ = false;
     SetFullscreenRequested(false);
     ::youtube_script_injector::EnterPictureInPicture(web_contents());
     return;
   }
 
-  LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_fullscreen_timeout_fallback"
-            << " active_fullscreen=" << active_fullscreen
-            << " retry_pending=" << fullscreen_request_retry_pending_;
+  LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_delegate_to_java_helper_active_fullscreen"
+            << " active_fullscreen=" << active_fullscreen;
   fullscreen_request_retry_pending_ = false;
   SetFullscreenRequested(false);
   ::youtube_script_injector::EnterPictureInPicture(web_contents());

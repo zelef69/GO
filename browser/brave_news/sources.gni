@@ -4,6 +4,7 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 
 import("//brave/components/brave_news/common/buildflags/buildflags.gni")
+import("//brave/components/onetabyt/buildflags/buildflags.gni")
 
 brave_browser_brave_news_sources = []
 brave_browser_brave_news_deps = []
@@ -29,5 +30,12 @@ if (enable_brave_news) {
     "//chrome/browser/profiles:profile",
     "//components/keyed_service/content",
     "//content/public/browser",
+  ]
+} else if (is_android && is_onetabyt) {
+  brave_browser_brave_news_sources += [ "//brave/browser/brave_news/android/brave_news_controller_factory_android_stub.cc" ]
+
+  brave_browser_brave_news_deps += [
+    "//base",
+    "//chrome/browser/profiles:profile",
   ]
 }

@@ -350,6 +350,9 @@ public abstract class BraveActivity extends ChromeActivity
             Arrays.asList("AM", "AZ", "BY", "KG", "KZ", "MD", "RU", "TJ", "TM", "UZ");
 
     private static final int PIP_UPDATE_DELAY_MS = 500;
+    private static final int OTB_PIP_REFRESH_RETRY_DELAY_1_MS = 220;
+    private static final int OTB_PIP_REFRESH_RETRY_DELAY_2_MS = 520;
+    private static final int OTB_PIP_REFRESH_RETRY_DELAY_3_MS = 900;
     private static final int PIP_EXIT_TO_WATCH_PAGE_DELAY_MS = 250;
     private static final int PIP_EXIT_TO_WATCH_PAGE_MAX_AGE_MS = 3000;
     private static final int PIP_RECENT_WATCH_PAGE_RETURN_GRACE_MS = 5000;
@@ -726,6 +729,7 @@ public abstract class BraveActivity extends ChromeActivity
         syncOneTabCleanModeUi();
         if (inPicture) {
             clearPendingReturnToWatchPageAfterPictureInPictureExit("entered_pip");
+            scheduleOneTabPictureInPictureRefresh("pip_mode_changed_enter");
         }
         WebContents currentWebContents = getCurrentWebContents();
         if (mResumeMediaSession) {
@@ -751,28 +755,22 @@ public abstract class BraveActivity extends ChromeActivity
                 && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
                         currentWebContents)) {
             boolean activeFullscreen = currentWebContents.hasActiveEffectivelyFullscreenVideo();
-            boolean fullscreenRequested =
-                    BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
-                            currentWebContents);
             FullscreenManager fullscreenManager = getFullscreenManager();
-            if ((activeFullscreen || fullscreenRequested)
-                    && shouldReturnToWatchPageAfterPictureInPictureExit()) {
+            if (activeFullscreen && shouldReturnToWatchPageAfterPictureInPictureExit()) {
                 Log.i(
                         OTB_PERF_TAG,
-                        "event=pip_exit_to_watch_page_armed active_fullscreen=%b requested=%b state=%d",
+                        "event=pip_exit_to_watch_page_armed active_fullscreen=%b state=%d",
                         activeFullscreen,
-                        fullscreenRequested,
                         ApplicationStatus.getStateForActivity(this));
                 armReturnToWatchPageAfterPictureInPictureExit();
                 maybeScheduleReturnToWatchPageAfterPictureInPictureExit("pip_exit_callback");
                 return;
             }
-            if (activeFullscreen || fullscreenRequested) {
+            if (activeFullscreen) {
                 Log.i(
                         OTB_PERF_TAG,
-                        "event=pip_exit_cleanup_skipped active_fullscreen=%b requested=%b",
-                        activeFullscreen,
-                        fullscreenRequested);
+                        "event=pip_exit_cleanup_skipped active_fullscreen=%b",
+                        activeFullscreen);
                 return;
             }
             // PiP has been dismissed when watching a YT video, then pause it.
@@ -784,6 +782,15 @@ public abstract class BraveActivity extends ChromeActivity
                 fullscreenManager.exitPersistentFullscreenMode();
             }
         }
+    }
+
+    @Override
+    public void onPictureInPictureUiStateChanged(@NonNull PictureInPictureUiState pipState) {
+        super.onPictureInPictureUiStateChanged(pipState);
+        if (!OneTabYouTubeMode.isEnabled() || !isInPictureInPictureMode()) {
+            return;
+        }
+        scheduleOneTabPictureInPictureRefresh("pip_ui_state_changed");
     }
 
     /**
@@ -1247,6 +1254,9 @@ public abstract class BraveActivity extends ChromeActivity
                     && !mOneTabAuthCheckInProgress
                     && !mOneTabLoginActivityLaunched) {
                 PostTask.postTask(TaskTraits.UI_DEFAULT, this::resolveOneTabPackageAccess);
+            }
+            if (isInPictureInPictureMode()) {
+                scheduleOneTabPictureInPictureRefresh("on_resume");
             }
         }
         maybeScheduleReturnToWatchPageAfterPictureInPictureExit("on_resume");
@@ -3515,16 +3525,12 @@ public abstract class BraveActivity extends ChromeActivity
                 && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
                         currentWebContents)) {
             boolean activeFullscreen = currentWebContents.hasActiveEffectivelyFullscreenVideo();
-            boolean fullscreenRequested =
-                    BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
-                            currentWebContents);
-            if (activeFullscreen || fullscreenRequested) {
+            if (activeFullscreen) {
                 Log.i(
                         OTB_PERF_TAG,
-                        "event=pip_exit_to_watch_page_wait_for_page_exit reason=%s active_fullscreen=%b requested=%b",
+                        "event=pip_exit_to_watch_page_wait_for_page_exit reason=%s active_fullscreen=%b",
                         reason,
-                        activeFullscreen,
-                        fullscreenRequested);
+                        activeFullscreen);
                 BraveYouTubeScriptInjectorNativeHelper.exitFullscreen(currentWebContents);
                 maybeScheduleReturnToWatchPageAfterPictureInPictureExit(
                         "await_page_exit_" + reason);
@@ -3566,6 +3572,54 @@ public abstract class BraveActivity extends ChromeActivity
         if (controller != null) {
             controller.attemptPictureInPicture();
         }
+    }
+
+    private void scheduleOneTabPictureInPictureRefresh(@NonNull String reason) {
+        if (!OneTabYouTubeMode.isEnabled() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+        if (!isInPictureInPictureMode()) {
+            return;
+        }
+        refreshOneTabPictureInPictureParams(reason + "_immediate");
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () -> refreshOneTabPictureInPictureParams(reason + "_retry1"),
+                OTB_PIP_REFRESH_RETRY_DELAY_1_MS);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () -> refreshOneTabPictureInPictureParams(reason + "_retry2"),
+                OTB_PIP_REFRESH_RETRY_DELAY_2_MS);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () -> refreshOneTabPictureInPictureParams(reason + "_retry3"),
+                OTB_PIP_REFRESH_RETRY_DELAY_3_MS);
+    }
+
+    private void refreshOneTabPictureInPictureParams(@NonNull String reason) {
+        if (!isInPictureInPictureMode()) {
+            return;
+        }
+        WebContents currentWebContents = getCurrentWebContents();
+        if (currentWebContents == null) {
+            Log.i(OTB_PERF_TAG, "event=pip_refocus_skipped reason=%s has_webcontents=false", reason);
+            return;
+        }
+        boolean hasVideoSignal =
+                currentWebContents.hasActiveEffectivelyFullscreenVideo()
+                        || BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
+                                currentWebContents)
+                        || BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
+                                currentWebContents);
+        if (!hasVideoSignal) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_refocus_skipped reason=%s has_video_signal=false",
+                    reason);
+            return;
+        }
+        Log.i(OTB_PERF_TAG, "event=pip_refocus_apply reason=%s", reason);
+        refreshPictureInPictureParamsForCurrentVideo();
     }
 
     public static ChromeTabbedActivity getChromeTabbedActivity() {

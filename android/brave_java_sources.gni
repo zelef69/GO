@@ -21,6 +21,7 @@ import("//brave/components/ai_chat/core/common/buildflags/buildflags.gni")
 import("//brave/components/onetabyt/buildflags/buildflags.gni")
 import(
     "//brave/components/cached_flags/brave_components_cached_flags_java_sources.gni")
+import("//brave/components/brave_news/common/buildflags/buildflags.gni")
 import("//brave/components/brave_vpn/common/buildflags/buildflags.gni")
 import("//brave/components/brave_wallet/common/buildflags/buildflags.gni")
 import("//brave/components/embedder_support/android/java_sources.gni")
@@ -569,7 +570,7 @@ if (!enable_ai_chat) {
   ]
 }
 
-if (!enable_brave_wallet) {
+if (!enable_brave_wallet && !is_onetabyt) {
   _brave_java_source_filters += [
     "*BraveWalletProvider.java",
     "*app/domain/Crypto*.java",
@@ -586,8 +587,16 @@ if (!enable_brave_wallet) {
   ]
 }
 
-if (!enable_brave_vpn) {
+if (!enable_brave_vpn && !is_onetabyt) {
   _brave_java_source_filters += [ "*vpn/*" ]
+}
+
+if (!enable_brave_news && is_onetabyt) {
+  _brave_java_source_filters += [ "*brave_news/BraveNewsControllerFactory.java" ]
+}
+
+if (!enable_brave_wallet && is_onetabyt) {
+  _brave_java_source_filters += [ "*decentralized_dns/settings/*" ]
 }
 
 if (_brave_java_source_filters != []) {
@@ -605,9 +614,36 @@ if (is_onetabyt) {
     "../../brave/android/java_stub/org/chromium/chrome/browser/bookmarks/BraveBookmarkBridge.java",
     "../../brave/android/java_stub/org/chromium/chrome/browser/playlist/PlaylistServiceFactoryAndroid.java",
   ]
+  if (!enable_brave_wallet) {
+    brave_java_sources += [
+      "../../brave/android/java_stub/org/chromium/chrome/browser/decentralized_dns/EnsOffchainResolveMethod.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/decentralized_dns/ResolveMethodTypes.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/decentralized_dns/settings/RadioButtonGroupDDnsResolveMethodPreference.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/decentralized_dns/settings/RadioButtonGroupEnsOffchainResolveMethodPreference.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/crypto_wallet/AssetRatioServiceFactoryJni.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/crypto_wallet/BlockchainRegistryFactoryJni.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/crypto_wallet/BraveWalletProviderDelegateImplHelperJni.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/crypto_wallet/BraveWalletServiceFactoryJni.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/crypto_wallet/SwapServiceFactoryJni.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/crypto_wallet/fragments/dapps/ConnectAccountFragmentJni.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/crypto_wallet/permission/BraveDappPermissionPromptDialogJni.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/crypto_wallet/util/WalletNativeUtilsJni.java",
+    ]
+  }
+  if (!enable_brave_vpn) {
+    brave_java_sources += [
+      "../../brave/android/java_stub/org/chromium/chrome/browser/vpn/BraveVpnNativeWorkerJni.java",
+      "../../brave/android/java_stub/org/chromium/chrome/browser/vpn/BraveVpnServiceFactoryAndroidJni.java",
+    ]
+  }
+  if (!enable_brave_news) {
+    brave_java_sources += [
+      "../../brave/android/java_stub/org/chromium/chrome/browser/brave_news/BraveNewsControllerFactory.java",
+    ]
+  }
 }
 
-if (!enable_brave_wallet) {
+if (!enable_brave_wallet && !is_onetabyt) {
   brave_java_sources += [
     "../../brave/android/java/org/chromium/chrome/browser/app/domain/CryptoModel.java",
     "../../brave/android/java/org/chromium/chrome/browser/app/domain/CryptoSharedActions.java",
@@ -654,7 +690,7 @@ if (!enable_brave_wallet) {
   ]
 }
 
-if (!enable_brave_vpn) {
+if (!enable_brave_vpn && !is_onetabyt) {
   brave_java_sources += [
     "../../brave/android/java/org/chromium/chrome/browser/vpn/BraveVpnNativeWorker.java",
     "../../brave/android/java/org/chromium/chrome/browser/vpn/BraveVpnObserver.java",
@@ -665,6 +701,9 @@ if (!enable_brave_vpn) {
     "../../brave/android/java/org/chromium/chrome/browser/vpn/timer/TimerDialogFragment.java",
     "../../brave/android/java/org/chromium/chrome/browser/vpn/timer/TimerItemAdapter.java",
     "../../brave/android/java/org/chromium/chrome/browser/vpn/timer/TimerItemModel.java",
+    "../../brave/android/java/org/chromium/chrome/browser/vpn/timer/TimerItemViewHolder.java",
+    "../../brave/android/java/org/chromium/chrome/browser/vpn/timer/TimerUtils.java",
+    "../../brave/android/java/org/chromium/chrome/browser/vpn/timer/TimerVpnActionReceiver.java",
     "../../brave/android/java/org/chromium/chrome/browser/vpn/models/BraveVpnPrefModel.java",
     "../../brave/android/java/org/chromium/chrome/browser/vpn/models/BraveVpnServerRegion.java",
     "../../brave/android/java/org/chromium/chrome/browser/vpn/models/BraveVpnWireguardProfileCredentials.java",
@@ -720,7 +759,7 @@ if (is_onetabyt) {
   ]
 }
 
-if (!enable_brave_vpn) {
+if (!enable_brave_vpn && !is_onetabyt) {
   _brave_java_base_module_source_filters +=
       [ "*vpn/wireguard/WireguardService.java" ]
 }

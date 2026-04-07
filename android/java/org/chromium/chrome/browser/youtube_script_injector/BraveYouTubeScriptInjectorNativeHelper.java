@@ -107,7 +107,9 @@ public class BraveYouTubeScriptInjectorNativeHelper {
             if (remainingRetries <= 0) {
                 Log.i(
                         TAG,
-                        "Abort delayed enterPictureInPicture because fullscreen state is still not visible to Java.");
+                        "Proceed enterPictureInPicture without fullscreen lock after retries are exhausted.");
+                braveActivity.refreshPictureInPictureParamsForCurrentVideo();
+                braveActivity.attemptPictureInPictureForCurrentVideo();
                 return;
             }
 

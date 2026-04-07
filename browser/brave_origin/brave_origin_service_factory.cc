@@ -25,6 +25,7 @@
 #include "brave/components/brave_wayback_machine/pref_names.h"
 #include "brave/components/constants/pref_names.h"
 #include "brave/components/p3a/pref_names.h"
+#include "brave/components/web_discovery/buildflags/buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
@@ -179,11 +180,13 @@ constexpr auto kBraveOriginProfileMetadata =
              /*user_settable=*/false)},
 #endif
 
+#if BUILDFLAG(ENABLE_WEB_DISCOVERY_NATIVE)
         // Web Discovery preferences
         {kWebDiscoveryEnabled,
          BraveOriginServiceFactory::BraveOriginPrefMetadata(
              false,
              /*user_settable=*/true)},
+#endif
     });
 
 }  // namespace

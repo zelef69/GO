@@ -36,6 +36,8 @@ import org.chromium.content_public.browser.WebContents;
 final class OneTabFabMenuCoordinator {
     private static final long SLEEP_WAKE_DOUBLE_TAP_WINDOW_MS = 450L;
     private static final long MENU_ANIMATION_DURATION_MS = 180L;
+    private static final long FAB_PIP_RETRY_1_MS = 220L;
+    private static final long FAB_PIP_RETRY_2_MS = 480L;
 
     private final BraveActivity mActivity;
     private final LayoutInflater mInflater;
@@ -160,7 +162,7 @@ final class OneTabFabMenuCoordinator {
                 mPipButton,
                 () -> {
                     Tab activityTab = mActivity.getActivityTab();
-                    if (!isPipAvailable(activityTab)) {
+                    if (!canAttemptPictureInPicture(activityTab)) {
                         showToast(R.string.onetab_fab_pip_unavailable);
                         return;
                     }
@@ -170,7 +172,7 @@ final class OneTabFabMenuCoordinator {
                         showToast(R.string.onetab_fab_pip_unavailable);
                         return;
                     }
-                    BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
+                    triggerPictureInPictureWithRetry(webContents);
                 });
         bindMenuAction(
                 mAccountButton,
@@ -476,22 +478,36 @@ final class OneTabFabMenuCoordinator {
     }
 
     private void updatePipAvailability(@Nullable Tab tab) {
-        boolean available = isPipAvailable(tab);
+        boolean available = canAttemptPictureInPicture(tab);
         if (mPipButton != null) {
             mPipButton.setEnabled(available);
             mPipButton.setAlpha(available ? 1f : 0.45f);
         }
     }
 
-    private boolean isPipAvailable(@Nullable Tab tab) {
+    private boolean canAttemptPictureInPicture(@Nullable Tab tab) {
         if (tab == null || !PictureInPicture.isEnabled(mActivity)) {
             return false;
         }
 
-        WebContents webContents = tab.getWebContents();
-        return webContents != null
-                && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
-                        webContents);
+        return tab.getWebContents() != null;
+    }
+
+    private void triggerPictureInPictureWithRetry(@NonNull WebContents webContents) {
+        // Mark manual PiP intent and request fullscreen-path first for watch-page reliability.
+        BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
+        BraveYouTubeScriptInjectorNativeHelper.enterPictureInPicture(webContents);
+
+        if (mRootView == null) {
+            return;
+        }
+
+        mRootView.postDelayed(
+                () -> BraveYouTubeScriptInjectorNativeHelper.enterPictureInPicture(webContents),
+                FAB_PIP_RETRY_1_MS);
+        mRootView.postDelayed(
+                () -> BraveYouTubeScriptInjectorNativeHelper.enterPictureInPicture(webContents),
+                FAB_PIP_RETRY_2_MS);
     }
 
     private void bindMenuAction(@Nullable View view, @NonNull Runnable action) {
