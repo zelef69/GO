@@ -68,6 +68,7 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
     private final List<OneTabPackagePurchaseManager.ProductSummary> mProductOptions = new ArrayList<>();
     private String mSelectedPackageId = DEFAULT_SELECTED_PACKAGE_ID;
     private boolean mBusy;
+    private boolean mLoadingProductOptions;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -257,13 +258,16 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         adminParams.topMargin = dp(14);
         card.addView(mContactAdminButton, adminParams);
 
-        setProductOptions(buildFallbackPackageOptions());
+        applyLoadingProductOptionsState(true);
+        clearProductSummary();
+        renderPackageOptions();
         setStatus(getString(R.string.onetab_buy_status_loading), false);
 
         return scrollView;
     }
 
     private void loadProductOptions() {
+        applyLoadingProductOptionsState(true);
         PostTask.postTask(
                 TaskTraits.BEST_EFFORT_MAY_BLOCK,
                 () -> {
@@ -274,6 +278,7 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
                             () -> {
                                 if (isFinishing() || isDestroyed()) return;
                                 setProductOptions(options);
+                                applyLoadingProductOptionsState(false);
                                 setStatus(getString(R.string.onetab_buy_status_ready), false);
                             });
                 });
@@ -316,6 +321,8 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         if (selected != null) {
             mSelectedPackageId = selected.packageId;
             setProductSummary(selected);
+        } else {
+            clearProductSummary();
         }
         renderPackageOptions();
     }
@@ -342,8 +349,9 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
                     selected
                             ? createFilledButtonBackground("#FFCC0000")
                             : createOutlineButtonBackground());
-            optionButton.setEnabled(option.available && !mBusy);
-            optionButton.setAlpha(option.available ? 1f : 0.5f);
+            boolean enabled = option.available && !mBusy && !mLoadingProductOptions;
+            optionButton.setEnabled(enabled);
+            optionButton.setAlpha(option.available && !mLoadingProductOptions ? 1f : 0.5f);
             optionButton.setOnClickListener(
                     unused -> {
                         mSelectedPackageId = option.packageId;
@@ -381,6 +389,38 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         if (mAccountNumberValueView != null) {
             mAccountNumberValueView.setText(summary.accountNumber);
         }
+    }
+
+    private void clearProductSummary() {
+        mProductSummary = null;
+        if (mPackageNameView != null) {
+            mPackageNameView.setText("");
+        }
+        if (mPriceValueView != null) {
+            mPriceValueView.setText("");
+        }
+        if (mBankValueView != null) {
+            mBankValueView.setText("");
+        }
+        if (mAccountNameEnValueView != null) {
+            mAccountNameEnValueView.setText("");
+        }
+        if (mAccountNameThValueView != null) {
+            mAccountNameThValueView.setText("");
+        }
+        if (mAccountNumberValueView != null) {
+            mAccountNumberValueView.setText("");
+        }
+    }
+
+    private void applyLoadingProductOptionsState(boolean loading) {
+        mLoadingProductOptions = loading;
+        if (mSelectSlipButton != null) {
+            boolean enabled = !loading && !mBusy && mProductSummary != null;
+            mSelectSlipButton.setEnabled(enabled);
+            mSelectSlipButton.setAlpha(enabled ? 1f : 0.6f);
+        }
+        renderPackageOptions();
     }
 
     private void startPurchaseFlow() {
@@ -680,8 +720,9 @@ public class OneTabBuyPackageActivity extends AppCompatActivity {
         mBusy = busy;
         mProgressBar.setVisibility(busy ? View.VISIBLE : View.GONE);
         renderPackageOptions();
-        mSelectSlipButton.setEnabled(!busy);
-        mSelectSlipButton.setAlpha(busy ? 0.6f : 1f);
+        boolean buyEnabled = !busy && !mLoadingProductOptions && mProductSummary != null;
+        mSelectSlipButton.setEnabled(buyEnabled);
+        mSelectSlipButton.setAlpha(buyEnabled ? 1f : 0.6f);
         mContactAdminButton.setEnabled(!busy);
         mContactAdminButton.setAlpha(busy ? 0.6f : 1f);
     }

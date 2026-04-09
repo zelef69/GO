@@ -4753,12 +4753,8 @@ void YouTubeScriptInjectorTabHelper::DidFinishNavigation(
   if (navigation_handle->IsSameDocument() &&
       navigation_handle->IsInMainFrame() && navigation_handle->HasCommitted()) {
     fullscreen_request_retry_pending_ = false;
-    if (restore_video_presentation_after_track_navigation_ &&
-        IsYouTubeDomain()) {
-      restore_video_presentation_after_track_navigation_ = false;
-      LOG(INFO) << "OTB_PIP event=restore_video_presentation_same_document";
-      SetFullscreenRequested(false);
-      MaybeSetFullscreen();
+    if (MaybeRestoreVideoPresentationAfterTrackNavigation(
+            "same_document_navigation", true)) {
       return;
     }
     SetFullscreenRequested(false);
@@ -4799,11 +4795,8 @@ void YouTubeScriptInjectorTabHelper::PrimaryMainDocumentElementAvailable() {
     contents->GetPrimaryMainFrame()->ExecuteJavaScript(
         kYoutubePictureInPictureSupport, base::NullCallback());
   }
-  if (restore_video_presentation_after_track_navigation_) {
-    restore_video_presentation_after_track_navigation_ = false;
-    LOG(INFO) << "OTB_PIP event=restore_video_presentation_new_page";
-    SetFullscreenRequested(false);
-    MaybeSetFullscreen();
+  if (MaybeRestoreVideoPresentationAfterTrackNavigation(
+          "primary_main_document_available", true)) {
     return;
   }
   SetFullscreenRequested(false);
@@ -4822,6 +4815,18 @@ void YouTubeScriptInjectorTabHelper::MediaEffectivelyFullscreenChanged(
       LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_from_fullscreen";
       ::youtube_script_injector::EnterPictureInPicture(web_contents());
     }
+  }
+}
+
+void YouTubeScriptInjectorTabHelper::OnVisibilityChanged(
+    content::Visibility visibility) {
+  LOG(INFO) << "OTB_PIP event=web_contents_visibility_changed"
+            << " visibility=" << static_cast<int>(visibility)
+            << " restore_pending="
+            << restore_video_presentation_after_track_navigation_;
+  if (visibility == content::Visibility::VISIBLE) {
+    MaybeRestoreVideoPresentationAfterTrackNavigation("visibility_visible",
+                                                      false);
   }
 }
 
@@ -5157,17 +5162,26 @@ void YouTubeScriptInjectorTabHelper::MaybeEnterPictureInPictureAfterFullscreenRe
 
   const bool active_fullscreen =
       web_contents()->HasActiveEffectivelyFullscreenVideo();
+  if (!active_fullscreen && !fullscreen_request_retry_pending_) {
+    fullscreen_request_retry_pending_ = true;
+    LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_fullscreen_timeout_retry";
+    SetFullscreenRequested(false);
+    MaybeSetFullscreen();
+    return;
+  }
+
   if (!active_fullscreen) {
     LOG(INFO)
-        << "OTB_PIP event=enter_picture_in_picture_delegate_to_java_helper_no_fullscreen";
+        << "OTB_PIP event=enter_picture_in_picture_fullscreen_timeout_delegate_to_java_helper";
     fullscreen_request_retry_pending_ = false;
     SetFullscreenRequested(false);
     ::youtube_script_injector::EnterPictureInPicture(web_contents());
     return;
   }
 
-  LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_delegate_to_java_helper_active_fullscreen"
-            << " active_fullscreen=" << active_fullscreen;
+  LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_fullscreen_timeout_fallback"
+            << " active_fullscreen=" << active_fullscreen
+            << " retry_pending=" << fullscreen_request_retry_pending_;
   fullscreen_request_retry_pending_ = false;
   SetFullscreenRequested(false);
   ::youtube_script_injector::EnterPictureInPicture(web_contents());
@@ -5205,6 +5219,48 @@ void YouTubeScriptInjectorTabHelper::OnNativeTabBridgeCommandComplete(
   LOG(INFO) << "OTB_MEDIA event=native_tab_bridge_command"
             << " command=" << command_name
             << " result=" << (result ? *result : "non_string_result");
+}
+
+bool YouTubeScriptInjectorTabHelper::MaybeRestoreVideoPresentationAfterTrackNavigation(
+    const char* reason,
+    bool require_visible) {
+  if (!restore_video_presentation_after_track_navigation_) {
+    return false;
+  }
+
+  if (!IsYouTubeDomain()) {
+    LOG(INFO) << "OTB_PIP event=track_navigation_restore_cleared"
+              << " reason=" << reason << " restore_allowed=false"
+              << " cause=not_youtube_domain";
+    restore_video_presentation_after_track_navigation_ = false;
+    fullscreen_request_retry_pending_ = false;
+    SetFullscreenRequested(false);
+    return false;
+  }
+
+  const content::Visibility visibility = web_contents()->GetVisibility();
+  if (require_visible && visibility != content::Visibility::VISIBLE) {
+    LOG(INFO) << "OTB_PIP event=track_navigation_restore_deferred"
+              << " reason=" << reason
+              << " visibility=" << static_cast<int>(visibility);
+    return true;
+  }
+
+  content::RenderFrameHost* rfh = web_contents()->GetPrimaryMainFrame();
+  if (!rfh || !rfh->IsRenderFrameLive()) {
+    LOG(INFO) << "OTB_PIP event=track_navigation_restore_deferred"
+              << " reason=" << reason << " cause=frame_not_live";
+    return true;
+  }
+
+  restore_video_presentation_after_track_navigation_ = false;
+  fullscreen_request_retry_pending_ = false;
+  LOG(INFO) << "OTB_PIP event=track_navigation_restore_apply"
+            << " reason=" << reason
+            << " visibility=" << static_cast<int>(visibility);
+  SetFullscreenRequested(false);
+  MaybeSetFullscreen();
+  return true;
 }
 
 

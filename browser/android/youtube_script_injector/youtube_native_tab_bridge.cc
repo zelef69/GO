@@ -1710,7 +1710,9 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
           return strategyResult(false, 'none', 'unreliable-track-context');
         }
       }
-      if (hasPlayerTrack) {
+      if (hasPlayerTrack
+          && !isPlaylistContext()
+          && !lastReliablePlaylistContext) {
         result = await tryYouTubePlayerTrack(kind);
         debugLog(kind + '_player_api', JSON.stringify(result));
         if (result.ok) {

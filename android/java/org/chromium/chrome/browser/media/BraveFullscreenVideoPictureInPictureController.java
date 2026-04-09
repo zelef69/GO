@@ -9,6 +9,7 @@ import android.app.Activity;
 
 import org.chromium.base.Log;
 import org.chromium.base.BraveReflectionUtil;
+import org.chromium.chrome.browser.app.BraveActivity;
 import org.chromium.chrome.browser.youtube_script_injector.BraveYouTubeScriptInjectorNativeHelper;
 import org.chromium.content_public.browser.WebContents;
 
@@ -35,6 +36,15 @@ public class BraveFullscreenVideoPictureInPictureController {
         if ((reason == 6 /*MetricsEndReason.LEFT_FULLSCREEN*/
                         || reason == 7 /*MetricsEndReason.WEB_CONTENTS_LEFT_FULLSCREEN*/)
                 && activity.isInPictureInPictureMode()) {
+            if (activity instanceof BraveActivity braveActivity
+                    && !braveActivity.shouldPreserveVideoPresentationForPictureInPictureControls()) {
+                Log.i(
+                        TAG,
+                        "skip fullscreen re-request while PiP presentation restore is disallowed reason=%d",
+                        reason);
+                mDismissPending = false;
+                return;
+            }
             WebContents webContents =
                     (WebContents)
                             BraveReflectionUtil.invokeMethod(
@@ -63,10 +73,15 @@ public class BraveFullscreenVideoPictureInPictureController {
             if (webContents != null
                     && !activeFullscreen
                     && (Boolean.TRUE.equals(isPlaying) || fullscreenRequested)) {
-                Log.i(
-                        TAG,
-                        "keep PiP alive without forcing fullscreen re-request reason=%d",
-                        reason);
+                if (!fullscreenRequested) {
+                    Log.i(TAG, "re-request fullscreen while keeping PiP alive reason=%d", reason);
+                    BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
+                } else {
+                    Log.i(
+                            TAG,
+                            "keep PiP alive while fullscreen restore is still pending reason=%d",
+                            reason);
+                }
                 mDismissPending = false;
                 return;
             }

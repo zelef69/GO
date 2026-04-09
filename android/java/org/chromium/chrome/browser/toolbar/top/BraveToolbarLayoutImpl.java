@@ -326,6 +326,9 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
             mYouTubePipButton.setOnLongClickListener(this);
             BraveTouchUtils.ensureMinTouchTarget(mYouTubePipButton);
         }
+        if (OneTabYouTubeMode.isEnabled()) {
+            hideYouTubePipIcon();
+        }
 
         mBraveShieldsHandler = new BraveShieldsHandler(getContext());
         mBraveShieldsHandler.addObserver(
@@ -677,6 +680,11 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
     private void showYouTubePipIcon(@NonNull final Tab tab) {
         // The layout could be null in Custom Tabs layout.
         if (mYouTubePipLayout == null) {
+            return;
+        }
+
+        if (OneTabYouTubeMode.isEnabled()) {
+            hideYouTubePipIcon();
             return;
         }
 
@@ -1240,6 +1248,10 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
         } else if (mBraveWalletButton == v && mBraveWalletButton != null) {
             maybeShowWalletPanel();
         } else if (mYouTubePipButton == v && mYouTubePipButton != null) {
+            if (OneTabYouTubeMode.isEnabled()) {
+                hideYouTubePipIcon();
+                return;
+            }
             Tab currentTab = getToolbarDataProvider().getTab();
             if (currentTab != null
                     && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
@@ -1248,8 +1260,7 @@ public abstract class BraveToolbarLayoutImpl extends ToolbarLayout
                     hideYouTubePipIcon();
                     return;
                 }
-                BraveYouTubeScriptInjectorNativeHelper.enterPictureInPicture(
-                        currentTab.getWebContents());
+                BraveYouTubeScriptInjectorNativeHelper.setFullscreen(currentTab.getWebContents());
             }
         }
     }

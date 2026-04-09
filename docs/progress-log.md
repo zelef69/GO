@@ -1,5 +1,137 @@
 # Progress Log
 
+## 2026-04-10 00:05:41 +07:00
+
+- Current phase:
+  - Release packaging + updater publish / v429000008 closeout
+- Task/objective:
+  - Finish the all-device `429000008` release by confirming the completed multiabi build, publishing the updater metadata live, and preparing the final commit/push.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
+  - Verified the background `android_Release_arm64_multiabi` build completed successfully.
+  - Confirmed the emitted APK exists at:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - Confirmed build log completion signal in:
+    - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log`
+    - final line includes `ACTION //chrome/android:chrome_public_apk__create`
+  - Published the multiabi APK to Firebase updater with:
+    - package: `com.onetabtube.browser_default`
+    - version name: `1.90.3`
+    - version code: `429000008`
+    - size: `210068112`
+    - sha256: `08f6440cd3d3f2b4b7495b7383b8040524fc02b99818795820d2fe395c204e2a`
+    - storage object: `app-updates/android/com.onetabtube.browser_default/429000008/OneTabTube-1.90.3-429000008.apk`
+  - Saved publish payload evidence to:
+    - `artifacts/firebase_build/app_update_publish_payload_20260410_000354.json`
+- In progress now:
+  - Updating handoff/docs to match the completed build + live publish.
+  - Preparing a narrow git stage so unrelated evidence files and the tracked `AGENT.md` deletion do not leak into the release commit.
+- Blockers/risks:
+  - Worktree remains noisy with many unrelated untracked files.
+  - Final push still depends on git remote auth being healthy.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `functions/seeds/app_update_android.seed.json`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `android_Release_arm64_multiabi` release build passed.
+  - Updater publish to Firebase Storage + Firestore passed.
+  - Git commit/push not started yet.
+- Exact next concrete step:
+  - `git add` only the intended release files, commit with:
+    - `build apk release(All_device+fix pip long return lockscreen) version 429000008`
+  - then `git push origin publish/go_play-sync-20260402`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `git status --short`
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log`
+  - `artifacts/firebase_build/app_update_publish_payload_20260410_000354.json`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `git`
+  - `wsl.exe`
+  - `npm`
+- Exact command(s):
+  - `Get-Content artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log -Tail 40`
+  - `wsl.exe bash -lc "ls -lah /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk"`
+  - `npm --prefix functions run publish:app-update -- --project go-play-720c1 --apk \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+- Tool purpose:
+  - Confirm the emitted all-device release artifact and publish it live before closing the release through git.
+- Tool state:
+  - Build and publish completed; git closeout pending.
+- Expected resume command:
+  - `git status --short`
+  - `git add <targeted list>`
+  - `git commit -m "build apk release(All_device+fix pip long return lockscreen) version 429000008"`
+  - `git push origin publish/go_play-sync-20260402`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - defer restore until visible after lockscreen track changes
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - observer/helper declarations for the deferred restore path
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - keep PiP presentation alive across lockscreen transitions
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java` - blank loading state while Firestore package data is still pending
+  - `functions/seeds/app_update_android.seed.json` - updater metadata now targeting `429000008 / 1.90.3`
+  - `artifacts/firebase_build/app_update_publish_payload_20260410_000354.json` - live publish evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `git status --short`
+  - `functions/seeds/app_update_android.seed.json`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Firebase CLI login still valid
+  - git auth for `origin` still valid
+- Expected success signal:
+  - targeted release files commit cleanly and push cleanly
+- Expected failure signal:
+  - accidental staging of unrelated files
+  - remote push rejection/auth failure
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_all_device_v429000008_20260409_bg.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Treat the completed multiabi APK plus live updater publish as the release source of truth.
+  - Keep the PiP lockscreen restore fix in the shipping `429000008` build rather than backing it out for speed.
+- Rejected approaches:
+  - using the single-ABI arm64 artifact for updater publish
+  - committing the full dirty workspace
+- Stop point classification:
+  - build passed + updater published; final git closeout pending
+- What is done but unverified:
+  - remote push success
+  - long-session runtime proof for the PiP lockscreen track-change fix
+- What is verified:
+  - all-device release APK exists
+  - updater metadata publish succeeded
+  - release seed now points at `429000008`
+- External prerequisite:
+  - git remote availability
+- Secret required but not stored:
+  - Firebase auth tokens
+  - git credentials
+
 ## 2026-04-06 22:24:30 +07:00
 
 - Timestamp:
@@ -23482,6 +23614,735 @@
 - Secret required but not stored:
   - signing/service secrets remain external
 
+## 2026-04-09 11:31:52 +07:00
+
+- Current phase:
+  - Runtime stabilization / PiP FAB-direct hardening
+- Task/objective:
+  - Force OneTab PiP flow to FAB-only and remove fullscreen-coupled behavior from FAB PiP entry.
+- Completed since last snapshot:
+  - Read and reconciled latest handoff in:
+    - `docs/current-status.md`
+    - latest `docs/progress-log.md` entry
+  - Verified current reality in code:
+    - `BraveYouTubeScriptInjectorNativeHelper` still had fullscreen recovery branch (`setFullscreen/exitFullscreen`) in active FAB path.
+    - FAB currently called `enterPictureInPictureWithRecovery(...)`.
+  - Implemented direct FAB PiP path:
+    - Added `enterPictureInPictureDirect(WebContents)` in
+      `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - Added direct retry helper that repeatedly calls `attemptPictureInPictureForCurrentVideo()` without fullscreen re-arm.
+    - Calls `BraveActivity.onManualPictureInPictureEntryRequested()` before attempts to clear stale latches.
+  - Switched FAB trigger:
+    - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+    - FAB PiP now calls `enterPictureInPictureDirect(...)` instead of recovery path.
+  - Disabled toolbar PiP in OneTab mode:
+    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+    - Hide toolbar PiP icon when OneTab mode is enabled.
+    - Block toolbar PiP click path in OneTab mode.
+  - Synced patched files to ext4 desk.
+  - Built and deployed:
+    - release arm64 build passed
+    - APK installed on connected device (`Success`)
+    - app launch sanity passed (`Status: ok`)
+- In progress now:
+  - Waiting interactive runtime repro from user on long-run session.
+- Blockers/risks:
+  - Time-based PiP degradation must be validated by real usage duration.
+  - Existing build warning still appears in environment:
+    - `Failed JNI assertion... Module.java` (non-fatal for this target; build completed).
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create` passed
+  - `adb install -r` passed (`Success`)
+  - `adb shell am start -W ...` passed (`Status: ok`)
+- Exact next concrete step:
+  - Run repro matrix on this build:
+    - keep app active for long session
+    - lock/unlock while in PiP
+    - enter PiP via FAB repeatedly
+    - confirm no fullscreen-only lock and no toolbar PiP usage
+  - If still reproducible, capture:
+    - `adb logcat -s YouTubeNativeHelper OneTabTubePerf BravePipWrapper`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `artifacts/android_build/onetabtube_release_pip_fab_direct_20260409.log`
+  - three patched Java files above
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java"`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java"`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_pip_fab_direct_20260409.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Apply FAB-direct PiP patch and validate release build/install/launch quickly.
+- Tool state:
+  - Completed; waiting runtime repro validation.
+- Expected resume command:
+  - `Get-Content artifacts/android_build/onetabtube_release_pip_fab_direct_20260409.log -Tail 120`
+  - `adb logcat -s YouTubeNativeHelper OneTabTubePerf BravePipWrapper`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - direct PiP logic
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java` - FAB PiP trigger wiring
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` - toolbar PiP disable for OneTab
+  - `artifacts/android_build/onetabtube_release_pip_fab_direct_20260409.log` - build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - three patched Java files
+  - `artifacts/android_build/onetabtube_release_pip_fab_direct_20260409.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 desk at `/home/master/src_ext4`
+  - connected adb device
+- Expected success signal:
+  - FAB PiP enters direct PiP without fullscreen lock; behavior remains stable over long session.
+- Expected failure signal:
+  - FAB PiP still degrades to fullscreen-only or fails PiP until app restart.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_pip_fab_direct_20260409.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep toolbar PiP out of OneTab UX completely.
+  - Separate FAB PiP path from fullscreen recovery logic to reduce lock-in behavior.
+- Rejected approaches:
+  - Continue using `enterPictureInPictureWithRecovery(...)` for FAB.
+  - Keep toolbar PiP visible in OneTab while FAB is the primary entry.
+- Stop point classification:
+  - code edited + built + installed + launched; long-run runtime repro validation pending
+- What is done but unverified:
+  - long-duration lock/unlock PiP stability
+- What is verified:
+  - source patch applied
+  - release build succeeded
+  - install succeeded
+  - launch succeeded
+- External prerequisite:
+  - user executes long-run PiP flow on device
+- Secret required but not stored:
+  - signing/service credentials remain external
+
+## 2026-04-09 11:42:41 +07:00
+
+- Current phase:
+  - Runtime stabilization / PiP beta2 restore
+- Task/objective:
+  - Revert PiP/session behavior back to beta2 primitives and keep FAB as the OneTab entry point.
+- Completed since last snapshot:
+  - Read latest status and verified actual code state before changing direction.
+  - Located beta2 baseline commit/tag:
+    - `20241c411` (`snapshot/beta2-fix-upgread-control-autoplay`)
+  - Compared beta2 PiP stack with current code across:
+    - `BraveYouTubeScriptInjectorNativeHelper`
+    - `BraveActivity`
+    - `BraveFullscreenVideoPictureInPictureController`
+    - `youtube_script_injector_tab_helper.cc`
+  - Restored beta2-style PiP entry semantics:
+    - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+      - FAB now calls `BraveYouTubeScriptInjectorNativeHelper.setFullscreen(...)`
+      - removed direct/recovery retry experiment from FAB path
+    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+      - OneTab still hides toolbar PiP
+      - non-hidden click path uses `setFullscreen(...)` again, matching beta2 entry style
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+      - removed `enterPictureInPictureDirect(...)`
+      - removed `enterPictureInPictureWithRecovery(...)`
+      - restored beta2 `enterPictureInPicture(...)` retry/abort behavior
+    - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+      - restored beta2 fullscreen re-request behavior to keep PiP session alive during fullscreen loss while active
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+      - restored beta2 fullscreen timeout retry path using `fullscreen_request_retry_pending_`
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+      - reverted `onManualPictureInPictureEntryRequested()` to beta2-simple behavior (clear pending watch-page return only)
+  - Synced six patched files to ext4 build desk.
+  - Built release arm64 successfully.
+  - Installed patched APK to connected device successfully.
+  - Launch sanity passed.
+- In progress now:
+  - Waiting user runtime validation on real long-session PiP behavior.
+- Blockers/risks:
+  - Time-based repro still needs real usage validation.
+  - Environment still prints existing non-fatal JNI assertion warning during build.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create` passed
+  - `adb install -r` passed (`Success`)
+  - `adb shell am start -W ...` passed (`Status: ok`)
+- Exact next concrete step:
+  - User retests:
+    - use app for longer session
+    - enter PiP from FAB
+    - lock/unlock device
+    - verify PiP remains full-frame and FAB PiP does not collapse into fullscreen-only
+  - If still reproducible, capture:
+    - `adb logcat -s YouTubeNativeHelper OneTabTubePerf BravePipWrapper`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `artifacts/android_build/onetabtube_release_pip_beta2_restore_20260409.log`
+  - the six patched source files above
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java"`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java"`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java"`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java"`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java"`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_pip_beta2_restore_20260409.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Restore known-good beta2 PiP/session stack and verify release deployment integrity.
+- Tool state:
+  - Completed; runtime validation pending.
+- Expected resume command:
+  - `Get-Content artifacts/android_build/onetabtube_release_pip_beta2_restore_20260409.log -Tail 120`
+  - `adb logcat -s YouTubeNativeHelper OneTabTubePerf BravePipWrapper`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java` - FAB beta2 PiP entry wiring
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - beta2 Java helper
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` - PiP session-hold logic
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - fullscreen timeout retry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - removed eager cleanup from manual PiP entry
+  - `artifacts/android_build/onetabtube_release_pip_beta2_restore_20260409.log` - build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - the five PiP source files above
+  - `artifacts/android_build/onetabtube_release_pip_beta2_restore_20260409.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 desk available
+  - adb device connected
+- Expected success signal:
+  - PiP behavior matches beta2 stability profile while FAB remains the main entry in OneTab.
+- Expected failure signal:
+  - long-session PiP still degrades or fullscreen-only regression remains.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_pip_beta2_restore_20260409.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Stop experimenting with new direct/recovery PiP logic and return to known-good beta2 primitives.
+  - Keep toolbar hidden in OneTab, but not invent a separate FAB-only PiP engine.
+- Rejected approaches:
+  - Continuing FAB direct PiP retries.
+  - Keeping eager stale fullscreen cleanup in `BraveActivity.onManualPictureInPictureEntryRequested()`.
+- Stop point classification:
+  - code edited + release built + installed + launched; runtime validation pending
+- What is done but unverified:
+  - real-world long-session stability
+- What is verified:
+  - source patch applied
+  - release build succeeded
+  - install succeeded
+  - launch succeeded
+- External prerequisite:
+  - user executes long-session PiP repro on device
+- Secret required but not stored:
+  - signing/service credentials remain external
+
+## 2026-04-09 09:34:00 +07:00
+
+- Current phase:
+  - Runtime regression fix / media control alignment with beta2
+- Task/objective:
+  - Backport beta2 next/previous fallback behavior to stop PiP/media controls jumping out of intended list order
+- Completed since last snapshot:
+  - Inspected actual control paths in:
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - Compared current branch with beta2 baseline commit `20241c411`.
+  - Applied minimal backport in `runTrackFallback(...)`:
+    - `tryYouTubePlayerTrack(...)` now runs only when not in playlist/reliable-playlist context.
+  - Synced patch to ext4 build workspace.
+  - Built release target successfully.
+  - Installed updated APK to connected device.
+  - Launch sanity succeeded.
+- In progress now:
+  - Waiting for user-side verification on real problematic controls scenario.
+- Blockers/risks:
+  - Requires manual PiP/list flow validation to confirm final behavioral fix.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `chrome_public_apk__create` passed
+  - `adb install -r` passed
+  - `am start -W` passed with `Status: ok`
+- Exact next concrete step:
+  - Validate `next/previous` behavior on:
+    - `/watch?...&list=...`
+    - MIX playlist
+    - non-playlist watch URL
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `artifacts/android_build/onetabtube_release_beta2_control_backport_20260409.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_beta2_control_backport_20260409.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Backport beta2 control guard and validate build/deploy integrity.
+- Tool state:
+  - Completed.
+- Expected resume command:
+  - `Get-Content artifacts/android_build/onetabtube_release_beta2_control_backport_20260409.log -Tail 120`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+  - `artifacts/android_build/onetabtube_release_beta2_control_backport_20260409.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected adb device
+  - ext4 build desk available
+- Expected success signal:
+  - controls follow expected list order without jumping sequence
+- Expected failure signal:
+  - controls still navigate to wrong item/order
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_beta2_control_backport_20260409.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Use minimal backport from beta2 at fallback decision point before broader rewiring.
+- Rejected approaches:
+  - full rollback of current control stack.
+- Stop point classification:
+  - patched + built + installed; runtime behavior verification pending
+- What is done but unverified:
+  - exact user repro path for control mismatch
+- What is verified:
+  - compile/install/launch success after patch
+- External prerequisite:
+  - user-side manual control validation
+- Secret required but not stored:
+  - signing/service credentials remain external
+
+## 2026-04-09 10:52:46 +07:00
+
+- Current phase:
+  - Release packaging + updater publish (v429000008)
+- Task/objective:
+  - Build `429000008` multiabi release APK, then publish to Firebase updater metadata and push to repo
+- Completed since last snapshot:
+  - Updated updater seed version:
+    - `functions/seeds/app_update_android.seed.json`
+    - `latestVersionCode=429000008`
+    - `minimumSupportedVersionCode=429000007`
+  - Prepared build desk for multiabi release in ext4.
+  - Ran `gn gen out/android_Release_arm64_multiabi` successfully.
+  - Started `autoninja` target `chrome/android:chrome_public_apk__create`.
+  - Captured progress in build log (last observed: `34773/62360` ~56%).
+  - User requested immediate pause due new screen symptom.
+  - Stopped running build processes cleanly via `pkill`.
+- In progress now:
+  - Build/publish flow paused.
+  - Next action is investigate new screen issue before resuming build.
+- Blockers/risks:
+  - No completed `429000008` APK yet, so publish and repo release commit are pending.
+- Files/modules touched:
+  - `functions/seeds/app_update_android.seed.json`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `gn gen` passed
+  - `autoninja` interrupted intentionally by pause request
+  - no final artifact emitted yet
+- Exact next concrete step:
+  - Triage and fix the newly reported screen issue.
+  - Resume release build command from same output directory.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this entry
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `pkill`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/gn gen out/android_Release_arm64_multiabi"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64_multiabi chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_all_device_v429000008_20260409.log"`
+  - `wsl.exe bash -lc "pkill -f 'autoninja -C out/android_Release_arm64_multiabi' || true; pkill -f 'ninja -j .*out/android_Release_arm64_multiabi' || true"`
+- Tool purpose:
+  - Build and publish preparation for release `429000008`.
+- Tool state:
+  - Paused/stopped intentionally.
+- Expected resume command:
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64_multiabi chrome/android:chrome_public_apk__create 2>&1 | tee -a /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_all_device_v429000008_20260409.log"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `functions/seeds/app_update_android.seed.json`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn`
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409.log`
+  - `scripts/publish_app_update_artifact.js`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - ext4 desk path available
+  - Firebase CLI login valid
+  - git auth valid
+- Expected success signal:
+  - build emits APK and publish/push can proceed
+- Expected failure signal:
+  - build errors before artifact generation
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_all_device_v429000008_20260409.log`
+- Last known artifact path:
+  - not emitted yet in this run
+- Recent decisions:
+  - Pause release rollout immediately to prioritize new runtime issue.
+- Rejected approaches:
+  - Continue background build while runtime symptom is unresolved.
+- Stop point classification:
+  - long-running build interrupted by request; publish not started
+- What is done but unverified:
+  - final `429000008` artifact output and updater publish correctness
+- What is verified:
+  - version seed update + build desk prep + successful `gn gen`
+- External prerequisite:
+  - runtime symptom reproduction details from user for immediate fix
+- Secret required but not stored:
+  - Firebase credentials
+  - git credentials
+
+## 2026-04-09 11:08:00 +07:00
+
+- Current phase:
+  - Runtime stabilization / PiP long-run recovery
+- Task/objective:
+  - Fix long-run PiP degradation (unlock refocus loss + PiP button falling back to fullscreen only)
+- Completed since last snapshot:
+  - Inspected active PiP state flow across FAB trigger, toolbar trigger, Java helper, and BraveActivity lifecycle.
+  - Added PiP self-recovery flow in `BraveYouTubeScriptInjectorNativeHelper`:
+    - new `enterPictureInPictureWithRecovery(...)`
+    - delayed health-check after normal PiP attempt
+    - fallback behavior:
+      - if fullscreen-only stuck -> `exitFullscreen(...)` then retry PiP
+      - if fullscreen signal missing -> `setFullscreen(...)` then retry PiP
+  - Switched FAB PiP trigger to recovery entrypoint:
+    - `OneTabFabMenuCoordinator`
+  - Switched toolbar PiP trigger to same recovery entrypoint:
+    - `BraveToolbarLayoutImpl`
+  - Added stale fullscreen cleanup in `BraveActivity.onManualPictureInPictureEntryRequested()`:
+    - clear persistent fullscreen when no active fullscreen video
+    - clear stale fullscreen request latch by calling `exitFullscreen(...)`
+  - Added focus-based PiP refocus hook:
+    - `BraveActivity.onWindowFocusChanged(...)` refreshes PiP params when focus returns in PiP.
+  - Synced changes to ext4 build desk.
+  - Built `android_Release_arm64` successfully and installed APK on connected device.
+  - Launch sanity passed.
+- In progress now:
+  - Waiting for user validation on long-run scenario.
+- Blockers/risks:
+  - This bug is time-dependent; short smoke cannot fully prove fix.
+  - `429000008` multiabi release publish remains paused while runtime fix is validated.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `chrome_public_apk__create` passed
+  - `adb install -r` passed
+  - `am start -W` passed with `Status: ok`
+- Exact next concrete step:
+  - Run user repro matrix over longer session and confirm:
+    - lock/unlock while in PiP keeps full frame
+    - FAB/toolbar PiP button still enters PiP without needing app restart
+  - If issue persists, capture focused logcat (`YouTubeNativeHelper`, `OneTabTubePerf`, `BravePipWrapper`).
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `artifacts/android_build/onetabtube_release_pip_recovery_fix_20260409.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_pip_recovery_fix_20260409.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Compile and deploy PiP recovery patch for real-device validation.
+- Tool state:
+  - Completed.
+
+## 2026-04-09 21:05:23 +07:00
+
+- Current phase:
+  - Release packaging + updater publish / v429000008
+- Task/objective:
+  - Resume the all-device `429000008` release path, carry forward the PiP lockscreen fix, and keep the build alive long enough to publish/update/push from the real multiabi artifact.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and latest `docs/progress-log.md` entry first.
+  - Verified actual code state had moved beyond the recorded handoff:
+    - `BraveActivity` already contained the keepalive/deferred-exit PiP lockscreen patch.
+    - `youtube_script_injector_tab_helper.{cc,h}` were then updated so track-navigation PiP restore is deferred until `WebContents` becomes `VISIBLE` again.
+  - Synced the updated PiP native files plus `BraveActivity.java` to `/home/master/src_ext4`.
+  - Rebuilt single-ABI release `out/android_Release_arm64` successfully with the new PiP patch.
+  - Installed that validation build to the connected device and confirmed launch `Status: ok`.
+  - Re-checked the suspended multiabi output dir and confirmed:
+    - `out/android_Release_arm64_multiabi/args.gn`
+    - `android_override_version_name="1.90.3"`
+    - `android_override_version_code="429000008"`
+    - `enable_android_secondary_abi=true`
+  - Confirmed there was still no completed multiabi APK artifact yet.
+  - Foreground rerun of the multiabi build again exceeded tool timeout.
+  - Switched the `429000008` multiabi build to a background process using `cmd /c start "" /b ...` so it can continue past tool timeout.
+- In progress now:
+  - Background `autoninja` is currently building `out/android_Release_arm64_multiabi`.
+- Blockers/risks:
+  - No final `429000008` APK has been emitted yet, so Firebase publish and git push are still pending.
+  - Publish must use the multiabi artifact, not the single-ABI validation build, to match the “All_device” requirement.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `functions/seeds/app_update_android.seed.json`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `out/android_Release_arm64` rebuild passed
+  - `adb install -r` passed for the single-ABI validation build
+  - app launch sanity passed
+  - `out/android_Release_arm64_multiabi` build is running in background
+  - no final multiabi APK yet
+- Exact next concrete step:
+  - Tail `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log` until `chrome_public_apk__create` completes, then publish the emitted APK with the app-update script and push the repo snapshot.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - this latest entry
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+  - `cmd /c start`
+- Exact command(s):
+  - `wsl.exe bash -lc "cat /home/master/src_ext4/out/android_Release_arm64_multiabi/args.gn"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_pip_lock_track_restore_visible_gate_20260409.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `cmd /c start "" /b wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64_multiabi chrome/android:chrome_public_apk__create > /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log 2>&1"`
+- Tool purpose:
+  - Keep the runtime PiP fix aligned in source while letting the all-device release build finish outside foreground timeout limits.
+- Tool state:
+  - Background multiabi build running.
+- Expected resume command:
+  - `Get-Content artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log -Tail 120`
+  - `wsl.exe bash -lc "ls -lah /home/master/src_ext4/out/android_Release_arm64_multiabi/apks"`
+  - `npm --prefix functions run publish:app-update -- --project go-play-720c1 --apk \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — defer track-navigation restore until visible
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` — added visibility observer/helper declaration
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — PiP keepalive/deferred exit handling
+  - `functions/seeds/app_update_android.seed.json` — release target `429000008 / 1.90.3`
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log` — background build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log`
+  - `functions/seeds/app_update_android.seed.json`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - ext4 desk available
+  - Firebase CLI login valid
+  - git auth valid
+- Expected success signal:
+  - Multiabi build log ends with `ACTION //chrome/android:chrome_public_apk__create`
+  - `OneTabTube.apk` appears under the multiabi `apks` directory
+  - publish script writes live metadata for `429000008`
+  - git push succeeds to `origin`
+- Expected failure signal:
+  - build log exits before APK creation
+  - no multiabi artifact appears
+  - publish script fails
+  - git push rejects
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_all_device_v429000008_20260409_bg.log`
+- Last known artifact path:
+  - not emitted yet for multiabi build
+- Recent decisions:
+  - Keep the PiP lockscreen fix and ship it forward instead of freezing on the older runtime baseline.
+  - Move the multiabi build to background because foreground tool timeout is not long enough.
+- Rejected approaches:
+  - Publishing from single-ABI output for the `All_device` request
+  - Reverting the PiP fix just to accelerate the release packaging task
+- Stop point classification:
+  - multiabi release build started in background; publish and repo push pending
+- What is done but unverified:
+  - final multiabi APK artifact
+  - live Firebase updater publish for `429000008`
+  - repo commit/push for this release batch
+- What is verified:
+  - source edits saved
+  - ext4 sync done
+  - single-ABI release build/install/launch passed
+  - multiabi args still target `429000008 / 1.90.3`
+- External prerequisite:
+  - background build completion
+- Secret required but not stored:
+  - Firebase auth tokens
+  - git credentials
+- Expected resume command:
+  - `adb logcat -s YouTubeNativeHelper OneTabTubePerf BravePipWrapper`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `artifacts/android_build/onetabtube_release_pip_recovery_fix_20260409.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - the four patched Java files
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - ext4 build desk available
+  - adb device connected
+- Expected success signal:
+  - PiP path self-recovers and no longer degrades over time.
+- Expected failure signal:
+  - still needs restart to recover PiP entry behavior.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_pip_recovery_fix_20260409.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Suspend `429000008` publish work to prioritize runtime stability fix.
+- Rejected approaches:
+  - continuing fullscreen-first retries without recovery fallback.
+- Stop point classification:
+  - patched + built + installed; long-run runtime verification pending
+- What is done but unverified:
+  - full long-session behavior under repeated lock/unlock + PiP cycles
+- What is verified:
+  - compile/install/launch for this fix
+- External prerequisite:
+  - user long-run runtime test pass
+- Secret required but not stored:
+  - signing/service credentials remain external
+
 ## 2026-04-08 05:13:18 +07:00
 
 - Current phase:
@@ -24002,3 +24863,345 @@
   - none
 - Secret required but not stored:
   - signing/service secrets remain external
+
+## 2026-04-09 12:11:17 +07:00
+
+- Current phase:
+  - Runtime stabilization / PiP lockscreen track-navigation guard
+- Task/objective:
+  - Prevent lockscreen `next/previous` from arming fullscreen presentation restore across clip changes and prevent PiP wrapper from re-requesting fullscreen while the device is locked.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and latest `docs/progress-log.md` entry first, then verified the real code state in:
+    - `BraveYouTubeScriptInjectorNativeHelper.java`
+    - `BraveFullscreenVideoPictureInPictureController.java`
+    - `BraveActivity.java`
+    - `youtube_script_injector_tab_helper.cc`
+  - Confirmed the first half of the intended fix was already wired in code:
+    - `next()` / `previous()` use `shouldPreserveVideoPresentation(webContents)`
+    - that delegates to `BraveActivity.shouldPreserveVideoPresentationForPictureInPictureControls()`
+    - that method already rejects restore when:
+      - activity not in PiP
+      - activity state not `RESUMED` / `PAUSED`
+      - screen not interactive
+      - device/keyguard locked
+  - Added detailed `OneTabTubePerf` logging in `BraveActivity.shouldPreserveVideoPresentationForPictureInPictureControls()` so runtime decisions can be traced during lockscreen repro.
+  - Patched `BraveFullscreenVideoPictureInPictureController.dismissActivityIfNeeded(...)`:
+    - when reason is `LEFT_FULLSCREEN` or `WEB_CONTENTS_LEFT_FULLSCREEN`
+    - and activity is in PiP
+    - and `BraveActivity.shouldPreserveVideoPresentationForPictureInPictureControls()` returns false
+    - wrapper now skips fullscreen re-request and keeps PiP alive without forcing page-level presentation restore
+  - Synced patched Java files to ext4 build desk.
+  - Rebuilt `chrome/android:chrome_public_apk__create` successfully.
+  - Reinstalled APK to connected device successfully.
+  - Relaunched app successfully (`Status: ok`).
+- In progress now:
+  - Waiting for focused runtime validation on the exact repro:
+    - enter PiP
+    - lock screen
+    - change track using media controls
+    - unlock and inspect PiP content
+- Blockers/risks:
+  - Runtime symptom is still scenario-based; compile/install success does not fully prove fix until the lockscreen track-change flow is exercised.
+  - Existing non-fatal JNI assertion warning about unneeded `Module.java` still appears in build output.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create` passed
+  - `adb install -r` passed
+  - `adb shell am start -W ...` passed
+- Exact next concrete step:
+  - Run the lockscreen track-change repro on device and watch these tags:
+    - `YouTubeNativeHelper`
+    - `OneTabTubePerf`
+    - `BravePipWrapper`
+  - Confirm that no fullscreen re-request occurs while device is locked and that PiP remains video-only after unlock.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest progress entry
+  - `BraveActivity.java`
+  - `BraveFullscreenVideoPictureInPictureController.java`
+  - `artifacts/android_build/onetabtube_release_pip_lockscreen_restore_guard_20260409.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `rg -n "shouldPreserveVideoPresentationForPictureInPictureControls|KeyguardManager|PowerManager" android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -Index (4735..5015)`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java"`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_pip_lockscreen_restore_guard_20260409.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Apply and verify a narrow lockscreen-specific PiP restore guard without reopening wider PiP flow changes.
+- Tool state:
+  - Completed; runtime repro pending.
+- Expected resume command:
+  - `adb logcat -s YouTubeNativeHelper OneTabTubePerf BravePipWrapper`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — PiP restore eligibility gate
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` — wrapper-side fullscreen recovery suppression
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` — preserve-video bridge for `next/previous`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — native restore path fed by preserve-video flag
+  - `artifacts/android_build/onetabtube_release_pip_lockscreen_restore_guard_20260409.log` — build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 desk available
+  - adb device connected
+- Expected success signal:
+  - PiP remains video-scoped after lockscreen track changes; no fullscreen re-request while locked.
+- Expected failure signal:
+  - PiP still comes back with page content after unlock or wrapper logs show fullscreen re-request under locked/inactive state.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_pip_lockscreen_restore_guard_20260409.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Use the existing `BraveActivity` lockscreen gate rather than creating another independent condition path.
+  - Fix the wrapper-side re-request first because that was the missing half of the desired behavior.
+- Rejected approaches:
+  - Reworking native `MaybeNextTrack` / `MaybePreviousTrack` flow before validating the already-present Java-side preserve gate.
+- Stop point classification:
+  - code edited + release built + APK installed; targeted runtime repro not yet verified
+- What is done but unverified:
+  - elimination of whole-page PiP after lockscreen media track changes
+- What is verified:
+  - source edits saved
+  - release build success
+  - install success
+  - launch success
+- External prerequisite:
+  - user/device runtime repro
+- Secret required but not stored:
+  - signing/service credentials remain external
+
+## 2026-04-09 12:21:36 +07:00
+
+- Current phase:
+  - Runtime/UI stabilization / Buy package loading state
+- Task/objective:
+  - Stop the buy-package page from briefly showing app-default package values before Firestore-backed package data loads.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and latest `docs/progress-log.md` entry first.
+  - Traced the buy-page behavior to `OneTabBuyPackageActivity`.
+  - Confirmed root cause:
+    - `createContentView()` called `setProductOptions(buildFallbackPackageOptions())` immediately
+    - this rendered app-default package/price/account values before the async Firestore fetch completed
+  - Patched `OneTabBuyPackageActivity` to start in a real blank loading state:
+    - added `mLoadingProductOptions`
+    - added `clearProductSummary()`
+    - added `applyLoadingProductOptionsState(boolean)`
+    - removed the initial fallback package bind from `createContentView()`
+    - now the page starts with blank product/account text and disabled buy button
+  - Updated `renderPackageOptions()` so option buttons stay disabled while package data is still loading.
+  - Kept the later fallback path for fetch failure/empty result handling, to avoid changing resilience behavior yet.
+  - Synced patched file to ext4 build desk.
+  - Rebuilt release arm64 successfully.
+  - Reinstalled patched APK to connected device successfully.
+  - Relaunched app successfully (`Status: ok`).
+- In progress now:
+  - Waiting for visual validation of the buy-package page on device.
+- Blockers/risks:
+  - If Firestore fetch itself fully fails, fallback values can still appear later by design; this patch only removes the initial pre-load flash.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create` passed
+  - `adb install -r` passed
+  - `adb shell am start -W ...` passed
+- Exact next concrete step:
+  - Open the buy-package page on device and confirm there is no flash of fallback package values before Firestore data appears.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest progress entry
+  - `OneTabBuyPackageActivity.java`
+  - `artifacts/android_build/onetabtube_release_buy_package_blank_loading_20260409.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `Get-Content android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java | Select-Object -Index (248..430)`
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_buy_package_blank_loading_20260409.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Remove the buy-page fallback flash and verify the release APK remains buildable/installable.
+- Tool state:
+  - Completed; visual validation pending.
+- Expected resume command:
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java` — initial package loading/render behavior
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabPackagePurchaseManager.java` — fallback package source
+  - `artifacts/android_build/onetabtube_release_buy_package_blank_loading_20260409.log` — build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 desk + adb device connected
+- Expected success signal:
+  - blank loading state, then direct transition to Firestore values with no wrong-package flash
+- Expected failure signal:
+  - fallback package values still appear briefly on page open
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_buy_package_blank_loading_20260409.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Fix the UI initialization path first because the flash was deterministic there.
+- Rejected approaches:
+  - removing all fallback logic immediately from the manager layer before validating UI behavior
+- Stop point classification:
+  - code edited + release built + APK installed; buy-page visual validation pending
+- What is done but unverified:
+  - no visible fallback flash on the buy page
+- What is verified:
+  - source edits saved
+  - release build success
+  - install success
+  - launch success
+- External prerequisite:
+  - on-device buy-page check
+- Secret required but not stored:
+  - signing/service credentials remain external
+
+## 2026-04-09 12:27:50 +07:00
+
+- Current phase:
+  - Runtime/UI stabilization / Buy package loading-state follow-up
+- Task/objective:
+  - Fix the regression where package buttons stayed disabled after the blank-loading-state patch.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and latest `docs/progress-log.md` entry first.
+  - Verified root cause in `OneTabBuyPackageActivity`:
+    - `setProductOptions()` rendered package buttons while `mLoadingProductOptions` was still `true`
+    - then `applyLoadingProductOptionsState(false)` only updated the buy button, not the package option buttons
+    - result: package options remained disabled after load completed
+  - Patched `applyLoadingProductOptionsState(boolean)` to call `renderPackageOptions()` after flipping the loading flag.
+  - Synced patched file to ext4 build desk.
+  - Rebuilt release arm64 successfully.
+  - Reinstalled patched APK to connected device successfully.
+  - Relaunched app successfully (`Status: ok`).
+- In progress now:
+  - Waiting for on-device validation of package-button clickability.
+- Blockers/risks:
+  - Needs real UI validation on the buy page after Firestore data appears.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create` passed
+  - `adb install -r` passed
+  - `adb shell am start -W ...` passed
+- Exact next concrete step:
+  - Open buy-package page and confirm the package buttons are clickable after the Firestore-backed package list appears.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest progress entry
+  - `OneTabBuyPackageActivity.java`
+  - `artifacts/android_build/onetabtube_release_buy_package_buttons_enabled_20260409.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl.exe`
+  - `autoninja`
+  - `adb`
+- Exact command(s):
+  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java"`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_buy_package_buttons_enabled_20260409.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Restore package-button interactivity without undoing the blank-loading behavior.
+- Tool state:
+  - Completed; runtime validation pending.
+- Expected resume command:
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
+- Build flavor / target:
+  - `android_Release_arm64`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java` — button render/enable state after Firestore load
+  - `artifacts/android_build/onetabtube_release_buy_package_buttons_enabled_20260409.log` — build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL ext4 desk + adb device connected
+- Expected success signal:
+  - package buttons become enabled/selectable after load completes
+- Expected failure signal:
+  - package buttons remain disabled despite visible loaded package data
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_buy_package_buttons_enabled_20260409.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- Recent decisions:
+  - Fix the follow-up regression with a narrow state-refresh patch.
+- Rejected approaches:
+  - removing the blank-loading behavior to restore button clickability
+- Stop point classification:
+  - code edited + release built + APK installed; buy-page runtime validation pending
+- What is done but unverified:
+  - clickable package buttons on real device after data load
+- What is verified:
+  - source edits saved
+  - release build success
+  - install success
+  - launch success
+- External prerequisite:
+  - user opens the page and tests package selection
+- Secret required but not stored:
+  - signing/service credentials remain external

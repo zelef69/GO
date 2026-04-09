@@ -1,115 +1,141 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-08 05:32:11 +07:00
+  - 2026-04-10 00:05:41 +07:00
 - Current phase:
-  - Runtime regression fix / PiP unlock-refocus stabilization
+  - Release packaging + updater publish completed / v429000008
 - Current objective:
-  - Fix issue after screen unlock where PiP appears unfocused/not full video frame
+  - Finalize the published `429000008` all-device release by aligning handoff with reality, then commit and push the exact shipped code snapshot to the user's repo.
 - Completed since last update:
-  - Resumed from latest handoff and inspected actual lifecycle handling for PiP around `onResume`, `onPictureInPictureModeChanged`, and PiP UI state callbacks.
-  - Implemented unlock/refocus hardening in `BraveActivity`:
-    - Added PiP refresh retry constants:
-      - `OTB_PIP_REFRESH_RETRY_DELAY_1_MS = 220`
-      - `OTB_PIP_REFRESH_RETRY_DELAY_2_MS = 520`
-      - `OTB_PIP_REFRESH_RETRY_DELAY_3_MS = 900`
-    - Added `scheduleOneTabPictureInPictureRefresh(reason)` and `refreshOneTabPictureInPictureParams(reason)` helpers.
-    - Triggers refresh sequence:
-      - on entering PiP in `onPictureInPictureModeChanged(...)`
-      - on `onPictureInPictureUiStateChanged(...)`
-      - on `onResume()` when activity is already in PiP (unlock/resume path)
-    - Refresh only applies when in PiP and video signal is still detectable (`activeFullscreen` OR `fullscreenRequested` OR `isPictureInPictureAvailable`).
-  - Synced updated file to ext4 build workspace.
-  - Built release target successfully.
-  - Installed updated APK on connected device successfully.
-  - Launch sanity passed.
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
+  - Confirmed the real desk state has advanced beyond the last handoff:
+    - `android_Release_arm64_multiabi` background build completed successfully.
+    - `OneTabTube.apk` was emitted at the expected multiabi path.
+    - Firebase updater publish completed successfully for `1.90.3 / 429000008`.
+  - Published build metadata:
+    - package: `com.onetabtube.browser_default`
+    - storage object: `app-updates/android/com.onetabtube.browser_default/429000008/OneTabTube-1.90.3-429000008.apk`
+    - size: `210068112`
+    - sha256: `08f6440cd3d3f2b4b7495b7383b8040524fc02b99818795820d2fe395c204e2a`
+    - payload snapshot: `artifacts/firebase_build/app_update_publish_payload_20260410_000354.json`
 - In progress now:
-  - Waiting user validation on the exact repro path:
-    - play video -> enter PiP -> lock screen -> unlock -> verify PiP frame remains focused/full.
+  - Aligning handoff files with the completed build/publish reality.
+  - Preparing a selective git commit that includes only the shipped release-related source/docs/seed changes.
+  - Git push is the final remaining release step.
 - Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
   - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/onetabauth/OneTabBuyPackageActivity.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `functions/seeds/app_update_android.seed.json`
   - `docs/current-status.md`
   - `docs/progress-log.md`
 - Build/test status:
-  - `autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create` passed
-  - `adb install -r` passed (`Success`)
-  - `adb shell am start -W ...` passed (`Status: ok`)
+  - `android_Release_arm64` PiP validation build passed earlier in this session.
+  - `adb install -r` on the connected device passed for the PiP validation build.
+  - `android_Release_arm64_multiabi` build passed and emitted the release APK.
+  - Firebase Storage + Firestore updater publish for `429000008` passed.
+  - Git commit/push has not been run yet in this final release-closing step.
 - Blockers/risks:
-  - Final confirmation still requires device-side manual unlock flow.
-  - If issue persists, next step is logcat-driven tuning of retry timing and/or explicit rebind trigger in media controller path.
+  - The worktree contains many unrelated untracked evidence files and one tracked deletion (`AGENT.md`), so staging must stay narrowly scoped.
+  - Push can still fail on remote auth/rejection and would need a targeted retry if that happens.
 - Next concrete step:
-  - User retests unlock flow with current build.
-  - If still broken: capture targeted logcat tags around `OneTabTubePerf`, `YouTubeNativeHelper`, `BravePipWrapper` during lock/unlock cycle and patch based on observed state.
+  - Stage only the intended release files.
+  - Commit with message:
+    - `build apk release(All_device+fix pip long return lockscreen) version 429000008`
+  - Push `publish/go_play-sync-20260402` to `origin`.
 - Expected resume inspection scope:
   - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
-  - `artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log`
+  - latest `docs/progress-log.md` entry
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log`
+  - `artifacts/firebase_build/app_update_publish_payload_20260410_000354.json`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\`
 - Current tool(s):
   - `apply_patch`
   - `shell_command`
+  - `git`
   - `wsl.exe`
-  - `autoninja`
-  - `adb`
+  - `npm`
 - Exact command(s):
-  - `wsl.exe bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java"`
-  - `wsl.exe bash -lc "cd /home/master/src_ext4 && PYTHONPATH=/home/master/src_ext4/brave/script ./brave/vendor/depot_tools/autoninja -C out/android_Release_arm64 chrome/android:chrome_public_apk__create 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log"`
-  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64\\apks\\OneTabTube.apk"`
-  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `Get-Content artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log -Tail 40`
+  - `wsl.exe bash -lc "ls -lah /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk"`
+  - `npm --prefix functions run publish:app-update -- --project go-play-720c1 --apk \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
 - Tool purpose:
-  - Add PiP unlock refocus retries and deploy patch for runtime validation.
+  - Confirm the finished release artifact, record the live updater publish result, and close the release via commit/push.
 - Tool state:
-  - Completed (code/build/install/launch sanity); runtime repro verification pending.
+  - Build and publish commands have completed successfully.
+  - Git commit/push is the only remaining open tool action.
 - Expected resume command:
-  - `Get-Content artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log -Tail 120`
-  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `git status --short`
+  - `git add <targeted file list>`
+  - `git commit -m "build apk release(All_device+fix pip long return lockscreen) version 429000008"`
+  - `git push origin publish/go_play-sync-20260402`
 - Expected output/artifact path:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `727dc21a5ab0433d722046ed79c9b0278272560a`
+  - `1b5b3897da16c8bdcc84adf37328b9645878157c`
 - Build flavor / target:
-  - `android_Release_arm64`
+  - `android_Release_arm64_multiabi`
 - Primary working set:
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — lifecycle + PiP refresh strategy
-  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` — PiP availability/fullscreen signals reference
-  - `artifacts/android_build/onetabtube_release_pip_refocus_after_unlock_20260408.log` — build evidence
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk` — deployed artifact
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - defer track-navigation fullscreen restore until page visibility is back.
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - observer/helper declarations for deferred restore.
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - PiP keepalive/exit deferral around lockscreen state.
+  - `functions/seeds/app_update_android.seed.json` - updater metadata target version `429000008 / 1.90.3`.
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log` - source of truth for background build progress.
 - Files to inspect first after resume:
   - `docs/current-status.md`
   - latest `docs/progress-log.md` entry
-  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log`
+  - `functions/seeds/app_update_android.seed.json`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - WSL ext4 build desk available at `/home/master/src_ext4`
-  - adb device connected
+  - WSL ext4 desk available at `/home/master/src_ext4`
+  - Firebase CLI already logged in on this machine
+  - git auth for `origin` available on this machine
 - Expected success signal:
-  - After lock/unlock while in PiP, window remains focused on video content (no partial/unfocused frame).
+  - `git commit` captures only the intended release files
+  - `git push` succeeds to `origin`
 - Expected failure signal:
-  - PiP returns in unfocused/not-full-video state after unlock.
+  - git push rejects
 - Last known log location:
-  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_pip_refocus_after_unlock_20260408.log`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_all_device_v429000008_20260409_bg.log`
 - Last known artifact path:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
 - Recent decisions:
-  - Prefer lifecycle-based PiP param re-sync on unlock path instead of adding more fullscreen request churn.
+  - Keep the PiP lockscreen restore fix and buy-package loading fix in the shipped `429000008` snapshot instead of rolling back to an older build.
+  - Publish from the completed multiabi artifact so updater metadata matches the all-device release the user requested.
 - Rejected approaches:
-  - Forcing fullscreen re-entry loops from unlock callbacks.
+  - Publishing `429000008` from the single-ABI `android_Release_arm64` output.
+  - Rolling back the PiP lockscreen fix just to unblock the release task.
+  - Committing the entire dirty worktree including unrelated evidence files.
 - Stop point classification:
-  - code edited + release built + APK installed; manual runtime unlock validation pending
+  - build completed and updater published; git commit/push not yet done
 - What is done but unverified:
-  - real-device unlock scenario correctness after patch
+  - Runtime proof that the deferred-restore PiP fix fully resolves the long lockscreen track-change repro
+  - Remote repo push success
 - What is verified:
-  - compile/install/launch path of this patch
+  - Source edits saved locally
+  - ext4 desk synced
+  - single-ABI release build with the PiP patch passed
+  - device install/launch passed for the PiP validation build
+  - multiabi all-device release build passed
+  - updater payload for `429000008 / 1.90.3` is live in Firebase metadata
 - External prerequisite:
-  - user executes lock/unlock PiP test on device
+  - Git remote availability for final push
 - Secret required but not stored:
-  - signing/service credentials remain external
+  - Firebase auth tokens
+  - git credentials
 - Actual code state after resume:
-  - PiP refresh now retried at multiple intervals on enter/resume/ui-state events for OneTab mode.
+  - Code now defers track-navigation PiP presentation restoration until `WebContents` is visible again, while `BraveActivity` keeps the PiP presentation path alive instead of dropping it on lockscreen-related state changes. The buy-package page also starts blank during product fetch instead of flashing app-default package values.
 - Chosen direction:
-  - Validate unlock behavior; if still failing, move to targeted logcat-driven tuning.
+  - Use the already-built and already-published multiabi `429000008` artifact as the release source of truth, then finish with a narrowly scoped commit/push.

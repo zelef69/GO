@@ -36,8 +36,6 @@ import org.chromium.content_public.browser.WebContents;
 final class OneTabFabMenuCoordinator {
     private static final long SLEEP_WAKE_DOUBLE_TAP_WINDOW_MS = 450L;
     private static final long MENU_ANIMATION_DURATION_MS = 180L;
-    private static final long FAB_PIP_RETRY_1_MS = 220L;
-    private static final long FAB_PIP_RETRY_2_MS = 480L;
 
     private final BraveActivity mActivity;
     private final LayoutInflater mInflater;
@@ -172,7 +170,7 @@ final class OneTabFabMenuCoordinator {
                         showToast(R.string.onetab_fab_pip_unavailable);
                         return;
                     }
-                    triggerPictureInPictureWithRetry(webContents);
+                    triggerPictureInPictureBeta2Flow(webContents);
                 });
         bindMenuAction(
                 mAccountButton,
@@ -493,21 +491,8 @@ final class OneTabFabMenuCoordinator {
         return tab.getWebContents() != null;
     }
 
-    private void triggerPictureInPictureWithRetry(@NonNull WebContents webContents) {
-        // Mark manual PiP intent and request fullscreen-path first for watch-page reliability.
+    private void triggerPictureInPictureBeta2Flow(@NonNull WebContents webContents) {
         BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
-        BraveYouTubeScriptInjectorNativeHelper.enterPictureInPicture(webContents);
-
-        if (mRootView == null) {
-            return;
-        }
-
-        mRootView.postDelayed(
-                () -> BraveYouTubeScriptInjectorNativeHelper.enterPictureInPicture(webContents),
-                FAB_PIP_RETRY_1_MS);
-        mRootView.postDelayed(
-                () -> BraveYouTubeScriptInjectorNativeHelper.enterPictureInPicture(webContents),
-                FAB_PIP_RETRY_2_MS);
     }
 
     private void bindMenuAction(@Nullable View view, @NonNull Runnable action) {

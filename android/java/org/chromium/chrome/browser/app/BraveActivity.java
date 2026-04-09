@@ -754,6 +754,14 @@ public abstract class BraveActivity extends ChromeActivity
                 && currentWebContents != null
                 && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
                         currentWebContents)) {
+            if (shouldDeferOneTabPictureInPictureExitHandling()) {
+                clearPendingReturnToWatchPageAfterPictureInPictureExit(
+                        "deferred_device_state_pip_exit");
+                Log.i(
+                        OTB_PERF_TAG,
+                        "event=pip_exit_handling_deferred reason=device_locked_or_non_interactive");
+                return;
+            }
             boolean activeFullscreen = currentWebContents.hasActiveEffectivelyFullscreenVideo();
             FullscreenManager fullscreenManager = getFullscreenManager();
             if (activeFullscreen && shouldReturnToWatchPageAfterPictureInPictureExit()) {
@@ -1261,6 +1269,17 @@ public abstract class BraveActivity extends ChromeActivity
         }
         maybeScheduleReturnToWatchPageAfterPictureInPictureExit("on_resume");
         syncOneTabCleanModeUi();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (!hasFocus || !OneTabYouTubeMode.isEnabled()) {
+            return;
+        }
+        if (isInPictureInPictureMode()) {
+            scheduleOneTabPictureInPictureRefresh("window_focus_changed");
+        }
     }
 
     @Override
@@ -3543,9 +3562,65 @@ public abstract class BraveActivity extends ChromeActivity
         fullscreenManager.exitPersistentFullscreenMode();
     }
 
+    private boolean shouldDeferOneTabPictureInPictureExitHandling() {
+        PowerManager powerManager = getSystemService(PowerManager.class);
+        if (powerManager != null && !powerManager.isInteractive()) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_exit_handling_allowed allowed=false reason=screen_not_interactive");
+            return true;
+        }
+
+        KeyguardManager keyguardManager = getSystemService(KeyguardManager.class);
+        if (keyguardManager == null) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_exit_handling_allowed allowed=true reason=no_keyguard");
+            return false;
+        }
+
+        boolean locked;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            locked = keyguardManager.isDeviceLocked();
+        } else {
+            locked = keyguardManager.isKeyguardLocked();
+        }
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_exit_handling_allowed allowed=%b reason=device_lock_check",
+                !locked);
+        return locked;
+    }
+
     private boolean shouldReturnToWatchPageAfterPictureInPictureExit() {
+        if (shouldDeferOneTabPictureInPictureExitHandling()) {
+            return false;
+        }
         int activityState = ApplicationStatus.getStateForActivity(this);
         return activityState == ActivityState.RESUMED || activityState == ActivityState.PAUSED;
+    }
+
+    public boolean shouldPreserveVideoPresentationForPictureInPictureControls() {
+        if (!isInPictureInPictureMode()) {
+            Log.i(OTB_PERF_TAG, "event=pip_presentation_restore_allowed allowed=false reason=not_in_pip");
+            return false;
+        }
+
+        int activityState = ApplicationStatus.getStateForActivity(this);
+        if (activityState != ActivityState.RESUMED
+                && activityState != ActivityState.PAUSED
+                && activityState != ActivityState.STOPPED) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_presentation_restore_allowed allowed=false reason=activity_state state=%d",
+                    activityState);
+            return false;
+        }
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_presentation_restore_allowed allowed=true reason=keepalive_while_in_pip state=%d",
+                activityState);
+        return true;
     }
 
     public void refreshPictureInPictureParamsForCurrentVideo() {

@@ -85,7 +85,7 @@ public class BraveYouTubeScriptInjectorNativeHelper {
         final Activity activity = windowAndroid.getActivity().get();
         if (!(activity instanceof BraveActivity braveActivity)) return false;
 
-        return braveActivity.isInPictureInPictureMode();
+        return braveActivity.shouldPreserveVideoPresentationForPictureInPictureControls();
     }
 
     private static void attemptPictureInPictureWhenFullscreenReady(
@@ -107,9 +107,7 @@ public class BraveYouTubeScriptInjectorNativeHelper {
             if (remainingRetries <= 0) {
                 Log.i(
                         TAG,
-                        "Proceed enterPictureInPicture without fullscreen lock after retries are exhausted.");
-                braveActivity.refreshPictureInPictureParamsForCurrentVideo();
-                braveActivity.attemptPictureInPictureForCurrentVideo();
+                        "Abort delayed enterPictureInPicture because fullscreen state is still not visible to Java.");
                 return;
             }
 
