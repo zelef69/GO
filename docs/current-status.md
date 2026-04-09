@@ -1,27 +1,31 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-10 00:05:41 +07:00
+  - 2026-04-10 00:12:44 +07:00
 - Current phase:
-  - Release packaging + updater publish completed / v429000008
+  - Release packaging + updater publish + repo sync completed / v429000008
 - Current objective:
-  - Finalize the published `429000008` all-device release by aligning handoff with reality, then commit and push the exact shipped code snapshot to the user's repo.
+  - Leave a clean handoff after the shipped `429000008` all-device release, now that build, updater publish, and repo sync are finished.
 - Completed since last update:
   - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
   - Confirmed the real desk state has advanced beyond the last handoff:
     - `android_Release_arm64_multiabi` background build completed successfully.
     - `OneTabTube.apk` was emitted at the expected multiabi path.
     - Firebase updater publish completed successfully for `1.90.3 / 429000008`.
+    - Git commit + push completed successfully to `origin/publish/go_play-sync-20260402`.
   - Published build metadata:
     - package: `com.onetabtube.browser_default`
     - storage object: `app-updates/android/com.onetabtube.browser_default/429000008/OneTabTube-1.90.3-429000008.apk`
     - size: `210068112`
     - sha256: `08f6440cd3d3f2b4b7495b7383b8040524fc02b99818795820d2fe395c204e2a`
     - payload snapshot: `artifacts/firebase_build/app_update_publish_payload_20260410_000354.json`
+  - Repo sync metadata:
+    - pushed branch: `publish/go_play-sync-20260402`
+    - release commit: `2c7bd2ff3`
+    - release commit message: `build apk release(All_device+fix pip long return lockscreen) version 429000008`
 - In progress now:
-  - Aligning handoff files with the completed build/publish reality.
-  - Preparing a selective git commit that includes only the shipped release-related source/docs/seed changes.
-  - Git push is the final remaining release step.
+  - No code/build/publish action is in progress.
+  - Only the final handoff snapshot update is being written so the desk state matches reality.
 - Files/modules touched:
   - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
   - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
@@ -40,20 +44,18 @@
   - `adb install -r` on the connected device passed for the PiP validation build.
   - `android_Release_arm64_multiabi` build passed and emitted the release APK.
   - Firebase Storage + Firestore updater publish for `429000008` passed.
-  - Git commit/push has not been run yet in this final release-closing step.
+  - Git commit/push passed; release snapshot is on `origin/publish/go_play-sync-20260402`.
 - Blockers/risks:
-  - The worktree contains many unrelated untracked evidence files and one tracked deletion (`AGENT.md`), so staging must stay narrowly scoped.
-  - Push can still fail on remote auth/rejection and would need a targeted retry if that happens.
+  - The worktree still contains many unrelated untracked evidence files and one tracked deletion (`AGENT.md`), so future commits must remain narrowly scoped.
+  - The shipped PiP lockscreen fix still needs longer real-device runtime validation even though the release packaging/publish flow is finished.
 - Next concrete step:
-  - Stage only the intended release files.
-  - Commit with message:
-    - `build apk release(All_device+fix pip long return lockscreen) version 429000008`
-  - Push `publish/go_play-sync-20260402` to `origin`.
+  - Smoke-test updater delivery from the live `429000008` metadata and continue runtime validation of the PiP long lockscreen-return fix on real devices.
 - Expected resume inspection scope:
   - `docs/current-status.md`
   - latest `docs/progress-log.md` entry
   - `artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log`
   - `artifacts/firebase_build/app_update_publish_payload_20260410_000354.json`
+  - `git show --stat 2c7bd2ff3`
   - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\`
 - Current tool(s):
   - `apply_patch`
@@ -65,16 +67,15 @@
   - `Get-Content artifacts/android_build/onetabtube_release_all_device_v429000008_20260409_bg.log -Tail 40`
   - `wsl.exe bash -lc "ls -lah /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk"`
   - `npm --prefix functions run publish:app-update -- --project go-play-720c1 --apk \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+  - `git commit -m "build apk release(All_device+fix pip long return lockscreen) version 429000008"`
+  - `git push origin publish/go_play-sync-20260402`
 - Tool purpose:
   - Confirm the finished release artifact, record the live updater publish result, and close the release via commit/push.
 - Tool state:
-  - Build and publish commands have completed successfully.
-  - Git commit/push is the only remaining open tool action.
+  - Build, publish, commit, and push commands have completed successfully.
 - Expected resume command:
-  - `git status --short`
-  - `git add <targeted file list>`
-  - `git commit -m "build apk release(All_device+fix pip long return lockscreen) version 429000008"`
-  - `git push origin publish/go_play-sync-20260402`
+  - `git show --stat 2c7bd2ff3`
+  - `Get-Content artifacts/firebase_build/app_update_publish_payload_20260410_000354.json`
 - Expected output/artifact path:
   - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
 - Repo root / working directory:
@@ -103,10 +104,11 @@
   - Firebase CLI already logged in on this machine
   - git auth for `origin` available on this machine
 - Expected success signal:
-  - `git commit` captures only the intended release files
-  - `git push` succeeds to `origin`
+  - release commit `2c7bd2ff3` remains visible on the remote branch
+  - updater payload still points at `429000008 / 1.90.3`
 - Expected failure signal:
-  - git push rejects
+  - updater smoke test fails to see the live metadata
+  - runtime PiP repro still reproduces on-device
 - Last known log location:
   - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_all_device_v429000008_20260409_bg.log`
 - Last known artifact path:
@@ -114,15 +116,16 @@
 - Recent decisions:
   - Keep the PiP lockscreen restore fix and buy-package loading fix in the shipped `429000008` snapshot instead of rolling back to an older build.
   - Publish from the completed multiabi artifact so updater metadata matches the all-device release the user requested.
+  - Finish the requested repo sync first, then leave runtime PiP verification as the next follow-up task instead of blocking the release closeout.
 - Rejected approaches:
   - Publishing `429000008` from the single-ABI `android_Release_arm64` output.
   - Rolling back the PiP lockscreen fix just to unblock the release task.
   - Committing the entire dirty worktree including unrelated evidence files.
 - Stop point classification:
-  - build completed and updater published; git commit/push not yet done
+  - build completed + updater published + repo pushed; release closeout complete
 - What is done but unverified:
   - Runtime proof that the deferred-restore PiP fix fully resolves the long lockscreen track-change repro
-  - Remote repo push success
+  - Live updater install flow from a client device
 - What is verified:
   - Source edits saved locally
   - ext4 desk synced
@@ -130,12 +133,13 @@
   - device install/launch passed for the PiP validation build
   - multiabi all-device release build passed
   - updater payload for `429000008 / 1.90.3` is live in Firebase metadata
+  - release commit `2c7bd2ff3` pushed to `origin/publish/go_play-sync-20260402`
 - External prerequisite:
-  - Git remote availability for final push
+  - Real device/emulator available for updater smoke test and long-session PiP regression validation
 - Secret required but not stored:
   - Firebase auth tokens
   - git credentials
 - Actual code state after resume:
   - Code now defers track-navigation PiP presentation restoration until `WebContents` is visible again, while `BraveActivity` keeps the PiP presentation path alive instead of dropping it on lockscreen-related state changes. The buy-package page also starts blank during product fetch instead of flashing app-default package values.
 - Chosen direction:
-  - Use the already-built and already-published multiabi `429000008` artifact as the release source of truth, then finish with a narrowly scoped commit/push.
+  - Treat `2c7bd2ff3` plus the published Firebase metadata as the release source of truth, and resume next from updater/runtime validation rather than rebuilding again immediately.

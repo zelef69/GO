@@ -132,6 +132,102 @@
   - Firebase auth tokens
   - git credentials
 
+## 2026-04-10 00:12:44 +07:00
+
+- Current phase:
+  - Release closeout / v429000008
+- Task/objective:
+  - Finish the final repo sync and leave an accurate desk-state snapshot after the shipped `429000008` all-device release.
+- Completed since last snapshot:
+  - Staged only the intended release files, excluding the noisy untracked evidence set and the tracked `AGENT.md` deletion.
+  - Committed the release snapshot as:
+    - `2c7bd2ff3`
+    - `build apk release(All_device+fix pip long return lockscreen) version 429000008`
+  - Pushed `publish/go_play-sync-20260402` to `origin` successfully.
+- In progress now:
+  - Only the final handoff snapshot write is in progress.
+- Blockers/risks:
+  - No packaging/publish blocker remains.
+  - Runtime validation for the long lockscreen-return PiP fix is still not fully closed.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - build passed
+  - updater publish passed
+  - repo push passed
+- Exact next concrete step:
+  - Smoke-test updater delivery from the live `429000008` metadata and continue real-device PiP regression checks.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `git show --stat 2c7bd2ff3`
+  - `artifacts/firebase_build/app_update_publish_payload_20260410_000354.json`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `git`
+- Exact command(s):
+  - `git status --short`
+  - `git diff --cached --stat`
+  - `git commit -m "build apk release(All_device+fix pip long return lockscreen) version 429000008"`
+  - `git push origin publish/go_play-sync-20260402`
+- Tool purpose:
+  - Close the requested repo sync step for the shipped release and leave accurate handoff metadata.
+- Tool state:
+  - Completed.
+- Expected resume command:
+  - `git show --stat 2c7bd2ff3`
+  - `Get-Content artifacts/firebase_build/app_update_publish_payload_20260410_000354.json`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `2c7bd2ff3`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `docs/current-status.md` - final desk-state snapshot after release push
+  - `docs/progress-log.md` - append-only audit trail of the release closeout
+  - `artifacts/firebase_build/app_update_publish_payload_20260410_000354.json` - updater publish evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `git show --stat 2c7bd2ff3`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - git remote auth available
+- Expected success signal:
+  - release commit visible on remote branch
+- Expected failure signal:
+  - remote branch missing `2c7bd2ff3`
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\onetabtube_release_all_device_v429000008_20260409_bg.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Treat the repo push as the end of the requested release task, not the end of runtime validation work.
+- Rejected approaches:
+  - amending the release commit
+  - mixing the release commit with unrelated workspace noise
+- Stop point classification:
+  - release fully closed; next work is follow-up validation
+- What is done but unverified:
+  - updater install flow from a client device
+  - long-session PiP regression outcome
+- What is verified:
+  - release commit exists on remote
+  - updater metadata exists live
+- External prerequisite:
+  - device available for update/PiP smoke test
+- Secret required but not stored:
+  - Firebase auth tokens
+  - git credentials
+
 ## 2026-04-06 22:24:30 +07:00
 
 - Timestamp:
