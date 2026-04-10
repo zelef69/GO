@@ -25555,3 +25555,107 @@
   - user opens the page and tests package selection
 - Secret required but not stored:
   - signing/service credentials remain external
+
+# 2026-04-10 20:38:52 +07:00
+
+- Current phase:
+  - Release packaging / publish completed
+- Task/objective:
+  - Finish the exact-device-baseline `429000009` release by pushing the already built/published metadata commits to the repo and updating handoff to match reality.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest release handoff context before acting.
+  - Confirmed the release APK had already been built from the connected-device `429000008` baseline and published live to Firebase Storage + Firestore.
+  - Verified local release commits existed and were ready to push:
+    - `ac9a889ff` `build apk release version 429000009`
+    - `7c20b18c1` `docs: restore full progress log after 429000009 release`
+  - Pushed branch `publish/go_play-sync-20260402` to `origin` successfully.
+  - Rewrote `docs/current-status.md` so it now states the real stop point:
+    - release build complete
+    - Firestore/storage live
+    - repo push complete
+    - only runtime updater smoke test remains optional
+  - Appended this final handoff snapshot at the end of `docs/progress-log.md` so the latest entry is physically at EOF again.
+- In progress now:
+  - No active build/publish task.
+  - Optional runtime validation only.
+- Blockers/risks:
+  - The main Windows worktree is still very dirty with unrelated experiment files; future commits must keep staging narrow.
+  - Runtime updater UX from installed `429000008` to live `429000009` is still unverified in this round.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release build already passed earlier in this round:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - Firebase publish already passed and was verified by Firestore/storage evidence.
+  - `git push origin publish/go_play-sync-20260402` passed.
+- Exact next concrete step:
+  - If requested, smoke-test the updater flow on a device currently running `429000008`.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `functions/seeds/app_update_android.seed.json`
+  - `artifacts/android_build/release_build_429000009_20260410_rerun1.log`
+  - `artifacts/firebase_build/publish_app_update_live_20260410_429000009_fix.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `git`
+- Exact command(s):
+  - `git push origin publish/go_play-sync-20260402`
+  - `Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"`
+  - `git rev-parse --short HEAD`
+  - `git log --oneline -3`
+- Tool purpose:
+  - Final repo sync and final handoff update after release completion.
+- Tool state:
+  - Completed successfully.
+- Expected resume command:
+  - `git status --short`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `7c20b18c1`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `docs/current-status.md` - final stop-point snapshot after repo push
+  - `docs/progress-log.md` - append-only final release handoff
+  - `functions/seeds/app_update_android.seed.json` - live release metadata already synced to repo
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `functions/seeds/app_update_android.seed.json`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Git remote access configured locally
+- Expected success signal:
+  - remote branch contains the `429000009` release metadata commits and handoff matches the real stop point
+- Expected failure signal:
+  - push rejection or a stale handoff still claiming repo sync is pending
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_429000009_20260410_rerun1.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Push the completed release commits first, then write one clean final handoff snapshot rather than mixing repo-sync state with the pre-push snapshot.
+- Rejected approaches:
+  - leaving `docs/current-status.md` claiming repo sync was still pending after push
+  - touching unrelated dirty experiment files while closing the release
+- Stop point classification:
+  - release build complete + publish complete + repo push complete; optional device smoke test pending
+- What is done but unverified:
+  - on-device updater UX from `429000008` to `429000009`
+- What is verified:
+  - release `429000009` artifact exists with the expected hash and size
+  - live Firestore metadata points to the matching Storage object/token
+  - remote branch push succeeded
+- External prerequisite:
+  - connected device on `429000008` only if updater smoke test is requested
+- Secret required but not stored:
+  - git credentials / Firebase CLI auth remain local-only
