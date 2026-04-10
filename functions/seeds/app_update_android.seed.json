@@ -3,14 +3,14 @@
     "android": {
       "appId": "com.onetabtube.browser_default",
       "releaseChannel": "stable",
-      "latestVersionCode": 429000008,
+      "latestVersionCode": 429000009,
       "latestVersionName": "1.90.3",
-      "minimumSupportedVersionCode": 429000007,
+      "minimumSupportedVersionCode": 429000008,
       "updaterEnabled": true,
       "forceUpdate": false,
       "apkUrl": "https://example.com/go-play/OneTabTube.apk",
-      "apkSha256": "5dacfc43d6286ff8778c448ebda3b8f5d64fe2c10944ba3ad864abac8c184b4e",
-      "apkFileSizeBytes": 511846166,
+      "apkSha256": "51a13da56ab3daad4f0a2d2f41be55c3f8daa87d617d3cd929c2de032c1f42c4",
+      "apkFileSizeBytes": 210076304,
       "releaseNotes": [
         "เมลใหม่รับแพ็กเกจทดลองใช้งาน 14 วันอัตโนมัติ",
         "อัปเดต release build รอบใหม่สำหรับทดสอบระบบอัปเดตในแอป",
