@@ -1,157 +1,139 @@
 # Current Status
 
 - Last updated:
-  - 2026-04-10 20:38:52 +07:00
+  - 2026-04-11 21:55:16 +07:00
 - Current phase:
-  - Release packaging / publish completed
+  - Repo sync / pre-release staging
 - Current objective:
-  - Finalize the exact-device-baseline release as `429000009`, keep Firebase updater metadata live, and leave the repo in a resumable state.
+  - Mirror the working PiP patch from the connected-device source of truth back into the tracked repo.
+  - Stage this repo snapshot as the next intended release target `429000010`.
+  - Do not build and do not publish updater metadata in this round.
 - Completed since last update:
-  - Re-read `docs/current-status.md` and the latest recorded release handoff context first.
-  - Verified the connected device baseline before building:
-    - package `com.onetabtube.browser_default`
-    - `versionCode=429000008`
-    - `versionName=1.90.3`
-  - Pulled the device APK and proved it matched the existing release artifact exactly:
-    - baseline SHA-256: `08f6440cd3d3f2b4b7495b7383b8040524fc02b99818795820d2fe395c204e2a`
-  - Restored the WSL release tree to the exact `429000008` release baseline for the 4 main-app updater files so the new release would not pick up unverified experiment code.
-  - Bumped only the release override to `429000009`.
-  - Built release multiabi successfully:
-    - artifact: `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
-    - `versionCode=429000009`
-    - `versionName=1.90.3`
-    - size: `210076304`
-    - SHA-256: `51a13da56ab3daad4f0a2d2f41be55c3f8daa87d617d3cd929c2de032c1f42c4`
-  - Updated `functions/seeds/app_update_android.seed.json` to the new release metadata.
-  - Published the APK live to Firebase Storage + Firestore updater metadata.
-  - Verified live Firestore/storage metadata after correcting the earlier dry/live parallel publish token mismatch:
-    - storage object: `app-updates/android/com.onetabtube.browser_default/429000009/OneTabTube-1.90.3-429000009.apk`
-    - live token: `fa2f2584-4df9-4f0f-8f85-0dc20f43f125`
-  - Pushed the local release commits to:
-    - branch `publish/go_play-sync-20260402`
-    - remote `origin`
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry per `AGENTS.md`.
+  - Verified the user-confirmed working PiP patch is the Android/native near-end trigger in:
+    - `//wsl.localhost/Ubuntu/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - Copied that exact file into the tracked repo at:
+    - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - Verified byte-for-byte parity between repo and WSL source-of-truth copies by SHA-256:
+    - `0AC6FB82CB2BAC18D12BABE347E4A7729EBEFDA64CCC33A913D540BF94E3753A`
+  - Reconfirmed the existing tracked PiP helper files already match the active WSL/device-truth copies:
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - Decided not to touch `functions/seeds/app_update_android.seed.json` in this round because no `429000010` APK has been built yet, and changing release metadata now would misrepresent live updater truth.
 - In progress now:
-  - No release packaging work is in progress.
-  - The only remaining optional follow-up is runtime smoke-testing the updater flow from installed `429000008` to live `429000009`.
+  - Finalize handoff for the synced repo state.
+  - Commit and push the source-of-truth patch snapshot with commit message `pip_plus`.
 - Files/modules touched:
-  - `functions/seeds/app_update_android.seed.json`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
   - `docs/current-status.md`
   - `docs/progress-log.md`
-  - WSL release tree only:
-    - `/home/master/src_ext4/out/android_Release_arm64_multiabi/args.gn`
-    - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAccountActivity.java`
-    - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManager.java`
-    - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateStore.java`
-    - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/onetabauth/OneTabAppUpdateManifest.java`
 - Build/test status:
-  - Release build passed:
-    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
-  - Live Firebase publish passed and was verified against readback/HEAD evidence.
-  - Repo push passed:
-    - `git push origin publish/go_play-sync-20260402`
-  - Runtime install/smoke test for `429000009` on a device has not been done in this round.
+  - No build was run in this round by user request.
+  - Source-of-truth for the synced patch is the already validated installed-device behavior on release baseline `429000009 / 1.90.3`.
+  - Repo-to-WSL file parity was verified by hash/diff for the working set listed above.
 - Blockers/risks:
-  - The main Windows worktree still contains many unrelated modified/untracked files; do not stage them for release work.
-  - The account-page updater UX for `429000008 -> 429000009` is still unverified on-device in this round.
-  - The component-line updater experiment files in the Windows repo are still dirty and intentionally excluded from the release baseline.
+  - The repo is only staged for the next intended release target `429000010`; there is still no built `429000010` artifact.
+  - Live updater metadata remains intentionally on `429000009` until a real `429000010` APK exists.
+  - There are many unrelated modified/untracked files in the workspace; only the focused PiP sync + handoff files should be committed.
 - Next concrete step:
-  - If asked to validate the release, install or update from `429000008` and smoke-test the account-page updater flow against live `429000009`.
+  - Commit only the synced PiP source-of-truth file plus handoff docs.
+  - Push that commit to the user repo on `publish/go_play-sync-20260402`.
+  - If requested later, build from this repo snapshot as `429000010` and only then update release/updater metadata.
 - Expected resume inspection scope:
-  - `functions/seeds/app_update_android.seed.json`
-  - `artifacts/android_build/release_build_429000009_20260410_rerun1.log`
-  - `artifacts/firebase_build/publish_app_update_live_20260410_429000009_fix.log`
-  - `artifacts/firebase_build/app_update_publish_payload_20260410_429000009_live.json`
-  - `artifacts/firebase_build/app_update_firestore_readback_20260410_429000009.json`
-  - `artifacts/firebase_build/app_update_storage_head_20260410_429000009.txt`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
 - Current tool(s):
   - `shell_command`
-  - `apply_patch`
-  - `adb`
-  - `wsl`
-  - `ninja`
-  - `npm`
+  - `multi_tool_use.parallel`
   - `git`
 - Exact command(s):
-  - `adb -s R9TRC00GA2E shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime'`
-  - `adb -s R9TRC00GA2E pull <device-base-apk> artifacts\\device_apk\\device_base_429000008.apk`
-  - `Get-FileHash -Algorithm SHA256 '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk'`
-  - `python artifacts\\release_429000009_baseline\\restore_release_baseline_raw.py`
-  - `wsl python3 /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/release_429000009_baseline/bump_release_version.py`
-  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_429000009_20260410_rerun1.log"`
-  - `npm --prefix functions run publish:app-update -- --project go-play-720c1 --apk "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk" --output-json "C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\firebase_build\\app_update_publish_payload_20260410_429000009_live.json"`
-  - `git push origin publish/go_play-sync-20260402`
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Get-Content "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\components\\browser_ui\\media\\android\\java\\src\\org\\chromium\\components\\browser_ui\\media\\MediaSessionHelper.java"`
+  - `Copy-Item "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\components\\browser_ui\\media\\android\\java\\src\\org\\chromium\\components\\browser_ui\\media\\MediaSessionHelper.java" "components\\browser_ui\\media\\android\\java\\src\\org\\chromium\\components\\browser_ui\\media\\MediaSessionHelper.java"`
+  - `Get-FileHash -Algorithm SHA256 <repo-file> <wsl-file>`
+  - `git diff --no-index -- <repo-file> <wsl-file>`
+  - `git status --short`
+  - `git show --stat --summary ac9a889ff`
 - Tool purpose:
-  - Preserve the installed release as source of truth, bump only the release version, build the APK, publish updater metadata, and sync the repo safely.
+  - Sync the working device-truth PiP patch back into the tracked repo without inventing a new path and without pretending a new release artifact exists.
 - Tool state:
-  - Release build complete.
-  - Firebase publish complete.
-  - Repo push complete.
+  - Code sync complete.
+  - Commit/push pending.
 - Expected resume command:
   - `git status --short`
-  - then, if runtime validation is needed:
-  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `git add components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java docs/current-status.md docs/progress-log.md`
+  - `git commit -m "pip_plus"`
+  - `git push origin publish/go_play-sync-20260402`
 - Expected output/artifact path:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - No new artifact expected in this round.
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `7c20b18c1`
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
 - Build flavor / target:
-  - Release multiabi:
-    - `out/android_Release_arm64_multiabi`
-    - `chrome_public_apk`
+  - No build in this round.
+  - Intended next release target only: `429000010`
 - Primary working set:
-  - `functions/seeds/app_update_android.seed.json` - repo-side updater metadata for live release `429000009`
-  - `artifacts/android_build/release_build_429000009_20260410_rerun1.log` - successful release build evidence
-  - `artifacts/firebase_build/publish_app_update_live_20260410_429000009_fix.log` - successful live publish evidence after token correction
-  - `artifacts/firebase_build/app_update_firestore_readback_20260410_429000009.json` - live Firestore readback
-  - `artifacts/firebase_build/app_update_storage_head_20260410_429000009.txt` - live Storage HEAD verification
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java` - tracked copy of the working Android/native PiP near-end trigger that matched the device source of truth
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - confirmed already in sync with WSL/device-truth
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - confirmed already in sync with WSL/device-truth
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - confirmed already in sync with WSL/device-truth
+  - `docs/current-status.md` - handoff snapshot for the repo-sync stop point
+  - `docs/progress-log.md` - append-only audit trail for this repo-sync step
 - Files to inspect first after resume:
   - `docs/current-status.md`
   - latest entry in `docs/progress-log.md`
-  - `functions/seeds/app_update_android.seed.json`
-  - `artifacts/android_build/release_build_429000009_20260410_rerun1.log`
-  - `artifacts/firebase_build/publish_app_update_live_20260410_429000009_fix.log`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `git status --short`
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - Device connection only needed for optional runtime smoke test
-  - Firebase CLI auth available locally
-  - WSL build tree mounted at `/home/master/src_ext4`
+  - None beyond local git access.
 - Expected success signal:
-  - The live updater doc points to the matching `429000009` APK and the repo already contains the release metadata commits on the remote branch.
+  - `MediaSessionHelper.java` remains identical to the WSL source-of-truth copy.
+  - Only the intended files are staged.
+  - Commit `pip_plus` is created and pushed.
 - Expected failure signal:
-  - Firestore/storage token drift
-  - accidental staging of unrelated dirty files
-  - runtime updater UX failing on-device
+  - The repo copy of `MediaSessionHelper.java` drifts from the WSL source-of-truth file.
+  - Unrelated workspace files get staged into the commit by mistake.
 - Last known log location:
-  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_429000009_20260410_rerun1.log`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_position_native_next_20260411.txt`
 - Last known artifact path:
   - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
 - Recent decisions:
-  - Treat the device-installed `429000008` APK as the only valid release baseline.
-  - Keep the unverified updater experiment out of the release artifact by restoring the WSL release tree to baseline content before building.
-  - Correct the publish token mismatch by rerunning live publish serially instead of trusting the first parallel run.
+  - Treat the installed-device behavior as the source of truth.
+  - Sync code from the working WSL build tree back into the tracked repo exactly, instead of re-deriving the patch.
+  - Keep updater seed/live release metadata unchanged until a real `429000010` APK is built.
 - Rejected approaches:
-  - Building from the dirty component updater line
-  - Guessing baseline from an older commit without matching the device APK hash first
-  - Trusting the first parallel dry/live publish result after Firestore/storage token mismatch was observed
+  - Bumping live updater metadata to `429000010` without a built APK.
+  - Rewriting the working PiP patch into a different layer just to avoid syncing the actual source-of-truth file.
 - Stop point classification:
-  - release APK built + live metadata published + repo pushed; runtime smoke test pending
+  - code synced to repo and handoff updated; commit/push is the only remaining step in this round
 - What is done but unverified:
-  - Device-side updater UX from installed `429000008` to live `429000009`
+  - The next intended repo release tag `429000010` is documented, but no build has verified it yet.
 - What is verified:
-  - Device APK baseline hash matched the old release artifact
-  - Release APK `429000009` built successfully
-  - Firestore doc and Storage token now match the published object
-  - Repo push to remote branch succeeded
+  - The working patch file in repo matches the WSL/device source of truth exactly.
+  - The previously edited tracked PiP helper files already match the WSL/device source of truth.
+  - No build was performed in this round.
 - External prerequisite:
-  - A connected device on `429000008` is needed only if runtime updater validation is requested
+  - None.
 - Secret required but not stored:
-  - Firebase CLI refresh token / git credentials are used locally but intentionally not written into repo docs
+  - none
 - Actual code state after resume:
-  - The pushed repo branch now contains only the release metadata/handoff sync for `429000009`; the actual APK was built from the exact installed `429000008` baseline inside the WSL release tree with only the version override bumped.
+  - The repo now contains the working `MediaSessionHelper.java` implementation that was previously only in the WSL build tree.
+  - The repo still contains unrelated modified/untracked workspace files outside this focused working set.
+  - Release/updater seed metadata still points to `429000009` because `429000010` has not been built.
 - Chosen direction:
-  - Keep the release line stable and separate from local updater experiments, and use device-baseline verification before any future release bump.
+  - Finish this round as a clean repo-sync-only change:
+    - source-of-truth code synced
+    - intended next release target documented as `429000010`
+    - no fake release metadata
+    - no build

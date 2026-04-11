@@ -1,5 +1,1789 @@
 # Progress Log
 
+## 2026-04-11 16:30:57 +07:00
+
+- Current phase:
+  - PiP runtime stabilization on lockscreen unlock path
+- Objective:
+  - Stop PiP from losing video focus after returning from the lockscreen, while keeping the existing manual next/previous behavior intact.
+- Completed since previous snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry, then confirmed the recorded setup-focused handoff no longer matched the active PiP task.
+  - Inspected the actual release-build controller source in the WSL tree:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - Verified this active build-path source still contained the immediate unlock-time fullscreen re-request path responsible for the recurring log line:
+    - `Re-requesting fullscreen to keep PiP video-focused.`
+  - Compared the active build-path controller against the repo-visible Brave wrapper/reference and confirmed the build behavior must be fixed at the WSL controller layer for release parity.
+  - Patched the WSL controller to add a narrow deferred recovery path:
+    - schedule short retries first while staying in PiP
+    - refresh PiP params immediately if active fullscreen returns during those retries
+    - only fall back to `BraveYouTubeScriptInjectorNativeHelper.setFullscreen(...)` after retry exhaustion
+    - clear this recovery state on PiP enter/exit
+  - Rebuilt release successfully:
+    - `ninja -C out/android_Release_arm64_multiabi chrome_public_apk`
+  - Reinstalled the rebuilt APK on the connected device.
+  - Relaunched the app successfully and re-armed a fresh live `adb logcat` capture for the next repro.
+- In progress now:
+  - Waiting for runtime validation on the currently installed build.
+- Files/modules touched:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - `adb install -r` passed.
+  - App launch passed.
+  - Runtime PiP validation pending.
+- Blockers/risks:
+  - Core release behavior depends on the WSL build-tree controller source, not just the repo-visible Brave wrapper.
+  - Must avoid disturbing working manual `next/previous` lockscreen control paths.
+- Exact next concrete step:
+  - User reproduces the lockscreen-unlock PiP failure on the current build.
+  - Then inspect:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_unlock_deferred_recovery_20260411.txt`
+- Expected resume inspection scope:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `artifacts/runtime_logs/live_pip_unlock_deferred_recovery_20260411.txt`
+  - `artifacts/android_build/release_build_pip_core_deferred_recovery_20260411.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+- Exact command(s):
+  - `wsl bash -lc "sed -n '600,740p' /home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java"`
+  - `rg -n -C 3 "Re-requesting fullscreen to keep PiP video-focused|skip without active fullscreen video|remember_hidden_track|arm_current_track_after_hidden|onResume while still in PiP|onStart while still in PiP|dismissActivityIfNeeded|Pinned fullscreen-loss" artifacts/runtime_logs -S`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_core_deferred_recovery_20260411.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+  - `cmd /c adb logcat -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > "C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_unlock_deferred_recovery_20260411.txt"`
+- Tool purpose:
+  - Fix the release-build controller path that re-requests fullscreen too early after unlock, then capture evidence from the exact build installed on the connected device.
+- Tool state:
+  - Build/install complete; live capture armed.
+- Expected resume command:
+  - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_unlock_deferred_recovery_20260411.pid) -Force`
+  - followed by log inspection
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `artifacts/runtime_logs/live_pip_unlock_deferred_recovery_20260411.txt`
+  - `artifacts/android_build/release_build_pip_core_deferred_recovery_20260411.log`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `artifacts/runtime_logs/live_pip_unlock_deferred_recovery_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device visible to `adb`
+  - user repro on the currently installed build
+- Expected success signal:
+  - PiP stays video-focused after unlock.
+- Expected failure signal:
+  - deferred recovery still escalates into the same defocused/black PiP result.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_core_deferred_recovery_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Treat the WSL controller source as release truth for PiP behavior.
+  - Refine the existing fullscreen recovery path instead of inventing a new PiP flow.
+- Rejected approaches:
+  - more helper-only bridge patches without fixing the core controller timing
+  - mixing setup updater work into the active PiP thread
+- Stop point classification:
+  - code edited + release rebuilt + APK installed + live capture armed; waiting for repro
+- What is done but unverified:
+  - Whether deferred recovery resolves the unlock-time PiP defocus on device.
+- What is verified:
+  - Active controller source contained the immediate re-request path.
+  - Deferred recovery patch builds and installs successfully.
+  - Installed app remains `429000009 / 1.90.3`.
+- External prerequisite:
+  - user repro on connected device
+- Secret required but not stored:
+  - none
+
+## 2026-04-11 21:55:16 +07:00
+
+- Current phase:
+  - Repo sync / pre-release staging
+- Current objective:
+  - Mirror the working PiP patch from the connected-device source of truth back into the tracked repo and stage this snapshot as the next intended repo release target `429000010`, without building.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry per `AGENTS.md`.
+  - Confirmed the user-validated source-of-truth patch lives in WSL at:
+    - `//wsl.localhost/Ubuntu/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - Copied that exact file into the tracked repo at:
+    - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - Verified repo and WSL copies are byte-for-byte identical by SHA-256:
+    - `0AC6FB82CB2BAC18D12BABE347E4A7729EBEFDA64CCC33A913D540BF94E3753A`
+  - Rechecked the tracked PiP helper files already match the active WSL/device source-of-truth copies:
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - Chose not to edit `functions/seeds/app_update_android.seed.json` in this round because there is still no built `429000010` APK.
+- In progress now:
+  - Final handoff snapshot, then commit/push only the source-of-truth sync set.
+- Files/modules touched:
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No build was run in this round by user request.
+  - Code parity between repo and WSL/device source-of-truth was verified for the PiP working set.
+- Blockers/risks:
+  - `429000010` is only the intended next repo release target right now; it has not been built.
+  - Changing updater seed/live metadata in this round would falsely imply a real `429000010` artifact exists.
+  - Workspace still contains many unrelated modified/untracked files that must stay out of the commit.
+- Next concrete step:
+  - `git add components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java docs/current-status.md docs/progress-log.md`
+  - `git commit -m "pip_plus"`
+  - `git push origin publish/go_play-sync-20260402`
+- Expected resume inspection scope:
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `git status --short`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `git`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Copy-Item "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\components\\browser_ui\\media\\android\\java\\src\\org\\chromium\\components\\browser_ui\\media\\MediaSessionHelper.java" "components\\browser_ui\\media\\android\\java\\src\\org\\chromium\\components\\browser_ui\\media\\MediaSessionHelper.java"`
+  - `Get-FileHash -Algorithm SHA256 <repo-file>`
+  - `Get-FileHash -Algorithm SHA256 <wsl-file>`
+  - `git diff --no-index -- <repo-file> <wsl-file>`
+  - `git status --short`
+  - `git show --stat --summary ac9a889ff`
+- Tool purpose:
+  - Sync the working PiP patch back into the tracked repo and preserve truthful release state while preparing the next repo-side version target.
+- Tool state:
+  - Code sync complete; commit/push pending.
+- Expected resume command:
+  - `git status --short`
+  - `git add components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java docs/current-status.md docs/progress-log.md`
+- Expected output/artifact path:
+  - No new artifact expected in this round.
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+- Build flavor / target:
+  - No build in this round.
+  - Intended next repo release target only: `429000010`
+- Primary working set:
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java` - tracked copy of the working Android/native near-end trigger that matched the device
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - already in sync with the device-truth path
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - already in sync with the device-truth path
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - already in sync with the device-truth path
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `git status --short`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - None beyond local git access.
+- Expected success signal:
+  - The repo copy of `MediaSessionHelper.java` remains identical to the WSL/device source-of-truth file.
+  - Only the intended files are staged and pushed.
+- Expected failure signal:
+  - The repo copy drifts from the WSL source-of-truth file.
+  - Unrelated files are accidentally staged.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_position_native_next_20260411.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Use the already-working device behavior as source of truth.
+  - Sync the real patch into repo exactly instead of re-deriving it.
+  - Keep updater seed/live metadata on `429000009` until a real `429000010` APK is built.
+- Rejected approaches:
+  - Faking `429000010` live updater metadata without a built artifact
+  - Re-implementing the patch in a different layer instead of syncing the validated source file
+- Stop point classification:
+  - code synced to repo, handoff updated, commit/push pending
+- What is done but unverified:
+  - No `429000010` build exists yet; repo only carries the intended next release target.
+- What is verified:
+  - `MediaSessionHelper.java` in repo matches the WSL/device source-of-truth file exactly
+  - Tracked PiP helper files already matched the WSL/device source-of-truth files
+  - No build was performed in this round
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+- Actual code state after resume:
+  - Active release behavior now includes deferred controller-side recovery instead of immediate forced fullscreen on transient unlock-time fullscreen loss.
+- Chosen direction:
+  - Validate this controller-only timing patch before touching any other PiP layer.
+
+## 2026-04-11 10:20:07 +07:00
+
+- Current phase:
+  - Runtime PiP stabilization on top of the restored `429000009` release baseline
+- Current objective:
+  - Reinforce the `video ended -> auto-advance` path so it reuses the old native keepalive/fullscreen restore path instead of relying on JS carry-forward alone.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Re-inspected the current baseline code around:
+    - `saveCarryForwardVideoPresentation`
+    - `ensureVideoPresentationForArmedTarget`
+    - `MaybeNextTrack`
+    - `MaybePreviousTrack`
+    - `OnNativeTabBridgeCommandComplete`
+    - `MaybeRestoreVideoPresentationAfterTrackNavigation`
+  - Confirmed explicit track navigation still arms:
+    - `restore_video_presentation_after_track_navigation_`
+    - `SetFullscreenRequested(true)`
+  - Confirmed auto-advance was still weaker and only depended on JS carry-forward state.
+  - Added a narrow carry-check reinforcement in:
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - New behavior:
+    - a small JS probe checks whether `__onetabtubeVideoPresentationCarry` is present and still fresh
+    - on page/document/visibility availability, if carry-forward exists, the helper now arms the existing native keepalive path using:
+      - `restore_video_presentation_after_track_navigation_ = true`
+      - `SetFullscreenRequested(true)`
+      - `MaybeRestoreVideoPresentationAfterTrackNavigation(...)`
+  - Synced the two patched files into `/home/master/src_ext4`.
+  - Rebuilt `android_Release_arm64_multiabi` successfully with:
+    - `artifacts/android_build/release_build_pip_auto_advance_keepalive_20260411.log`
+  - Reinstalled the rebuilt release APK successfully:
+    - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+    - result: `Success`
+  - Relaunched the app successfully and cleared logcat.
+  - Verified installed package state:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-11 10:19:46`
+- In progress now:
+  - Waiting for runtime repro on the freshly installed build.
+- Blockers / risks:
+  - Runtime validation is still pending; the patch is only compile/install verified so far.
+  - The worktree remains dirty with many unrelated files; any commit must stay narrow.
+  - The WSL build tree is still manually synced and not git-tracked.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - APK reinstall passed.
+  - Relaunch passed.
+  - Runtime validation pending.
+- Exact next concrete step:
+  - Let the user repro on device, then capture:
+    - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_auto_advance_keepalive_429000009_repro.txt"`
+  - Confirm whether the new log contains:
+    - `OTB_PIP event=arm_track_navigation_keepalive command=auto_advance`
+    - `OTB_PIP event=track_navigation_restore_apply`
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `artifacts/android_build/release_build_pip_auto_advance_keepalive_20260411.log`
+  - next runtime log after repro
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `rg`
+- Exact command(s):
+  - `git diff -- browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_auto_advance_keepalive_20260411.log"`
+  - `adb devices -l`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern "versionCode=|versionName=|lastUpdateTime="`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+- Tool purpose:
+  - Reinforce the old auto-advance PiP path by reusing the existing native keepalive/restore flow, then rebuild/redeploy for runtime proof.
+- Tool state:
+  - Patch/build/install complete; waiting for user repro.
+- Expected resume command:
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_auto_advance_keepalive_429000009_repro.txt"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - carry-forward to native keepalive reinforcement
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - declarations for the reinforcement callback/helper
+  - `artifacts/android_build/release_build_pip_auto_advance_keepalive_20260411.log` - build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - next runtime log after repro
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - WSL build tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - PiP stays video-focused after auto-advance because the carry-forward state now arms the same restore path as explicit track navigation.
+- Expected failure signal:
+  - PiP still loses framing/fullscreen behavior and the fresh log shows no `auto_advance` keepalive arm or another path overrides it.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_auto_advance_keepalive_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+- Recent decisions:
+  - Use the restored `429000009` flow as the base.
+  - Reuse old keepalive code instead of inventing a new PiP recovery path.
+  - Reinforce only the weak auto-advance branch.
+- Rejected approaches:
+  - adding a brand-new PiP state machine
+  - widening fullscreen re-arm logic in unrelated controllers
+  - touching setup/update flows during this PiP fix
+- Stop point classification:
+  - code edited + release rebuilt + APK installed + app relaunched; runtime validation pending
+- What is done but unverified:
+  - Whether the new auto-advance keepalive reinforcement fully fixes the PiP focus loss.
+- What is verified:
+  - The patch compiles.
+  - The rebuilt APK installs and launches on the connected device.
+- External prerequisite:
+  - user repro on the connected device
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 15:52:47 +07:00
+
+- Current phase:
+  - Setup updater metadata correction and universal setup release packaging
+- Objective:
+  - Fix the setup app so “เผยแพร่เมื่อ” reflects Firestore release/write time, and build a setup release APK that installs on the widest device set the current Flutter toolchain supports.
+- Completed since last snapshot:
+  - Verified the active Flutter app is the setup app via `lib/main.dart`, `lib/app/config/setup_dependencies.dart`, and `lib/features/setup/presentation/setup_page.dart`.
+  - Patched `lib/services/update_manifest_service.dart` so setup manifest normalization now uses Firestore timestamp aliases (`publishedAt`, `releasedAt`, `releaseAt`, `updatedAt`, `createdAt`) before falling back to current time.
+  - Patched setup manifest normalization to accept size aliases (`apkSizeBytes`, `apkFileSizeBytes`, `fileSizeBytes`).
+  - Patched setup downloader target naming in `lib/services/apk_download_service.dart` and `lib/services/update_service.dart` to infer the file extension from the real download URL.
+  - Extended Android-side setup installer handling in:
+    - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt`
+    - `android/app/src/main/kotlin/com/example/go_play/update/UpdateInstallStatusReceiver.kt`
+    - `android/app/src/main/AndroidManifest.xml`
+  - Added `x86` to the Rust JNI build command in `android/app/build.gradle.kts` for future wider ABI generation.
+  - Confirmed Flutter currently supports only `android-arm`, `android-arm64`, and `android-x64` for `flutter build apk`.
+  - Built the setup release APK successfully with:
+    - `flutter build apk --release --target-platform android-arm,android-arm64,android-x64`
+  - Verified the resulting APK contains `armeabi-v7a`, `arm64-v8a`, and `x86_64` native payloads plus `libgo_play_adblock_jni.so` and `libgo_play_security.so` for each packaged ABI.
+- In progress now:
+  - Device/runtime smoke verification of the freshly built setup release APK is pending.
+- Files/modules touched:
+  - `lib/services/update_manifest_service.dart`
+  - `lib/services/apk_download_service.dart`
+  - `lib/services/update_service.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt`
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateInstallStatusReceiver.kt`
+  - `android/app/src/main/AndroidManifest.xml`
+  - `android/app/build.gradle.kts`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `flutter build apk --release --target-platform android-arm,android-arm64,android-x64` passed.
+  - Artifact emitted at `build/app/outputs/flutter-apk/app-release.apk`.
+  - Whole-repo `flutter analyze` still fails on unrelated non-setup modules and is not a blocker for the setup build.
+- Blockers/risks:
+  - 32-bit `x86` is still outside the currently supported Flutter `--target-platform` list.
+  - The Gradle Rust JNI helper task still fails with opaque `25.0.1`, though the current release APK already packaged the required ABIs for `armeabi-v7a`, `arm64-v8a`, and `x86_64`.
+  - Runtime verification of the Firestore timestamp display and resumed installer flow is still pending.
+- Next concrete step:
+  - Install `build/app/outputs/flutter-apk/app-release.apk` on a device/emulator and verify:
+    - setup page shows the real Firestore release/write time
+    - background download resumes instead of restarting
+    - installer launch still works on-device
+- Expected resume inspection scope:
+  - `lib/services/update_manifest_service.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt`
+  - `android/app/build.gradle.kts`
+  - `build/app/outputs/flutter-apk/app-release.apk`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `flutter`
+  - `gradlew`
+- Exact command(s):
+  - `flutter analyze`
+  - `flutter build apk -h`
+  - `flutter build apk --release --target-platform android-arm,android-arm64,android-x64`
+  - PowerShell zip inspection for `build/app/outputs/flutter-apk/app-release.apk`
+- Tool purpose:
+  - Validate the setup entrypoint, correct Firestore metadata mapping, and build a universal setup release artifact.
+- Tool state:
+  - Build complete; artifact inspection complete; waiting for runtime install/smoke test.
+- Expected resume command:
+  - `adb install -r C:\Users\Master\Desktop\GO_PLAY\build\app\outputs\flutter-apk\app-release.apk`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\build\app\outputs\flutter-apk\app-release.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - setup app release APK
+  - `android-arm,android-arm64,android-x64`
+- Primary working set:
+  - `lib/services/update_manifest_service.dart` - Firestore release/write-time normalization
+  - `lib/services/apk_download_service.dart` - setup download target naming
+  - `lib/services/update_service.dart` - managed download integration
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt` - installer bridge
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateInstallStatusReceiver.kt` - session install callback
+  - `android/app/build.gradle.kts` - ABI widening
+  - `build/app/outputs/flutter-apk/app-release.apk` - built release artifact
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `lib/services/update_manifest_service.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt`
+  - `build/app/outputs/flutter-apk/app-release.apk`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Flutter SDK and Android SDK available
+  - Firebase config present
+- Expected success signal:
+  - setup APK installs and runs; release time matches Firestore publish/write time; updater resumes downloads
+- Expected failure signal:
+  - setup APK installs but still shows fetch-time/current-time, or background download restarts from zero
+- Last known log location:
+  - none for this successful build
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\build\app\outputs\flutter-apk\app-release.apk`
+- Recent decisions:
+  - Treat the setup app as the active build target and ignore stale PiP handoff scope for this request.
+  - Use the narrowest metadata fix in normalization instead of rewriting setup UI.
+  - Build one universal setup APK for the widest ABI set Flutter currently supports.
+- Rejected approaches:
+  - mixing Chromium main-app work into this setup task
+  - blocking on unrelated whole-repo analyzer failures
+  - claiming unsupported `android-x86` output
+- Stop point classification:
+  - code edited + setup release built + artifact inspected; device smoke test pending
+- What is done but unverified:
+  - Live device verification of release-time display and resumed update flow
+- What is verified:
+  - Setup build passed
+  - Artifact exists
+  - Packaged ABIs are `armeabi-v7a`, `arm64-v8a`, `x86_64`
+- External prerequisite:
+  - Android device/emulator for runtime smoke test
+- Secret required but not stored:
+  - Firebase credentials/signing secrets beyond local dev bootstrap signing are intentionally not stored
+
+## 2026-04-11 16:05:32 +07:00
+
+- Current phase:
+  - Setup updater post-download verification fix
+- Objective:
+  - Fix the setup updater error `ไม่พบไฟล์ apk สำหรับตรวจสอบ` after background download completes.
+- Completed since last snapshot:
+  - Inspected the latest setup handoff and targeted setup updater files:
+    - `lib/services/apk_integrity_service.dart`
+    - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt`
+    - `lib/services/update_service.dart`
+  - Verified the error string comes from `ApkIntegrityService.sha256OfFile(...)` when the file handed to verification does not exist.
+  - Traced the likely failure boundary to `DownloadManager.COLUMN_LOCAL_URI` being converted into a `File(...)` path unconditionally in `UpdateBridge.resolveLocalPath(...)`.
+  - Patched `UpdateBridge.resolveLocalPath(...)` so it now:
+    - accepts only `file://` URIs as direct filesystem paths
+    - verifies the resolved file exists
+    - otherwise falls back to the original tracked `apkPath`
+  - Rebuilt the setup release APK successfully:
+    - `flutter build apk --release --target-platform android-arm,android-arm64,android-x64`
+  - Refreshed the Desktop installer copy:
+    - `C:\Users\Master\Desktop\GO_PLAY_Setup-release.apk`
+- In progress now:
+  - Waiting for a live setup updater smoke test on-device after the local-path fallback fix.
+- Files/modules touched:
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Setup release rebuild passed.
+  - Desktop artifact refresh passed.
+  - Runtime/device verification still pending.
+- Blockers/risks:
+  - The local-path fix is code-complete but not yet device-verified.
+  - 32-bit `x86` remains unsupported by the current Flutter `--target-platform` set.
+- Next concrete step:
+  - Install `C:\Users\Master\Desktop\GO_PLAY_Setup-release.apk` and verify that post-download verification no longer fails with `ไม่พบไฟล์ apk สำหรับตรวจสอบ`.
+- Expected resume inspection scope:
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt`
+  - `lib/services/update_service.dart`
+  - `lib/services/apk_integrity_service.dart`
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup-release.apk`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `flutter`
+- Exact command(s):
+  - `Get-Content lib/services/apk_integrity_service.dart`
+  - `Get-Content android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt`
+  - `Get-Content lib/services/update_service.dart`
+  - `flutter build apk --release --target-platform android-arm,android-arm64,android-x64`
+  - `Copy-Item -LiteralPath C:\Users\Master\Desktop\GO_PLAY\build\app\outputs\flutter-apk\app-release.apk -Destination C:\Users\Master\Desktop\GO_PLAY_Setup-release.apk -Force`
+- Tool purpose:
+  - Fix the bridge path between DownloadManager completion and APK hash verification, then refresh the Desktop setup installer artifact.
+- Tool state:
+  - Build complete; Desktop artifact ready; waiting for runtime verification.
+- Expected resume command:
+  - `adb install -r C:\Users\Master\Desktop\GO_PLAY_Setup-release.apk`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup-release.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - setup app release APK
+  - `android-arm,android-arm64,android-x64`
+- Primary working set:
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt` - local download URI resolution
+  - `lib/services/update_service.dart` - verification handoff flow
+  - `lib/services/apk_integrity_service.dart` - source of the missing-file verification error
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup-release.apk` - refreshed setup installer
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/app/src/main/kotlin/com/example/go_play/update/UpdateBridge.kt`
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup-release.apk`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Android device/emulator available
+  - Desktop setup APK present
+- Expected success signal:
+  - Setup updater finds the downloaded APK and proceeds to verify/install.
+- Expected failure signal:
+  - Setup updater still reports `ไม่พบไฟล์ apk สำหรับตรวจสอบ` after download completes.
+- Last known log location:
+  - none for this successful rebuild
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY_Setup-release.apk`
+- Recent decisions:
+  - Fix the issue at the Android bridge/local path boundary instead of weakening APK verification.
+- Rejected approaches:
+  - skipping APK verification
+  - changing unrelated setup UI behavior
+  - mixing Chromium app-main work into the setup task
+- Stop point classification:
+  - code edited + setup release rebuilt + Desktop artifact refreshed; runtime verification pending
+- What is done but unverified:
+  - Live device verification of the local-path fallback fix
+- What is verified:
+  - The missing-file message originates from APK verification
+  - The setup release rebuild succeeded after the bridge fix
+- External prerequisite:
+  - Android device/emulator for runtime smoke test
+- Secret required but not stored:
+  - Firebase credentials/signing secrets beyond local dev bootstrap signing are intentionally not stored
+
+## 2026-04-11 15:15:16 +07:00
+
+- Current phase:
+  - Runtime PiP stabilization on top of the restored `429000009` release baseline
+- Current objective:
+  - Validate the root-cause fix for the hidden-track/current-track helper failure during lockscreen auto-advance.
+- Completed since last snapshot:
+  - User reproduced the failure again while the stringifying live capture was armed.
+  - Stopped and inspected:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_stringify.txt`
+  - Verified the helper path exposed the real JS error:
+    - `command=remember_hidden_track result=error:canonicalizeWatchHref is not defined`
+    - `command=arm_current_track_after_hidden result=error:canonicalizeWatchHref is not defined`
+  - Inspected `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` and confirmed the hidden-track helper path referenced a missing function.
+  - Applied the narrow root-cause patch:
+    - add `canonicalWatchHref(rawHref)`
+    - switch `rememberCurrentTrackForHiddenState()` and `maybeArmCurrentTrackAfterHiddenTransition(...)` to use it
+  - Synced the patched bridge file and current wrapper file into WSL and rebuilt:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_hidden_track_canonical_watch_href_20260411.log`
+  - Reinstalled the rebuilt release APK successfully.
+  - Armed a fresh live capture:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt`
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.pid`
+- In progress now:
+  - Waiting for one more repro after the canonical current-track helper fix.
+- Blockers/risks:
+  - The missing helper bug may not be the only issue; an older fullscreen/PiP path may still override the recovery after unlock.
+  - Worktree remains dirty; any later commit must stage only the narrow PiP files.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - APK reinstall passed.
+  - App relaunch passed.
+  - Runtime validation pending on the fresh canonical-helper-fix build.
+- Exact next concrete step:
+  - Keep the fresh live capture running.
+  - Have the user reproduce the same exact sequence again.
+  - Stop the capture with:
+    - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.pid)`
+  - Inspect:
+    - `remember_hidden_track`
+    - `arm_current_track_after_hidden`
+    - `error:`
+    - `armed_current_track`
+    - `same_track`
+    - `refreshPictureInPictureParamsForCurrentVideo`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt`
+  - `artifacts/android_build/release_build_hidden_track_canonical_watch_href_20260411.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `rg`
+- Exact command(s):
+  - `Stop-Process -Id 26500`
+  - `rg -n "remember_hidden_track|arm_current_track_after_hidden|sync_visibility|OTB_PIP|cr_VideoPersist|refreshPictureInPictureParamsForCurrentVideo|error:" C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_stringify.txt`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_hidden_track_canonical_watch_href_20260411.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+  - `Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', "adb logcat -b all -v time > \"C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt\"") -WindowStyle Hidden -PassThru`
+- Tool purpose:
+  - Fix the missing current-track canonicalizer bug and collect the next failing sequence live.
+- Tool state:
+  - Fresh live capture running in the background.
+- Expected resume command:
+  - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.pid)` after the next repro.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - root-cause fix for missing current-track canonicalizer
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - stringifying diagnostic wrapper retained for clearer live evidence
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt` - next source of truth
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - one more user repro while the fresh capture is armed
+- Expected success signal:
+  - The next live log shows the helper path returning `ok`/`armed_current_track`/`same_track` instead of a JS error.
+- Expected failure signal:
+  - The next live log still fails or still leaves PiP without active fullscreen video even after the canonical helper fix.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Do not widen PiP logic until JS helper failures are exhausted.
+  - Fix the missing helper in the same bridge scope instead of inventing another path.
+  - Keep using live capture as the source of truth.
+- Rejected approaches:
+  - patching fullscreen/PiP logic again before fixing the concrete JS error
+  - widening manual `next/previous`
+  - inventing a separate PiP architecture
+- Stop point classification:
+  - root-cause fix built and installed; fresh live capture armed; waiting for next repro
+- What is done but unverified:
+  - Whether the canonical helper fix is sufficient to restore PiP focus after lockscreen auto-advance.
+- What is verified:
+  - The helper path runs during the failure.
+  - The previous JS failure was `canonicalizeWatchHref is not defined`.
+  - The canonical helper fix build compiles, installs, and launches on the device.
+- External prerequisite:
+  - one more user repro while the fresh live capture is running
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 12:16:47 +07:00
+
+- Current phase:
+  - Runtime PiP stabilization on top of the restored `429000009` release baseline
+- Current objective:
+  - Extract the real helper error/result for the lockscreen auto-advance PiP failure instead of patching blind.
+- Completed since last snapshot:
+  - User reproduced the failure again while the first live capture was armed.
+  - Stopped and inspected:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411.txt`
+  - Verified from the live capture:
+    - `web_contents_visibility_changed visibility=0`
+    - `command=sync_visibility result=0`
+    - `command=remember_hidden_track result=non_string_result`
+    - after unlock:
+      - `command=sync_visibility result=2`
+      - `command=arm_current_track_after_hidden result=non_string_result`
+    - repeated:
+      - `refreshPictureInPictureParamsForCurrentVideo: skip without active fullscreen video`
+  - Concluded the helper path is being called, but the bridge result is opaque.
+  - Applied a narrow diagnostics patch only in:
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Patch behavior:
+    - stringify non-string bridge results for `remember_hidden_track`
+    - stringify non-string bridge results for `arm_current_track_after_hidden`
+    - convert JS exceptions to `error:<message>`
+    - no behavior change to PiP/fullscreen logic yet
+  - Synced the patched file into WSL and rebuilt:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_hidden_track_stringify_result_20260411.log`
+  - Reinstalled the rebuilt release APK successfully.
+  - Armed a fresh live capture for the next repro:
+    - log: `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_stringify.txt`
+    - pid: `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_stringify.pid`
+- In progress now:
+  - Waiting for one more repro with the stringifying wrappers installed.
+- Blockers/risks:
+  - We still do not know whether the opaque helper result is caused by a thrown JS error, a non-string object return, or a world/bridge mismatch.
+  - Patching actual PiP logic again before reading the next capture would be guesswork.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - APK reinstall passed.
+  - App relaunch passed.
+  - Runtime validation pending on the fresh diagnostics build.
+- Exact next concrete step:
+  - Keep the new live capture running.
+  - Have the user reproduce the exact same sequence once more.
+  - Stop the capture with:
+    - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_stringify.pid)`
+  - Inspect:
+    - `non_string_bridge_result`
+    - `error:`
+    - `remember_hidden_track`
+    - `arm_current_track_after_hidden`
+    - `refreshPictureInPictureParamsForCurrentVideo`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411_after_stringify.txt`
+  - `artifacts/android_build/release_build_hidden_track_stringify_result_20260411.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `rg`
+- Exact command(s):
+  - `Stop-Process -Id 26808`
+  - `rg -n "remember_hidden_track|arm_current_track_after_hidden|sync_visibility|OTB_PIP|cr_VideoPersist|refreshPictureInPictureParamsForCurrentVideo|background_video_ended_next|active_fullscreen" C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411.txt`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_hidden_track_stringify_result_20260411.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+  - `Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', "adb logcat -b all -v time > \"C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\live_lockscreen_autoadvance_pip_20260411_after_stringify.txt\"") -WindowStyle Hidden -PassThru`
+- Tool purpose:
+  - Make the next repro reveal the actual helper return value/exception instead of `non_string_result`.
+- Tool state:
+  - Fresh live capture running in the background.
+- Expected resume command:
+  - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_stringify.pid)` after the next repro.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_stringify.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - stringifying wrapper for helper diagnostics
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - existing hidden-track/current-track helper logic under validation
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - declarations unchanged, still part of the working set
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411_after_stringify.txt` - next source of truth
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411_after_stringify.txt`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - one more user repro while the fresh capture is armed
+- Expected success signal:
+  - The next live log names the actual helper failure/result so the next code change can stay narrow and evidence-based.
+- Expected failure signal:
+  - The next live log still fails to surface the helper return/exception, implying a deeper bridge/world issue than the current wrapper can expose.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_stringify.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep the hidden-track/current-track recovery path in place.
+  - Do not change PiP logic again until the helper return path is visible.
+  - Use diagnostics-only wrapping as the minimal next step.
+- Rejected approaches:
+  - patching fullscreen/PiP logic again without knowing what `non_string_result` means
+  - widening manual `next/previous`
+  - inventing a separate PiP architecture
+- Stop point classification:
+  - diagnostics patch built and installed; fresh live capture armed; waiting for next repro
+- What is done but unverified:
+  - Whether the next live repro exposes the real helper failure text.
+- What is verified:
+  - The helper commands are invoked during the failing sequence.
+  - Their previous result was opaque (`non_string_result`).
+  - The diagnostics rebuild compiles, installs, and launches on the device.
+- External prerequisite:
+  - one more user repro while the fresh live capture is running
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 12:09:56 +07:00
+
+- Current phase:
+  - Runtime PiP stabilization on top of the restored `429000009` release baseline
+- Current objective:
+  - Prove what actually happens during `lockscreen -> auto-advance -> unlock` after the hidden-track/current-track recovery patch, without widening the manual `next/previous` path or inventing a new PiP architecture.
+- Completed since last snapshot:
+  - User reproduced the failure again on the connected device.
+  - Captured the post-repro filtered log:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\logcat_hidden_track_hold_state_20260411.txt`
+  - Captured the full log buffer:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\logcat_hidden_track_hold_state_full_20260411.txt`
+  - Captured post-repro dumpsys snapshots:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\dumpsys_activities_hidden_track_hold_state_20260411.txt`
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\dumpsys_windows_hidden_track_hold_state_20260411.txt`
+  - Verified the filtered buffer did not retain the expected helper markers:
+    - no `remember_hidden_track`
+    - no `arm_current_track_after_hidden`
+    - no `sync_visibility`
+    - no `background_video_ended_next`
+  - Verified the full buffer only preserved one relevant PiP marker from the failed round:
+    - `cr_VideoPersist: Dismiss activity with reason 0`
+  - Verified the activity/window dumps were too late to show a live app-focused PiP task after the failure.
+  - Armed a live logcat capture for the next repro:
+    - log file: `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411.txt`
+    - PID file: `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411.pid`
+- In progress now:
+  - Waiting for one more repro while the live capture is running.
+- Blockers/risks:
+  - Any further patch now would be guesswork because the buffered logs from the failed round were incomplete.
+  - Worktree is still dirty; any later commit must stage only the narrow PiP files.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - inspected only:
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+- Build/test status:
+  - No new code edits or builds in this snapshot.
+  - Installed app on device remains `429000009 / 1.90.3`.
+  - Runtime failure still reproducible.
+- Exact next concrete step:
+  - Keep the live logcat capture running.
+  - Have the user reproduce the same exact sequence again.
+  - Stop the capture with:
+    - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411.pid)`
+  - Inspect the live log for:
+    - `remember_hidden_track`
+    - `arm_current_track_after_hidden`
+    - `sync_visibility`
+    - `refreshPictureInPictureParamsForCurrentVideo`
+    - `cr_VideoPersist`
+    - any fullscreen/PiP override that runs after unlock
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411.txt`
+  - `artifacts/runtime_logs/logcat_hidden_track_hold_state_full_20260411.txt`
+  - `artifacts/runtime_logs/dumpsys_activities_hidden_track_hold_state_20260411.txt`
+  - `artifacts/runtime_logs/dumpsys_windows_hidden_track_hold_state_20260411.txt`
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+  - `rg`
+  - `apply_patch`
+- Exact command(s):
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_hidden_track_hold_state_20260411.txt"`
+  - `cmd /c "adb logcat -b all -d -v time > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_hidden_track_hold_state_full_20260411.txt"`
+  - `cmd /c "adb shell dumpsys activity activities > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\dumpsys_activities_hidden_track_hold_state_20260411.txt"`
+  - `cmd /c "adb shell dumpsys window windows > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\dumpsys_windows_hidden_track_hold_state_20260411.txt"`
+  - `adb logcat -c`
+  - `Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', "adb logcat -b all -v time > \"C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\live_lockscreen_autoadvance_pip_20260411.txt\"") -WindowStyle Hidden -PassThru`
+- Tool purpose:
+  - Preserve the next failing repro in a live log so the real path can be inspected without guessing.
+- Tool state:
+  - Live capture running in background.
+- Expected resume command:
+  - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411.pid)` after the next repro.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - hidden-track/current-track helper logic currently under validation
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - visibility sync and arm/ensure hooks
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - declarations for the narrow helper hooks
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411.txt` - live evidence for the next repro
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411.txt`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - user must reproduce once more while the live capture is armed
+- Expected success signal:
+  - The live log shows whether the hidden-track/current-track helper path runs and whether another old path overrides it after unlock.
+- Expected failure signal:
+  - Even the live capture misses the critical markers, which would imply the failing path is outside the currently instrumented helper scope.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Do not patch again from incomplete buffered logs.
+  - Keep `429000009` as the broader baseline.
+  - Use live capture as the next source of truth.
+- Rejected approaches:
+  - guessing another patch from the overwritten buffer
+  - widening manual `next/previous`
+  - inventing a separate PiP architecture
+- Stop point classification:
+  - failure reproduced; buffered evidence insufficient; live capture armed; waiting for next repro
+- What is done but unverified:
+  - Whether the hidden-track/current-track helper fires during the exact lockscreen auto-advance transition.
+- What is verified:
+  - The user still reproduces the failure on the installed `429000009 / 1.90.3` build.
+  - The post-hoc filtered buffer did not retain the expected helper markers.
+  - The full log buffer retained only `cr_VideoPersist: Dismiss activity with reason 0` as relevant PiP evidence from the failed round.
+- External prerequisite:
+  - one more user repro while the live capture is running
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 11:57:54 +07:00
+
+- Current phase:
+  - Runtime PiP stabilization on top of the restored `429000009` release baseline
+- Current objective:
+  - Recover PiP focus after lockscreen auto-advance by reusing the old video-presentation intent flow on the new current track.
+- Completed since last snapshot:
+  - Captured and inspected the fresh post-patch log:
+    - `artifacts/runtime_logs/logcat_lockscreen_ended_visibility_sync_20260411.txt`
+  - Verified the native visibility sync patch was working:
+    - `sync_visibility result=0`
+    - `sync_visibility result=2`
+  - Verified the `ended -> next` helper still did **not** fire in the real lockscreen case:
+    - no `background_video_ended_next`
+  - Confirmed the observed failure is now:
+    - track changes while hidden
+    - app comes back visible
+    - PiP refresh skips because there is no active fullscreen video yet
+  - Shifted the narrow fix while staying inside the old product flow:
+    - remember the current track when visibility becomes hidden
+    - when visibility returns visible, if the current track differs from the remembered hidden track, arm presentation for the current track and immediately call the existing ensure function
+  - Added bridge helpers in `youtube_native_tab_bridge.cc`:
+    - `rememberHiddenTrack()`
+    - `armCurrentTrackAfterHiddenTransition(...)`
+    - internal hidden-track state
+  - Added one narrow wrapper exposure in the existing page script:
+    - `window.__onetabtubeEnsureVideoPresentation`
+  - Added native visibility-driven calls in `youtube_script_injector_tab_helper.*`:
+    - `MaybeRememberHiddenTrackState()`
+    - `MaybeArmCurrentTrackPresentationAfterHiddenTransition()`
+  - Synced the three edited files into WSL
+  - Rebuilt `android_Release_arm64_multiabi` successfully with:
+    - `artifacts/android_build/release_build_hidden_track_arm_current_20260411.log`
+  - Reinstalled the rebuilt release APK, relaunched the app, and cleared logcat
+- In progress now:
+  - Waiting for the user to reproduce the exact lockscreen auto-advance failure on the freshly installed build
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed
+  - APK reinstall passed
+  - App relaunch passed
+  - Runtime validation pending
+- Blockers/risks:
+  - The worktree remains very dirty; later commit must isolate only the narrow PiP files
+  - Runtime proof is still required that current-track arm/ensure is enough once the hidden track is remembered
+  - The known `Failed JNI assertion!` warning still appears in release build logs even though the APK is produced successfully
+- Exact next concrete step:
+  - Have the user reproduce:
+    - enter PiP
+    - lock screen
+    - let the video end and auto-advance by itself
+    - unlock
+  - Then capture:
+    - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_hidden_track_arm_current_20260411.txt"`
+  - Inspect whether the log now shows:
+    - `remember_hidden_track`
+    - `arm_current_track_after_hidden`
+    - and follow-up presentation/fullscreen recovery on the current track
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `artifacts/runtime_logs/logcat_hidden_track_arm_current_20260411.txt`
+  - `artifacts/android_build/release_build_hidden_track_arm_current_20260411.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `rg`
+- Exact command(s):
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_lockscreen_ended_visibility_sync_20260411.txt"`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_hidden_track_arm_current_20260411.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+- Tool purpose:
+  - Recover PiP focus after hidden auto-advance by reusing the existing current-track presentation intent/ensure path
+- Tool state:
+  - Build/install complete; waiting for runtime repro
+- Expected resume command:
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_hidden_track_arm_current_20260411.txt"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - hidden track remember + current-track arm/ensure helper
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - native visibility hooks into hidden remember/current arm path
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - declarations for the two new narrow helpers
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/logcat_hidden_track_arm_current_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - WSL release build tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - The log shows hidden-track remember + current-track arm on visible, and PiP stays focused after unlock
+- Expected failure signal:
+  - PiP still defocuses and the hidden/current-track recovery path never runs or is overridden
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts/android_build/release_build_hidden_track_arm_current_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep `429000009` as the broader PiP/fullscreen baseline
+  - Stop pursuing `ended -> next` after runtime proof showed it never fired in the lockscreen case
+  - Reuse the existing video-presentation intent and ensure flow on the current track after hidden auto-advance
+- Rejected approaches:
+  - widening manual `next/previous`
+  - inventing a separate unlock recovery architecture
+  - treating the whole PiP stack as broken when the failure remains narrow
+- Stop point classification:
+  - code edited + release rebuilt + APK installed + app relaunched; runtime validation pending
+- What is done but unverified:
+  - Whether the hidden-track/current-track recovery path fully fixes lockscreen auto-advance PiP defocus
+- What is verified:
+  - The visibility-synced `ended -> next` helper still did not trigger
+  - The hidden/current-track recovery patch compiles, installs, and launches on the connected device
+  - The installed build remains `429000009 / 1.90.3`
+- External prerequisite:
+  - user repro on the connected device
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 09:11:22 +07:00
+
+- Current phase:
+  - Runtime analysis / lockscreen PiP stabilization
+- Current objective:
+  - Determine whether the lockscreen PiP failure is caused by playback actually stopping or by fullscreen/video-focus state dropping while playback stays alive.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest log entry first.
+  - Performed targeted log inspection only on `artifacts/runtime_logs/logcat_lockscreen_return_repro_20260411_012918.txt`.
+  - Verified the failing repro keeps media session alive during the failure window:
+    - `Media player updated ... isPlaying[true]`
+    - `FaceWidgetMusicViewModel ... playbackState=3`
+    - after lockscreen `next_track`, the replacement track comes back as active:
+      - `01:17:45.397 Media player added ... isPlaying[true]`
+  - Verified the state that actually drops is fullscreen/video focus:
+    - `OTB_PIP event=media_effectively_fullscreen_changed fullscreen=0 requested=0 visibility=2`
+    - `cr_VideoPersist: Effective video fullscreen change: false`
+    - `cr_VideoPersist: Pinned fullscreen-loss while playing: activeFullscreen=false requested=false`
+  - Noted one short `AudioTrack stop/stopOutput` during clip transition, but not a lasting playback-session pause; it looks like decoder/output turnover, not the main PiP framing root cause.
+- In progress now:
+  - Waiting for a fresh post-patch repro from the connected device to verify whether the latest controller patch removed the old fullscreen re-arm path.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - inspected evidence:
+    - `artifacts/runtime_logs/logcat_lockscreen_return_repro_20260411_012918.txt`
+- Build/test status:
+  - No new code build in this snapshot.
+  - This snapshot is analysis-only.
+  - Latest installed build on device remains `429000009 / 1.90.3`.
+- Blockers / risks:
+  - The currently analyzed repro log is pre-latest-controller-patch evidence; it answers the playback-vs-focus question, but not whether the newest patch fully fixed the runtime path.
+  - Fresh runtime evidence is still required before widening the fix further.
+- Exact next concrete step:
+  - Run a fresh repro on the currently installed build, capture a clean post-patch `adb logcat -d -v time`, and verify whether:
+    - playback still remains active
+    - the old fullscreen re-arm line is gone
+    - PiP framing still breaks anyway
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/logcat_lockscreen_return_repro_20260411_012918.txt`
+  - next fresh post-patch runtime log
+- Current tool(s):
+  - `shell_command`
+  - `rg`
+  - `Select-String`
+- Exact command(s):
+  - `rg -n "01:17:(2[0-9]|3[0-9]|4[0-9]).*(Media player updated|playbackState=|isPlaying\\[|FaceWidgetMusicViewModel|onPlaybackStateChanged)" artifacts\\runtime_logs\\logcat_lockscreen_return_repro_20260411_012918.txt`
+  - `rg -n "01:17:(2[0-9]|3[0-9]|4[0-9]).*(OTB_PIP|cr_VideoPersist|cr_YouTubeNativeHelper|pip_refocus|native_tab_bridge_command|pip_presentation_restore_allowed)" artifacts\\runtime_logs\\logcat_lockscreen_return_repro_20260411_012918.txt`
+  - `rg -n "01:17:(2[0-9]|3[0-9]|4[0-9]).*(pause|paused|suspend|stop|stopped)" artifacts\\runtime_logs\\logcat_lockscreen_return_repro_20260411_012918.txt`
+- Tool purpose:
+  - Narrow the diagnosis to playback continuity vs fullscreen/video-focus loss.
+- Tool state:
+  - Analysis complete.
+- Expected resume command:
+  - `adb logcat -c`
+  - reproduce the lockscreen case on device
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_verify_focus_vs_playback.txt`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\logcat_post_patch_verify_focus_vs_playback.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `docs/current-status.md` - updated single-source handoff with the new playback-vs-focus conclusion
+  - `docs/progress-log.md` - append-only audit trail for this analysis
+  - `artifacts/runtime_logs/logcat_lockscreen_return_repro_20260411_012918.txt` - source of truth for the current conclusion
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/logcat_post_patch_verify_focus_vs_playback.txt` once captured
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - user repro on the currently installed `429000009`
+- Expected success signal:
+  - Fresh post-patch log shows playback remains active and the old fullscreen re-arm path no longer appears.
+- Expected failure signal:
+  - Fresh post-patch log still shows fullscreen-loss mutation or a new PiP bounds/source-rect failure path.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\logcat_lockscreen_return_repro_20260411_012918.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Treat playback continuity as preserved in the failing lockscreen case.
+  - Treat fullscreen/video-focus state loss as the live problem to fix.
+- Rejected approaches:
+  - Assuming the clip simply pauses on lockscreen without log proof
+  - Widening the patch again before capturing a fresh post-patch repro
+- Stop point classification:
+  - analysis complete; no new code changes beyond handoff updates
+- What is done but unverified:
+  - whether the latest installed patch already removed the old fullscreen re-arm in runtime
+- What is verified:
+  - the saved failing repro is not primarily a playback-stop problem
+- External prerequisite:
+  - connected device and a fresh user repro
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 09:57:32 +07:00
+
+- Current phase:
+  - Runtime rollback / baseline restore
+- Current objective:
+  - Restore the PiP/fullscreen working set back to the `429000009` release baseline first, before attempting any further lockscreen PiP fixes.
+- Completed since last snapshot:
+  - Compared the PiP/fullscreen tracked working set against release commit `ac9a889ff` (`build apk release version 429000009`).
+  - Reverted the tracked PiP/fullscreen working set back to that release baseline:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Verified `git diff --stat ac9a889ff -- <5 files>` is now empty, so those tracked files match the `429000009` release baseline again.
+  - Restored the WSL build-tree core controller back to its pre-patch behavior in:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+    - specifically re-enabled the old `Re-requesting fullscreen to keep PiP video-focused.` path so the build tree matches the baseline behavior again.
+  - Synced the restored tracked files from the desktop repo into `/home/master/src_ext4`.
+  - Rebuilt `android_Release_arm64_multiabi` successfully:
+    - log: `artifacts/android_build/release_build_restore_baseline_429000009_20260411.log`
+  - Reinstalled and relaunched the restored baseline-style APK on the connected device:
+    - package: `com.onetabtube.browser_default`
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-11 09:57:12`
+  - Cleared `logcat` after relaunch so the next repro on this build is clean.
+- In progress now:
+  - Waiting for the user to run the repro again on the restored baseline-style `429000009` build.
+- Blockers / risks:
+  - The desktop repo is back to the tracked `429000009` baseline for the PiP/fullscreen working set, but the full WSL tree is not a git repo, so any future WSL-only edits must continue to be tracked manually.
+  - The repo worktree is still dirty with many unrelated files, so any later commit must stage only the PiP working set.
+  - Runtime validation is still pending; if the restored baseline-style build still reproduces the same issue, then the issue already existed in that baseline or in another untracked build-tree area.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Baseline-style release rebuild passed.
+  - APK reinstall passed.
+  - App relaunch passed.
+  - Runtime validation on the restored build is pending.
+- Exact next concrete step:
+  - After the user reproduces on the current device/build:
+    - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_restore_baseline_429000009_repro.txt"`
+    - confirm whether the restored baseline-style build behaves as expected before making any new changes
+    - if it still fails, use that fresh log as the new source of truth
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `artifacts/android_build/release_build_restore_baseline_429000009_20260411.log`
+  - the next runtime log after repro
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `rg`
+- Exact command(s):
+  - `git diff --stat ac9a889ff -- android/java/org/chromium/chrome/browser/app/BraveActivity.java android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java browser/android/youtube_script_injector/youtube_native_tab_bridge.cc browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java && cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java && cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc"`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_restore_baseline_429000009_20260411.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+- Tool purpose:
+  - Restore the PiP/fullscreen working set back to the tracked `429000009` baseline and redeploy that baseline-style release build before making any further fixes.
+- Tool state:
+  - Baseline-style restore + release rebuild + install + relaunch complete; waiting for fresh runtime repro.
+- Expected resume command:
+  - user reproduces on device
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_restore_baseline_429000009_repro.txt"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - restored to tracked `ac9a889ff` baseline content
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` - restored to tracked `ac9a889ff` baseline content
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - restored to tracked `ac9a889ff` baseline content
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - restored to tracked `ac9a889ff` baseline content
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - restored to tracked `ac9a889ff` baseline content
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - restored to the pre-patch fullscreen-rearm behavior used by the baseline-style build tree
+  - `artifacts/android_build/release_build_restore_baseline_429000009_20260411.log` - build evidence for the restored baseline-style APK
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `artifacts/android_build/release_build_restore_baseline_429000009_20260411.log`
+  - fresh runtime log after the next repro
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - WSL release build tree at `/home/master/src_ext4`
+- Expected success signal:
+  - The just-installed build behaves like the expected old `429000009` baseline again, or at minimum the next repro/log now reflects that baseline state rather than mixed later patches.
+- Expected failure signal:
+  - PiP still reproduces the same failure even after the baseline-style restore, proving the issue already existed in the old `429000009` behavior or in another untracked build-tree area.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_restore_baseline_429000009_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+- Recent decisions:
+  - Stop widening fixes and restore the PiP/fullscreen working set to the tracked `429000009` release baseline first.
+  - Treat `ac9a889ff` as the tracked baseline for the 5 repo PiP/fullscreen files.
+  - Restore the WSL build-tree core controller to its pre-patch behavior so the generated APK is baseline-style again.
+- Rejected approaches:
+  - continuing to stack more PiP fixes on top of a mixed post-release working set
+  - touching the separate setup app
+- Stop point classification:
+  - working set restored to baseline-style code + release rebuilt + APK installed + app relaunched; fresh runtime repro pending
+- What is done but unverified:
+  - Whether the restored baseline-style build matches the expected old `429000009` PiP behavior on the device.
+- What is verified:
+  - the tracked PiP/fullscreen working set in the desktop repo now matches `ac9a889ff`
+  - the restored baseline-style release APK builds, installs, and launches on the connected device
+- External prerequisite:
+  - The user must perform the fresh PiP/lockscreen repro on the connected device.
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 09:43:41 +07:00
+
+- Current phase:
+  - Runtime patch / lockscreen PiP stabilization
+- Current objective:
+  - Restore `429000009`-style PiP behavior after `lock screen -> change track -> unlock` by fixing the actual active fullscreen-loss rearm path, not just Brave-side lifecycle retries.
+- Completed since last snapshot:
+  - Captured a fresh filtered runtime log from the connected device after the user repro:
+    - `artifacts/runtime_logs/logcat_post_patch_unlock_recovery_refresh_filtered.txt`
+  - Verified the `BraveActivity` unlock-recovery patch really fired:
+    - `event=pip_recovery_schedule reason=on_resume_unlock_recovery`
+    - `event=pip_refocus_apply reason=on_resume_unlock_recovery_immediate/retry*`
+  - Verified the repro still failed after those retries:
+    - `OTB_PIP event=media_effectively_fullscreen_changed fullscreen=0 requested=0 visibility=2`
+    - `cr_VideoPersist: Pinned fullscreen-loss while playing: activeFullscreen=false requested=false`
+    - `cr_VideoPersist: Re-requesting fullscreen to keep PiP video-focused.`
+  - Compared runtime evidence with source and proved the remaining rearm path was in the active Chromium controller, not just the Brave wrapper:
+    - `brave/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` already said `keep PiP alive without fullscreen re-request`
+    - but `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java` still called `BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);`
+    - that call lived inside the controller's private `dismissActivityIfNeeded(...)`, which explains why the earlier Brave-side wrapper patch could not intercept the failing runtime path
+  - Applied a narrow core patch directly in:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+    - removed the `setFullscreen(webContents)` rearm call on fullscreen-loss while already in PiP
+    - replaced it with a log-only keepalive path:
+      - `Keeping PiP alive without fullscreen re-request.`
+  - Rebuilt `android_Release_arm64_multiabi` successfully:
+    - log: `artifacts/android_build/release_build_pip_core_no_rearm_20260411.log`
+  - Reinstalled and relaunched the patched release APK on the connected device:
+    - package: `com.onetabtube.browser_default`
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-11 09:43:22`
+  - Cleared `logcat` after relaunch so the next repro on this build is clean.
+- In progress now:
+  - Waiting for the user to run the same PiP -> lockscreen -> track change -> unlock repro on the newly rebuilt core-patched `429000009`.
+- Blockers / risks:
+  - The active fix now spans both the Brave-side PiP helpers and the core Chromium PiP controller in `/home/master/src_ext4`; future changes must stay narrowly evidence-driven.
+  - The repo worktree is still dirty with many unrelated files, so any later commit must stage only the PiP working set.
+  - The known `Failed JNI assertion!` warning still appears in release build logs, but the target completes through `chrome_public_apk__create`.
+  - Runtime validation is still pending; if the repro persists after removing the core fullscreen rearm, the next bug is likely deeper in PiP bounds/source-rect handling.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - evidence:
+    - `artifacts/runtime_logs/logcat_post_patch_unlock_recovery_refresh_filtered.txt`
+    - `artifacts/android_build/release_build_pip_core_no_rearm_20260411.log`
+- Build/test status:
+  - Fresh filtered runtime evidence captured from the failing repro.
+  - Core Chromium no-rearm patch compiled in the release target.
+  - Reinstall passed on the connected device.
+  - Relaunch passed on the connected device.
+  - `adb logcat -c` completed after relaunch.
+  - Runtime validation on the new core-patched build is pending.
+- Exact next concrete step:
+  - After the user reproduces on the current device/build:
+    - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_post_patch_core_no_rearm_filtered.txt"`
+    - verify whether the old `cr_VideoPersist: Re-requesting fullscreen to keep PiP video-focused.` line is gone
+    - verify whether `media_effectively_fullscreen_changed fullscreen=0 requested=0 visibility=2` still appears after unlock
+    - verify whether the existing `BraveActivity` unlock-recovery retries are now sufficient without the core fullscreen rearm
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/runtime_logs/logcat_post_patch_unlock_recovery_refresh_filtered.txt`
+  - `artifacts/android_build/release_build_pip_core_no_rearm_20260411.log`
+  - fresh post-patch runtime logcat from the next repro
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `rg`
+- Exact command(s):
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_post_patch_unlock_recovery_refresh_filtered.txt"`
+  - `Select-String -Path 'artifacts\\runtime_logs\\logcat_post_patch_unlock_recovery_refresh_filtered.txt' -Pattern 'pip_recovery_schedule|pip_refocus_apply|media_effectively_fullscreen_changed|Re-requesting fullscreen|Pinned fullscreen-loss|fullscreen_script_complete'`
+  - `wsl bash -lc "sed -n '630,675p' /home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java"`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_core_no_rearm_20260411.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+- Tool purpose:
+  - Use runtime proof to identify the actual active fullscreen rearm path in the core Chromium PiP controller, patch that path narrowly, and redeploy the release build.
+- Tool state:
+  - Core path patched + release rebuilt + install + relaunch complete; waiting for fresh runtime repro.
+- Expected resume command:
+  - user reproduces on device
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_post_patch_core_no_rearm_filtered.txt"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `BraveActivity.java` - restored unlock-time PiP refresh path using existing delayed retries
+  - `BraveFullscreenVideoPictureInPictureController.java` - Brave-side fullscreen-loss no-rearm patch (now known not to be the active failing path)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - actual active core fullscreen-loss rearm path patched to keep PiP alive without calling `setFullscreen()`
+  - `BraveYouTubeScriptInjectorNativeHelper.java` - helper guards around PiP/fullscreen entry
+  - `youtube_native_tab_bridge.cc` - stale JS presentation clearing patch
+  - `youtube_script_injector_tab_helper.cc` - keepalive/fullscreen request state machine
+  - `artifacts/runtime_logs/logcat_post_patch_unlock_recovery_refresh_filtered.txt` - runtime proof that the BraveActivity unlock-recovery path fired but the core Chromium controller still rearmed fullscreen
+  - `artifacts/android_build/release_build_pip_core_no_rearm_20260411.log` - build evidence for the current patch
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - fresh post-patch runtime logcat
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - WSL release build tree at `/home/master/src_ext4`
+- Expected success signal:
+  - After unlock, the old `cr_VideoPersist` fullscreen rearm log is gone, playback remains active, and PiP stays video-framed.
+- Expected failure signal:
+  - PiP still becomes page-framed or gets stuck even after removing the core fullscreen rearm, indicating the next bug is deeper in bounds/source-rect handling.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_core_no_rearm_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+- Recent decisions:
+  - Keep the BraveActivity unlock-recovery retry patch because fresh logs proved it fires.
+  - Move the next fix to the active Chromium controller because fresh logs proved the old fullscreen rearm still lives there.
+  - Continue fixing the existing `429000009` path instead of inventing a new PiP/fullscreen system.
+- Rejected approaches:
+  - disabling lockscreen controls entirely
+  - rearming fullscreen broadly on unlock
+  - inventing a new fullscreen-before-PiP recovery system instead of fixing the active core path
+  - touching the separate setup app
+- Stop point classification:
+  - core code edited + release rebuilt + APK installed + app relaunched; fresh runtime repro pending
+- What is done but unverified:
+  - Whether removing the core fullscreen rearm restores the expected `429000009` lockscreen PiP behavior.
+- What is verified:
+  - The BraveActivity unlock-recovery patch fires on the failing repro but is insufficient by itself.
+  - The active remaining fullscreen rearm path lived in the core Chromium `FullscreenVideoPictureInPictureController`.
+  - The new core no-rearm patch builds, installs, and launches successfully.
+- External prerequisite:
+  - The user must perform the same runtime repro on the connected device.
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 09:25:03 +07:00
+
+- Current phase:
+  - Runtime patch / lockscreen PiP stabilization
+- Current objective:
+  - Repair the existing `429000009` unlock-time PiP refresh path so PiP stays video-framed after `lock screen -> change track -> unlock`, without rearming fullscreen broadly.
+- Completed since last snapshot:
+  - Inspected the live `429000009` code path in `BraveActivity.java` and confirmed the old delayed PiP refresh flow still exists:
+    - `scheduleOneTabPictureInPictureRefresh(...)`
+    - `refreshOneTabPictureInPictureParams(...)`
+  - Confirmed the problem was that `onResume()` and `onWindowFocusChanged()` were skipping unlock-time PiP refocus entirely while in PiP.
+  - Applied a narrow patch in `android/java/org/chromium/chrome/browser/app/BraveActivity.java`:
+    - added `maybeScheduleOneTabPictureInPictureRecovery(...)`
+    - reused the old delayed refresh path on unlock/focus instead of inventing a new fullscreen helper
+    - added debounce (`OTB_PIP_UNLOCK_RECOVERY_DEBOUNCE_MS`)
+    - required current `WebContents` + `isPictureInPictureAvailable(...)`
+    - did **not** call `setFullscreen()`
+  - Synced the patched file into `/home/master/src_ext4`.
+  - Rebuilt `android_Release_arm64_multiabi` successfully with log:
+    - `artifacts/android_build/release_build_pip_unlock_recovery_refresh_20260411.log`
+  - Attempted install/relaunch on device, but `adb` returned `no devices/emulators found`.
+  - Verified current blocker with:
+    - `adb devices -l`
+    - result: no attached devices listed
+- In progress now:
+  - Waiting for device reconnection so the rebuilt APK can be installed and runtime-tested.
+- Blockers / risks:
+  - No Android device is currently visible to `adb`.
+  - Fresh runtime verification is still needed; the new patch is compile-verified only so far.
+  - Worktree remains dirty with many unrelated files; later commit must stage narrowly.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - Install/relaunch blocked because no device is attached.
+  - Runtime validation pending.
+- Exact next concrete step:
+  - When the user reconnects the device:
+    - run `adb devices -l`
+    - install rebuilt APK
+    - launch app
+    - clear logcat
+    - reproduce `enter PiP -> lock screen -> change track -> unlock`
+    - capture fresh post-patch runtime log
+- Expected resume inspection scope:
+  - `BraveActivity.java`
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/release_build_pip_unlock_recovery_refresh_20260411.log`
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `wsl`
+  - `ninja`
+  - `adb`
+- Exact command(s):
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_unlock_recovery_refresh_20260411.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb devices -l`
+- Tool purpose:
+  - Repair the old unlock-time PiP refresh path and redeploy the release APK for on-device validation.
+- Tool state:
+  - Patch + rebuild complete; install blocked by missing device.
+- Expected resume command:
+  - `adb devices -l`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+  - reproduce on device
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_unlock_recovery_refresh.txt`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `BraveActivity.java` - restored unlock-time PiP refresh scheduling
+  - `BraveFullscreenVideoPictureInPictureController.java` - prior no-rearm fullscreen-loss patch
+  - `BraveYouTubeScriptInjectorNativeHelper.java` - PiP/fullscreen helper guards
+  - `logcat_lockscreen_return_repro_20260411_012918.txt` - root cause evidence that playback remains active
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/android_build/release_build_pip_unlock_recovery_refresh_20260411.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - WSL release build tree at `/home/master/src_ext4`
+- Expected success signal:
+  - APK installs, launches, and fresh runtime repro shows PiP staying video-framed after unlock.
+- Expected failure signal:
+  - `adb` still sees no device, or PiP still misframes in fresh post-patch runtime logs.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_unlock_recovery_refresh_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+- Recent decisions:
+  - Reuse the old delayed PiP refresh path instead of designing a new fullscreen helper.
+  - Treat playback as preserved and fullscreen/video-focus loss as the live failure.
+- Rejected approaches:
+  - broad fullscreen rearm on unlock
+  - new helper system before validating the old one
+  - touching unrelated updater/setup work
+- Stop point classification:
+  - code edited + release rebuilt; install blocked by missing adb device
+- What is done but unverified:
+  - whether the unlock-recovery retry patch fixes the device repro
+- What is verified:
+  - the unlock-recovery patch compiles in the release target
+  - `adb` currently sees no device
+- External prerequisite:
+  - reconnect Android device
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 09:29:17 +07:00
+
+- Current phase:
+  - Runtime patch / lockscreen PiP stabilization
+- Current objective:
+  - Put the unlock-recovery refresh patch onto the connected device and prepare a clean runtime repro.
+- Completed since last snapshot:
+  - Verified the device is visible again to `adb`:
+    - `R9TRC00GA2E device model:SM_A226B`
+  - Installed the rebuilt release APK successfully:
+    - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+    - result: `Success`
+  - Relaunched the main app successfully:
+    - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+    - result: `Status: ok`
+  - Cleared `logcat` after launch with `adb logcat -c` so the next repro will be clean.
+- In progress now:
+  - Waiting for the user to reproduce the PiP lockscreen case on the currently installed patched build.
+- Blockers / risks:
+  - No current install blocker.
+  - Fresh runtime evidence is still needed to verify whether the restored unlock-refresh path is enough.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild already passed before this snapshot.
+  - Install passed.
+  - Relaunch passed.
+  - Runtime validation pending.
+- Exact next concrete step:
+  - After the user reproduces:
+    - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_unlock_recovery_refresh.txt`
+    - inspect whether unlock-time refresh fired and whether PiP still misframes
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/logcat_post_patch_unlock_recovery_refresh.txt`
+- Current tool(s):
+  - `shell_command`
+  - `adb`
+- Exact command(s):
+  - `adb devices -l`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+- Tool purpose:
+  - Deploy the latest patch and prepare a clean runtime verification environment.
+- Tool state:
+  - Deploy complete; waiting for fresh repro.
+- Expected resume command:
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_unlock_recovery_refresh.txt`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\logcat_post_patch_unlock_recovery_refresh.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `BraveActivity.java` - unlock-time PiP refresh recovery patch
+  - `OneTabTube.apk` - freshly rebuilt release artifact
+  - next runtime log - the source of truth for validation
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - fresh post-patch runtime log
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - user has reproduced the issue on the currently installed build
+- Expected success signal:
+  - Fresh runtime log shows unlock-time retry firing and PiP staying video-framed.
+- Expected failure signal:
+  - Fresh runtime log still shows fullscreen/video-focus collapse and PiP misframing.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_unlock_recovery_refresh_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+- Recent decisions:
+  - Keep the old refresh path and validate it on device before touching deeper logic.
+- Rejected approaches:
+  - building a new fullscreen helper flow before validating the restored one
+- Stop point classification:
+  - APK installed and app relaunched; waiting for runtime repro
+- What is done but unverified:
+  - whether the installed unlock-recovery patch fixes the actual lockscreen repro
+- What is verified:
+  - current patched APK is installed on device and app opens
+- External prerequisite:
+  - user repro on device
+- Secret required but not stored:
+  - none beyond local adb/build access
+
 ## 2026-04-10 00:05:41 +07:00
 
 - Current phase:
@@ -25659,3 +27443,1922 @@
   - connected device on `429000008` only if updater smoke test is requested
 - Secret required but not stored:
   - git credentials / Firebase CLI auth remain local-only
+
+# 2026-04-10 20:49:27 +07:00
+
+- Current phase:
+  - Runtime analysis / PiP degradation investigation
+- Task/objective:
+  - Explain why PiP stops entering reliably after long use without guessing and without applying another blind fix first.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and latest `docs/progress-log.md` entry before inspecting code.
+  - Inspected the active PiP entry path in:
+    - `OneTabFabMenuCoordinator.java`
+    - `BraveYouTubeScriptInjectorNativeHelper.java`
+    - `youtube_script_injector_tab_helper.cc`
+    - `BraveActivity.java`
+    - `BraveFullscreenVideoPictureInPictureController.java`
+  - Verified the current FAB PiP action is still fullscreen-first:
+    - `OneTabFabMenuCoordinator.triggerPictureInPictureBeta2Flow(...)`
+    - calls `BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents)`
+  - Verified actual PiP entry is delayed and conditional:
+    - C++ waits for `HasFullscreenBeenRequested()`
+    - then waits for `HasActiveEffectivelyFullscreenVideo()`
+    - then only enters PiP if `WebContents` is `VISIBLE`
+  - Verified Java helper also gates PiP on finite retries for `hasActiveEffectivelyFullscreenVideo()`, and aborts if fullscreen never becomes visible to Java in time.
+  - Verified lifecycle hooks in `BraveActivity` (`onResume`, `onWindowFocusChanged`) only refresh PiP params when the app is already in PiP, so they do not repair a broken entry path.
+  - Verified wrapper logic in `BraveFullscreenVideoPictureInPictureController` can still re-request fullscreen while already in PiP under some loss-of-fullscreen paths, which matches the family of “whole page gets stuffed into PiP” regressions.
+- In progress now:
+  - No code change yet; analysis complete.
+- Blockers/risks:
+  - The active release line still depends on a fragile fullscreen->PiP handshake across JS, native, Java visibility, and activity lifecycle state.
+  - Blindly changing media-session handling would likely miss the real root cause.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - inspected only:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+    - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Build/test status:
+  - No new build, install, or runtime capture in this analysis-only pass.
+- Exact next concrete step:
+  - Capture targeted runtime logs for the long-use repro with:
+    - `OTB_PIP`
+    - `OneTabTubePerf`
+    - `BravePipWrapper`
+    - `BraveYouTubeHelper`
+  - then patch the fullscreen->PiP handshake based on the observed stall point.
+- Expected resume inspection scope:
+  - `OneTabFabMenuCoordinator.java`
+  - `BraveYouTubeScriptInjectorNativeHelper.java`
+  - `youtube_script_injector_tab_helper.cc`
+  - `BraveActivity.java`
+  - `BraveFullscreenVideoPictureInPictureController.java`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `rg`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `rg -n "PiP|pip|PictureInPicture|fullscreen" ...`
+  - targeted `Get-Content` slices on the 5 PiP files above
+- Tool purpose:
+  - Trace the actual release-line PiP state machine instead of inferring from old branches or assumptions.
+- Tool state:
+  - Completed successfully.
+- Expected resume command:
+  - `adb logcat -v time | Select-String "OTB_PIP|OneTabTubePerf|BravePipWrapper|BraveYouTubeHelper"`
+- Expected output/artifact path:
+  - runtime log capture file path to be chosen when repro starts
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - analysis against current checked-in release line
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java` - PiP starts from fullscreen request
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - Java PiP retries/abort path
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - native fullscreen request / visibility / timeout path
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - lifecycle and stale fullscreen/watch-return state
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` - wrapper fullscreen re-request while in PiP
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - the 5 PiP files above
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device only if runtime log capture is requested
+- Expected success signal:
+  - logs identify a clear stall such as fullscreen_requested stuck, visibility not visible, or Java helper abort after retries
+- Expected failure signal:
+  - no PiP-related logs or the failure happens outside the current 5-file working set
+- Last known log location:
+  - no runtime log captured in this pass
+- Last known artifact path:
+  - unchanged from release `429000009`
+- Recent decisions:
+  - Treat the issue as a fullscreen/PiP state-machine desync first.
+  - Do not blame media session until the entry handshake is disproven.
+- Rejected approaches:
+  - guessing “session not held” as the main cause
+  - applying another PiP fix before capturing targeted runtime evidence
+- Stop point classification:
+  - analysis complete; runtime evidence capture pending
+- What is done but unverified:
+  - on-device confirmation of the suspected stall point
+- What is verified:
+  - FAB does not enter PiP directly; it asks for fullscreen first
+  - PiP entry depends on fullscreen visibility + finite retries
+  - lifecycle refresh only helps once already inside PiP
+- External prerequisite:
+  - connected device reproducing the long-use PiP failure
+- Secret required but not stored:
+  - none beyond normal local adb access
+
+# 2026-04-10 21:12:34 +07:00
+
+- Current phase:
+  - Runtime analysis / PiP degradation investigation
+- Task/objective:
+  - Confirm on the connected release device whether long-use PiP failure is really a fullscreen/PiP handshake issue or something else.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest progress entry before touching the device.
+  - Verified connected device state:
+    - device present via `adb devices -l`
+    - installed app `com.onetabtube.browser_default`
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+  - Pulled recent device logcat into:
+    - `artifacts/runtime_logs/logcat_full_20260410_2111.txt`
+  - Confirmed the actual failure sequence from runtime logs:
+    - `OTB_PIP event=fullscreen_script_complete result=fullscreen_triggered visibility=2`
+    - later `OTB_PIP event=enter_picture_in_picture_fullscreen_timeout_retry`
+    - then `OTB_PIP event=enter_picture_in_picture_fullscreen_timeout_delegate_to_java_helper`
+    - Java logs `enterPictureInPicture helper available=true requested=false active_fullscreen=false in_pip=false`
+    - Java retries once
+    - then `Abort delayed enterPictureInPicture because fullscreen state is still not visible to Java.`
+  - Confirmed the same failure sequence happened twice in the same capture window, which strongly suggests the issue is reproducible and not a one-off race.
+  - Confirmed logs also include earlier PiP-exit/watch-page restoration events, so the current long-use issue happens in the same state machine family as the older fullscreen/PiP regressions.
+- In progress now:
+  - No code change yet.
+- Blockers/risks:
+  - The active release line still relies on fullscreen becoming visible to both native and Java within a short retry window.
+  - A future fix must not regress lockscreen/watch-page restore behavior that was already tuned separately.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/runtime_logs/logcat_full_20260410_2111.txt`
+- Build/test status:
+  - No build or install in this pass.
+  - Runtime evidence capture succeeded.
+- Exact next concrete step:
+  - Patch the fullscreen->PiP handshake so PiP entry does not abort solely because Java misses `active_fullscreen` immediately after `fullscreen_triggered/already_fullscreen`.
+- Expected resume inspection scope:
+  - `artifacts/runtime_logs/logcat_full_20260410_2111.txt`
+  - `OneTabFabMenuCoordinator.java`
+  - `BraveYouTubeScriptInjectorNativeHelper.java`
+  - `youtube_script_injector_tab_helper.cc`
+  - `BraveActivity.java`
+  - `BraveFullscreenVideoPictureInPictureController.java`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `rg`
+- Exact command(s):
+  - `adb devices -l`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime'`
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_full_20260410_2111.txt`
+  - `Select-String -Path artifacts\\runtime_logs\\logcat_full_20260410_2111.txt -Pattern "fullscreen_triggered|already_fullscreen|active_fullscreen=false|Abort delayed enterPictureInPicture" -Context 3,3`
+- Tool purpose:
+  - Replace hypothesis with runtime proof from the actual installed release build.
+- Tool state:
+  - Completed successfully.
+- Expected resume command:
+  - `Select-String -Path artifacts\\runtime_logs\\logcat_full_20260410_2111.txt -Pattern "enter_picture_in_picture_fullscreen_timeout|Abort delayed enterPictureInPicture|active_fullscreen=false" -Context 2,2`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\logcat_full_20260410_2111.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - analysis against installed release `429000009`
+- Primary working set:
+  - `artifacts/runtime_logs/logcat_full_20260410_2111.txt` - real-device PiP failure evidence
+  - `OneTabFabMenuCoordinator.java` - fullscreen-first FAB entry
+  - `BraveYouTubeScriptInjectorNativeHelper.java` - Java retry/abort gate
+  - `youtube_script_injector_tab_helper.cc` - native timeout/delegate path
+  - `BraveActivity.java` - lifecycle/watch-page state
+  - `BraveFullscreenVideoPictureInPictureController.java` - fullscreen re-request behavior inside PiP
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `artifacts/runtime_logs/logcat_full_20260410_2111.txt`
+  - the 5 PiP source files above
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device with the release app installed
+- Expected success signal:
+  - a future patch removes the `active_fullscreen=false -> abort` pattern from runtime logs during PiP entry
+- Expected failure signal:
+  - the same pattern persists after patch:
+    - fullscreen reported
+    - helper still sees `active_fullscreen=false`
+    - PiP aborts
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\logcat_full_20260410_2111.txt`
+- Last known artifact path:
+  - unchanged from release `429000009`
+- Recent decisions:
+  - Trust runtime evidence over stale hypotheses.
+  - Keep the investigation centered on the fullscreen/PiP handshake.
+- Rejected approaches:
+  - blaming media session first
+  - editing PiP code before proving the actual stall point from release logs
+- Stop point classification:
+  - runtime evidence captured; fix not applied yet
+- What is done but unverified:
+  - best non-regressive patch strategy
+- What is verified:
+  - connected device is on `429000009`
+  - PiP failure on this release matches `fullscreen reported -> Java sees no active fullscreen -> abort`
+- External prerequisite:
+  - none if continuing source patching; connected device needed again for validation
+- Secret required but not stored:
+  - none beyond local adb access
+
+# 2026-04-10 21:20:55 +07:00
+
+- Current phase:
+  - Runtime patch / PiP degradation fix attempt
+- Task/objective:
+  - Apply a careful, narrow patch for the observed stale-fullscreen PiP failure and deploy it to the connected device for validation.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and latest `docs/progress-log.md` entry first.
+  - Inspected `kYoutubeFullscreen` in `youtube_script_injector_tab_helper.cc` and confirmed an important stale-state branch:
+    - if `document.fullscreenElement` exists, the script immediately resolves `already_fullscreen`
+    - it does not verify that the fullscreen element still belongs to the active player/video
+  - Correlated that branch with the runtime failure evidence:
+    - `fullscreen_script_complete result=already_fullscreen`
+    - followed by Java helper seeing `active_fullscreen=false`
+    - then aborting PiP entry
+  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` so the fullscreen script now:
+    - distinguishes generic document fullscreen from player-focused fullscreen
+    - treats only player/video-root fullscreen as `already_fullscreen`
+    - if fullscreen exists but is stale/not tied to the active player, exits that fullscreen first
+    - then retries fullscreen on the active player before continuing the PiP flow
+  - Synced the patched file to the WSL release desk.
+  - Rebuilt the release target successfully:
+    - `out/android_Release_arm64_multiabi`
+    - log: `artifacts/android_build/release_build_pip_stale_fullscreen_reset_20260410.log`
+  - Installed the rebuilt APK over the connected device successfully with `adb install -r`.
+  - Relaunched the app successfully (`Status: ok`).
+- In progress now:
+  - Waiting for runtime repro validation on the patched device.
+- Blockers/risks:
+  - This patch is intentionally narrow and only addresses the stale document-fullscreen branch.
+  - If PiP still fails after this, the next issue is likely deeper in the fullscreen visibility propagation between native and Java.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/release_build_pip_stale_fullscreen_reset_20260410.log`
+- Build/test status:
+  - Release rebuild passed.
+  - APK install passed.
+  - App launch passed.
+  - Runtime PiP repro on the patched build is not yet verified.
+- Exact next concrete step:
+  - Reproduce the long-use PiP failure again on the connected device and capture a fresh `adb logcat -d -v time` dump for comparison.
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/android_build/release_build_pip_stale_fullscreen_reset_20260410.log`
+  - fresh post-patch runtime logcat capture once repro is attempted
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `adb`
+  - `wsl`
+  - `ninja`
+- Exact command(s):
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc"`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_stale_fullscreen_reset_20260410.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Patch and deploy the smallest plausible fix that matches the observed failure signature.
+- Tool state:
+  - Completed; runtime validation pending.
+- Expected resume command:
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_pip_repro.txt`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - stale fullscreen reset patch
+  - `artifacts/runtime_logs/logcat_full_20260410_2111.txt` - pre-patch failure evidence
+  - `artifacts/android_build/release_build_pip_stale_fullscreen_reset_20260410.log` - patch build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `youtube_script_injector_tab_helper.cc`
+  - the post-patch runtime log once captured
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - WSL release build tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - the patched build stops producing the `already_fullscreen/active_fullscreen=false/abort` sequence during the long-use repro
+- Expected failure signal:
+  - the same sequence persists even after stale fullscreen reset
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_stale_fullscreen_reset_20260410.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Patch the stale document-fullscreen branch first because it directly matches the runtime evidence.
+- Rejected approaches:
+  - widening Java retry timing before fixing the clearly wrong `already_fullscreen` branch
+  - changing media-session logic first
+- Stop point classification:
+  - patch applied + build passed + APK installed; runtime validation pending
+- What is done but unverified:
+  - actual PiP behavior after long use on the patched build
+- What is verified:
+  - the patch compiles in the release target
+  - the patched APK installs and launches on the connected device
+- External prerequisite:
+  - user or agent needs to run the actual long-use PiP repro again
+- Secret required but not stored:
+  - none beyond local adb access
+
+# 2026-04-11 00:19:27 +07:00
+
+- Current phase:
+  - Runtime patch / lockscreen PiP stability fix
+- Task/objective:
+  - Keep lockscreen media controls working while preventing stale fullscreen/presentation restore state from breaking PiP after track changes during screen lock.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry first.
+  - Re-checked the actual code state after resume and confirmed the previous planned direction was outdated:
+    - `BraveActivity.shouldPreserveVideoPresentationForPictureInPictureControls()` already contains both `PowerManager.isInteractive()` and `KeyguardManager` checks.
+    - so the missing-guard hypothesis was no longer the right next step.
+  - Inspected the lockscreen navigation path in detail:
+    - `BraveYouTubeScriptInjectorNativeHelper.next/previous()` only forward a boolean preserve flag.
+    - `YouTubeScriptInjectorTabHelper::MaybeNextTrack/MaybePreviousTrack()` previously left fullscreen-request state untouched when preserve was false.
+    - `youtube_native_tab_bridge.cc` armed JS presentation intent when preserve was true, but did not clear stale JS presentation state when preserve was false.
+    - `youtube_script_injector_tab_helper.cc` keeps video-presentation intent/carry data in `sessionStorage`.
+  - Applied a careful narrow patch:
+    - added `window.__onetabtubeClearVideoPresentation(...)` in `youtube_script_injector_tab_helper.cc`
+    - that helper clears both video-presentation intent and carry-forward intent and records `video_presentation_cleared`
+    - `navigateTrackHref(...)` in `youtube_native_tab_bridge.cc` now calls that clear helper when `preserveVideoPresentation` is false
+    - native `MaybeNextTrack/MaybePreviousTrack()` now clear pending fullscreen-request state and log `skip_track_navigation_keepalive` when preserve is false
+  - Synced the two patched files into the WSL release desk.
+  - Rebuilt `out/android_Release_arm64_multiabi` successfully:
+    - log: `artifacts/android_build/release_build_pip_lockscreen_clear_intent_20260411.log`
+  - Installed the rebuilt APK over the connected device successfully.
+  - Relaunched the app successfully (`Status: ok`).
+- In progress now:
+  - Waiting for runtime validation of the exact lockscreen repro on the patched build.
+- Blockers/risks:
+  - If PiP still degrades after this patch, the next layer is probably not stale JS intent anymore but fullscreen/visibility propagation after unlock.
+  - The worktree still contains many unrelated dirty files, so any future commit must stay narrow.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - referenced evidence:
+    - `artifacts/runtime_logs/logcat_full_20260410_2111.txt`
+    - `artifacts/android_build/release_build_pip_lockscreen_clear_intent_20260411.log`
+- Build/test status:
+  - Release rebuild passed.
+  - APK reinstall passed.
+  - App relaunch passed.
+  - Runtime lockscreen repro still pending.
+- Exact next concrete step:
+  - Reproduce the lockscreen sequence on-device and capture a fresh `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_lockscreen_track_change.txt` dump.
+- Expected resume inspection scope:
+  - `youtube_native_tab_bridge.cc`
+  - `youtube_script_injector_tab_helper.cc`
+  - `artifacts/android_build/release_build_pip_lockscreen_clear_intent_20260411.log`
+  - fresh post-patch lockscreen logcat capture
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `adb`
+  - `wsl`
+  - `ninja`
+- Exact command(s):
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc"`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_lockscreen_clear_intent_20260411.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime'`
+- Tool purpose:
+  - Redeploy a narrow stale-presentation clearing fix without disabling lockscreen controls.
+- Tool state:
+  - Completed; runtime validation pending.
+- Expected resume command:
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_lockscreen_track_change.txt`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - clear JS presentation state when preserve is false
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - JS/native stale presentation cleanup
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - inspected to confirm the lockscreen guard already existed
+  - `artifacts/android_build/release_build_pip_lockscreen_clear_intent_20260411.log` - build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `youtube_native_tab_bridge.cc`
+  - `youtube_script_injector_tab_helper.cc`
+  - post-patch lockscreen logcat
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - WSL release build tree at `/home/master/src_ext4`
+- Expected success signal:
+  - Unlock returns to a normal video-framed PiP after lockscreen track changes.
+- Expected failure signal:
+  - PiP still returns page-framed/not full after unlock, or new logs show another restore path still rearming fullscreen.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_lockscreen_clear_intent_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep lockscreen media controls intact.
+  - Do not re-patch Java lockscreen guards blindly.
+  - Clear stale JS/native presentation state first.
+- Rejected approaches:
+  - disabling lockscreen next/previous
+  - widening fullscreen handshake logic before removing stale state
+- Stop point classification:
+  - patch applied + release rebuilt + APK installed; runtime validation pending
+- What is done but unverified:
+  - whether this stale-state clearing patch fully resolves the lockscreen PiP distortion
+- What is verified:
+  - current source already had the lockscreen guard in `BraveActivity`
+  - new clearing patch compiles and installs on the release target
+  - app launches after reinstall on the connected device
+- External prerequisite:
+  - actual lockscreen repro must be run on the connected device
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+# 2026-04-11 01:00:26 +07:00
+
+- Current phase:
+  - Runtime patch / long-use lockscreen PiP stabilization
+- Task/objective:
+  - Validate the new build after the stale-intent patch, then patch the next confirmed failure path without disabling lockscreen controls.
+- Completed since last snapshot:
+  - Captured a fresh runtime dump after the user reported the same long-use lockscreen failure:
+    - `artifacts/runtime_logs/logcat_post_patch_lockscreen_track_change_20260411_0020.txt`
+  - Confirmed the stale-intent patch was not enough for the latest symptom.
+  - Found a stronger fresh clue in the runtime log:
+    - `event=pip_refocus_apply reason=on_resume_immediate`
+    - `event=pip_refocus_apply reason=on_resume_retry1/2/3`
+    - all while already in PiP
+  - Correlated that clue with current code:
+    - `onResume()` in `BraveActivity.java` called `scheduleOneTabPictureInPictureRefresh("on_resume")`
+    - `onWindowFocusChanged()` called `scheduleOneTabPictureInPictureRefresh("window_focus_changed")`
+    - both can re-run PiP parameter refresh after returning from lockscreen even though the activity is already in PiP
+  - Applied a narrow lifecycle patch in `android/java/org/chromium/chrome/browser/app/BraveActivity.java`:
+    - disabled PiP refocus scheduling from `onResume()`
+    - disabled PiP refocus scheduling from `onWindowFocusChanged()`
+    - replaced both with explicit skip logs for future runtime evidence
+  - Synced the updated `BraveActivity.java` into the WSL release desk.
+  - Rebuilt `out/android_Release_arm64_multiabi` successfully:
+    - build log: `artifacts/android_build/release_build_pip_disable_resume_refocus_20260411.log`
+  - Reinstalled the rebuilt APK over the connected device successfully.
+  - Relaunched the app successfully (`Status: ok`).
+- In progress now:
+  - Waiting for runtime validation of the latest build on the connected device.
+- Blockers/risks:
+  - `BraveActivity.java` in the working tree still includes earlier uncommitted lockscreen-guard changes in addition to the new lifecycle-refocus patch; the WSL release desk now reflects that real working state.
+  - Build log contains a `Failed JNI assertion!` warning about an unneeded Java file, but the build still completed through `chrome_public_apk__create`.
+  - The worktree is still very dirty; any commit later must stage narrowly.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - evidence:
+    - `artifacts/runtime_logs/logcat_post_patch_lockscreen_track_change_20260411_0020.txt`
+    - `artifacts/android_build/release_build_pip_disable_resume_refocus_20260411.log`
+- Build/test status:
+  - Release rebuild passed.
+  - APK reinstall passed.
+  - App relaunch passed.
+  - Latest runtime validation still pending.
+- Exact next concrete step:
+  - Reproduce the long-use lockscreen PiP failure again and capture a fresh post-patch logcat to confirm whether `on_resume` / `window_focus_changed` refocus logs are gone and whether the failure sequence changes.
+- Expected resume inspection scope:
+  - `BraveActivity.java`
+  - `youtube_native_tab_bridge.cc`
+  - `youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/logcat_post_patch_lockscreen_track_change_20260411_0020.txt`
+  - `artifacts/android_build/release_build_pip_disable_resume_refocus_20260411.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+- Exact command(s):
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_lockscreen_track_change_20260411_0020.txt`
+  - `Select-String ... pip_refocus_apply|pip_refresh_bridge|fullscreen_script_complete|Abort delayed enterPictureInPicture`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java"`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_disable_resume_refocus_20260411.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Use fresh runtime evidence to disable only the lifecycle-driven PiP refocus path and redeploy the release build.
+- Tool state:
+  - Completed; runtime validation pending.
+- Expected resume command:
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_resume_refocus_disabled.txt`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - latest lifecycle-refocus disable patch
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - earlier stale JS presentation clearing patch
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - earlier stale JS/native presentation clearing patch
+  - `artifacts/runtime_logs/logcat_post_patch_lockscreen_track_change_20260411_0020.txt` - runtime evidence showing `pip_refocus_apply` on resume while already in PiP
+  - `artifacts/android_build/release_build_pip_disable_resume_refocus_20260411.log` - build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `BraveActivity.java`
+  - fresh post-patch runtime logcat
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - WSL release build tree at `/home/master/src_ext4`
+- Expected success signal:
+  - No more `pip_refocus_apply reason=on_resume_*` logs after returning from lockscreen, and PiP remains video-framed / PiP entry remains usable.
+- Expected failure signal:
+  - PiP still degrades after lockscreen and fresh logs show a different path re-triggering fullscreen or PiP params refresh.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_disable_resume_refocus_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+- Recent decisions:
+  - Treat the stale-intent patch as insufficient for the latest symptom.
+  - Use the fresh runtime log as the deciding evidence.
+  - Disable only lifecycle-driven PiP refocus before widening other logic.
+- Rejected approaches:
+  - continuing to patch track-navigation preserve logic without new evidence
+  - disabling lockscreen controls entirely
+  - touching the separate setup app
+- Stop point classification:
+  - code edited + release rebuilt + APK installed; runtime validation pending
+- What is done but unverified:
+  - whether disabling lifecycle-driven PiP refocus fully resolves the long-use lockscreen PiP degradation
+- What is verified:
+  - fresh runtime log showed `pip_refocus_apply reason=on_resume_*` while already in PiP
+  - new `BraveActivity` patch compiles in the release target
+  - patched release APK installs and launches on the connected device
+- External prerequisite:
+  - actual runtime repro must be performed on the connected device
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 01:38:10 +07:00
+
+- Current phase:
+  - Runtime patch / lockscreen PiP stabilization
+- Current objective:
+  - Stop fullscreen re-arm during fullscreen-loss after unlock while keeping lockscreen controls usable.
+- Completed since last snapshot:
+  - Captured fresh runtime evidence in `artifacts/runtime_logs/logcat_lockscreen_return_repro_20260411_012918.txt`.
+  - Verified lockscreen `next_track` now correctly logs `preserve_disabled`; the remaining failure is not the track-change keepalive path anymore.
+  - Identified the new active failure sequence from `cr_VideoPersist`:
+    - `Dismiss activity with reason 7`
+    - `Pinned fullscreen-loss while playing: activeFullscreen=false requested=false`
+    - `Re-requesting fullscreen to keep PiP video-focused.`
+    - followed by `requested=1` and `fullscreen_script_complete result=fullscreen_triggered`
+  - Applied a narrow patch in `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` to keep PiP alive without calling `setFullscreen()` again on fullscreen-loss while already in PiP.
+  - Synced that file into `/home/master/src_ext4`.
+  - Rebuilt `android_Release_arm64_multiabi` successfully with log `artifacts/android_build/release_build_pip_no_rearm_on_fullscreen_loss_20260411.log`.
+  - Reinstalled and relaunched the app successfully on the connected device.
+  - Verified the installed package is still the main app:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-11 01:37:43`
+- In progress now:
+  - Waiting for runtime validation of the newly installed build on the connected device.
+- Blockers / risks:
+  - The worktree is still dirty with many unrelated files; later commits must stage only the PiP working set.
+  - Multiple earlier uncommitted PiP patches remain in the same working set (`BraveActivity`, helper, native bridge, tab helper), so future changes must stay narrow and evidence-driven.
+  - The known `Failed JNI assertion!` warning still appears in release build logs, but the target completes through `chrome_public_apk__create`.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - APK reinstall passed.
+  - App relaunch passed.
+  - Runtime validation on the freshly installed build is pending.
+- Exact next concrete step:
+  - Clear logcat, reproduce the same lockscreen + track change sequence on the connected device, then capture a fresh post-patch logcat and verify the old `Re-requesting fullscreen to keep PiP video-focused.` line is gone.
+- Expected resume inspection scope:
+  - `BraveFullscreenVideoPictureInPictureController.java`
+  - `BraveYouTubeScriptInjectorNativeHelper.java`
+  - `BraveActivity.java`
+  - `youtube_native_tab_bridge.cc`
+  - `youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/logcat_lockscreen_return_repro_20260411_012918.txt`
+  - `artifacts/android_build/release_build_pip_no_rearm_on_fullscreen_loss_20260411.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `rg`
+- Exact command(s):
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_lockscreen_return_repro_20260411_012918.txt`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_no_rearm_on_fullscreen_loss_20260411.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Use runtime proof to remove only the fullscreen-loss re-arm path and redeploy the release build.
+- Tool state:
+  - Patch/build/install complete; runtime validation pending.
+- Expected resume command:
+  - `adb logcat -c`
+  - reproduce on device
+  - `adb logcat -d -v time > artifacts\\runtime_logs\\logcat_post_patch_no_rearm_on_fullscreen_loss.txt`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `BraveFullscreenVideoPictureInPictureController.java` — latest fullscreen-loss keepalive patch
+  - `BraveActivity.java` — lifecycle refocus disable patch
+  - `BraveYouTubeScriptInjectorNativeHelper.java` — already-in-PiP helper guards
+  - `youtube_native_tab_bridge.cc` — stale JS presentation clearing patch
+  - `youtube_script_injector_tab_helper.cc` — keepalive/fullscreen request state machine
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `BraveFullscreenVideoPictureInPictureController.java`
+  - the next post-patch runtime logcat
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - WSL release build tree at `/home/master/src_ext4`
+- Expected success signal:
+  - No more fullscreen re-request from `cr_VideoPersist` after unlock, and PiP stays video-framed / reusable.
+- Expected failure signal:
+  - PiP still becomes page-framed or gets stuck in fullscreen, and a different path appears in the fresh log.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_no_rearm_on_fullscreen_loss_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk`
+- Recent decisions:
+  - Keep the lockscreen control feature intact.
+  - Treat fullscreen-loss re-arm, not track-change preserve, as the current root cause.
+  - Remove fullscreen re-request while already in PiP instead of widening JS/native restore logic again.
+- Rejected approaches:
+  - disabling lockscreen controls entirely
+  - re-opening the setup app work
+  - widening track-navigation keepalive logic without fresh evidence
+- Stop point classification:
+  - code edited + release rebuilt + APK installed; runtime validation pending
+- What is done but unverified:
+  - Whether removing fullscreen re-request on fullscreen-loss fully fixes the lockscreen PiP degradation.
+- What is verified:
+  - Fresh runtime proof identified the old remaining failure path.
+  - The new controller patch builds, installs, and launches successfully.
+- External prerequisite:
+  - The user must perform the same runtime repro on the connected device.
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 11:26:49 +07:00
+
+- Current phase:
+  - Runtime PiP stabilization on top of the restored `429000009` release baseline
+- Current objective:
+  - Fix only the lockscreen `video ended -> auto-advance -> unlock` PiP defocus case by reusing the existing `next` path instead of inventing a new PiP recovery flow
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry first per `AGENTS.md`
+  - Verified the recorded `tab_helper` carry-forward patch is still present in code
+  - Verified there was one additional unverified follow-up patch already sitting in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - Inspected the bridge diff and confirmed it stays inside the approved direction:
+    - only reacts to `video ended`
+    - only when `windowHasFocus == false`
+    - calls `bridge.next({preserveVideoPresentation: true})`
+    - does not touch manual `next/previous`
+  - Refined the bridge helper narrowly by resetting its duplicate-fire signature only when playback/load restarts
+  - Synced `youtube_native_tab_bridge.cc` into WSL and rebuilt `android_Release_arm64_multiabi`
+  - Reinstalled the rebuilt release APK successfully onto the connected device
+  - Relaunched the app successfully and cleared `logcat`
+- In progress now:
+  - Waiting for the user to reproduce the exact lockscreen auto-advance case on the freshly installed build so the next logcat captures only this helper path
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed
+  - APK reinstall passed
+  - App relaunch passed
+  - Runtime validation pending
+- Blockers/risks:
+  - The new helper still depends on `windowHasFocus` as the lockscreen/background signal, so runtime proof is required
+  - The worktree remains very dirty; later commit must stage only the narrow PiP working set
+  - The release build log still contains the known `Failed JNI assertion!` warning even though the APK is produced successfully
+- Exact next concrete step:
+  - Ask the user to reproduce:
+    - enter PiP
+    - lock screen
+    - let the video end and auto-advance by itself
+    - unlock
+  - Then capture:
+    - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_lockscreen_ended_next_helper_20260411.txt"`
+  - Inspect whether the helper path actually fired and whether PiP stayed video-framed
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `artifacts/android_build/release_build_lockscreen_ended_next_helper_20260411.log`
+  - `artifacts/runtime_logs/logcat_lockscreen_ended_next_helper_20260411.txt`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `rg`
+- Exact command(s):
+  - `git diff -- browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `adb devices -l`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_lockscreen_ended_next_helper_20260411.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern "versionCode=|versionName=|lastUpdateTime="`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+- Tool purpose:
+  - Reuse the old `next` path for lockscreen auto-advance and put a releasable APK on the device for direct runtime validation
+- Tool state:
+  - Build/install complete; waiting for runtime repro
+- Expected resume command:
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_lockscreen_ended_next_helper_20260411.txt"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - ended/background helper using `bridge.next(preserveVideoPresentation)`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - prior carry-forward/native keepalive reinforcement
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - declarations for that reinforcement
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `artifacts/runtime_logs/logcat_lockscreen_ended_next_helper_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - WSL release build tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - The fresh log shows the ended-background helper path and PiP stays focused after unlock
+- Expected failure signal:
+  - PiP still defocuses after unlock and the helper never fires or is overridden by another old path
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_lockscreen_ended_next_helper_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep `429000009` as the broader PiP/fullscreen baseline
+  - Follow the user-proposed “ended should behave like next” direction exactly
+  - Limit the new patch to `ended + background-like` only
+- Rejected approaches:
+  - widening manual `next/previous`
+  - inventing a separate unlock recovery architecture
+  - revisiting unrelated FAB/setup/update work
+- Stop point classification:
+  - code edited + release rebuilt + APK installed + app relaunched; runtime validation pending
+- What is done but unverified:
+  - Whether the bridge helper fully fixes lockscreen auto-advance PiP defocus
+- What is verified:
+  - The helper patch compiles
+  - The rebuilt release installs and launches on the connected device
+  - The installed build remains `429000009 / 1.90.3`
+- External prerequisite:
+  - user repro on the connected device
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 11:38:10 +07:00
+
+- Current phase:
+  - Runtime PiP stabilization on top of the restored `429000009` release baseline
+- Current objective:
+  - Make the user-approved `video ended -> use next path` helper actually trigger in the lockscreen case by feeding it the same native hidden/visible signal the runtime logs already show.
+- Completed since last snapshot:
+  - Captured and inspected the first post-helper runtime log:
+    - `artifacts/runtime_logs/logcat_lockscreen_ended_next_helper_20260411.txt`
+  - Verified that the first helper attempt did not run:
+    - no `background_video_ended_next`
+    - no helper-attributable `next` preserve path
+  - Verified from runtime proof that the real lockscreen signal is still:
+    - `OTB_PIP event=web_contents_visibility_changed visibility=0`
+    - not a reliable `windowHasFocus=false`
+  - Narrowly patched the existing helper instead of changing architecture:
+    - in `youtube_native_tab_bridge.cc`, the helper now reads `window.__oneTabTubeWebContentsVisibility`
+    - it still keeps `windowHasFocus` only as a fallback
+    - the internal delay was reduced from `260ms` to `40ms` to stay closer to the working manual `next` path
+  - Added a narrow native sync helper in `youtube_script_injector_tab_helper.*`:
+    - `SyncNativeTabBridgeVisibilityState(content::Visibility visibility)`
+    - called from `OnVisibilityChanged(...)`
+    - writes native visibility into the bridge script before the lockscreen auto-advance helper evaluates
+  - Synced the three edited files into WSL
+  - Rebuilt `android_Release_arm64_multiabi` successfully with:
+    - `artifacts/android_build/release_build_lockscreen_ended_visibility_sync_20260411.log`
+  - Reinstalled the rebuilt release APK, relaunched the app, and cleared logcat
+- In progress now:
+  - Waiting for the user to reproduce the same lockscreen auto-advance failure on the freshly installed build
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed
+  - APK reinstall passed
+  - App relaunch passed
+  - Runtime validation pending
+- Blockers/risks:
+  - Even with correct native hidden visibility, YouTube auto-advance may still outrun the helper or another old path may override it
+  - The worktree remains very dirty; later commit must isolate only the narrow PiP files
+  - The known `Failed JNI assertion!` warning still appears in release build logs even when the APK is produced successfully
+- Exact next concrete step:
+  - Have the user reproduce:
+    - enter PiP
+    - lock screen
+    - let the current video end and auto-advance by itself
+    - unlock
+  - Then capture:
+    - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_lockscreen_ended_visibility_sync_20260411.txt"`
+  - Inspect whether `background_video_ended_next` appears now and whether PiP stays video-focused
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `artifacts/runtime_logs/logcat_lockscreen_ended_visibility_sync_20260411.txt`
+  - `artifacts/android_build/release_build_lockscreen_ended_visibility_sync_20260411.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `rg`
+- Exact command(s):
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_lockscreen_ended_next_helper_20260411.txt"`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_lockscreen_ended_visibility_sync_20260411.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+- Tool purpose:
+  - Make the helper use the real native hidden signal from runtime and redeploy the release APK for validation
+- Tool state:
+  - Build/install complete; waiting for runtime repro
+- Expected resume command:
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_lockscreen_ended_visibility_sync_20260411.txt"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - ended helper now keyed off native hidden visibility plus short delay
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - syncs native visibility into the bridge script and still contains previous carry-forward/native keepalive logic
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - declaration for the sync helper
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `artifacts/runtime_logs/logcat_lockscreen_ended_visibility_sync_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - WSL release build tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - The synced helper fires under lockscreen auto-advance and PiP remains focused after unlock
+- Expected failure signal:
+  - PiP still defocuses and the log still does not show `background_video_ended_next`, or another path overrides it
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_lockscreen_ended_visibility_sync_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep `429000009` as the broader PiP/fullscreen baseline
+  - Stay inside the user-approved “ended should behave like next” direction
+  - Replace the incorrect `windowHasFocus` assumption with the real native visibility signal seen in logs
+- Rejected approaches:
+  - widening manual `next/previous`
+  - inventing a new PiP architecture
+  - treating the whole PiP system as broken when the failure remains narrower
+- Stop point classification:
+  - code edited + release rebuilt + APK installed + app relaunched; runtime validation pending
+- What is done but unverified:
+  - Whether the visibility-synced ended helper fully fixes the lockscreen auto-advance PiP defocus case
+- What is verified:
+  - The first helper attempt did not trigger
+  - The revised helper compiles, installs, and launches on the connected device
+  - The installed build remains `429000009 / 1.90.3`
+- External prerequisite:
+  - user repro on the connected device
+- Secret required but not stored:
+  - none beyond local adb/build access
+## 2026-04-11 15:31:18 +07:00
+
+- Phase:
+  - Runtime PiP stabilization on top of the restored `429000009` baseline
+- Objective:
+  - Use a fresh live screenshot and fresh runtime evidence to verify the real lockscreen auto-advance PiP failure, then patch only the existing hidden-track/current-track helper path.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry.
+  - Confirmed the connected device is present via `adb devices -l`.
+  - Captured a fresh live screenshot from the connected device:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_live_20260411_152515.png`
+  - Verified visually that the current failure is a black pinned PiP window over launcher/home, not just a wrong aspect ratio.
+  - Inspected the fresh live runtime capture:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt`
+  - Verified the current path sequence:
+    - hidden transition: `remember_hidden_track result=ok`
+    - unlock transition: `arm_current_track_after_hidden result=arm_unavailable`
+    - followed by repeated `refreshPictureInPictureParamsForCurrentVideo: skip without active fullscreen video.`
+  - Inspected `youtube_native_tab_bridge.cc` and `youtube_script_injector_tab_helper.cc` to confirm `arm_unavailable` means `window.__onetabtubeArmVideoPresentation` is not yet available at the unlock moment.
+  - Applied a narrow retry patch to the existing unlock-side helper completion path:
+    - added `hidden_transition_arm_retry_count_` in `youtube_script_injector_tab_helper.h`
+    - on `arm_current_track_after_hidden == arm_unavailable`, retry the same helper up to 3 times with short delays while visible
+    - reset the retry count when visibility becomes hidden again
+  - Synced the patched files into WSL and rebuilt release:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_hidden_arm_retry_20260411.log`
+  - Reinstalled the rebuilt APK, relaunched the app, and cleared `logcat`.
+- In progress now:
+  - Waiting for runtime validation of the retry patch on the connected device.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - APK reinstall passed.
+  - App relaunch passed.
+  - Runtime validation pending.
+- Blockers/risks:
+  - If the retry still sees `arm_unavailable`, then the unlock race is broader than a single early call and we will need one more narrow timing fix.
+  - Must keep manual `next/previous` untouched because that path is already working.
+- Exact next concrete step:
+  - Have the user reproduce the same lockscreen auto-advance flow again on the newly installed build.
+  - Then capture and inspect:
+    - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_hidden_arm_retry_20260411.txt"`
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `artifacts/runtime_logs/device_live_20260411_152515.png`
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt`
+  - `artifacts/android_build/release_build_hidden_arm_retry_20260411.log`
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+  - `view_image`
+  - `rg`
+- Exact command(s):
+  - `adb shell screencap -p /sdcard/Download/otb_live_capture.png`
+  - `adb pull /sdcard/Download/otb_live_capture.png C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_live_20260411_152515.png`
+  - `rg -n -C 3 "remember_hidden_track|arm_current_track_after_hidden|skip without active fullscreen video|web_contents_visibility_changed visibility=0|web_contents_visibility_changed visibility=2|onStart while still in PiP|onResume while still in PiP" C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_hidden_arm_retry_20260411.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+- Tool purpose:
+  - Verify the real visual failure, then patch the same existing unlock-side helper path that is failing too early.
+- Tool state:
+  - Build/install complete; waiting for runtime repro.
+- Expected resume command:
+  - `cmd /c "adb logcat -d -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\logcat_hidden_arm_retry_20260411.txt"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab5`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - retry scheduling after `arm_unavailable`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - retry counter state
+  - `artifacts/runtime_logs/device_live_20260411_152515.png` - fresh visual proof
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt` - runtime proof for the failure cause
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/live_lockscreen_autoadvance_pip_20260411_after_canonical_fix.txt`
+  - `artifacts/runtime_logs/device_live_20260411_152515.png`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - same lockscreen auto-advance repro on the newly installed build
+- Expected success signal:
+  - A retry succeeds after unlock and PiP keeps video focus.
+- Expected failure signal:
+  - PiP still goes black and the retried command still never reaches a usable arm state.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_hidden_arm_retry_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Trust the fresh screenshot over the stale previous one.
+  - Keep the `429000009` baseline and patch only the existing helper timing.
+- Rejected approaches:
+  - using the earlier wrong screenshot as proof
+  - widening manual `next/previous`
+  - inventing a new PiP pipeline
+- Stop point classification:
+  - code edited + release rebuilt + APK installed + app relaunched; waiting for runtime validation
+- What is done but unverified:
+  - Whether retrying the same arm helper is enough to fix the lockscreen auto-advance case.
+- What is verified:
+  - `remember_hidden_track` succeeds
+  - the fresh unlock path fails with `arm_unavailable`
+  - the retry patch builds and installs successfully
+- External prerequisite:
+  - one more user repro on the connected device
+- Secret required but not stored:
+  - none beyond local adb/build access
+
+## 2026-04-11 16:58:55 +07:00
+
+- Current phase:
+  - PiP runtime stabilization on lockscreen auto-advance path
+- Objective:
+  - Restore the active release path to the `429000009` baseline and apply only the user-requested helper that mirrors notification `next` when a video ends during lockscreen playback.
+- Completed since last snapshot:
+  - Re-read the latest handoff files and confirmed the recorded deferred-recovery controller direction no longer matched the explicit user instruction.
+  - Verified the repo working set was reset back to baseline `429000009` for:
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - Kept only a narrow helper patch in:
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - Confirmed the notification action handler uses `bridge.next()` directly, so the helper was implemented to call the same path instead of the older custom preserve-options path.
+  - Restored the active WSL release controller:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+    - back to the baseline `429000009` immediate fullscreen re-request behavior; removed the deferred-recovery experiment from the active build tree.
+  - Synced the repo bridge/helper files into the WSL build tree.
+  - Rebuilt release successfully:
+    - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_baseline_429000009_notification_path_20260411.log"`
+  - Reinstalled the rebuilt release APK and relaunched the app on the connected device.
+  - Verified installed package state:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+  - Cleared `logcat` and armed fresh live capture:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_notification_path_20260411.txt`
+- In progress now:
+  - Waiting for the next repro on this baseline+helper build.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - `adb install -r` passed.
+  - App relaunch passed.
+  - Runtime validation pending.
+- Blockers/risks:
+  - The release controller behavior is governed by the WSL build tree, so future PiP changes must keep checking that source directly.
+  - Manual `next/previous` while locked is already working; this path must stay untouched.
+  - The new helper is intentionally minimal and still unverified at runtime.
+- Next concrete step:
+  - Have the user run the lockscreen auto-advance repro on the current build, then inspect:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_notification_path_20260411.txt`
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `artifacts/android_build/release_build_baseline_429000009_notification_path_20260411.log`
+  - `artifacts/runtime_logs/live_pip_baseline_notification_path_20260411.txt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+- Exact command(s):
+  - `git checkout ac9a889ff -- browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h"`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_baseline_429000009_notification_path_20260411.log"`
+  - `adb install -r "\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern "versionCode=|versionName=|lastUpdateTime="`
+  - `adb logcat -c`
+  - `Start-Process cmd.exe "/c adb logcat -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\live_pip_baseline_notification_path_20260411.txt"`
+- Tool purpose:
+  - Restore the active release to the user-requested baseline and validate only the minimal notification-style helper addition.
+- Tool state:
+  - Build/install complete; fresh live capture running.
+- Expected resume command:
+  - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_notification_path_20260411.pid) -Force`
+  - then inspect `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_notification_path_20260411.txt`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - ended-under-lockscreen helper reusing `bridge.next()`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - baseline restored
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - baseline restored
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - baseline restored
+  - `artifacts/runtime_logs/live_pip_baseline_notification_path_20260411.txt` - active runtime evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `artifacts/runtime_logs/live_pip_baseline_notification_path_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device visible to `adb`
+  - user repro on current installed build
+- Expected success signal:
+  - lockscreen auto-advance behaves like manual notification next and PiP stays focused after unlock
+- Expected failure signal:
+  - PiP still loses focus after unlock and live capture shows the helper path is insufficient
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_baseline_429000009_notification_path_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Follow the user's direction literally and stop exploring deferred controller recovery.
+  - Reuse the existing notification `next` path instead of creating another auto-advance recovery mechanism.
+- Rejected approaches:
+  - deferred fullscreen-loss recovery in the controller
+  - broader helper state changes in `youtube_script_injector_tab_helper.*`
+  - any new PiP flow not already present in the `429000009` baseline
+- Stop point classification:
+  - baseline restored + helper applied + release rebuilt + APK installed + live capture armed; waiting for runtime validation
+- What is done but unverified:
+  - Whether the new helper preserves PiP focus after lockscreen auto-advance
+- What is verified:
+  - Build succeeds
+  - Install succeeds
+  - App launches
+  - Installed app is still `429000009 / 1.90.3`
+- External prerequisite:
+  - user repro on device
+- Secret required but not stored:
+  - none beyond local adb/build environment
+
+## 2026-04-11 17:14:42 +07:00
+
+- Current phase:
+  - PiP runtime stabilization on lockscreen auto-advance path
+- Objective:
+  - Broadly explain why ended-under-lockscreen helper behavior is still different from manual notification `next`, even after both paths were made to call `bridge.next()`.
+- Completed since last snapshot:
+  - Stopped the live capture process and inspected:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_notification_path_20260411.txt`
+  - Verified the failed repro sequence in the latest capture:
+    - `web_contents_visibility_changed visibility=0`
+    - auto-advance playback resumes in hidden/background state
+    - unlock returns with:
+      - `onStart while still in PiP without active fullscreen video`
+      - `onResume while still in PiP without active fullscreen video`
+      - repeated `refreshPictureInPictureParamsForCurrentVideo: skip without active fullscreen video.`
+  - Verified the latest capture contains **no** `background_video_ended_next_notification_path` marker at all.
+  - Inspected `youtube_native_tab_bridge.cc` and confirmed the helper is scheduled from `ended` via `setTimeout(..., 0)` but that same path is also cleared immediately on:
+    - `play`
+    - `playing`
+    - `loadstart`
+    - `emptied`
+  - Confirmed the notification action handler remains:
+    - `setActionHandler('nexttrack', canNext ? () => { void bridge.next(); } : null);`
+  - Inspected `BraveActivity.java` and confirmed unlock-time PiP refresh is gated by `hasActiveEffectivelyFullscreenVideo()` or related video-signal checks; without that signal, unlock refresh skips by design.
+- In progress now:
+  - Summarizing the broad structural difference between:
+    - manual notification `next`
+    - ended-under-lockscreen helper
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new code/build in this snapshot.
+  - Analysis step only, based on the installed `429000009` baseline+helper build and its latest runtime capture.
+- Blockers/risks:
+  - The key divergence appears to be earlier than the final `bridge.next()` call:
+    - trigger source
+    - scheduling/timer race
+    - hidden-page lifecycle
+    - active fullscreen/video-focus signal loss before unlock
+- Next concrete step:
+  - Use this structural analysis to decide whether the next patch should move the trigger earlier/closer to the manual notification path rather than only reusing the same bridge function name.
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/runtime_logs/live_pip_baseline_notification_path_20260411.txt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `rg`
+- Exact command(s):
+  - `Stop-Process -Id <capture-pid> -Force`
+  - `Get-Content artifacts/runtime_logs/live_pip_baseline_notification_path_20260411.txt -Tail 220`
+  - `rg -n -C 3 "background_video_ended_next_notification_path|nexttrack|runTrackFallback|preserveVideoPresentation|remember_hidden_track|arm_current_track_after_hidden|skip without active fullscreen video|visibility=0|visibility=2|ended" browser/android/youtube_script_injector/youtube_native_tab_bridge.cc browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc android/java/org/chromium/chrome/browser/app/BraveActivity.java artifacts/runtime_logs/live_pip_baseline_notification_path_20260411.txt -S`
+  - `Get-Content browser/android/youtube_script_injector/youtube_native_tab_bridge.cc | Select-Object -Skip 1510 -First 320`
+  - `Get-Content browser/android/youtube_script_injector/youtube_native_tab_bridge.cc | Select-Object -Skip 1985 -First 80`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 3660 -First 120`
+- Tool purpose:
+  - Compare the full chain around trigger source, bridge scheduling, hidden lifecycle, and PiP refresh gating.
+- Tool state:
+  - Analysis complete for the latest failed repro.
+- Expected resume command:
+  - `Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_notification_path_20260411.txt -Tail 220`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_notification_path_20260411.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - helper scheduling and notification `nexttrack` registration
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - unlock-time PiP refresh gating
+  - `artifacts/runtime_logs/live_pip_baseline_notification_path_20260411.txt` - proof that helper marker never appeared and unlock refresh had no active fullscreen signal
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `artifacts/runtime_logs/live_pip_baseline_notification_path_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none; evidence is already captured
+- Expected success signal:
+  - A clear explanation of why "same `bridge.next()` call" still does not equal "same runtime behavior"
+- Expected failure signal:
+  - Confusing function identity with end-to-end path identity
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_notification_path_20260411.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Shift from narrow helper-only thinking to broad structural analysis after the failed repro.
+- Rejected approaches:
+  - Assuming equal function name implies equal end-to-end behavior
+- Stop point classification:
+  - failed repro analyzed; broad structural explanation in progress
+- What is done but unverified:
+  - whether the next fix should move the trigger source/timing rather than only the called function
+- What is verified:
+  - No helper success marker appeared in the latest failed repro
+  - Unlock PiP refresh skipped because there was no active fullscreen video signal
+  - The helper timer can be cleared by autoplay transition events before it fires
+- External prerequisite:
+  - none for the current analysis step
+- Secret required but not stored:
+  - none
+
+## 2026-04-11 17:26:38 +07:00
+
+- Current phase:
+  - PiP runtime stabilization on lockscreen auto-advance path
+- Objective:
+  - Apply a whole-chain trigger/timing patch so ended-under-lockscreen behavior is closer to the working manual notification `next` path.
+- Completed since last snapshot:
+  - Inspected the broader chain again and confirmed a critical distinction:
+    - the previous helper reused `bridge.next()`
+    - but it fired from `ended -> setTimeout(0)` and was vulnerable to autoplay transition events before it could run
+  - Confirmed the old helper’s timer was being cleared by:
+    - `play`
+    - `playing`
+    - `loadstart`
+    - `emptied`
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` so the ended-under-lockscreen path now:
+    - stores the currently registered media session action handlers
+    - invokes the registered `nexttrack` handler directly from the `ended` event while hidden/backgrounded
+    - falls back to `bridge.next()` only when no `nexttrack` handler is registered
+    - removes the old delayed background-ended timer path entirely
+  - Synced the updated bridge file into WSL.
+  - Rebuilt release successfully:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_notification_handler_direct_20260411.log`
+  - Reinstalled the rebuilt APK and relaunched the app.
+  - Cleared `logcat` and armed fresh capture:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_notification_handler_direct_20260411.txt`
+- In progress now:
+  - Waiting for runtime validation of the direct-notification-handler patch.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - APK reinstall passed.
+  - App relaunch passed.
+  - Runtime validation pending.
+- Blockers/risks:
+  - If this still fails, the next divergence is likely after the handler fires, in signal carry-over / fullscreen state retention.
+- Next concrete step:
+  - Have the user repro the same flow on the newly installed build, then inspect:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_notification_handler_direct_20260411.txt`
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `artifacts\runtime_logs\live_pip_notification_handler_direct_20260411.txt`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+- Exact command(s):
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc"`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_notification_handler_direct_20260411.log"`
+  - `adb install -r "\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+  - `Start-Process cmd.exe "/c adb logcat -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\live_pip_notification_handler_direct_20260411.txt"`
+- Tool purpose:
+  - Move the ended-under-lockscreen trigger earlier and closer to the real notification action path while preserving the `429000009` controller baseline.
+- Tool state:
+  - Build/install complete; fresh live capture running.
+- Expected resume command:
+  - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_notification_handler_direct_20260411.pid) -Force`
+  - then inspect `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_notification_handler_direct_20260411.txt`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `artifacts/runtime_logs/live_pip_notification_handler_direct_20260411.txt`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `artifacts/runtime_logs/live_pip_notification_handler_direct_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - user repro on current installed build
+- Expected success signal:
+  - direct `nexttrack` handler invocation appears in logs and PiP stays focused after unlock
+- Expected failure signal:
+  - unlock still occurs with no active fullscreen signal despite direct handler invocation
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_notification_handler_direct_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Stop patching only the final function call.
+  - Move the trigger into the actual ended event and reuse the registered `nexttrack` handler directly.
+- Rejected approaches:
+  - delayed `setTimeout(0)` helper
+  - another controller-side recovery experiment
+- Stop point classification:
+  - whole-chain trigger/timing patch applied + release rebuilt + APK installed + live capture armed; waiting for runtime validation
+- What is done but unverified:
+  - Whether direct handler invocation is enough to keep PiP focused after unlock
+- What is verified:
+  - The new patch builds and installs successfully
+  - The active controller baseline remains `429000009`
+- External prerequisite:
+  - user repro on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-11 17:34:24 +07:00
+
+- Current phase:
+  - PiP runtime stabilization on lockscreen auto-advance path
+- Objective:
+  - Record that the direct-notification-handler patch still failed and pivot from incremental patching to strict paired-trace diagnosis.
+- Completed since last snapshot:
+  - User tested the newly installed direct-notification-handler build.
+  - User reported the issue still persists: PiP still does not stay focused/full after lockscreen auto-advance and unlock.
+  - Updated handoff to mark the latest patch as failed at runtime.
+- In progress now:
+  - Preparing to stop speculative patching and move to matched trace capture/diff:
+    - manual lockscreen `nexttrack` success case
+    - ended-under-lockscreen auto-advance failure case
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Latest direct-notification-handler patch built and installed successfully.
+  - Runtime test failed.
+- Blockers/risks:
+  - The divergence is deeper than the final `nexttrack` callback invocation.
+  - More piecemeal patching is likely to waste time without paired evidence.
+- Next concrete step:
+  - Stop current live capture and capture matched traces for success/failure cases on the same build.
+- Expected resume inspection scope:
+  - `artifacts/runtime_logs/live_pip_notification_handler_direct_20260411.txt`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+- Current tool(s):
+  - `apply_patch`
+- Exact command(s):
+  - docs update only in this snapshot
+- Tool purpose:
+  - Keep handoff truthful before changing diagnosis strategy.
+- Tool state:
+  - no new build/test command in this snapshot
+- Expected resume command:
+  - stop capture, then gather paired traces
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none
+- Expected success signal:
+  - truthful handoff that reflects the failed runtime result
+- Expected failure signal:
+  - continuing with another patch before paired traces are compared
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_notification_handler_direct_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - stop incremental patching and move to evidence-first paired-trace diagnosis
+- Rejected approaches:
+  - claiming the latest patch fixed the issue when runtime proves otherwise
+- Stop point classification:
+  - latest patch tested and failed; diagnosis strategy reset before next code change
+- What is done but unverified:
+  - whether the current live capture already has enough data for the pairwise diff
+- What is verified:
+  - latest patch still does not solve the issue at runtime
+- External prerequisite:
+  - none for the documentation snapshot
+- Secret required but not stored:
+  - none
+
+## 2026-04-11 18:16:49 +07:00
+
+- Current phase:
+  - PiP runtime stabilization on lockscreen auto-advance path
+- Objective:
+  - Replace the failed JS-side `ended -> registered nexttrack handler` experiment with a native pending/probe path that reuses `MaybeNextTrack(true)` directly.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before changing code.
+  - Reconfirmed the true working notification-next chain:
+    - `MediaSessionHelper.onMediaSessionAction(NEXT_TRACK)`
+    - `BraveYouTubeScriptInjectorNativeHelper.next(webContents)`
+    - native JNI `Next(...)`
+    - `YouTubeScriptInjectorTabHelper::MaybeNextTrack(preserve=true/false)`
+  - Verified the prior direct-handler patch was not equivalent because it only invoked the JS `nexttrack` handler, which ended in `bridge.next()` and did not itself arm the native keepalive path.
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` so hidden `ended` now:
+    - stores a persistent pending payload in `sessionStorage`
+    - logs `background_video_ended_arm_native_next`
+    - no longer invokes `bridge.next()` or the JS `nexttrack` handler directly
+  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.{h,cc}` so native now:
+    - starts a hidden-state watch from `OnVisibilityChanged(HIDDEN)`
+    - probes the pending payload + current video state while hidden
+    - calls `MaybeNextTrack(true)` itself when the same hidden-ended video is still current
+    - falls back to arming the existing restore state for the current track if autoplay already advanced before the native trigger fired
+  - Fixed compile compatibility for this Chromium tree:
+    - raw string delimiter shortened
+    - `base::JSONReader::Read(..., base::JSON_PARSE_RFC)`
+    - `base::Value` / `base::DictValue` API adapted
+  - Synced all three patched files into the WSL release tree.
+  - Rebuilt release successfully:
+    - `ninja -C out/android_Release_arm64_multiabi chrome_public_apk`
+  - Reinstalled the APK successfully on the connected device.
+  - Relaunched the app successfully.
+  - Cleared `logcat` and armed a new live capture:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt`
+- In progress now:
+  - Waiting for runtime validation on the connected device to see whether the new native pending/probe path actually reaches `MaybeNextTrack(true)` early enough.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - `adb install -r` passed.
+  - App relaunch passed.
+  - Runtime result for this new patch is still pending.
+- Blockers/risks:
+  - If autoplay transition outruns the hidden probe, only the current-track fallback re-arm will fire.
+  - Manual lockscreen `next/previous` is already working and must stay untouched.
+- Next concrete step:
+  - Ask user to repro on the newly installed build, then inspect:
+    - `background_video_ended_arm_native_next`
+    - `hidden_ended_trigger_native_next`
+    - `hidden_ended_missed_native_next_rearm_current`
+    - unlock-time PiP refresh logs
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+- Exact command(s):
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_native_tab_bridge.cc"`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc"`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h"`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_hidden_native_notification_path_20260411.log"`
+  - `adb install -r "\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb logcat -c`
+  - `Start-Process cmd.exe "/c adb logcat -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I BravePipWrapper:I *:S > C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\live_hidden_native_notification_path_20260411.txt"`
+- Tool purpose:
+  - Move the hidden-ended case onto the same native keepalive path as notification next, then rebuild/install and capture runtime evidence.
+- Tool state:
+  - Build/install complete; live capture armed.
+- Expected resume command:
+  - Read `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt` after the user repro.
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - hidden-ended pending arm
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - hidden watch declarations/state
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - native hidden probe + `MaybeNextTrack(true)`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt` - live runtime evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - user repro on currently installed build
+- Expected success signal:
+  - log shows pending arm + native next trigger and PiP remains focused/full after unlock
+- Expected failure signal:
+  - pending arm appears but native trigger never fires, or unlock still skips due to no active fullscreen video
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_hidden_native_notification_path_20260411.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - stop trying to emulate notification next through JS handlers
+  - use a JS pending flag only as a trigger source
+  - move the actual track switch back into native `MaybeNextTrack(true)`
+- Rejected approaches:
+  - another JS-only `bridge.next()` helper
+  - controller-side recovery experiments before fixing the trigger path
+- Stop point classification:
+  - code edited + rebuilt + installed + capture armed; waiting for runtime repro
+- What is done but unverified:
+  - whether the new native pending/probe path beats autoplay transition timing on the real device
+- What is verified:
+  - build/install succeeded
+  - installed app remains `429000009 / 1.90.3`
+  - current patch now reaches the real native keepalive entry if the probe sees the pending flag in time
+- External prerequisite:
+  - user repro on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-11 18:36:40 +07:00
+
+- Current phase:
+  - PiP runtime stabilization on lockscreen auto-advance path
+- Objective:
+  - Record the runtime result of the hidden pending/probe experiment and pivot away from hidden renderer callbacks.
+- Completed since last snapshot:
+  - User reproed on the newly installed build.
+  - Inspected `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt`.
+  - Confirmed the patch still did not fix the issue at runtime.
+  - Confirmed the new hidden pending/probe trigger never activated:
+    - no `remember_hidden_track`
+    - no `hidden_ended_trigger_native_next`
+    - no `hidden_ended_missed_native_next_rearm_current`
+  - Confirmed unlock still failed the same way:
+    - `onStart while still in PiP without active fullscreen video`
+    - `refreshPictureInPictureParamsForCurrentVideo: skip without active fullscreen video.`
+  - Confirmed that the only reliable marker around the failure remains:
+    - `web_contents_visibility_changed visibility=0`
+    - followed later by unlock-time skip logs
+- In progress now:
+  - Resetting diagnosis from hidden renderer timing to Android/native media-session dispatch timing.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build/install remained successful.
+  - Runtime validation failed again.
+- Blockers/risks:
+  - Hidden page script callbacks are not a reliable trigger source for this fix on the real device/build.
+  - Continuing to patch hidden renderer code further is likely to waste time.
+- Next concrete step:
+  - Move the next investigation and patch to the Android/native media-session layer:
+    - `MediaSessionHelper`
+    - `BraveYouTubeScriptInjectorNativeHelper`
+    - native track command dispatch
+- Expected resume inspection scope:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `rg -n -C 3 "background_video_ended_arm_native_next|hidden_ended_trigger_native_next|hidden_ended_missed_native_next_rearm_current|remember_hidden_track|web_contents_visibility_changed|track_navigation_restore|arm_track_navigation_keepalive|refreshPictureInPictureParamsForCurrentVideo|onStart while still in PiP|onResume while still in PiP|skip without active fullscreen video|enter_picture_in_picture_from_fullscreen|background_video_ended" artifacts/runtime_logs/live_hidden_native_notification_path_20260411.txt`
+  - `Get-Content artifacts/runtime_logs/live_hidden_native_notification_path_20260411.txt -Tail 220`
+- Tool purpose:
+  - Verify whether the new trigger path actually activated during runtime before touching code again.
+- Tool state:
+  - Analysis complete for this runtime round.
+- Expected resume command:
+  - inspect Android media-session dispatch sources next
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none; runtime evidence already captured
+- Expected success signal:
+  - clear proof of whether the new trigger path activated
+- Expected failure signal:
+  - trying another patch without accepting that this trigger path never fired
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_hidden_native_notification_path_20260411.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - runtime result is now treated as the source of truth
+  - hidden pending/probe trigger is not effective enough on-device
+- Rejected approaches:
+  - patching hidden renderer callbacks again before moving to Android/native dispatch
+- Stop point classification:
+  - runtime repro completed; trigger path proven ineffective; waiting to pivot investigation
+- What is done but unverified:
+  - whether the JS pending marker itself is written without debug mode; current evidence only proves native hidden watch markers never surfaced
+- What is verified:
+  - runtime still fails
+  - hidden native probe markers never appear
+  - unlock still skips due to no active fullscreen video
+- External prerequisite:
+  - none for the next diagnosis step
+- Secret required but not stored:
+  - none
+
+## 2026-04-11 21:15:30 +07:00
+
+- Current phase:
+  - PiP runtime stabilization on lockscreen auto-advance path
+- Objective:
+  - Move the fix from hidden renderer timing to Android/native media-session timing so ended-under-lockscreen can dispatch the real notification-next helper before autoplay teardown.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry per `AGENTS.md`.
+  - Inspected `MediaSessionHelper.java`, `MediaSessionObserver.java`, `MediaSession.java`, `BraveYouTubeScriptInjectorNativeHelper.java`, and `BraveActivity.java`.
+  - Confirmed the real working manual notification-next path:
+    - `MediaSessionHelper.onMediaSessionAction(NEXT_TRACK)`
+    - `maybeDispatchBraveYouTubeCommand("next")`
+    - `BraveYouTubeScriptInjectorNativeHelper.next(webContents)`
+    - `JNI_BraveYouTubeScriptInjectorNativeHelper_Next(...)`
+    - `YouTubeScriptInjectorTabHelper::MaybeNextTrack(true/false)`
+  - Confirmed Android media-session layer exposes no `ended` callback but does keep sending `mediaSessionPositionChanged(...)`.
+  - Patched `//wsl.localhost/Ubuntu/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java` so:
+    - when the device is locked
+    - and the activity is in PiP
+    - and web contents are hidden
+    - and `NEXT_TRACK` is available
+    - and the remaining position enters a 1200ms near-end window
+    - it dispatches `maybeDispatchBraveYouTubeCommand("next")` directly from `mediaSessionPositionChanged(...)`
+    - and logs `OTB_PIP event=locked_pip_auto_next_from_position`
+  - Rebuilt release successfully:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_position_native_next_20260411.log`
+  - Reinstalled the rebuilt release successfully on the connected device.
+  - Relaunched the app successfully.
+  - Verified installed package state remains:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-11 21:14:19`
+  - Armed a fresh live capture:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_position_native_next_20260411.txt`
+- In progress now:
+  - Waiting for runtime repro on the Android/native near-end build.
+- Files/modules touched:
+  - `//wsl.localhost/Ubuntu/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - `adb install -r` passed.
+  - App relaunch passed.
+  - Runtime validation is pending.
+- Blockers/risks:
+  - The 1200ms near-end window may still be too early or too late depending on how often media-session position updates arrive while locked.
+  - Hidden pending/probe patches still exist in source, so runtime analysis must distinguish clearly which marker is actually firing.
+- Next concrete step:
+  - Let the user repro the same flow on the installed build, then inspect `live_locked_pip_position_native_next_20260411.txt` for the new `locked_pip_auto_next_from_position` marker and compare it against unlock skip logs.
+- Expected resume inspection scope:
+  - `//wsl.localhost/Ubuntu/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_position_native_next_20260411.txt`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_position_native_next_20260411.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+  - `ninja`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Get-Content "//wsl.localhost/Ubuntu/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java" -TotalCount 650 | Select-Object -Skip 330 -First 260`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_locked_pip_position_native_next_20260411.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main"`
+  - `Start-Process cmd.exe "/c adb logcat -v time chromium:I cr_VideoPersist:I cr_YouTubeNativeHelper:I cr_OneTabTubePerf:I MediaSessionHelper:I *:S > C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_position_native_next_20260411.txt"`
+- Tool purpose:
+  - Move the fix to the Android/native media-session layer and verify it on-device.
+- Tool state:
+  - Build/install complete; live capture armed and waiting for user repro.
+- Expected resume command:
+  - `Get-Content artifacts/runtime_logs/live_locked_pip_position_native_next_20260411.txt -Tail 220`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `//wsl.localhost/Ubuntu/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_position_native_next_20260411.txt`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `//wsl.localhost/Ubuntu/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_position_native_next_20260411.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Connected Android device visible to `adb`
+  - User repro on the currently installed build
+- Expected success signal:
+  - `OTB_PIP event=locked_pip_auto_next_from_position dispatched=true` appears before unlock
+  - PiP remains video-focused/full after unlock
+- Expected failure signal:
+  - no marker appears
+  - or marker appears but unlock still hits `skip without active fullscreen video`
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_position_native_next_20260411.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Treat hidden renderer timing as a dead end for this issue.
+  - Use Android media-session position updates because they remain alive during lockscreen playback.
+- Rejected approaches:
+  - further hidden renderer probes
+  - further JS-only `bridge.next()` emulation
+- Stop point classification:
+  - code edited + release rebuilt + APK installed + live capture armed; waiting for runtime repro
+- What is done but unverified:
+  - whether the near-end trigger window beats autoplay teardown on the real device
+- What is verified:
+  - build/install succeeded
+  - installed app remains `429000009 / 1.90.3`
+- External prerequisite:
+  - user repro on device
+- Secret required but not stored:
+  - none
