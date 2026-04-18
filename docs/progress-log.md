@@ -33145,6 +33145,98 @@
 - Secret required but not stored:
   - none
 
+## 2026-04-19 00:24:55 +07:00
+
+- Current phase:
+  - `PiP source-of-truth sync and repo publish complete`
+- Current objective:
+  - `Record the exact commit/push result after proving the installed APK state and publishing the PiP+Visual guard bundle.`
+- Completed since last snapshot:
+  - Staged only the PiP+Visual guard working set.
+  - Committed:
+    - `c334f5eba`
+    - message: `PIP+Visaul guard`
+  - Pushed successfully:
+    - `origin/publish/go_play-sync-20260402`
+- In progress now:
+  - No code edit is in progress.
+  - No fresh runtime verification has been run after the push.
+- Blockers/risks:
+  - Runtime behavior of the pushed build is still unverified after this publish step.
+  - Workspace still contains many unrelated local files; future commits must remain path-limited.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build/install/source-of-truth proof already complete from previous snapshots.
+  - Commit succeeded.
+  - Push succeeded.
+  - Post-push runtime verification: `pending`
+- Exact next concrete step:
+  - If PiP work continues, start fresh capture on the pushed build and verify native-owner guard behavior.
+- Expected resume inspection scope:
+  - `git log --oneline -n 3`
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+- Current tool(s):
+  - `shell_command`
+  - `apply_patch`
+- Exact command(s):
+  - `git commit -m "PIP+Visaul guard"`
+  - `git push origin publish/go_play-sync-20260402`
+- Tool purpose:
+  - publish the exact PiP+Visual guard state that matches the installed APK
+- Tool state:
+  - publish complete
+- Expected resume command:
+  - fresh `adb logcat` capture if runtime verification should continue
+- Expected output/artifact path:
+  - `origin/publish/go_play-sync-20260402`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `c334f5eba`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `git show --stat c334f5eba`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - network access for push already satisfied
+- Expected success signal:
+  - commit exists locally and remotely on the target branch
+- Expected failure signal:
+  - branch diverges or push must be retried
+- Last known log location:
+  - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt)
+- Last known artifact path:
+  - [device_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_base_429000009_20260419.apk)
+- Recent decisions:
+  - stop at a clean published state before any more PiP edits
+- Rejected approaches:
+  - continuing to patch after publish without fresh runtime evidence
+- Stop point classification:
+  - publish complete, runtime not re-verified
+- What is done but unverified:
+  - pushed build runtime behavior
+- What is verified:
+  - commit `c334f5eba` created
+  - push to `origin/publish/go_play-sync-20260402` succeeded
+- External prerequisite:
+  - device testing if work resumes
+- Secret required but not stored:
+  - none
+
 ## 2026-04-18 22:39:11 +07:00
 
 - Current phase:

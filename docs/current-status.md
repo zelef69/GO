@@ -1,8 +1,8 @@
 # Current Status
 
-- Last updated: `2026-04-19 00:21:48 +07:00`
+- Last updated: `2026-04-19 00:24:55 +07:00`
 - Current phase: `PiP stabilization: native-owned visual guard`
-- Current objective: `Treat the APK installed on the connected device as source-of-truth, prove local sources match that APK, sync every relevant source representation to that state, and prepare the PiP+Visual guard commit/push cleanly.`
+- Current objective: `Treat the APK installed on the connected device as source-of-truth, prove local sources match that APK, sync every relevant source representation to that state, and land the PiP+Visual guard bundle in the user repo cleanly.`
 - Completed since last update:
   - Re-read `docs/current-status.md` and the latest entry in `docs/progress-log.md` before continuing.
   - Verified the new direction against real code instead of re-exploring the repo:
@@ -65,10 +65,18 @@
   - Regenerated [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch) from:
     - base = `tmp_upstream_chromium_FullscreenVideoPictureInPictureController.java`
     - current = WSL `FullscreenVideoPictureInPictureController.java`
+  - Staged only the PiP+Visual guard working set.
+  - Committed the staged set:
+    - commit = `c334f5eba`
+    - message = `PIP+Visaul guard`
+  - Pushed successfully to:
+    - remote = `origin`
+    - branch = `publish/go_play-sync-20260402`
 - In progress now:
   - No further code edit is in progress.
   - Source-of-truth proof is complete for the installed APK.
-  - Repo is ready for a focused PiP+Visual guard commit, but commit/push has not been executed yet.
+  - Commit/push for the PiP+Visual guard bundle is complete.
+  - No fresh runtime verification has been run after the push.
 - Files/modules touched:
   - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
   - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
@@ -88,15 +96,13 @@
   - Install status: `complete`
   - Launch status: `complete`
   - Installed APK equals WSL-built APK by SHA256
-  - Runtime verification status: `not rerun after source-of-truth proof`
+  - Runtime verification status: `not rerun after source-of-truth proof/push`
 - Blockers/risks:
   - This repo does not directly track the WSL controller source file; the tracked representation is a patch file, not the raw controller file.
   - `git status` contains many unrelated modified/untracked files in the workspace, so commit must be path-limited carefully.
-  - Runtime behavior of the new owner gate is still not re-verified after the source-of-truth sync step.
+  - Runtime behavior of the new owner gate is still not re-verified after the source-of-truth sync/push step.
 - Next concrete step:
-  - Stage only the PiP+Visual guard files that are proven to match the installed APK.
-  - Commit them with a PiP+Visual guard message.
-  - Push that commit to `origin`.
+  - If we continue PiP work, start a fresh runtime capture on the installed/pushed build and verify the native-owner guard behavior against logs.
 - Expected resume inspection scope:
   - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
   - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
@@ -129,6 +135,9 @@
   - `wsl bash -lc "diff -u --label a/... --label b/... <upstream-base> <wsl-controller> > .../FullscreenVideoPictureInPictureController.java.patch"`
   - `git remote -v`
   - `git status --short`
+  - `git add -- <PiP paths>`
+  - `git commit -m "PIP+Visaul guard"`
+  - `git push origin publish/go_play-sync-20260402`
 - Tool purpose:
   - `Prove the exact installed APK state, sync all local source representations to that state, and prepare a safe PiP+Visual guard commit/push.`
 - Tool state:
@@ -138,9 +147,10 @@
   - build complete
   - install complete
   - source-of-truth proof complete
-  - commit/push pending
+  - commit complete
+  - push complete
 - Expected resume command:
-  - path-limited `git add` for the PiP+Visual guard files that match the installed APK
+  - start fresh `adb logcat` capture if PiP runtime verification should continue
 - Expected output/artifact path:
   - [device_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_base_429000009_20260419.apk)
 - Repo root / working directory:
@@ -177,13 +187,9 @@
   - connected `adb` device
   - WSL source tree available at `/home/master/src_ext4`
 - Expected success signal:
-  - the staged commit contains only PiP+Visual guard files that provably match the installed APK
-  - controller external-source change is reflected in the repo patch file
-  - push to `origin` succeeds
+  - a fresh runtime log proves the pushed build behaves as intended
 - Expected failure signal:
-  - unrelated workspace files get swept into the commit
-  - controller external-source change is omitted from the repo representation
-  - push fails
+  - a fresh runtime log still shows native-owner guard releasing from non-owner paths
 - Last known log location:
   - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt`
 - Last known artifact path:
@@ -200,9 +206,9 @@
   - broad rollback
   - guessing that the repo alone can track the raw controller file when it only tracks its patch representation
 - Stop point classification:
-  - code edited, build passed, APK installed and proven as source-of-truth, commit/push not yet executed
+  - code edited, build passed, APK installed and proven as source-of-truth, commit/push complete, runtime not re-verified
 - What is done but unverified:
-  - commit/push of the PiP+Visual guard bundle
+  - runtime behavior of the pushed build
 - What is verified:
   - targeted code changes are present in source
   - Windows and WSL `BraveActivity.java` hashes match
@@ -213,11 +219,13 @@
   - device APK SHA256 matches the WSL-built APK SHA256 exactly
   - all relevant Windows overlay files match their WSL counterparts
   - controller diff is now regenerated into the repo patch file
+  - commit `c334f5eba` exists locally
+  - commit `c334f5eba` is pushed to `origin/publish/go_play-sync-20260402`
 - External prerequisite:
   - manual runtime reproduction on device
 - Secret required but not stored:
   - none
 - Actual code state after resume:
-  - The repo now contains the native-owner guard patch locally, and the WSL build used that code successfully.
+  - The repo now contains the PiP+Visual guard bundle in commit `c334f5eba`, and that commit is pushed to the user repo branch.
 - Chosen direction:
-  - verify this installed build with fresh runtime logs before making any further PiP changes
+  - stop at a clean pushed state and only continue with fresh runtime verification if requested
