@@ -78,7 +78,49 @@ public class BraveYouTubeScriptInjectorNativeHelper {
                 .previous(webContents, shouldPreserveVideoPresentation(webContents));
     }
 
+    public static boolean recoverPictureInPictureFocus(
+            WebContents webContents, boolean requireVisible) {
+        return BraveYouTubeScriptInjectorNativeHelperJni.get()
+                .recoverPictureInPictureFocus(webContents, requireVisible);
+    }
+
+    public static boolean setPictureInPictureRecoveryVisualGuard(
+            WebContents webContents, boolean active) {
+        return BraveYouTubeScriptInjectorNativeHelperJni.get()
+                .setPictureInPictureRecoveryVisualGuard(webContents, active);
+    }
+
+    /**
+     * @noinspection unused
+     */
+    @CalledByNative
+    public static void onPictureInPictureRecoveryVisualGuardChanged(
+            WebContents webContents, boolean active) {
+        final WindowAndroid windowAndroid = webContents.getTopLevelNativeWindow();
+        if (windowAndroid == null) return;
+
+        final Activity activity = windowAndroid.getActivity().get();
+        if (!(activity instanceof BraveActivity braveActivity)) return;
+
+        braveActivity.onNativePictureInPictureRecoveryVisualGuardChanged(webContents, active);
+    }
+
     private static boolean shouldPreserveVideoPresentation(WebContents webContents) {
+        final WindowAndroid windowAndroid = webContents.getTopLevelNativeWindow();
+        if (windowAndroid == null) return false;
+
+        final Activity activity = windowAndroid.getActivity().get();
+        if (!(activity instanceof BraveActivity braveActivity)) return false;
+
+        return braveActivity.isInPictureInPictureMode();
+    }
+
+    /**
+     * @noinspection unused
+     */
+    @CalledByNative
+    public static boolean shouldPreserveVideoPresentationForPictureInPicture(
+            WebContents webContents) {
         final WindowAndroid windowAndroid = webContents.getTopLevelNativeWindow();
         if (windowAndroid == null) return false;
 
@@ -160,8 +202,10 @@ public class BraveYouTubeScriptInjectorNativeHelper {
                         activeFullscreen,
                         braveActivity.isInPictureInPictureMode());
                 if (braveActivity.isInPictureInPictureMode()) {
-                    braveActivity.refreshPictureInPictureParamsForCurrentVideo();
-                    Log.i(TAG, "Skip enterPictureInPicture because activity is already in PiP.");
+                    braveActivity.onNativeFullscreenSignalWhileInPictureInPicture(webContents);
+                    Log.i(
+                            TAG,
+                            "Skip direct PiP refresh because activity is already in PiP; routing through recovery chain.");
                     return;
                 }
                 braveActivity.resumeMediaSession(true);
@@ -209,6 +253,10 @@ public class BraveYouTubeScriptInjectorNativeHelper {
         boolean next(WebContents webContents, boolean preserveVideoPresentation);
 
         boolean previous(WebContents webContents, boolean preserveVideoPresentation);
+
+        boolean recoverPictureInPictureFocus(WebContents webContents, boolean requireVisible);
+
+        boolean setPictureInPictureRecoveryVisualGuard(WebContents webContents, boolean active);
 
     }
 }

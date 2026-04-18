@@ -1,4 +1,4 @@
-# Progress Log
+﻿# Progress Log
 
 ## 2026-04-11 16:30:57 +07:00
 
@@ -115,6 +115,367 @@
   - Installed app remains `429000009 / 1.90.3`.
 - External prerequisite:
   - user repro on connected device
+- Secret required but not stored:
+  - none
+
+- Timestamp: `2026-04-18 16:58:12 +07:00`
+- Current phase: `Windows baseline evidence audit for PiP restore strategy`
+- Task/objective: `Verify whether Windows-side copies can serve as a real pre-15:43 PiP baseline without destroying recoveryPIP.`
+- Completed since last snapshot:
+  - Searched Windows-side copies and snapshots for PiP/recovery markers across:
+    - `artifacts/device_decompile/arm64_baseline/...`
+    - `artifacts/repro_baseline/...`
+    - current working tree
+  - Verified from Windows baseline/decompile copies:
+    - `BraveYouTubeScriptInjectorNativeHelper.java` uses `setFullscreen(...)`
+    - `OneTabFabMenuCoordinator.java` uses `BraveYouTubeScriptInjectorNativeHelper.setFullscreen(...)`
+    - `BraveToolbarLayoutImpl.java` uses `BraveYouTubeScriptInjectorNativeHelper.setFullscreen(...)`
+  - Verified no alternate Windows-side baseline copy was found containing:
+    - `pip_recovery_probe`
+    - `pip_recovery_dispatch`
+    - `recovery_pip_arm_current_video`
+    - `pip_recovery_visual_guard_request/result`
+  - Verified those `recoveryPIP` markers currently exist only in:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- In progress now:
+  - Reframing baseline restore as a split-baseline problem instead of a single rollback point.
+- Blockers/risks:
+  - Whole-file restore from Windows baseline copies would restore fullscreen-first entry, but it would also drop `recoveryPIP` because no baseline copy with those markers has been found.
+  - The rebuilt package from `release_build_pip_recovery_chain_fix_20260418.log` is still not runtime-verified yet.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new build in this sub-step.
+  - Latest successful build remains:
+    - `artifacts/android_build/release_build_pip_recovery_chain_fix_20260418.log`
+- Exact next concrete step:
+  - Treat Windows evidence as split by role:
+    - entry baseline from Windows decompile copies
+    - `recoveryPIP` from current working tree
+  - Avoid any whole-tree rollback from Windows copies.
+  - Decide next whether to runtime-verify the rebuilt package or surgically restore only the three entry files.
+- Expected resume inspection scope:
+  - `artifacts/device_decompile/arm64_baseline/BraveYouTubeScriptInjectorNativeHelper/...`
+  - `artifacts/device_decompile/arm64_baseline/OneTabFabMenuCoordinator/...`
+  - `artifacts/device_decompile/arm64_baseline/BraveToolbarLayoutImpl/...`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-ChildItem -Recurse -File -Include BraveActivity.java,...`
+  - `Select-String ... -Pattern 'pip_recovery_probe|pip_recovery_dispatch|recovery_pip_arm_current_video|setFullscreen\\('`
+  - `rg -n ... artifacts/repro_baseline artifacts/device_decompile ...`
+- Tool purpose:
+  - Replace guessing with direct Windows-side evidence before any further baseline restore work.
+- Tool state:
+  - Evidence audit complete.
+- Expected resume command:
+  - Either start fresh runtime capture on the already installed build, or perform a surgical restore of only the three fullscreen-first entry files.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\device_decompile\arm64_baseline\`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\repro_baseline\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `artifacts/device_decompile/arm64_baseline/BraveYouTubeScriptInjectorNativeHelper/...`
+  - `artifacts/device_decompile/arm64_baseline/OneTabFabMenuCoordinator/...`
+  - `artifacts/device_decompile/arm64_baseline/BraveToolbarLayoutImpl/...`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - the three `artifacts/device_decompile/arm64_baseline/...` entry files
+  - `BraveActivity.java`
+  - `youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none beyond current repo and artifacts
+- Expected success signal:
+  - Clear evidence-based split restore plan with no guessed baseline scope.
+- Expected failure signal:
+  - Still no trustworthy Windows-side source for either fullscreen-first or `recoveryPIP`.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_verify_20260418_162738.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Do not use Windows baseline copies as a single restore point.
+  - Preserve current `recoveryPIP` until a real older Windows copy with those markers is found.
+- Rejected approaches:
+  - whole-tree restore from `artifacts/device_decompile/arm64_baseline`
+  - whole-tree restore from `artifacts/repro_baseline/pre_restore_current_snapshot`
+- Stop point classification:
+  - evidence audit complete; no new code edits from this audit
+- What is done but unverified:
+  - whether to runtime-verify current rebuilt package before any surgical restore
+- What is verified:
+  - Windows baseline copies preserve fullscreen-first entry
+  - Windows baseline copies found so far do not preserve `recoveryPIP`
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+- Timestamp: `2026-04-18 15:58:00 +07:00`
+- Current phase: `PiP baseline restoration from pre-15:43 evidence`
+- Task/objective: `Validate the restored PiP baseline on device, then separate the remaining PiP/watch-page issues by actual runtime evidence before any new fixes.`
+- Completed since last snapshot:
+  - Started fresh PiP validation capture on the installed baseline build:
+    - `artifacts/runtime_logs/live_pip_baseline_verify_20260418_153347.txt`
+  - Stopped the capture after user repro and analyzed it against the 4 reported symptoms.
+  - Proven from runtime evidence:
+    - play/pause works in PiP + notification:
+      - `command=pause result=ok`
+      - `command=play result=ok`
+    - next/previous do not work reliably outside playlist/mix contexts:
+      - repeated `reason="reliable-link-unavailable"`
+      - one later success only when playlist-panel navigation was available
+    - FAB PiP entry succeeds through fullscreen-first:
+      - `OTB_PIP event=enter_picture_in_picture_from_fullscreen`
+      - `Attempted picture-in-picture with result: success`
+    - visual guard is not healthy:
+      - `OTB_PIP event=pip_recovery_visual_guard_result active=0 result=non_string_result`
+      - `OTB_PIP event=pip_recovery_visual_guard_result active=1 result=non_string_result`
+    - PiP exit/back-to-watch-page path shows dismiss/surface teardown churn, but this capture does not yet prove a Java/native crash.
+- In progress now:
+  - No code changes after this capture yet.
+  - Preparing the next narrow fixes from the proven runtime issues.
+- Blockers/risks:
+  - Controls instability and visual-guard instability are both still present on the restored baseline.
+  - PiP exit/watch-page bounce might be a separate problem, but the current capture is insufficient to claim a crash root cause without guessing.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build/install already passed before this capture.
+  - One fresh runtime validation capture completed and analyzed.
+- Exact next concrete step:
+  - Patch `next/previous` fallback reliability in `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`.
+  - Patch visual-guard result handling in `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`.
+  - Only after those two, decide whether a focused PiP-exit capture is still needed.
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/runtime_logs/live_pip_baseline_verify_20260418_153347.txt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `$ts = Get-Date -Format 'yyyyMMdd_HHmmss'; $log = "C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\live_pip_baseline_verify_$ts.txt"; $err = "C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\live_pip_baseline_verify_$ts.err.txt"; adb logcat -c; $p = Start-Process -FilePath adb -ArgumentList 'logcat' -RedirectStandardOutput $log -RedirectStandardError $err -PassThru`
+  - `Get-Process adb -ErrorAction SilentlyContinue | Sort-Object StartTime -Descending | Select-Object -First 1`
+  - `Stop-Process -Id <pid> -Force`
+  - `rg -n "next_track|previous_track|native_tab_bridge_command|reliable-link-unavailable|pip_recovery|visual_guard|enter_picture_in_picture_from_fullscreen|Attempted picture-in-picture|renderProcessGone|FATAL|Dismiss activity|Exiting fullscreen|surfaceDestroyed|track_navigation_restore_apply|pipAllowed|autoEnterAllowed|onPictureInPictureModeChanged|onResumeWithNative|pip_refocus|media_effectively_fullscreen_changed" artifacts/runtime_logs/live_pip_baseline_verify_20260418_153347.txt`
+- Tool purpose:
+  - Capture and analyze one clean runtime PiP session on the restored baseline build.
+- Tool state:
+  - Capture complete.
+  - Analysis complete.
+  - No follow-up patch started yet.
+- Expected resume command:
+  - Open `artifacts/runtime_logs/live_pip_baseline_verify_20260418_153347.txt`, inspect `next/previous` and visual-guard markers, then patch those two chains first.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_verify_20260418_153347.txt`
+- Repo root / working directory: `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch: `publish/go_play-sync-20260402`
+- Base commit / HEAD seen: `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target: `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` — next/previous fallback path
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — visual-guard result path
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — PiP exit scheduling + recovery markers
+  - `artifacts/runtime_logs/live_pip_baseline_verify_20260418_153347.txt` — proof file for current remaining regressions
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `artifacts/runtime_logs/live_pip_baseline_verify_20260418_153347.txt`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from: `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Device connected only if another focused capture becomes necessary
+  - Baseline code left unchanged until the two proven regressions are addressed
+- Expected success signal:
+  - The next patch addresses only the proven failing chains and does not broaden PiP scope again.
+- Expected failure signal:
+  - Broad edits reintroduce scope drift or attempt to solve the exit/bounce path without sufficient evidence.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_baseline_verify_20260418_153347.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Treat controls fallback, visual guard, and PiP exit bounce as three separate chains.
+  - Do not guess a crash root cause from the current capture.
+- Rejected approaches:
+  - broad PiP rollback
+  - bundling all remaining PiP issues into one fix
+  - claiming a crash from this capture without proof
+- Stop point classification:
+  - runtime baseline validation complete; next narrow fixes identified, not started
+- What is done but unverified:
+  - Whether fixing controls fallback + visual guard will also reduce the exit/watch-page instability enough to avoid a separate exit fix.
+- What is verified:
+  - play/pause works
+  - fullscreen-first PiP entry works
+  - next/previous still fail outside playlist/mix contexts
+  - visual guard result path is currently broken
+- External prerequisite:
+  - none before the next code patch
+- Secret required but not stored:
+  - none
+
+## 2026-04-13 19:52:03 +07:00
+
+- Current phase:
+  - Manual PiP direct-entry wiring
+- Current objective:
+  - Stop routing FAB/manual PiP through fullscreen-first flow and let manual PiP enter Android PiP directly, then rely on `recoveryPIP`.
+- Completed since last snapshot:
+  - Read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Performed targeted code reality check on the active manual PiP chain.
+  - Confirmed the real WSL build tree was still using:
+    - `OneTabFabMenuCoordinator -> setFullscreen(webContents)`
+    - `BraveToolbarLayoutImpl -> setFullscreen(currentTab.getWebContents())`
+  - Confirmed the Windows tree contained a partial `enterPictureInPictureDirect(...)` helper while the WSL source-of-truth did not.
+  - Patched manual PiP UI entry points to call `enterPictureInPictureDirect(...)` instead of `setFullscreen(...)`.
+  - Patched `BraveActivity` to add `attemptDirectPictureInPictureForRecovery(...)`.
+  - Patched `FullscreenVideoPictureInPictureController` in the WSL tree to add `attemptDirectPictureInPicture()` with fallback bounds and direct-entry gating.
+  - Changed `onPictureInPictureModeChanged(true, ...)` to keep the visual guard alive long enough for `recoveryPIP` instead of clearing it immediately.
+  - Resynced edited Brave Java files from Windows -> WSL.
+  - Rebuilt from WSL and reinstalled the APK.
+- In progress now:
+  - Waiting for runtime validation of manual direct-entry PiP on device.
+- Blockers / risks:
+  - Direct-entry path is new at the controller layer and still needs runtime validation.
+  - Visual guard timing is intentionally held longer on PiP entry; needs user validation to confirm it improves the direct-entry experience instead of causing a stale guard.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build passed:
+    - `artifacts/android_build/release_build_manual_pip_direct_entry_20260413.log`
+  - APK install succeeded via `adb install -r`.
+  - Package query returned:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-13 19:33:50`
+- Exact next concrete step:
+  - Start a fresh runtime capture.
+  - Reproduce manual PiP from FAB.
+  - Confirm from logs that direct-entry markers fire and PiP enters without the fullscreen-first route.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `OneTabFabMenuCoordinator.java`
+  - `BraveToolbarLayoutImpl.java`
+  - `BraveActivity.java`
+  - `BraveYouTubeScriptInjectorNativeHelper.java`
+  - `FullscreenVideoPictureInPictureController.java`
+  - `artifacts/android_build/release_build_manual_pip_direct_entry_20260413.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl ninja`
+- Exact command(s):
+  - `Select-String ... OneTabFabMenuCoordinator.java -Pattern 'triggerPictureInPictureBeta2Flow|setFullscreen|enterPictureInPicture'`
+  - `Select-String ... BraveToolbarLayoutImpl.java -Pattern 'setFullscreen\\(|enterPictureInPicture\\(|PiP'`
+  - `Select-String ... BraveYouTubeScriptInjectorNativeHelper.java -Pattern 'setFullscreen\\(|enterPictureInPicture\\(|onManualPictureInPictureEntryRequested'`
+  - `Select-String ... BraveActivity.java -Pattern 'attemptPictureInPictureForCurrentVideo|scheduleOneTabPictureInPictureRecovery|setOneTabPictureInPictureRecoveryVisualGuard|onPictureInPictureModeChanged|onManualPictureInPictureEntryRequested'`
+  - `wsl bash -lc "cd /home/master/src_ext4 && rg -n 'attemptPictureInPicture\\(|canDoPictureInPicture|isPictureInPictureAllowedForFullscreenVideo|enterPictureInPictureMode|canStartPipBasedOnRecentTasks' chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java"`
+  - `Copy-Item <Windows file> <WSL file> -Force`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_manual_pip_direct_entry_20260413.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+- Tool purpose:
+  - Replace the manual PiP entry route in the real build tree and deploy the resulting APK.
+- Tool state:
+  - Inspection complete.
+  - Patch complete.
+  - Resync complete.
+  - Build complete.
+  - Install complete.
+  - Runtime verification pending.
+- Expected resume command:
+  - start fresh `adb logcat` capture and manually retest PiP from FAB
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_manual_pip_direct_entry_20260413.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `OneTabFabMenuCoordinator.java` - FAB manual PiP entry
+  - `BraveToolbarLayoutImpl.java` - toolbar manual PiP entry
+  - `BraveActivity.java` - direct PiP orchestration + visual guard
+  - `BraveYouTubeScriptInjectorNativeHelper.java` - Java helper bridge
+  - `FullscreenVideoPictureInPictureController.java` - direct-entry controller method
+  - `release_build_manual_pip_direct_entry_20260413.log` - build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - `BraveActivity.java`
+  - `OneTabFabMenuCoordinator.java`
+  - `FullscreenVideoPictureInPictureController.java`
+  - any fresh PiP runtime capture
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device connected
+  - WSL source tree mounted
+- Expected success signal:
+  - direct-entry markers appear and manual PiP enters Android PiP directly
+- Expected failure signal:
+  - PiP still routes through fullscreen-first flow or never enters PiP
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_manual_pip_direct_entry_20260413.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Treat WSL as the active build source.
+  - Keep the change scoped to manual PiP entry instead of rewriting all PiP paths.
+  - Let `recoveryPIP` remain the stabilization layer after direct entry.
+- Rejected approaches:
+  - preserving fullscreen-first manual PiP
+  - adding more fullscreen retries before PiP
+  - trusting Windows-only code state
+- Stop point classification:
+  - code edited, resynced, built, installed, runtime not yet revalidated
+- What is done but unverified:
+  - actual on-device behavior of direct-entry PiP
+  - visual guard experience during manual direct-entry stabilization
+- What is verified:
+  - source changes exist in the WSL build tree
+  - release build succeeded
+  - APK install succeeded
+- External prerequisite:
+  - Android device for runtime retest
 - Secret required but not stored:
   - none
 
@@ -18226,6 +18587,1382 @@
   - none
 # Progress Log
 
+## 2026-04-18 23:34:04 +07:00
+
+- Current phase: `PiP stabilization: auto-end carry-forward hardening + page-side visual guard helper rewrite`
+- Objective: `Fix the two remaining proven PiP issues in one cautious pass: inconsistent auto-end carry-forward arming and dead page-side visual guard callback path.`
+- Completed since last snapshot:
+  - Re-read [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md) and the latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md).
+  - Re-inspected the real code against [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt).
+  - Explained the two remaining root causes at method level:
+    - `saveCarryForwardVideoPresentation('video_ended')` still depended on per-video observation only, so some later auto-end transitions never armed because their new video elements were not guaranteed to be observed before they ended
+    - page-side visual guard was still executed as a large inline script for every request, and the callback path kept returning `result=none`
+  - Patched [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc):
+    - `saveCarryForwardVideoPresentation(reason, sourceVideo)` now accepts a concrete source video and refuses to arm from a stale/non-current element
+    - `observeVideoLifecycle(candidateVideo)` now accepts an explicit candidate element so newly swapped video nodes can be observed immediately
+    - added capture listeners for `loadstart`, `loadedmetadata`, `playing`, and `ended` to keep auto-end carry-forward arming alive even when later video elements are swapped without the old warm-path assumptions
+    - replaced the page-side visual guard implementation with a persistent helper `window.__onetabtubeSetPipRecoveryVisualGuard(...)`
+    - the helper now applies a simple full-black DOM overlay with mutation-observer reapply, and returns a small synchronous string result
+    - `SetPictureInPictureRecoveryVisualGuard(...)` now calls the installed helper through a tiny sync IIFE instead of reinjecting the large guard body
+  - Synced the patched file to WSL source-of-truth.
+  - Rebuilt `chrome_public_apk`, reinstalled the APK, and re-launched the app.
+  - Verified install metadata:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-18 22:59:11`
+- In progress now:
+  - No code edit is in progress.
+  - Runtime verification of this latest bundle is still pending.
+- Files/modules touched:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build succeeded:
+    - [release_build_pip_autoadvance_guard_final_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_autoadvance_guard_final_20260418.log)
+  - Install succeeded.
+  - Launch command returned `Status: ok`.
+  - Runtime verification: `pending`
+- Blockers/risks:
+  - Latest bundle is not yet proven by a fresh runtime log.
+  - The new carry-forward capture fallback is intentionally narrow to current video elements only and needs runtime proof in the failing auto-end case.
+  - The page-side guard helper is now intentionally simpler and full-black only; runtime proof is still needed that this is sufficient when native guard drops.
+- Exact next concrete step:
+  - Start a fresh runtime capture on the installed build.
+  - Reproduce:
+    - auto-end/new-video in PiP
+    - manual `next_track` in PiP
+  - Verify:
+    - `OTB_PIP event=carry_forward_restore_check result=arm` appears consistently in auto-end transitions
+    - `OTB_PIP event=pip_recovery_visual_guard_result active=1 result=enabled`
+    - `OTB_PIP event=pip_recovery_visual_guard_result active=0 result=disabled`
+    - native guard still logs `full_black=true` while active
+- Expected resume inspection scope:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt)
+  - [release_build_pip_autoadvance_guard_final_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_autoadvance_guard_final_20260418.log)
+- Current tool(s): `shell_command`, `multi_tool_use.parallel`, `apply_patch`
+- Exact command(s):
+  - `rg -n "carry_forward_restore_check|track_navigation_restore_apply|pip_recovery_visual_guard_request|pip_recovery_visual_guard_result|pip_native_visual_guard_apply|native_fullscreen_signal_while_in_pip|pip_recovery_chain_start|pip_recovery_probe|pip_recovery_dispatch|pip_recovery_chain_finish" artifacts/runtime_logs/live_pip_visual_guard_autoadvance_20260418_231032.txt`
+  - `wsl bash -lc "cp /mnt/c/.../youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc"`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_autoadvance_guard_final_20260418.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose: `Patch the two remaining proven PiP root causes without touching fullscreen-first entry or broad PiP routing.`
+- Tool state: `code edited, synced, built, installed; runtime verification pending`
+- Expected resume command:
+  - fresh `adb logcat` capture on the installed build
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory: `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch: `publish/go_play-sync-20260402`
+- Base commit / HEAD seen: `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target: `out/android_Release_arm64_multiabi / chrome_public_apk`
+- Primary working set:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — auto-end carry-forward save/consume and page-side guard helper contract
+  - [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt) — proof of the two remaining root causes
+  - [release_build_pip_autoadvance_guard_final_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_autoadvance_guard_final_20260418.log) — latest build evidence
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [release_build_pip_autoadvance_guard_final_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_autoadvance_guard_final_20260418.log)
+- Command run from: `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - auto-end/new-video now arms carry-forward consistently
+  - page-side guard result stops returning `none`
+- Expected failure signal:
+  - auto-end/new-video still shows `carry_forward_restore_check result=none`
+  - page-side guard still returns `result=none`
+- Last known log location:
+  - [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt)
+- Last known artifact path:
+  - [release_build_pip_autoadvance_guard_final_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_autoadvance_guard_final_20260418.log)
+- Recent decisions:
+  - keep fullscreen-first PiP entry untouched
+  - keep native full-black guard semantics
+  - fix auto-end inconsistency by observing newly swapped video elements earlier
+  - fix page-side guard by moving to an installed helper with a tiny sync call contract
+- Rejected approaches:
+  - direct-entry PiP
+  - broad rollback
+  - patching unrelated PiP routing after the failure was already narrowed to carry-forward plus page-side guard
+- Stop point classification:
+  - code edited, build passed, APK installed, runtime not yet verified
+- What is done but unverified:
+  - capture-phase carry-forward fallback for auto-end
+  - persistent page-side visual guard helper contract
+- What is verified:
+  - latest code compiles
+  - latest APK installs and launches
+  - patch scope stayed inside the two remaining proven root causes
+- External prerequisite: `manual runtime testing on the connected device`
+- Secret required but not stored: `none`
+- Actual code state after resume:
+  - Latest code and installed APK now include the new carry-forward observation path and helper-based page-side visual guard.
+- Chosen direction:
+  - verify this bundle from fresh runtime logs before touching any other PiP layer again
+
+## 2026-04-18 23:13:13 +07:00
+
+- Current phase: `PiP runtime root-cause verification after final stability bundle`
+- Objective: `Use the newest live log to explain why visual guard still leaks on auto-end/new-video while manual next remains comparatively stable, without patching blindly.`
+- Completed since last snapshot:
+  - Started and stopped fresh capture [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt).
+  - Counted and inspected the relevant markers with targeted `rg` queries only.
+  - Proved from the newest runtime log:
+    - auto-end/new-video can now pre-arm on some transitions via `carry_forward_restore_check result=arm` plus `track_navigation_restore_apply reason=carry_forward_primary_main_document`
+    - the same runtime session still shows `carry_forward_restore_check result=none` on later transitions, so auto-end pre-arm remains inconsistent
+    - page-side visual guard remains dead because every `pip_recovery_visual_guard_result` is still `result=none`
+    - native guard is correctly going `full_black=true` while active
+    - the visible leak happens when repeated `native_fullscreen_signal_while_in_pip` recovery generations fail with `active_fullscreen=false`, then native guard is turned off while page-side guard never took over
+  - Confirmed that this is not the old `pip_signal_refresh` path anymore; the new-video path is on the unified recovery chain only.
+- In progress now:
+  - No code edit started.
+  - Current work is to explain the remaining failure at method level before touching any behavior again.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt)
+- Build/test status:
+  - No new build was started in this snapshot.
+  - Analysis used the already-installed latest build from [release_build_pip_final_stability_bundle_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_final_stability_bundle_20260418.log).
+- Blockers/risks:
+  - Auto-end/new-video carry-forward arm is inconsistent across transitions.
+  - Page-side visual guard callback path still never returns a real result.
+  - If recovery chain fails while page-side guard is still dead, native full-black guard is cleared and whole-page leakage becomes visible again.
+- Exact next concrete step:
+  - Re-inspect [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) and related bridge code to explain:
+    - why page-side visual guard still returns `none`
+    - why auto-end carry-forward arms on some transitions but not others
+  - Do not patch until both are explained from code plus log.
+- Expected resume inspection scope:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h)
+  - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc)
+  - [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt)
+- Current tool(s): `shell_command`, `multi_tool_use.parallel`, `apply_patch`
+- Exact command(s):
+  - `adb logcat -c`
+  - `Start-Process adb -ArgumentList 'logcat' -RedirectStandardOutput ... -RedirectStandardError ...`
+  - `Get-Process adb ... ; Stop-Process -Id 3716 -Force`
+  - `rg -n "carry_forward_restore_check|track_navigation_restore_apply|pip_recovery_visual_guard_request|pip_recovery_visual_guard_result|pip_native_visual_guard_apply|native_fullscreen_signal_while_in_pip|pip_recovery_chain_start|pip_recovery_probe|pip_recovery_dispatch|pip_recovery_chain_finish" artifacts/runtime_logs/live_pip_visual_guard_autoadvance_20260418_231032.txt`
+- Tool purpose: `Anchor the remaining visual-guard leak to the newest runtime proof before any more code changes.`
+- Tool state: `analysis complete; no code patch started`
+- Expected resume command:
+  - targeted code inspection commands against current PiP guard and carry-forward implementation
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt`
+- Repo root / working directory: `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch: `publish/go_play-sync-20260402`
+- Base commit / HEAD seen: `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target: `out/android_Release_arm64_multiabi / chrome_public_apk`
+- Primary working set:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — carry-forward arm/save logic and page-side guard callback path
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — native full-black guard lifecycle and recovery-chain clear timing
+  - [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt) — newest proof of inconsistent auto-end arm plus dead page-side guard
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt)
+- Command run from: `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - latest build already installed
+- Expected success signal:
+  - method-level explanation for both remaining failures is available before any patching
+- Expected failure signal:
+  - any attempt to patch before both failures are explained from code and live log
+- Last known log location:
+  - [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt)
+- Last known artifact path:
+  - [release_build_pip_final_stability_bundle_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_final_stability_bundle_20260418.log)
+- Recent decisions:
+  - keep fullscreen-first entry untouched
+  - keep native full-black guard semantics
+  - stop patching blindly; explain the newest failure at method level first
+- Rejected approaches:
+  - direct-entry PiP
+  - broad rollback
+  - guessing from symptoms without using the newest live log
+- Stop point classification:
+  - latest build installed; runtime reproduced; root-cause analysis in progress; no new patch started
+- What is done but unverified:
+  - whether page-side visual guard can return a non-`none` result in the current design
+  - why auto-end carry-forward arms on some transitions but not others
+- What is verified:
+  - new-video path now goes through unified recovery chain only
+  - native visual guard applies `full_black=true`
+  - page-side visual guard still returns `result=none`
+  - auto-end carry-forward arm is inconsistent in the same runtime session
+- External prerequisite: `manual runtime testing on the connected device`
+- Secret required but not stored: `none`
+- Actual code state after resume:
+  - Code still matches the latest installed build; no new edits were made in this snapshot.
+- Chosen direction:
+  - Continue with method-level code inspection before any further behavior change.
+
+## 2026-04-18 22:50:40 +07:00
+
+- Current phase: `PiP final stabilization pass: auto-advance pre-arm + native full-black guard`
+- Current objective: `Fix both remaining proven gaps from the latest runtime log in one cautious pass: missing auto-advance pre-arm and ineffective visual guard during manual next/auto-advance.`
+- Completed since last snapshot:
+  - Stopped the capture process for `live_pip_verify_20260418_224230.txt`.
+  - Re-analyzed [live_pip_verify_20260418_224230.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_verify_20260418_224230.txt) and proved:
+    - manual `next_track` still pre-arms native restore ownership
+    - `carry_forward_restore_check` only showed `result=none`
+    - page-side `pip_recovery_visual_guard_result` still returned `result=none`
+    - native guard was still using punched-hole bounds during manual next, so with page-side guard broken the watch page could leak through
+  - Re-inspected code and found:
+    - `saveCarryForwardVideoPresentation('video_ended')` was disabled in practice because it still sat behind `ENABLE_TRANSITION_PAGE_REVEAL`
+    - page-side visual guard had been converted to a synchronous function while still using `RequestAsyncExecuteScript(..., kAwait, ...)`
+  - Patched [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc):
+    - same-document navigations now also call `MaybeArmTrackNavigationRestoreFromCarryForwardIntent()`
+    - `ended` now always saves carry-forward intent
+    - carry-forward save no longer depends on DOM fullscreen still being present
+    - carry-forward restore arm is gated by real Java-side PiP-sensitive context
+    - carry-forward intent is cleared when consumed
+    - page-side guard script is back on an async-returning contract
+  - Added PiP-sensitive JNI bridge across:
+    - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h)
+    - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc)
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) so native guard always goes full black while active.
+  - Synced Windows edits to WSL source-of-truth via `wsl bash -lc cp ...`.
+  - Rebuilt from WSL with:
+    - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_final_stability_bundle_20260418.log"`
+  - Reinstalled and relaunched:
+    - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+    - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - Verified package metadata:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-18 22:38:59`
+- In progress now:
+  - No code edit in progress.
+  - Runtime verification of the newest bundle is pending.
+- Blockers / risks:
+  - Runtime not yet verified.
+  - If the failing auto-advance case never emits `ended`, carry-forward still will not pre-arm and the next log must prove that explicitly before any further patching.
+  - Native guard is now intentionally full black during active guard windows; UX still needs confirmation from device testing.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.h`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build passed.
+  - Install passed.
+  - Launch passed.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh capture on this build.
+  - Reproduce:
+    - manual `next_track` in PiP
+    - auto-advance/new-video in PiP
+  - Verify:
+    - `carry_forward_restore_check result=arm`
+    - `track_navigation_restore_apply reason=carry_forward_primary_main_document` or `same_document_navigation`
+    - `pip_recovery_visual_guard_result ... result=enabled|waiting_for_video`
+    - `pip_native_visual_guard_apply ... full_black=true`
+- Expected resume inspection scope:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h)
+  - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - `artifacts/android_build/release_build_pip_final_stability_bundle_20260418.log`
+- Current tool(s): `shell_command`, `multi_tool_use.parallel`, `apply_patch`
+- Exact command(s):
+  - `rg -n -C 4 "arm_track_navigation_keepalive|track_navigation_restore_apply|carry_forward_restore_check|pip_recovery_visual_guard_request|pip_recovery_visual_guard_result|recovery_pip_arm_current_video|native_fullscreen_signal_while_in_pip|pip_recovery_chain_start|pip_recovery_probe|pip_recovery_dispatch|pip_recovery_chain_apply|pip_recovery_chain_finish" artifacts/runtime_logs/live_pip_verify_20260418_224230.txt`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_final_stability_bundle_20260418.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - `Fix the two remaining PiP failures from the latest runtime log without changing fullscreen-first entry.`
+- Tool state:
+  - analysis complete
+  - code edited
+  - WSL sync complete
+  - build complete
+  - install complete
+  - runtime verification pending
+- Expected resume command:
+  - start fresh `adb logcat` capture and reproduce manual-next + auto-advance PiP behavior
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory: `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch: `publish/go_play-sync-20260402`
+- Base commit / HEAD seen: `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — carry-forward save/arm and page-side guard callback contract
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — native guard now always full black
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) — JNI PiP-sensitive context query
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+- Command run from: `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree mounted and writable
+- Expected success signal:
+  - carry-forward arm shows up during auto-advance
+  - page-side guard result stops returning `none`
+  - native guard logs `full_black=true` during active guard windows
+- Expected failure signal:
+  - no carry-forward arm marker during auto-advance
+  - page-side guard still returns `result=none`
+  - native guard still punches a hole while active
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_verify_20260418_224230.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_final_stability_bundle_20260418.log`
+- Recent decisions:
+  - keep fullscreen-first entry untouched
+  - stop depending on disabled page-reveal wiring for auto-advance pre-arm
+  - use Java-side PiP-sensitive context as the gate for carry-forward restore
+  - make native guard full black while active for user-visible stability
+- Rejected approaches:
+  - direct-entry PiP
+  - broad rollback
+  - trusting page-side guard alone for the visible mask
+- Stop point classification:
+  - code edited, build passed, APK installed, runtime not yet verified
+- What is done but unverified:
+  - auto-advance ended-based carry-forward save
+  - same-document carry-forward arm
+  - async page-side guard return contract
+  - native full-black guard semantics
+- What is verified:
+  - build compiles
+  - APK installs and launches
+  - previous runtime log matches the root causes this patch targets
+- External prerequisite:
+  - manual runtime testing on the connected device
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 21:33:30 +07:00
+
+- Current phase:
+  - `PiP native-layer visual guard implementation`
+- Task/objective:
+  - Move user-visible PiP visual masking from page DOM ownership to the native Activity/controller layer.
+- Completed since last snapshot:
+  - Re-audited `SetPictureInPictureRecoveryVisualGuard(...)` and confirmed it was DOM-only.
+  - Inspected `FullscreenVideoPictureInPictureController` and confirmed PiP bounds/video presentation are native/controller-owned.
+  - Implemented a native Activity-level PiP guard overlay in [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java).
+  - Implemented a bridge so existing C++ visual-guard requests also notify the Activity layer:
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+    - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h)
+    - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc)
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - Added current-or-last video bounds getter in [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) so native overlay can keep a hole aligned to video bounds instead of masking blindly.
+  - Synced modified Windows files to WSL source-of-truth.
+  - Built successfully from WSL with:
+    - `artifacts/android_build/release_build_pip_native_visual_guard_20260418.log`
+  - Installed the APK successfully and launched the app.
+- In progress now:
+  - No runtime verification yet on the rebuilt native-layer-guard build.
+- Blockers/risks:
+  - The new native overlay has not yet been visually or log-verified on device.
+  - If the overlay container coordinate space differs from the controller bounds in some device state, the hole may still misalign.
+  - The old page-side guard code still exists and may still emit `result=none`; the current hypothesis is that it should no longer be the primary user-visible layer.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.h`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build passed.
+  - APK installed.
+  - App launched.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh `adb logcat` capture and test manual `next/previous`, auto-advance, FAB PiP entry, and PiP exit on the new native-layer guard build.
+- Expected resume inspection scope:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `artifacts/android_build/release_build_pip_native_visual_guard_20260418.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `wsl bash -lc "cp ... && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_native_visual_guard_20260418.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose:
+  - Implement and deploy the native-layer visual guard without changing fullscreen-first PiP entry.
+- Tool state:
+  - code edit completed
+  - build completed
+  - install completed
+  - runtime verification pending
+- Expected resume command:
+  - start fresh runtime capture with `adb logcat`, then manually reproduce PiP flows
+- Expected output/artifact path:
+  - next runtime log should be written to `artifacts/runtime_logs/`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) - native PiP guard overlay
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) - Java callback bridge
+  - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h) - native helper contract
+  - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc) - JNI callback wiring
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) - current guard request owner
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) - current/last bounds source
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - `artifacts/android_build/release_build_pip_native_visual_guard_20260418.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device connected
+  - WSL source tree available
+- Expected success signal:
+  - native guard visually masks page leakage while leaving video visible through the video-bounds hole
+- Expected failure signal:
+  - PiP still shows layered page leakage or the guard hides the video itself
+- Last known log location:
+  - previous runtime reference: `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_visual_guard_20260418.log`
+- Recent decisions:
+  - Keep fullscreen-first PiP unchanged.
+  - Move user-visible masking to native Activity layer.
+  - Reuse the existing guard requests instead of inventing a second trigger system.
+- Rejected approaches:
+  - further DOM-only guard patching
+  - broad rollback
+  - direct-entry PiP
+- Stop point classification:
+  - code edited, build passed, APK installed, runtime not yet tested
+- What is done but unverified:
+  - native guard behavior in real PiP flows
+- What is verified:
+  - code compiles
+  - APK installs
+  - app launches
+- External prerequisite:
+  - manual device-side PiP verification
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 21:25:00 +07:00
+
+- Current phase:
+  - `PiP visual-guard layer analysis`
+- Current objective:
+  - Determine whether the remaining visual-guard failure is just a page-side callback bug or a wrong-layer ownership problem.
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest progress entry before continuing.
+  - Re-inspected `SetPictureInPictureRecoveryVisualGuard(...)` in [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc).
+  - Re-inspected `refreshPictureInPictureParamsForCurrentVideo()` and `pip_signal_refresh_*` in [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java).
+  - Re-correlated those code paths with `SurfaceView`, `VideoPersist`, and `pip_recovery_visual_guard_*` markers in [live_pip_visual_guard_verify_20260418_210639.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt).
+- In progress now:
+  - No code change in progress.
+  - Current work is reporting the layer-ownership finding back to the user.
+- Blockers/risks:
+  - The current visual guard is page-side only, but the visible PiP/video presentation problem appears to be owned by native `SurfaceView`/compositor layers.
+  - Continuing to patch DOM guard behavior without proving native ownership first risks repeating the same wrong-layer mistake.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new build started.
+  - Installed build remains:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-18 20:16:27`
+- Exact next concrete step:
+  - If continuing later, inspect native/compositor backdrop ownership around PiP/fullscreen presentation before editing visual guard again.
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/runtime_logs/live_pip_visual_guard_verify_20260418_210639.txt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path docs/current-status.md -TotalCount 200`
+  - `Get-Content -Path docs/progress-log.md -Tail 120`
+  - `rg -n "SetPictureInPictureRecoveryVisualGuard|pip_recovery_visual_guard|refreshPictureInPictureParamsForCurrentVideo|pip_signal_refresh|enterPictureInPicture|SurfaceView|VideoPersist" browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc android/java/org/chromium/chrome/browser/app/BraveActivity.java artifacts/runtime_logs/live_pip_visual_guard_verify_20260418_210639.txt`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -Index (5258..5488)`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Index (3660..3920)`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -First 95`
+- Tool purpose:
+  - Prove which layer currently owns visual guard and which layer owns visible PiP video presentation.
+- Tool state:
+  - analysis completed
+  - no edit/build/test running
+- Expected resume command:
+  - targeted `rg` / `Get-Content` on the files above
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) - DOM-layer visual guard
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h) - visual-guard state
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) - native/controller PiP refresh orchestration
+  - [live_pip_visual_guard_verify_20260418_210639.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt) - runtime evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [live_pip_visual_guard_verify_20260418_210639.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none beyond current source tree and captured log
+- Expected success signal:
+  - future work starts from the correct layer owner instead of patching the DOM guard blindly
+- Expected failure signal:
+  - editing page-side visual guard again without proving native/compositor ownership
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_visual_guard_stabilize_20260418.log`
+- Recent decisions:
+  - Keep fullscreen-first PiP unchanged.
+  - Treat the remaining issue as likely wrong-layer ownership, not Java chain collapse.
+- Rejected approaches:
+  - patching the DOM guard again before proving ownership
+  - claiming the callback bug alone explains the user-visible PiP problem
+- Stop point classification:
+  - analysis complete; reporting-only stop point
+- What is done but unverified:
+  - none
+- What is verified:
+  - DOM visual guard exists and runs in the page main frame
+  - PiP/video bounds are controlled by native/controller code
+  - latest runtime round still shows `pip_recovery_visual_guard_result ... result=none`
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 18:26:43 +07:00
+
+- Current phase: `PiP runtime-chain hardening after baseline/source-of-truth audit`
+- Current objective: `Fix the proven recoveryPIP timing bug without restoring or rewriting the fullscreen-first PiP baseline.`
+- Completed since last update:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before touching code.
+  - Re-checked `BraveActivity.java` against `artifacts/runtime_logs/live_pip_verify_20260418_162738.txt`.
+  - Confirmed from log that the existing chain was:
+    - `pip_recovery_dispatch`
+    - then `pip_recovery_finalize_wait` and `pip_recovery_apply` while `active_fullscreen=false` but `pip_available=true`
+    - then `refreshPictureInPictureParamsForCurrentVideo: skip without active fullscreen video`
+  - Patched `android/java/org/chromium/chrome/browser/app/BraveActivity.java` so dispatched recovery waits for `activeFullscreen` before settling/applying on the recovery path.
+  - Synced the patched `BraveActivity.java` from Windows to the WSL source-of-truth tree.
+  - Rebuilt from WSL successfully:
+    - `artifacts/android_build/release_build_pip_recovery_activefullscreen_gate_20260418.log`
+  - Installed the rebuilt APK successfully.
+  - Relaunched the app successfully.
+- In progress now:
+  - Waiting for fresh runtime verification on the rebuilt package.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build passed.
+  - Install passed.
+  - Launch passed.
+  - Runtime verification pending.
+- Blockers/risks:
+  - This patch has not yet been verified with a fresh PiP auto-advance/on-resume repro.
+  - `youtube_script_injector_tab_helper.cc` visual-guard callback still logs `result=none` in earlier captures; that file was intentionally left unchanged in this step.
+  - Build still emits the long-standing non-fatal JNI assertion around `components/module_installer/.../Module.java`.
+- Exact next concrete step:
+  - Start a fresh PiP capture on the installed build.
+  - Reproduce the same `recoveryPIP` path.
+  - Confirm from log that:
+    - `pip_recovery_finalize_wait` no longer settles on `pip_available=true` alone
+    - `pip_recovery_apply` no longer runs before `active_fullscreen=true`
+    - `skip without active fullscreen video` is reduced or gone on the same chain
+- Expected resume inspection scope:
+  - `docs/pip-baseline-source-of-truth.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/runtime_logs/live_pip_verify_20260418_162738.txt`
+  - `artifacts/android_build/release_build_pip_recovery_activefullscreen_gate_20260418.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 80`
+  - `git status --short`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 3700 -First 260`
+  - `Select-String -Path artifacts/runtime_logs/live_pip_verify_20260418_162738.txt -Pattern 'pip_recovery_dispatch|pip_recovery_finalize_wait|pip_recovery_apply|skip without active fullscreen video|media_effectively_fullscreen_changed' -Context 0,2`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -Skip 5230 -First 180`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_recovery_activefullscreen_gate_20260418.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose:
+  - Patch only the proven Java-side recovery timing bug and rebuild/install the real WSL-backed APK.
+- Tool state:
+  - Code edit complete.
+  - WSL sync complete.
+  - Build complete.
+  - Install complete.
+  - Launch complete.
+  - Fresh runtime verification not started yet.
+- Expected resume command:
+  - Start fresh `adb logcat`, reproduce PiP recovery, and inspect the same recovery markers before any new edit.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_recovery_activefullscreen_gate_20260418.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — recoveryPIP timing fix
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — visual-guard request/result comparison target
+  - `docs/pip-baseline-source-of-truth.md` — baseline/restore boundary
+  - `artifacts/runtime_logs/live_pip_verify_20260418_162738.txt` — proof log for the old bug
+  - `artifacts/android_build/release_build_pip_recovery_activefullscreen_gate_20260418.log` — build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/runtime_logs/live_pip_verify_20260418_162738.txt`
+  - `artifacts/android_build/release_build_pip_recovery_activefullscreen_gate_20260418.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL source tree available at `/home/master/src_ext4`
+  - connected Android device available to `adb`
+- Expected success signal:
+  - Recovery no longer clears guard or applies refresh before `active_fullscreen=true`.
+- Expected failure signal:
+  - New runtime log still shows `pip_recovery_apply ... active_fullscreen=false pip_available=true` followed by `skip without active fullscreen video.`
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_verify_20260418_162738.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_recovery_activefullscreen_gate_20260418.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Do not restore or rollback any PiP file.
+  - Keep fullscreen-first PiP entry untouched.
+  - Fix only the proven Java-side recovery timing bug.
+  - Use `activeFullscreen` as the settle/apply gate for recovery, not `pipAvailable`.
+- Rejected approaches:
+  - broad rollback
+  - direct-entry PiP
+  - removing `recoveryPIP`
+  - editing the page-side visual-guard implementation before proving the Java timing fix
+- Stop point classification:
+  - code edited, built, installed, and launched; runtime verification pending
+- What is done but unverified:
+  - Whether the patched recovery chain fully stabilizes PiP on-device
+- What is verified:
+  - The old runtime log proves the premature settle/apply bug existed.
+  - The new code now separates `recoveryDispatched` from `requireActiveFullscreen`.
+  - The rebuilt APK was produced from the WSL source-of-truth tree.
+  - The rebuilt APK is installed and launches.
+- External prerequisite:
+  - device-side PiP repro on the rebuilt package
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 20:16:44 +07:00
+
+- Current phase:
+  - `PiP signal-driven refresh hardening`
+- Task/objective:
+  - Stop treating `native_fullscreen_signal_while_in_pip` as “start recovery probes first”.
+  - Use the watch-page/native video signal to drive direct PiP params refresh retries first, while keeping fullscreen-first entry unchanged.
+- Completed since last snapshot:
+  - Re-read the actual Java/native PiP chain in:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - Verified from controller code that [refreshPictureInPictureParamsForCurrentVideo()](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) refuses to apply PiP params without `hasActiveEffectivelyFullscreenVideo()`.
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - added `mPictureInPictureSignalRefreshInFlight`
+    - added `mPictureInPictureSignalRefreshGeneration`
+    - added `mPictureInPictureSignalRefreshBaseReason`
+    - `onNativeFullscreenSignalWhileInPictureInPicture(...)` now cancels the active recovery chain and starts `schedulePictureInPictureSignalRefresh(...)`
+    - added direct signal refresh retries with logs:
+      - `pip_signal_refresh_start`
+      - `pip_signal_refresh_attempt`
+      - `pip_signal_refresh_apply`
+      - `pip_signal_refresh_finish`
+      - `pip_signal_refresh_cancel`
+      - `pip_signal_refresh_skip`
+    - refocus/recovery now skip while signal refresh is active
+    - PiP exit cancels signal refresh too
+  - Synced the patched Windows file into the WSL source-of-truth tree.
+  - Rebuilt successfully from WSL:
+    - [release_build_pip_signal_direct_refresh_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_signal_direct_refresh_20260418.log)
+  - Installed successfully.
+  - Relaunched successfully.
+- In progress now:
+  - `Runtime verification of the signal-driven build is pending.`
+- Blockers / risks:
+  - No on-device proof yet that `pip_signal_refresh_apply` beats `pip_recovery_dispatch` on the auto-advance case.
+  - `visual guard` page-side behavior is unchanged in this round, so if the guard still leaks after focus is restored, the next scope should stay page-side.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build passed via [release_build_pip_signal_direct_refresh_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_signal_direct_refresh_20260418.log)
+  - Install passed
+  - Launch passed
+  - Runtime verification pending
+- Exact next concrete step:
+  - Start a fresh PiP capture on the rebuilt package.
+  - Reproduce the auto-advance / focus-loss case.
+  - Verify whether:
+    - `pip_signal_refresh_start` fires from `native_fullscreen_signal_while_in_pip`
+    - `pip_signal_refresh_apply` appears before any `pip_recovery_dispatch`
+    - `pip_signal_refresh_finish ... success=true` occurs when the new watch-page video becomes active
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [release_build_pip_signal_direct_refresh_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_signal_direct_refresh_20260418.log)
+- Current tool(s): `shell_command`, `multi_tool_use.parallel`, `apply_patch`
+- Exact command(s):
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 3670 -First 360`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_signal_direct_refresh_20260418.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+- Tool purpose:
+  - `Turn watch-page/native fullscreen signal into the first-class owner of PiP param refresh during auto-advance, instead of routing that signal into the recovery chain first.`
+- Tool state:
+  - code edited
+  - WSL sync complete
+  - build complete
+  - install complete
+  - launch complete
+  - runtime verify pending
+- Expected resume command:
+  - start fresh `adb logcat`
+  - reproduce PiP auto-advance / focus-loss
+  - inspect for `pip_signal_refresh_*`, `pip_recovery_dispatch`, `pip_recovery_visual_guard_result`, `media_effectively_fullscreen_changed`
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — direct signal-driven PiP apply ownership
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) — fullscreen-first entry + native signal callback
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — page-side visual guard / fullscreen signal
+- Files to inspect first after resume:
+  - [current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - latest runtime log
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - WSL build tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - `pip_signal_refresh_apply` appears on auto-advance
+  - `pip_recovery_dispatch` is no longer first responder for the same incident
+- Expected failure signal:
+  - `pip_signal_refresh_finish ... success=false`
+  - no `pip_signal_refresh_apply`
+  - auto-advance still depends on `pip_recovery_dispatch`
+- Last known log location:
+  - [live_pip_recovery_verify_20260418_184135.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_verify_20260418_184135.txt)
+- Last known artifact path:
+  - [release_build_pip_signal_direct_refresh_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_signal_direct_refresh_20260418.log)
+- Recent decisions:
+  - keep fullscreen-first entry
+  - keep `recoveryPIP` as fallback
+  - move auto-advance/watch-page signal ownership out of the recovery chain
+- Rejected approaches:
+  - direct-entry PiP
+  - broad rollback
+  - removing `recoveryPIP`
+  - guessing baseline restore scope
+- Stop point classification:
+  - build passed and APK installed, but runtime verification of the signal-driven direct refresh patch has not yet been performed
+- What is done but unverified:
+  - direct signal refresh chain for `native_fullscreen_signal_while_in_pip`
+  - refocus/recovery skip behavior while signal refresh is active
+- What is verified:
+  - pre-patch code routed `native_fullscreen_signal_while_in_pip` into recovery probes/dispatch
+  - controller PiP params refresh requires `hasActiveEffectivelyFullscreenVideo()`
+  - new build compiled and installed successfully
+- External prerequisite:
+  - device-side PiP auto-advance repro on the rebuilt package
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 16:23:17 +07:00
+
+- Current phase:
+  - `PiP baseline restoration from pre-15:43 evidence`
+- Current objective:
+  - Patch only the two remaining PiP regressions proven by the fresh baseline capture:
+    - `next/previous` failing with `reason="reliable-link-unavailable"`
+    - visual guard returning `non_string_result`
+- Completed since last snapshot:
+  - Re-read `artifacts/runtime_logs/live_pip_baseline_verify_20260418_153347.txt` and kept scope locked to the two proven chains only.
+  - Patched `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`:
+    - added `hasReliablePlaylistLikeContext()`
+    - allowed reliable href fallback from cached/current playlist-like context
+    - kept the fallback narrow so it still stays tied to playlist/mix semantics instead of arbitrary related-video navigation
+  - Patched `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`:
+    - visual-guard JS now returns structured `{result: ...}` values
+    - C++ callback now unwraps real results through the branch’s `base::Value` API instead of hard-falling to `non_string_result`
+  - Synced the edited files from Windows -> WSL source-of-truth and verified hashes match.
+  - Rebuilt `android_Release_arm64_multiabi` successfully with:
+    - `artifacts/android_build/release_build_pip_controls_visual_guard_20260418.log`
+  - Installed the rebuilt APK and relaunched the app.
+- In progress now:
+  - Waiting for one fresh runtime verification on the newly installed build.
+- Blockers/risks:
+  - The new fixes are compiled and installed, but not runtime-verified yet.
+  - PiP exit/watch-page bounce still exists as a separate suspected issue, but this round intentionally did not touch it.
+  - Repo still has many unrelated working-tree changes, so broad rollback remains unsafe.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build passed:
+    - `artifacts/android_build/release_build_pip_controls_visual_guard_20260418.log`
+  - Install passed.
+  - App launch passed.
+  - Runtime verification on the new build is still pending.
+- Exact next concrete step:
+  - Start a fresh `adb logcat` capture on this new build and verify:
+    - `next/previous` in notification and PiP
+    - visual guard result markers (`enabled/disabled/missing/error:*`)
+  - Only after that, decide whether PiP exit/watch-page bounce still needs its own pass.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/android_build/release_build_pip_controls_visual_guard_20260418.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `Select-String -Path artifacts/runtime_logs/live_pip_baseline_verify_20260418_153347.txt -Pattern 'reliable-link-unavailable|playlist-panel-navigation|pip_recovery_visual_guard_result'`
+  - `Copy-Item ... youtube_native_tab_bridge.cc -> \\wsl.localhost\Ubuntu\home\master\src_ext4\...`
+  - `Copy-Item ... youtube_script_injector_tab_helper.cc -> \\wsl.localhost\Ubuntu\home\master\src_ext4\...`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_controls_visual_guard_20260418.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+- Tool purpose:
+  - Rebuild only the proven PiP fixes from the WSL source-of-truth and reinstall the APK without touching unrelated PiP paths.
+- Tool state:
+  - Patch complete.
+  - WSL sync complete.
+  - Rebuild complete.
+  - Install complete.
+  - Runtime verification pending.
+- Expected resume command:
+  - Start a fresh PiP validation capture on the new build.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_controls_visual_guard_20260418.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` — next/previous fallback reliability
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — visual-guard result handling
+  - `artifacts/runtime_logs/live_pip_baseline_verify_20260418_153347.txt` — baseline runtime proof
+  - `artifacts/android_build/release_build_pip_controls_visual_guard_20260418.log` — rebuild evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/android_build/release_build_pip_controls_visual_guard_20260418.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Connected Android device for runtime verification
+  - WSL source tree available at `/home/master/src_ext4`
+  - Keep fullscreen-first PiP entry and `recoveryPIP` intact
+- Expected success signal:
+  - notification/PiP `next/previous` succeed on the intended playlist/mix semantics, and visual guard logs real string results instead of `non_string_result`
+- Expected failure signal:
+  - `next/previous` still report `reliable-link-unavailable`, or visual guard still reports `non_string_result`
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_controls_visual_guard_20260418.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep fullscreen-first entry.
+  - Keep `recoveryPIP`.
+  - Fix only the two log-proven chains before touching PiP exit/watch-page bounce.
+- Rejected approaches:
+  - direct-entry PiP
+  - removing `recoveryPIP`
+  - broad rollback
+  - guessing crash/bounce root cause from the old capture
+- Stop point classification:
+  - code edited, rebuilt, installed; runtime verification on the new build not started yet
+- What is done but unverified:
+  - Whether the new bridge fallback restores `next/previous`
+  - Whether the new visual-guard result parsing fixes the leak markers
+- What is verified:
+  - WSL hashes match the edited Windows files
+  - build reached `chrome_public_apk__create`
+  - APK install and launch succeeded
+- External prerequisite:
+  - Android device repro for PiP/notification controls and visual guard
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 01:08:00 +07:00
+
+- Current phase:
+  - PiP baseline restoration from pre-15:43 evidence
+- Objective:
+  - Resume the baseline restore carefully and reconcile handoff with actual code state before restoring only the pre-15:43 PiP behavior that is proven by logs/build artifacts.
+- Completed since previous snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entries.
+  - Verified the latest recorded status is stale for the current restore task.
+  - Inspected actual source in:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - Verified from source that the current repo no longer contains the pre-15:43 Java-side `recoveryPIP` markers:
+    - `event=pip_recovery_probe`
+    - `event=pip_recovery_dispatch`
+    - `event=pip_recovery_finalize_wait`
+  - Verified from source that the current repo no longer contains the pre-15:43 page-side `recoveryPIP` markers:
+    - `OTB_PIP event=recovery_pip_arm_current_video`
+    - `OTB_PIP event=pip_recovery_visual_guard_request`
+    - `OTB_PIP event=pip_recovery_visual_guard_result`
+  - Verified from runtime evidence that these markers definitely existed before `15:43`:
+    - `artifacts/runtime_logs/live_pip_recovery_chain_20260413_151028.txt`
+    - `artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt`
+  - Confirmed current manual PiP callers are already back on fullscreen-first:
+    - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - Confirmed current WSL `FullscreenVideoPictureInPictureController.java` is missing `refreshPictureInPictureParamsForCurrentVideo()`, while current `BraveActivity.java` still calls it.
+  - Confirmed there is an existing patch artifact for the needed WSL controller behavior:
+    - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+  - Updated `docs/current-status.md` to match the actual restore scope and code reality.
+- In progress now:
+  - Preparing to restore the pre-15:43 PiP baseline in evidence-backed order:
+    1. WSL controller patch
+    2. Java-side `recoveryPIP` orchestration
+    3. page-side `recoveryPIP` / visual-guard behavior
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No build run yet in this restore step.
+  - Current code is not yet ready for a clean baseline build because the WSL controller and current Java caller contract are mismatched.
+- Blockers/risks:
+  - The latest stale handoff focused on a later visual-guard patch and would have sent resume work down the wrong path.
+  - The baseline cannot be restored by naive rollback because pre-15:43 `recoveryPIP` code has already been removed from current source.
+  - We must not infer behavior outside the evidence set.
+- Next concrete step:
+  - Apply the controller patch artifact to the WSL source tree.
+  - Then restore Java-side `recoveryPIP` orchestration in `BraveActivity.java` using only the proven runtime sequence.
+- Expected resume inspection scope:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+  - `artifacts/runtime_logs/live_pip_recovery_chain_20260413_151028.txt`
+  - `artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 260`
+  - `git status --short`
+  - `git rev-parse --abbrev-ref HEAD; git rev-parse HEAD`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 3560 -First 420`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -Skip 5060 -First 320`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h | Select-Object -First 220`
+  - `Get-Content android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java | Select-Object -First 220`
+  - `Get-Content browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc | Select-Object -First 260`
+  - `Get-Content \\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java | Select-Object -First 340`
+  - `Get-Content patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch | Select-Object -First 340`
+  - `Get-Content artifacts/runtime_logs/live_pip_recovery_chain_20260413_151028.txt | Select-Object -Skip 155880 -First 120`
+  - `Get-Content artifacts/runtime_logs/live_pip_recovery_chain_20260413_151028.txt | Select-Object -Skip 237700 -First 80`
+  - `Get-Content artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt | Select-Object -Skip 67050 -First 110`
+- Tool purpose:
+  - Establish a non-guessing, evidence-backed baseline restore path.
+- Tool state:
+  - Inspection complete.
+  - Documentation reconciled.
+  - Code restoration not started yet.
+- Expected resume command:
+  - patch WSL `FullscreenVideoPictureInPictureController.java`, then inspect/patch `BraveActivity.java`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+  - `artifacts/runtime_logs/live_pip_recovery_chain_20260413_151028.txt`
+  - `artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - Baseline restoration starts from proven controller/Java/page-side behavior rather than stale handoff assumptions.
+- Expected failure signal:
+  - Any step requires guessing logic or deleting `recoveryPIP`.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_chain_20260413_151028.txt`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_pause_20260413_195859.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_recovery_helper_20260413.log`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_recovery_only_visual_guard_20260413.log`
+- Recent decisions:
+  - Use pre-15:43 evidence only.
+  - Keep fullscreen-first manual PiP.
+  - Keep `recoveryPIP`.
+- Rejected approaches:
+  - broad PiP rollback
+  - relying on stale 20:42 status
+  - guessing missing `recoveryPIP` structure without evidence
+- Stop point classification:
+  - handoff reconciled; targeted baseline restoration is the next micro-step
+- What is done but unverified:
+  - none yet
+- What is verified:
+  - current source is missing proven pre-15:43 PiP recovery behavior
+  - current WSL controller is behind current Java caller expectations
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+## 2026-04-13 20:15:35 +07:00
+
+- Current phase: `PiP route rollback to fullscreen-first`
+- Objective: `Undo the manual direct-entry PiP route and restore the old fullscreen-first manual PiP chain because direct-entry destabilized the PiP system.`
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry.
+  - Took the user-directed product decision as source of truth:
+    - direct-entry PiP was breaking PiP system behavior broadly
+    - helper `recoveryPIP` should go back to the old fullscreen-first entry path
+  - Inspected all current `enterPictureInPictureDirect(...)` call sites and confirmed the central helper route was the narrowest rollback point.
+  - Patched [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) so:
+    - `enterPictureInPictureDirect(...)` no longer attempts direct PiP
+    - it now logs `rerouted_to_fullscreen`
+    - and delegates directly back to `setFullscreen(webContents)`
+  - Synced the helper file Windows -> WSL source-of-truth.
+  - Rebuilt from WSL:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_fullscreen_first_restore_20260413.log`
+  - Reinstalled successfully:
+    - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - Brought the app back to foreground successfully.
+- In progress now:
+  - Waiting for runtime verification that manual PiP now follows fullscreen-first again.
+- Blockers / risks:
+  - `BraveActivity.java` still contains dormant direct-entry/light-stabilization code from the abandoned branch of work.
+  - Runtime verification is still needed before we can claim the old PiP behavior is truly restored.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release build passed.
+  - Install passed.
+  - App relaunch passed.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh runtime capture.
+  - Press manual PiP from FAB/toolbar.
+  - Confirm log shows the restored fullscreen-first route and successful PiP entry.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `artifacts/android_build/release_build_pip_fullscreen_first_restore_20260413.log`
+  - next fresh runtime capture
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl ninja`
+- Exact command(s):
+  - `rg -n "enterPictureInPictureDirect|attemptDirectPictureInPictureForRecovery|mOneTabManualDirectPictureInPictureStabilization|scheduleOneTabPictureInPictureLightStabilization|applyOneTabPictureInPictureLightStabilization|OTB_PIP_MANUAL_DIRECT_STABILIZATION_WINDOW_MS" android`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java"`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_fullscreen_first_restore_20260413.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+- Tool purpose:
+  - Restore the previous fullscreen-first manual PiP route with the least-risk patch.
+- Tool state:
+  - Patch complete.
+  - Sync complete.
+  - Build complete.
+  - Install complete.
+  - Runtime verification pending.
+- Expected resume command:
+  - start fresh `adb logcat` capture and verify fullscreen-first PiP chain
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_fullscreen_first_restore_20260413.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - restored fullscreen-first helper route
+  - `artifacts/android_build/release_build_pip_fullscreen_first_restore_20260413.log` - build proof
+  - `artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt` - evidence that motivated the rollback
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - next fresh runtime capture
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Connected Android device
+- Expected success signal:
+  - manual PiP again uses the old fullscreen-first route and enters PiP successfully
+- Expected failure signal:
+  - PiP is still broken even after the helper route is restored
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_pause_20260413_195859.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Stop pursuing direct-entry PiP for now.
+  - Roll back at the helper entry point instead of ripping out all direct-entry support code in one pass.
+- Rejected approaches:
+  - keeping direct-entry active after the user reported system-wide PiP instability
+  - doing a large multi-file cleanup before restoring the known-good entry route
+- Stop point classification:
+  - `rollback patch applied, built, installed; runtime verification pending`
+- What is done but unverified:
+  - actual runtime behavior of the restored fullscreen-first route
+- What is verified:
+  - helper route is restored in source
+  - WSL build passed
+  - APK reinstalled
+- External prerequisite:
+  - manual runtime repro on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-13 20:03:15 +07:00
+
+- Current phase: `Manual direct PiP runtime validation`
+- Objective: `Use live log evidence to determine whether direct PiP entry or recoveryPIP is causing playback to stop after manual PiP entry.`
+- Completed since last snapshot:
+  - Started fresh capture:
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_pause_20260413_195859.txt`
+    - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_pause_20260413_195859.err.txt`
+  - Stopped the live capture after repro.
+  - Analyzed the runtime chain from the fresh log.
+  - Confirmed direct PiP entry succeeds:
+    - `enterPictureInPictureDirect ...`
+    - `Attempted direct picture-in-picture with result: success`
+    - `Entered Picture-in-picture.`
+    - `event=pip_direct_entry_result entered=true`
+  - Confirmed playback stays alive through direct entry and only drops after `recoveryPIP` escalates:
+    - `event=pip_recovery_probe ... probe2`
+    - `OTB_PIP event=recovery_pip_arm_current_video`
+    - `OTB_PIP event=track_navigation_restore_apply reason=recovery_pip`
+    - `OTB_PIP event=media_effectively_fullscreen_changed fullscreen=1 requested=1`
+    - `OTB_PIP event=fullscreen_script_complete result=fullscreen_triggered`
+    - `MediaLogger isPlaying[true] -> isPlaying[false]` immediately after
+- In progress now:
+  - Preparing the next code change so manual direct-entry PiP uses a lighter stabilization path before any heavy fullscreen-style recovery.
+- Blockers / risks:
+  - Heavy recovery is still needed for some unlock/track-change PiP cases, so we should not remove it globally.
+  - The next change needs to scope lighter recovery to manual direct-entry only, or at least gate escalation by entry reason and short settle failure.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - inspected runtime artifact:
+    - `artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt`
+- Build/test status:
+  - No new code patch in this snapshot.
+  - Existing installed build remained under test.
+  - Runtime validation succeeded in narrowing the defect.
+- Exact next concrete step:
+  - Patch `BraveActivity` recovery orchestration so manual direct-entry PiP first runs a lightweight finalize/refresh path and only falls back to `recoverPictureInPictureFocus(...)` / `recovery_pip_arm_current_video` if stabilization fails after a short settle window.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `Get-Process adb -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,StartTime,Path`
+  - `Stop-Process -Id 24412 -Force -ErrorAction SilentlyContinue`
+  - `rg -n "pip_recovery_probe|pip_recovery_dispatch|recovery_pip_arm_current_video|track_navigation_restore_apply|enterPictureInPictureDirect|pip_direct_entry_result|Entered Picture-in-picture|media_effectively_fullscreen_changed|fullscreen_script_complete|isPlaying\\[" artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt`
+  - `Get-Content artifacts\\runtime_logs\\live_pip_recovery_pause_20260413_195859.txt | Select-Object -Skip 65590 -First 340`
+- Tool purpose:
+  - Stop the live capture, inspect the real runtime chain, and identify the exact point where playback begins to drop.
+- Tool state:
+  - Live capture stopped.
+  - Runtime log analyzed.
+  - Root cause narrowed to heavy `recoveryPIP` escalation after direct PiP entry.
+- Expected resume command:
+  - inspect and patch `BraveActivity.java` recovery reason handling
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_pause_20260413_195859.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - recovery orchestration and escalation path
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - manual direct-entry helper bridge
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` - direct entry controller
+  - `artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt` - proof of the current defect
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `artifacts/runtime_logs/live_pip_recovery_pause_20260413_195859.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Connected Android device
+  - Installed build from `release_build_manual_pip_direct_entry_20260413.log`
+- Expected success signal:
+  - future live log should show manual direct PiP entering successfully without immediate playback drop after recovery markers
+- Expected failure signal:
+  - `isPlaying[false]` still begins immediately after `pip_recovery_dispatch` and `recovery_pip_arm_current_video`
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_pause_20260413_195859.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Trust live runtime evidence over assumptions about PiP entry.
+  - Keep direct PiP entry; adjust recovery behavior instead.
+- Rejected approaches:
+  - blaming direct PiP entry itself
+  - reverting back to fullscreen-first manual PiP
+- Stop point classification:
+  - `runtime verified; next patch not started`
+- What is done but unverified:
+  - a lighter manual-entry recovery path
+- What is verified:
+  - direct PiP entry works
+  - playback drop begins after heavy recovery escalation
+- External prerequisite:
+  - Android device for retest after the next patch
+- Secret required but not stored:
+  - none
+
 ## 2026-04-05 16:27:49 +07:00
 - Current phase:
   - Phase 2 / product flavor and branding
@@ -29360,5 +31097,2208 @@
   - installed app remains `429000009 / 1.90.3`
 - External prerequisite:
   - user repro on device
+- Secret required but not stored:
+  - none
+# Progress Log
+
+## 2026-04-13 20:41:53 +07:00
+
+- Current phase:
+  - PiP regression triage after the combined three-bottleneck cleanup
+- Objective:
+  - Re-check the user's timeline against actual code, identify whether the earlier three-bottleneck round touched the old fullscreen-first PiP chain, and fix only that coupling with minimal impact to the performance work.
+- Completed since previous snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Stopped assuming the later manual direct-entry PiP experiment was the original root cause.
+  - Performed targeted code inspection on the three-bottleneck working set:
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - Compared that code with the old manual PiP entry chain and the failing runtime evidence:
+    - `artifacts/runtime_logs/live_pip_fresh_20260413_191913.txt`
+  - Confirmed the strongest code-level PiP regression candidate from the three-bottleneck round lives in:
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Specifically confirmed `InjectCoreYouTubeHelpers(...)` had been changed to run:
+    - `media_session_bridge`
+    - `background_playback`
+    - `kYoutubePictureInPictureSupport`
+    in one combined `ExecuteJavaScript(...)` blob.
+  - Determined this is the only part of the three-bottleneck round that directly ties the fullscreen-first PiP path to unrelated performance/helper scripts, because the manual PiP route still depends on `one_tab_pip` being installed reliably before Java checks `pipAllowed`.
+  - Patched `InjectCoreYouTubeHelpers(...)` so the core helpers are injected independently again:
+    - `media_session_bridge`
+    - `background_playback`
+    - `one_tab_pip`
+    while keeping the other bottleneck optimizations intact.
+  - Synced the edited file from Windows -> WSL and verified SHA-256 parity:
+    - repo file hash = `D7CFF1C3E01DEEF542D1C49AC106084B514BFAA157E9599F794358EB9FB7F24F`
+    - WSL file hash = `D7CFF1C3E01DEEF542D1C49AC106084B514BFAA157E9599F794358EB9FB7F24F`
+  - Rebuilt from WSL successfully:
+    - `artifacts/android_build/release_build_pip_core_helper_split_20260413.log`
+  - Reinstalled successfully and relaunched the app.
+  - Verified package state after install:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-13 20:21:01`
+- In progress now:
+  - Waiting for runtime verification on the helper-split build.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - `adb install -r` passed.
+  - App launch passed.
+  - Runtime verification pending.
+- Blockers/risks:
+  - The helper split is the strongest code-level candidate from the three-bottleneck round, but still needs runtime proof.
+  - Some later direct-entry support code remains dormant in `BraveActivity.java`, but this round did not touch it.
+- Next concrete step:
+  - Start a fresh runtime capture.
+  - Press FAB/manual PiP on the currently installed build.
+  - Confirm whether fullscreen-first PiP now enters instead of stalling at fullscreen with `pipAllowed=false`.
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/live_pip_fresh_20260413_191913.txt`
+  - `artifacts/android_build/release_build_pip_core_helper_split_20260413.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl ninja`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 220`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -Skip 6400 -First 190`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -Skip 6760 -First 270`
+  - `Get-Content browser/android/youtube_script_injector/youtube_native_tab_bridge.cc | Select-Object -Skip 1960 -First 280`
+  - `Copy-Item C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc \\wsl.localhost\Ubuntu\home\master\src_ext4\brave\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc -Force`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_core_helper_split_20260413.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+- Tool purpose:
+  - Isolate the only PiP-coupling change from the three-bottleneck round and redeploy a focused fix while keeping the rest of the performance work intact.
+- Tool state:
+  - Inspection complete.
+  - Patch complete.
+  - Resync complete.
+  - Build complete.
+  - Install complete.
+  - Runtime verification pending.
+- Expected resume command:
+  - start fresh `adb logcat` capture for manual PiP verification
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_core_helper_split_20260413.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - split PiP helper injection back out of the combined performance helper blob
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - inspected to rule out the performance bridge changes as the direct manual PiP route change
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - still keeps manual PiP routed through fullscreen-first
+  - `artifacts/runtime_logs/live_pip_fresh_20260413_191913.txt` - proof of the fullscreen stall with `pipAllowed=false`
+  - `artifacts/android_build/release_build_pip_core_helper_split_20260413.log` - build evidence for this round
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/live_pip_fresh_20260413_191913.txt`
+  - next fresh runtime capture
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - manual PiP enters again through fullscreen-first and no longer stalls at fullscreen with `pipAllowed=false`
+- Expected failure signal:
+  - PiP still stalls, meaning another part of the three-bottleneck round or a later dormant PiP branch is still involved
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_fresh_20260413_191913.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Accept the user's timeline as valid and treat code inspection as the source of truth.
+  - Keep the broader performance work unless a patch is shown to touch the PiP route directly.
+  - Split `one_tab_pip` out of the combined core helper injection because that coupling is the strongest PiP regression candidate from the three-bottleneck round.
+- Rejected approaches:
+  - blaming the later manual direct-entry experiment as the original root cause without rechecking the earlier patch set
+  - rolling back all three performance patches wholesale before isolating the PiP-coupling change
+- Stop point classification:
+  - code edited + rebuilt + APK installed; waiting for runtime PiP verification
+- What is done but unverified:
+  - whether the helper split fully restores manual fullscreen-first PiP behavior on device
+- What is verified:
+  - the three-bottleneck round did include a helper injection topology change that could directly affect PiP
+  - build/install succeeded on the focused helper split fix
+- External prerequisite:
+  - device-side manual PiP repro on the currently installed build
+- Secret required but not stored:
+  - none
+
+## 2026-04-13 20:42:55 +07:00
+
+- Current phase:
+  - PiP watch-page recovery visual-guard regression fix
+- Objective:
+  - Deploy the visual-guard clear fix that prevents watch page from staying hidden after returning from PiP, then verify runtime behavior on the currently installed build.
+- Completed since previous snapshot:
+  - Confirmed from the latest live screenshot that returning from PiP could leave watch page mostly black with only the player shell visible:
+    - `artifacts/runtime_logs/watchpage_issue_live_20260413_204952.png`
+  - Inspected the guard chain in:
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - Identified the concrete failure mode:
+    - the page-side PiP recovery visual guard hides most of the watch page by design
+    - Java was clearing the guard against the current `WebContents` only
+    - after PiP return, that could leave the originally guarded watch page hidden
+  - Patched `BraveActivity.java` so visual-guard teardown always disables the guard on the originally guarded `WebContents`, and also clears the currently supplied `WebContents` when different.
+  - Synced `BraveActivity.java` from Windows -> WSL and verified SHA-256 parity:
+    - repo file hash = `3FF84A36653B581B50DED19499FDF8B848D6DCCD129302427314802AA52DE13C`
+    - WSL file hash = `3FF84A36653B581B50DED19499FDF8B848D6DCCD129302427314802AA52DE13C`
+  - Rebuilt from WSL successfully:
+    - `artifacts/android_build/release_build_pip_visual_guard_clear_fix_20260413.log`
+  - Reinstalled successfully and relaunched the app.
+  - Verified package state after install:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-13 20:41:48`
+- In progress now:
+  - Waiting for runtime verification that returning from PiP no longer leaves watch page hidden/black.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Release rebuild passed.
+  - `adb install -r` passed.
+  - App launch passed.
+  - Runtime verification pending.
+- Blockers/risks:
+  - The fix is narrowly scoped to guard teardown, but runtime proof is still needed because PiP/watch-page transitions involve multiple async paths.
+  - The build log still shows the preexisting JNI assertion warning from this tree, but build completed and APK was created.
+- Next concrete step:
+  - Reproduce `PiP -> return to watch page` on the installed build.
+  - Verify whether the black/hidden watch-page state is gone.
+  - If still broken, capture a fresh screenshot/log pair from this exact build.
+- Expected resume inspection scope:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/watchpage_issue_live_20260413_204952.png`
+  - `artifacts/android_build/release_build_pip_visual_guard_clear_fix_20260413.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl ninja`
+- Exact command(s):
+  - `adb shell screencap -p /sdcard/Pictures/watchpage_issue_live_20260413_204952.png`
+  - `adb pull /sdcard/Pictures/watchpage_issue_live_20260413_204952.png artifacts/runtime_logs`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 3940 -First 220`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -Skip 280 -First 520`
+  - `Copy-Item C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java \\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java -Force`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_visual_guard_clear_fix_20260413.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+- Tool purpose:
+  - Fix the PiP-return watch-page hiding regression by making visual-guard teardown target the originally guarded `WebContents`, then deploy that fix to the device.
+- Tool state:
+  - Screenshot inspection complete.
+  - Patch complete.
+  - Resync complete.
+  - Build complete.
+  - Install complete.
+  - Runtime verification pending.
+- Expected resume command:
+  - reproduce `PiP -> return to watch page` and, if needed, capture a fresh screenshot/log pair
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_visual_guard_clear_fix_20260413.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - guard teardown fix for PiP return
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - page-side PiP recovery visual-guard implementation
+  - `artifacts/runtime_logs/watchpage_issue_live_20260413_204952.png` - screenshot showing watch page hidden after PiP return
+  - `artifacts/android_build/release_build_pip_visual_guard_clear_fix_20260413.log` - build proof for the fix
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - next runtime evidence after PiP return
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device visible to `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - returning from PiP no longer leaves the watch page black/hidden beneath the player shell
+- Expected failure signal:
+  - watch page still appears black/hidden after PiP return, meaning another path is re-arming or failing to clear the visual guard
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\watchpage_issue_live_20260413_204952.png`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Treat the screenshot pattern as a visual-guard regression first, not a generic watch-page layout regression.
+  - Fix teardown on the guarded `WebContents` before touching any broader PiP/performance code again.
+- Rejected approaches:
+  - trying to hide the issue with more watch-page CSS without fixing guard ownership/teardown
+  - broad rollback of PiP/performance changes for this screenshot-only regression
+- Stop point classification:
+  - visual-guard teardown patch applied, rebuilt, installed, runtime verification not yet performed
+- What is done but unverified:
+  - whether the guarded-`WebContents` teardown fix fully clears the PiP recovery visual guard on PiP exit
+- What is verified:
+  - screenshot evidence matches the PiP recovery visual-guard CSS behavior
+  - build/install succeeded on the focused guard-teardown fix
+- External prerequisite:
+  - device-side PiP return repro on the currently installed build
+- Secret required but not stored:
+  - none
+- Timestamp: `2026-04-18 15:31:43 +07:00`
+- Current phase: `PiP baseline restoration from pre-15:43 evidence`
+- Task/objective: `Continue the careful baseline restore using pre-15:43 PiP behavior as the source-of-truth, with fullscreen-first PiP entry and recoveryPIP preserved.`
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry, then verified they were stale relative to actual code.
+  - Inspected current source and confirmed manual PiP callers are fullscreen-first in:
+    - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - Inspected current PiP helper and confirmed:
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+      now routes manual PiP through `setFullscreen(...)`
+    - `shouldPreserveVideoPresentation(...)` uses `braveActivity.isInPictureInPictureMode()`
+  - Inspected `android/java/org/chromium/chrome/browser/app/BraveActivity.java` and verified Java-side `recoveryPIP` markers are present again:
+    - `event=pip_recovery_probe`
+    - `event=pip_recovery_dispatch`
+    - `event=pip_recovery_finalize_wait`
+    - `event=pip_recovery_apply`
+    - `event=pip_recovery_visual_guard`
+  - Inspected `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` / `.h` and verified page-side `recoveryPIP` hooks are present again:
+    - `OTB_PIP event=recovery_pip_arm_current_video`
+    - `OTB_PIP event=pip_recovery_visual_guard_request`
+    - `OTB_PIP event=pip_recovery_visual_guard_result`
+    - `OTB_PIP event=track_navigation_restore_apply reason=recovery_pip`
+  - Inspected the WSL controller used for build and confirmed it now contains the expected PiP methods, including `attemptPictureInPicture()`.
+  - Verified APK artifact exists:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - Installed the rebuilt APK successfully with `adb install -r`.
+  - Relaunched the app successfully.
+  - Verified package state after install:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-13 20:58:05`
+- In progress now:
+  - No new code changes after install.
+  - Preparing runtime verification on the restored baseline build.
+- Blockers/risks:
+  - The restored `recoveryPIP` flow was reconstructed from proven runtime evidence, so runtime validation still matters before any further changes.
+  - The repo contains many unrelated modified/untracked files; broad rollback remains unsafe.
+  - The device package timestamp still reports an older `lastUpdateTime`, so runtime logs/artifacts should be used as stronger evidence than that timestamp alone.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build passed: `artifacts/android_build/release_build_pip_baseline_restore_20260418.log`
+  - Install passed.
+  - App launch passed.
+  - Runtime PiP verification pending.
+- Exact next concrete step:
+  - Start a fresh PiP validation capture on the currently installed build and verify:
+    - fullscreen-first entry
+    - `recoveryPIP` markers
+    - stable controls
+    - immediate watch-page return on PiP exit
+    - visual guard behavior
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `artifacts/android_build/release_build_pip_baseline_restore_20260418.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `git rev-parse HEAD`
+  - `Get-Item artifacts/android_build/release_build_pip_baseline_restore_20260418.log | Format-List FullName,Length,LastWriteTime`
+  - `Get-Content android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java | Select-Object -First 220`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java | Select-Object -Skip 460 -First 80`
+  - `Get-Content android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java | Select-Object -Skip 1230 -First 70`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 3670 -First 320`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -Skip 5200 -First 260`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h | Select-Object -First 220`
+  - `Get-Content \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\chrome\\android\\java\\src\\org\\chromium\\chrome\\browser\\media\\FullscreenVideoPictureInPictureController.java | Select-Object -Skip 130 -First 220`
+  - `adb devices`
+  - `Get-Item \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk | Format-List FullName,Length,LastWriteTime`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+  - `git status --short`
+  - `Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"`
+- Tool purpose:
+  - Reconcile the stale handoff, verify that the intended fullscreen-first + recoveryPIP baseline is actually present in source, and install the rebuilt APK before runtime testing.
+- Tool state:
+  - Inspection complete.
+  - Build artifact verified.
+  - Install complete.
+  - Runtime validation pending.
+- Expected resume command:
+  - Start fresh `adb logcat` capture for PiP validation on the installed baseline build.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_baseline_restore_20260418.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory: `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch: `publish/go_play-sync-20260402`
+- Base commit / HEAD seen: `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target: `android_Release_arm64_multiabi`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — restored Java-side recoveryPIP orchestration
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` — fullscreen-first PiP entry + PiP preservation semantics
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — restored page-side recoveryPIP + visual guard
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` — header contract for the restored page-side flow
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java` — FAB fullscreen-first PiP path
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` — toolbar fullscreen-first PiP path
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` — active controller in the build tree
+  - `artifacts/android_build/release_build_pip_baseline_restore_20260418.log` — build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/android_build/release_build_pip_baseline_restore_20260418.log`
+- Command run from: `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Connected Android device
+  - WSL source tree available
+  - No additional code edits before baseline validation
+- Expected success signal:
+  - Runtime logs show fullscreen-first PiP entry and `recoveryPIP` markers on the currently installed baseline build.
+- Expected failure signal:
+  - Runtime logs show PiP path divergence from the restored baseline or missing expected markers.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_baseline_restore_20260418.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Freeze further PiP/perf edits until the restored baseline is runtime-verified.
+  - Keep fullscreen-first entry and keep `recoveryPIP`.
+  - Use actual code/build/install evidence as the working source-of-truth.
+- Rejected approaches:
+  - direct-entry PiP
+  - removing `recoveryPIP`
+  - broad rollback
+  - trusting stale docs over inspected code
+- Stop point classification:
+  - rebuilt baseline installed and launched; runtime PiP verification not started yet
+- What is done but unverified:
+  - Device-side behavior of the restored baseline
+- What is verified:
+  - Source contains the intended fullscreen-first + recoveryPIP baseline
+  - Build succeeded
+  - APK installed successfully
+- External prerequisite:
+  - Device-side PiP runtime repro
+- Secret required but not stored:
+  - none
+# 2026-04-18 16:45:48 +07:00
+
+- Current phase:
+  - `PiP recovery + visual guard stabilization on restored fullscreen-first baseline`
+- Task/objective:
+  - Fix the three log-proven remaining PiP issues in one focused patch:
+    - visual guard still leaking
+    - `recoveryPIP` not dispatching on auto-advance
+    - PiP controls losing validity after focus drift
+- Completed since last snapshot:
+  - Re-read `artifacts/runtime_logs/live_pip_verify_20260418_162738.txt`
+  - Confirmed from runtime evidence:
+    - fullscreen-first PiP entry still succeeds
+    - `next/previous` already work in playlist/mix context via `playlist-panel-navigation`
+    - auto-advance cases often stay at `pip_recovery_probe` only and never dispatch
+    - visual guard still logs `active=0 result=none`
+  - Inspected actual code after resume and confirmed a focused newer patch already existed in Windows working tree for:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Synced those two files from Windows -> WSL and verified hash equality.
+  - Rebuilt:
+    - `artifacts/android_build/release_build_pip_recovery_chain_fix_20260418.log`
+  - Installed the rebuilt APK and relaunched the app.
+- In progress now:
+  - Waiting for one fresh runtime verification pass on the rebuilt package.
+- Blockers/risks:
+  - The new build is installed but not runtime-verified yet.
+  - `dumpsys package` still reports an older `lastUpdateTime`, so runtime logs should be used as stronger evidence than that timestamp.
+  - Broad rollback remains unsafe because the repo still has many unrelated changes.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build passed:
+    - `artifacts/android_build/release_build_pip_recovery_chain_fix_20260418.log`
+  - Install passed.
+  - App launch passed.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh `adb logcat` capture and reproduce PiP auto-advance on the newly installed build.
+  - Verify:
+    - `event=pip_recovery_dispatch`
+    - visual guard `active=1` during wait/recovery
+    - controls still valid after recovery
+- Expected resume inspection scope:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/live_pip_verify_20260418_162738.txt`
+  - `artifacts/android_build/release_build_pip_recovery_chain_fix_20260418.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `Get-Content docs/current-status.md`
+  - `Get-Content docs/progress-log.md -Tail 120`
+  - `Get-Content android/java/org/chromium/chrome/browser/app/BraveActivity.java | Select-Object -Skip 3710 -First 190`
+  - `Get-Content browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc | Select-Object -Skip 5200 -First 220`
+  - `Select-String -Path artifacts/runtime_logs/live_pip_verify_20260418_162738.txt -Pattern 'pip_recovery_probe|pip_recovery_dispatch|pip_recovery_visual_guard|Attempted picture-in-picture|playlist-panel-navigation'`
+  - `Copy-Item ... BraveActivity.java -> \\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java`
+  - `Copy-Item ... youtube_script_injector_tab_helper.cc -> \\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\browser\\android\\youtube_script_injector\\youtube_script_injector_tab_helper.cc`
+  - `wsl bash -lc "cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_recovery_chain_fix_20260418.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+- Tool purpose:
+  - Apply only the focused recovery/visual-guard repair that the latest runtime log proved necessary, without changing fullscreen-first PiP architecture.
+- Tool state:
+  - Patch complete.
+  - Sync complete.
+  - Rebuild complete.
+  - Install complete.
+  - Runtime verification pending.
+- Expected resume command:
+  - Start fresh `adb logcat` capture and reproduce auto-advance in PiP.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_recovery_chain_fix_20260418.log`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — probe/dispatch/finalize/apply flow
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — visual guard + recovery arm
+  - `artifacts/runtime_logs/live_pip_verify_20260418_162738.txt` — runtime proof for the remaining issues
+  - `artifacts/android_build/release_build_pip_recovery_chain_fix_20260418.log` — build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/live_pip_verify_20260418_162738.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - Connected Android device
+  - WSL source tree available
+  - No extra PiP architecture changes before verification
+- Expected success signal:
+  - New runtime log shows actual `pip_recovery_dispatch`, visual guard active during recovery, and valid controls after focus restore.
+- Expected failure signal:
+  - New runtime log still shows probe-only recovery, guard still `none`, or controls still drift invalid.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_verify_20260418_162738.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Keep fullscreen-first PiP entry.
+  - Keep `recoveryPIP`.
+  - Limit this round to the two-file repair proven by the latest log.
+- Rejected approaches:
+  - direct-entry PiP
+  - removing `recoveryPIP`
+  - broad rollback
+  - guessing any additional root cause before verifying this rebuilt package
+- Stop point classification:
+  - focused PiP recovery patch built and installed; runtime verification on this build not started yet
+- What is done but unverified:
+  - Runtime behavior of the rebuilt package
+- What is verified:
+  - WSL sync by hash
+  - successful build
+  - successful install
+  - app relaunch
+
+## 2026-04-18 17:35:00 +07:00
+
+- Current phase:
+  - `PiP baseline/source-of-truth audit with surgical-restore decision`
+- Task/objective:
+  - `Do the two requested baseline tasks without guessing: (1) build a PiP source-of-truth map from internal/external evidence and (2) perform only an evidence-backed surgical-restore decision.`
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest PiP-related entries in `docs/progress-log.md`.
+  - Re-verified the active WSL build-tree entry route and confirmed it is still fullscreen-first in:
+    - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+    - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - Re-verified Windows -> WSL hash equality for the active PiP working set:
+    - `OneTabFabMenuCoordinator.java`
+    - `BraveToolbarLayoutImpl.java`
+    - `BraveYouTubeScriptInjectorNativeHelper.java`
+    - `BraveActivity.java`
+    - `youtube_script_injector_tab_helper.cc`
+    - `youtube_script_injector_tab_helper.h`
+    - `youtube_native_tab_bridge.cc`
+  - Re-checked Windows baseline/decompile copies and confirmed:
+    - they preserve fullscreen-first PiP entry semantics
+    - they do not preserve `recoveryPIP`
+  - Re-checked repo strings and confirmed no active direct-entry PiP string remains in the current tree.
+  - Gathered external primary-source evidence from:
+    - Android Developers PiP guide
+    - Chromium source pages for Android web prefs / fullscreen-video PiP gating
+  - Wrote the consolidated evidence and restore decision to:
+    - `docs/pip-baseline-source-of-truth.md`
+- In progress now:
+  - No code restore is in progress.
+  - The restore decision is complete: current entry files stay as-is, and `recoveryPIP` stays sourced from the current working tree.
+- Blockers/risks:
+  - Remaining PiP runtime regressions still exist, but they are now clearly separated from restore-scope uncertainty.
+  - Windows baseline copies are still unsafe to use as a whole-tree restore point.
+- Files/modules touched:
+  - `docs/pip-baseline-source-of-truth.md`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new build in this sub-step.
+  - No new install in this sub-step.
+  - No new runtime capture in this sub-step.
+  - Latest successful build remains:
+    - `artifacts/android_build/release_build_pip_recovery_chain_fix_20260418.log`
+- Exact next concrete step:
+  - If PiP work continues, start from `docs/pip-baseline-source-of-truth.md`.
+  - Do not restore any PiP file unless a method-level mismatch is proven against:
+    - current WSL code
+    - Windows baseline/decompile evidence
+    - runtime behavior
+  - Treat any next runtime fix as a narrow bug fix, not a baseline restore.
+- Expected resume inspection scope:
+  - `docs/pip-baseline-source-of-truth.md`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `web`
+- Exact command(s):
+  - `Select-String -Path docs/progress-log.md -Pattern '15:43|baseline|recoveryPIP|Manual PiP direct-entry' -Context 2,8`
+  - `git diff --no-index -- artifacts/device_decompile/.../OneTabFabMenuCoordinator.java android/java/.../OneTabFabMenuCoordinator.java`
+  - `git diff --no-index -- artifacts/device_decompile/.../BraveToolbarLayoutImpl.java android/java/.../BraveToolbarLayoutImpl.java`
+  - `git diff --no-index -- artifacts/device_decompile/.../BraveYouTubeScriptInjectorNativeHelper.java android/java/.../BraveYouTubeScriptInjectorNativeHelper.java`
+  - `Get-FileHash <Windows file>; Get-FileHash <WSL file>`
+  - `rg -n "enterPictureInPictureDirect|attemptDirectPictureInPicture|direct-entry|direct_entry" android browser`
+  - `web` search/open against Android Developers PiP docs and Chromium source links
+- Tool purpose:
+  - Replace guessed rollback scope with an evidence-backed PiP baseline map and an explicit no-broad-restore decision.
+- Tool state:
+  - Evidence audit complete.
+  - Source-of-truth map complete.
+  - Surgical-restore decision complete.
+  - No code restore applied.
+- Expected resume command:
+  - Open `docs/pip-baseline-source-of-truth.md` before any further PiP edit.
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\docs\pip-baseline-source-of-truth.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\device_decompile\arm64_baseline\`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\repro_baseline\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+- Primary working set:
+  - `docs/pip-baseline-source-of-truth.md` — PiP role map and restore rule
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java` — FAB fullscreen-first entry
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java` — toolbar fullscreen-first entry
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` — fullscreen-first helper plus recovery hooks
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — Java-side recovery orchestration
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — page-side recovery and visual guard
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` — controls path
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md` entry
+  - `docs/pip-baseline-source-of-truth.md`
+  - `android/java/org/chromium/chrome/browser/app/OneTabFabMenuCoordinator.java`
+  - `android/java/org/chromium/chrome/browser/toolbar/top/BraveToolbarLayoutImpl.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none for the evidence audit itself
+- Expected success signal:
+  - Future PiP work can proceed without guessing restore scope.
+- Expected failure signal:
+  - Another PiP rollback still requires guessed file scope.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_verify_20260418_162738.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\docs\pip-baseline-source-of-truth.md`
+- Recent decisions:
+  - Keep fullscreen-first PiP entry.
+  - Keep `recoveryPIP`.
+  - Use Windows baseline artifacts only as role evidence, not as a whole restore point.
+  - Do not restore any PiP file unless a method-level mismatch is proven.
+- Rejected approaches:
+  - direct-entry PiP
+  - removing `recoveryPIP`
+  - broad rollback
+  - whole-file restore from Windows baseline copies
+  - guessing restore scope
+- Stop point classification:
+  - baseline/source-of-truth map complete; no code restore applied because no evidence-backed restore target was proven
+- What is done but unverified:
+  - Which remaining runtime PiP chain should be the next narrow fix target
+- What is verified:
+  - Current WSL source-of-truth still uses fullscreen-first entry for FAB and toolbar
+  - Current Windows and WSL hashes match for the active PiP working set
+  - Windows baseline copies prove fullscreen-first entry semantics
+  - Windows baseline copies found so far do not preserve `recoveryPIP`
+  - `docs/pip-baseline-source-of-truth.md` now records the role-based restore rule
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+- External prerequisite:
+  - device-side PiP repro on the rebuilt package
+- Secret required but not stored:
+  - none
+# 2026-04-18 18:56:29 +07:00
+
+- Current phase: `PiP single-recovery-chain hardening`
+- Current objective: `Collapse overlapping Java-side PiP recovery/refocus paths into one recovery generation chain without changing fullscreen-first PiP entry.`
+- Completed since last update:
+  - Stopped the previous live capture process for `live_pip_recovery_verify_20260418_184135.txt`.
+  - Re-read runtime evidence and confirmed three concurrent Java-side paths were racing:
+    - `pip_refocus_apply`
+    - `pip_recovery_probe`
+    - `probe*_active` fast-apply retries
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) to use a single generation-based recovery chain:
+    - added in-flight / generation tracking
+    - weak refocus triggers now skip while recovery is active
+    - `native_fullscreen_signal_while_in_pip` can supersede an older weaker chain
+    - removed the old repeated `probe*_active_retry*` fast-apply loop
+    - `on_resume` and `window_focus_changed` now route into recovery instead of standalone refocus
+    - delayed `resume_media_session` refresh now skips while recovery is in flight
+  - Synced the patched Windows file into the WSL source-of-truth tree.
+  - Rebuilt successfully from WSL and installed the APK.
+  - Relaunched the app successfully.
+- In progress now: `Runtime verification on the rebuilt single-chain PiP package is still pending.`
+- Blockers / risks:
+  - The page-side visual-guard callback still previously logged `result=none`; this round intentionally did not touch [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc).
+  - The new single-chain behavior has not yet been verified in a fresh capture.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build passed via [release_build_pip_single_recovery_chain_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_single_recovery_chain_20260418.log)
+  - Install passed
+  - Relaunch passed
+  - Runtime verification pending
+- Exact next concrete step:
+  - Start a fresh PiP capture on the rebuilt package
+  - Reproduce the same two-round recovery scenario
+  - Verify from log that `pip_refocus_apply` no longer races recovery and stale `probe*_active_retry*` chains do not continue after a newer recovery starts
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [live_pip_recovery_verify_20260418_184135.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_verify_20260418_184135.txt)
+  - [release_build_pip_single_recovery_chain_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_single_recovery_chain_20260418.log)
+  - [pip-baseline-source-of-truth.md](C:\Users\Master\Desktop\GO_PLAY\docs\pip-baseline-source-of-truth.md)
+- Current tool(s): `shell_command`, `apply_patch`
+- Exact command(s):
+  - `Stop-Process -Id 8440 -Force`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_single_recovery_chain_20260418.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- Tool purpose: `Eliminate competing Java-side PiP recovery/refocus paths while keeping fullscreen-first entry intact.`
+- Tool state:
+  - code edited
+  - WSL sync complete
+  - build complete
+  - install complete
+  - runtime verify pending
+- Expected resume command:
+  - start fresh `adb logcat`
+  - reproduce PiP recovery twice
+  - inspect for `pip_refocus_apply`, `pip_recovery_probe`, `pip_recovery_dispatch`, `pip_recovery_finalize_wait`, `pip_recovery_apply`, `pip_refocus_skipped`
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — Java-side PiP orchestration
+  - [live_pip_recovery_verify_20260418_184135.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_verify_20260418_184135.txt) — evidence of competing chains
+  - [pip-baseline-source-of-truth.md](C:\Users\Master\Desktop\GO_PLAY\docs\pip-baseline-source-of-truth.md) — restore boundary / source-of-truth map
+- Files to inspect first after resume:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - WSL build tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - only one recovery chain remains active per incident
+  - no `pip_refocus_apply` racing the recovery path
+  - no stale `probe*_active_retry*` continuation
+- Expected failure signal:
+  - multiple recovery/refocus families still appear in the same incident
+- Last known log location:
+  - [live_pip_recovery_verify_20260418_184135.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_verify_20260418_184135.txt)
+- Last known artifact path:
+  - [release_build_pip_single_recovery_chain_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_single_recovery_chain_20260418.log)
+- Recent decisions:
+  - keep fullscreen-first entry
+  - keep `recoveryPIP`
+  - remove competing Java-side refocus/recovery overlap before touching page-side helper again
+- Rejected approaches:
+  - direct-entry PiP
+  - broad rollback
+  - removing `recoveryPIP`
+  - guessing restore scope
+- Stop point classification:
+  - build passed and APK installed, but runtime verification not yet performed
+- What is done but unverified:
+  - the new generation-based single-chain PiP recovery orchestration
+- What is verified:
+  - the previous build had competing Java-side paths in the same incident
+  - the new build compiled and installed successfully
+- External prerequisite:
+  - device-side PiP repro on the rebuilt package
+- Secret required but not stored:
+  - none
+
+# 2026-04-18 19:25:53 +07:00
+
+- Current phase: `PiP recovery chain + visual guard hardening`
+- Current objective: `Fix the remaining PiP regressions by keeping fullscreen-first entry intact, removing the last helper-side off-chain refresh, deduping repeated native fullscreen recovery starts, and making visual guard survive document/DOM churn.`
+- Completed since last update:
+  - Re-read the fresh capture:
+    - `artifacts/runtime_logs/live_pip_single_chain_20260418_191341.txt`
+  - Confirmed from runtime evidence that the previous single-chain build still had two concrete issues:
+    - repeated `native_fullscreen_signal_while_in_pip` could start generation `15` then generation `16` for the same incident before the older chain settled
+    - page-side visual guard still returned `result=none` and did not stay reliable across churn
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - added recovery base-reason tracking
+    - skips starting another recovery generation when the same native fullscreen signal is already active
+  - Patched [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java):
+    - removed helper-side direct `refreshPictureInPictureParamsForCurrentVideo()` when already in PiP
+    - now routes only through `onNativeFullscreenSignalWhileInPictureInPicture(...)`
+  - Patched [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h):
+    - added persistent `pip_recovery_visual_guard_active_`
+  - Patched [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc):
+    - visual guard script now returns an awaited async result object
+    - visual guard now persists state, uses a mutation observer, and reapplies itself through DOM churn
+    - visual guard now blackouts the document while waiting for the next video
+    - `PrimaryMainDocumentElementAvailable()` reapplies guard if still active
+    - `MediaEffectivelyFullscreenChanged()` no longer clears guard before Java recovery settles
+  - Synced the patched Windows files into the WSL source-of-truth tree.
+  - Rebuilt successfully from WSL.
+  - Installed successfully.
+  - Relaunched / confirmed package state successfully.
+- In progress now: `Runtime verification of the new hardening patch is pending.`
+- Blockers / risks:
+  - The new visual-guard observer logic and same-signal dedupe have not yet been validated on-device.
+  - If PiP focus/control coupling still breaks after this, the next step should stay within recovery/focus ownership first, not jump back to route changes.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h)
+  - [current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build passed via [release_build_pip_single_chain_visual_guard_hardening_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_single_chain_visual_guard_hardening_20260418.log)
+  - Install passed
+  - Launch passed
+  - Runtime verification pending
+- Exact next concrete step:
+  - Start a fresh PiP capture on the rebuilt package
+  - Reproduce the auto-advance / recovery / visual-guard case
+  - Verify from log that:
+    - no duplicate native-signal recovery generation starts happen for the same incident
+    - no helper-side direct PiP refresh occurs when already in PiP
+    - `pip_recovery_visual_guard_result` returns meaningful values instead of `none`
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h)
+  - [live_pip_single_chain_20260418_191341.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_single_chain_20260418_191341.txt)
+  - [release_build_pip_single_chain_visual_guard_hardening_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_single_chain_visual_guard_hardening_20260418.log)
+- Current tool(s): `shell_command`, `multi_tool_use.parallel`, `apply_patch`
+- Exact command(s):
+  - `Stop-Process -Id 26416 -Force`
+  - `Select-String -Path artifacts\\runtime_logs\\live_pip_single_chain_20260418_191341.txt -Pattern 'pip_recovery_probe|pip_recovery_dispatch|pip_recovery_finalize_wait|pip_recovery_apply|pip_refocus_apply|pip_refocus_skipped|pip_recovery_visual_guard|enter_picture_in_picture_from_fullscreen|media_effectively_fullscreen_changed|skip without active fullscreen video|Attempted picture-in-picture with result|track_navigation_restore_apply|recovery_pip_arm_current_video|pip_mode_changed|window_focus_changed|on_resume|native_fullscreen_signal_while_in_pip'`
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java && cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_single_chain_visual_guard_hardening_20260418.log"`
+  - `adb install -r "\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+- Tool purpose: `Fix the remaining PiP recovery/visual-guard breakage with one evidence-backed patch set, without changing fullscreen-first entry semantics.`
+- Tool state:
+  - code edited
+  - WSL sync complete
+  - build complete
+  - install complete
+  - launch complete
+  - runtime verify pending
+- Expected resume command:
+  - start fresh `adb logcat`
+  - reproduce PiP auto-advance / recovery / visual-guard case
+  - inspect for `pip_recovery_chain_start`, `pip_recovery_chain_skip`, `pip_recovery_chain_finish`, `pip_recovery_dispatch`, `pip_recovery_visual_guard_result`, `media_effectively_fullscreen_changed`
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — Java-side recovery ownership / same-signal dedupe
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) — already-in-PiP helper routing
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — visual guard persistence / early-clear removal
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h) — visual-guard state
+  - [live_pip_single_chain_20260418_191341.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_single_chain_20260418_191341.txt) — proof log for the remaining issues
+- Files to inspect first after resume:
+  - [current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - WSL build tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - one recovery generation per incident
+  - no helper-side direct refresh outside chain
+  - visual-guard callback returns meaningful values
+- Expected failure signal:
+  - duplicate same-signal generation starts remain
+  - `pip_recovery_visual_guard_result` still returns `none`
+- Last known log location:
+  - [live_pip_single_chain_20260418_191341.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_single_chain_20260418_191341.txt)
+- Last known artifact path:
+  - [release_build_pip_single_chain_visual_guard_hardening_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_single_chain_visual_guard_hardening_20260418.log)
+- Recent decisions:
+  - keep fullscreen-first entry
+  - keep `recoveryPIP`
+  - fix remaining issues by hardening the current chain, not rerouting PiP entry
+  - let Java recovery decide when to clear visual guard, not page-side fullscreen handoff
+- Rejected approaches:
+  - direct-entry PiP
+  - broad rollback
+  - removing `recoveryPIP`
+  - guessing restore scope
+- Stop point classification:
+  - build passed and APK installed, but runtime verification of this hardening patch has not yet been performed
+- What is done but unverified:
+  - same-signal native fullscreen recovery dedupe
+  - helper-side direct refresh removal
+  - mutation-observed visual guard persistence
+- What is verified:
+  - the previous build still started repeated native-signal recovery generations
+  - the previous build's visual-guard callback returned `result=none`
+  - the new build compiled and installed successfully
+- External prerequisite:
+  - device-side PiP repro on the rebuilt package
+- Secret required but not stored:
+  - none
+# 2026-04-18 20:42:00 +07:00
+
+- Current phase: `PiP signal-driven refresh stability analysis`
+- Task/objective: `Summarize runtime stability from the latest blackscreen-focused fresh capture without changing code.`
+- Completed since last snapshot:
+  - Re-read the latest handoff and re-ran targeted marker extraction on `artifacts/runtime_logs/live_pip_blackscreen_20260418_202715.txt`.
+  - Counted key markers and separated true FAB PiP entries from in-PiP signal-path incidents.
+  - Confirmed there was no repro of the user-visible blackscreen in this round.
+- In progress now:
+  - No code edit in progress.
+  - Current work is evidence-backed explanation only.
+- Blockers/risks:
+  - `pip_signal_refresh` still never reached `apply` in either observed incident.
+  - `visual guard` still returns `result=none`, so page-side confirmation remains weak.
+  - There is still fullscreen/PiP churn (`Dismiss activity`, `Exiting fullscreen`) even in a no-black-screen round.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Installed build still:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-18 19:25:48`
+  - Runtime log analyzed:
+    - `artifacts/runtime_logs/live_pip_blackscreen_20260418_202715.txt`
+- Exact findings:
+  - `enter_picture_in_picture_from_fullscreen = 8`
+  - `Attempted picture-in-picture with result: success = 6`
+  - `Attempted picture-in-picture with result: failure = 0`
+  - `pip_signal_refresh_start = 2`
+  - `pip_signal_refresh_apply = 0`
+  - `pip_signal_refresh_finish = 2`
+  - `pip_recovery_chain_start = 6`
+  - `pip_recovery_chain_finish = 6`
+  - `pip_recovery_dispatch = 0`
+  - `pip_recovery_visual_guard_result = 26`
+  - `renderProcessGone = 0`
+  - `FATAL = 0`
+- Interpretation:
+  - The 6 normal fullscreen-first FAB PiP entries look stable in this capture.
+  - The 2 extra `enter_picture_in_picture_from_fullscreen` markers were not fresh entry attempts; they happened while `in_pip=true` and correspond to `native_fullscreen_signal_while_in_pip`.
+  - Both signal-driven incidents failed because `active_fullscreen` never became true across attempts 0-3.
+  - The `Exception` lines present were Android/system-side noise (`AudioPolicyEffectException`, `MediaSessionRecord`, `BatteryService`), not app-side fatal crashes.
+- Exact next concrete step:
+  - If continuing later, compare the two failed `pip_signal_refresh` incidents against the owning `WebContents` / fullscreen state in Java and page-side visual/video ownership before changing code.
+- Expected resume inspection scope:
+  - `artifacts/runtime_logs/live_pip_blackscreen_20260418_202715.txt`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+- Exact command(s):
+  - `Select-String -Path artifacts\\runtime_logs\\live_pip_blackscreen_20260418_202715.txt -Pattern 'enter_picture_in_picture_from_fullscreen|Attempted picture-in-picture with result: success|Attempted picture-in-picture with result: failure|pip_signal_refresh_start|pip_signal_refresh_apply|pip_signal_refresh_finish|pip_recovery_chain_start|pip_recovery_chain_finish|pip_recovery_dispatch|pip_recovery_visual_guard_result|renderProcessGone|FATAL|Exception|Dismiss activity|Exiting fullscreen'`
+  - `Get-Content artifacts\\runtime_logs\\live_pip_blackscreen_20260418_202715.txt | Where-Object { $_ -like '*native_fullscreen_signal_while_in_pip*' -or $_ -like '*pip_signal_refresh_*' -or $_ -like '*Attempted picture-in-picture with result*' }`
+- Tool purpose:
+  - `Produce a stability readout from the live log without speculative patching.`
+- Tool state:
+  - analysis complete
+  - no code edit started
+- Expected resume command:
+  - targeted `Select-String` or `rg` on the same log
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_blackscreen_20260418_202715.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `artifacts/runtime_logs/live_pip_blackscreen_20260418_202715.txt` — live runtime truth
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` — signal-driven PiP chain
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` — page-side visual guard
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/live_pip_blackscreen_20260418_202715.txt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none beyond the captured log file
+- Expected success signal:
+  - clear evidence-backed statement of present stability and remaining weak points
+- Expected failure signal:
+  - treating the absence of one blackscreen repro as proof the issue is fully fixed
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_blackscreen_20260418_202715.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_signal_direct_refresh_20260418.log`
+- Recent decisions:
+  - do not patch from this round alone
+  - keep fullscreen-first entry unchanged
+  - report stability honestly: better on entry, still weak on signal refresh and visual guard
+- Rejected approaches:
+  - guessing the intermittent blackscreen is fixed
+  - shipping another patch before proving why `pip_signal_refresh_apply` never fired
+- Stop point classification:
+  - runtime captured and analyzed; reporting-only stop point
+- What is done but unverified:
+  - whether a later round can reproduce the blackscreen again on the same build
+- What is verified:
+  - no explicit PiP failure was logged in this capture
+  - the signal-driven path still failed both times it started
+  - visual guard still did not confirm success
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+# 2026-04-18 20:53:30 +07:00
+
+- Current phase: `PiP visual-guard stabilization patch`
+- Task/objective: `Stabilize visual guard for manual next/previous and recovery chains without changing fullscreen-first entry semantics.`
+- Completed since last snapshot:
+  - Re-read the latest runtime evidence and identified the two concrete issues to fix:
+    - Java-side `requestPictureInPictureRecoveryVisualGuard(false, ...ready)` was being called before `refreshPictureInPictureParamsForCurrentVideo()`
+    - page-side visual guard could receive `active=0` clears during the manual-next/fullscreen-restore window
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) so signal/recovery success paths refresh PiP params first, then clear visual guard
+  - Patched [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) and [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h):
+    - defer `active=0` visual-guard clears while restore/fullscreen-request/retry is still in flight
+    - upgrade the guard to use a black overlay plus elevated video/ancestor z-order
+    - return direct string statuses instead of object payloads
+    - reorder failed bridge cleanup to avoid incorrectly deferred clears
+  - Synced Windows -> WSL build tree and rebuilt successfully
+  - Installed the rebuilt APK and confirmed package metadata:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-18 20:16:27`
+- In progress now:
+  - No runtime verification performed yet on this patched build.
+- Blockers/risks:
+  - The patch is still unverified at runtime.
+  - If the callback still returns `none`, the remaining issue may be deeper than guard JS behavior alone.
+  - Signal-driven refresh chain itself is still not proven stable beyond this visual-guard improvement.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build passed:
+    - `artifacts/android_build/release_build_pip_visual_guard_stabilize_20260418.log`
+  - Install passed
+  - Launch passed
+  - Runtime verify pending
+- Exact next concrete step:
+  - Start fresh `adb logcat`, then reproduce:
+    - manual `next/previous` in PiP
+    - auto-advance in PiP
+  - Check for:
+    - `pip_recovery_visual_guard_result`
+    - `track_navigation_restore_apply`
+    - `pip_signal_refresh_apply`
+    - visual/layout leak behind PiP
+- Expected resume inspection scope:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - next runtime log after this install
+- Current tool(s):
+  - `apply_patch`
+  - `shell_command`
+  - `multi_tool_use.parallel`
+- Exact command(s):
+  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc && cp /mnt/c/Users/Master/Desktop/GO_PLAY/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h /home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_visual_guard_stabilize_20260418.log"`
+  - `adb install -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | findstr /I "versionCode versionName lastUpdateTime"`
+- Tool purpose:
+  - `Implement the user-specified visual-guard contract and get a testable build onto the device.`
+- Tool state:
+  - code edit complete
+  - build complete
+  - install complete
+  - runtime verify pending
+- Expected resume command:
+  - fresh `adb logcat` capture
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_visual_guard_stabilize_20260418.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — clear-after-refresh ordering
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — defer-clear + overlay guard
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h) — pending-clear state
+  - [live_pip_recovery_verify_20260418_184135.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_verify_20260418_184135.txt) — manual-next evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected Android device
+  - WSL build tree available
+- Expected success signal:
+  - runtime log shows guard staying active through manual-next until PiP params refresh, with string callback results
+- Expected failure signal:
+  - guard still clears early or callback still returns `none`
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_recovery_verify_20260418_184135.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_visual_guard_stabilize_20260418.log`
+- Recent decisions:
+  - preserve fullscreen-first PiP entry
+  - obey the explicit contract: keep guard until PiP has video ready
+  - patch timing/order and page-side guard behavior only
+- Rejected approaches:
+  - direct-entry PiP
+  - broad rollback
+  - further architectural reroutes before testing this targeted fix
+- Stop point classification:
+  - build passed, APK installed, runtime verification pending
+- What is done but unverified:
+  - deferred visual-guard clear
+  - overlay-based visual guard
+  - clear-after-refresh ordering in Java
+- What is verified:
+  - code compiled
+  - APK installed
+  - app launched
+- External prerequisite:
+  - device-side PiP repro on rebuilt package
+- Secret required but not stored:
+  - none
+# 2026-04-18 21:11:30 +07:00
+
+- Current phase: `PiP visual-guard stabilization runtime verification`
+- Task/objective: `Verify whether the visual-guard stabilization patch fixed manual next/previous and signal-driven PiP recovery.`
+- Completed since last snapshot:
+  - Started fresh runtime capture:
+    - `artifacts/runtime_logs/live_pip_visual_guard_verify_20260418_210639.txt`
+  - Stopped capture and inspected the latest log for PiP entry, manual next, signal refresh, recovery chain, and visual-guard markers.
+  - Verified:
+    - fresh fullscreen-first PiP entry still succeeds
+    - manual `next_track` still arms restore and reaches `track_navigation_restore_apply`
+    - `pip_signal_refresh_apply` now fires successfully
+    - `pip_recovery_visual_guard_result` still returns `none`
+    - no `renderProcessGone`
+    - no Chromium `FATAL`
+- In progress now:
+  - No code edit in progress.
+  - Current work is analysis of the latest runtime verification evidence.
+- Blockers/risks:
+  - The patch improved Java-side timing but did not fix the page-side visual-guard callback problem.
+  - Because the guard still returns `none`, the user-visible PiP experience can still look broken even though Java chains succeed.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Installed build still:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-18 20:16:27`
+  - Runtime log analyzed:
+    - `artifacts/runtime_logs/live_pip_visual_guard_verify_20260418_210639.txt`
+- Exact findings:
+  - `enter_picture_in_picture_from_fullscreen = 3`
+  - `Attempted picture-in-picture with result: success = 1`
+  - `Attempted picture-in-picture with result: failure = 0`
+  - `pip_signal_refresh_start = 2`
+  - `pip_signal_refresh_apply = 2`
+  - `pip_signal_refresh_finish = 2`
+  - `pip_recovery_chain_start = 1`
+  - `pip_recovery_chain_finish = 1`
+  - `pip_recovery_dispatch = 0`
+  - `pip_recovery_visual_guard_result = 10`
+  - `arm_track_navigation_keepalive = 2`
+  - `track_navigation_restore_apply = 2`
+  - `renderProcessGone = 0`
+  - `FATAL = 0`
+- Interpretation:
+  - The Java-side part is healthier than before:
+    - signal-driven refresh now reaches `apply`
+    - manual-next still preserves the restore chain
+  - The remaining breakage is centered on page-side visual guard because all observed guard callbacks still came back as `result=none`.
+  - This round does not support the claim that `pip` collapsed at the Java/recovery-chain level.
+- Exact next concrete step:
+  - If continuing later, inspect why `SetPictureInPictureRecoveryVisualGuard(...)` still produces `none` even after switching to direct string returns.
+- Expected resume inspection scope:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `artifacts/runtime_logs/live_pip_visual_guard_verify_20260418_210639.txt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Stop-Process -Id 2868 -Force`
+  - `Select-String -Path artifacts\\runtime_logs\\live_pip_visual_guard_verify_20260418_210639.txt -Pattern 'enter_picture_in_picture_from_fullscreen|Attempted picture-in-picture with result|pip_signal_refresh_|pip_recovery_chain_|pip_recovery_dispatch|pip_recovery_visual_guard_result|arm_track_navigation_keepalive|track_navigation_restore_apply|renderProcessGone|FATAL|Exception|Dismiss activity|Exiting fullscreen|skip without active fullscreen video'`
+  - `Select-String -Path artifacts\\runtime_logs\\live_pip_visual_guard_verify_20260418_210639.txt -Pattern 'enter_picture_in_picture_from_fullscreen|Attempted picture-in-picture with result: success|Attempted picture-in-picture with result: failure|pip_signal_refresh_start|pip_signal_refresh_apply|pip_signal_refresh_finish|pip_recovery_chain_start|pip_recovery_chain_finish|pip_recovery_dispatch|pip_recovery_visual_guard_result|arm_track_navigation_keepalive|track_navigation_restore_apply|renderProcessGone|FATAL'`
+- Tool purpose:
+  - `Assess whether the latest patch improved PiP stability and identify what still remains broken.`
+- Tool state:
+  - capture completed
+  - analysis completed
+  - no code edit started from this evidence
+- Expected resume command:
+  - targeted `Select-String` / `rg` on `live_pip_visual_guard_verify_20260418_210639.txt`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — visual guard implementation/callback parsing
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h) — guard state
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — improved Java-side PiP timing
+  - [live_pip_visual_guard_verify_20260418_210639.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt) — latest runtime truth
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [live_pip_visual_guard_verify_20260418_210639.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none beyond the captured log
+- Expected success signal:
+  - a future runtime log shows concrete visual-guard callback values instead of `none`
+- Expected failure signal:
+  - continuing to patch without narrowing why the callback still returns `none`
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_verify_20260418_210639.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_visual_guard_stabilize_20260418.log`
+- Recent decisions:
+  - keep fullscreen-first entry unchanged
+  - do not patch again from this round alone
+  - treat remaining breakage as page-side visual-guard behavior first
+- Rejected approaches:
+  - claiming PiP fully recovered based on Java-side improvements alone
+  - routing PiP away from fullscreen-first
+- Stop point classification:
+  - runtime captured and analyzed; reporting-only stop point
+- What is done but unverified:
+  - none
+- What is verified:
+  - Java-side PiP timing improved
+  - page-side visual guard is still not confirmed working
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 21:45:39 +07:00
+
+- Current phase: `PiP recovery chain alignment for auto-advance/new-video`
+- Task/objective:
+  - Make the PiP recovery trigger that fires on new video/native fullscreen signal use the same recoveryPIP chain used after unlock/onResume, without changing fullscreen-first PiP entry.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Stopped the fresh runtime capture PID `2624`.
+  - Analyzed [live_pip_native_guard_verify_20260418_213541.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_native_guard_verify_20260418_213541.txt) with targeted markers.
+  - Proved the trigger split from runtime truth:
+    - manual `next_track` still pre-arms restore via `arm_track_navigation_keepalive` and reaches `track_navigation_restore_apply`
+    - `on_resume` uses `pip_recovery_chain_start -> pip_recovery_probe -> pip_recovery_dispatch -> recovery_pip_arm_current_video`
+    - `native_fullscreen_signal_while_in_pip` was still taking `pip_signal_refresh_start/apply` instead of the unlock-style recovery chain
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - `onNativeFullscreenSignalWhileInPictureInPicture(...)` now cancels signal-refresh and routes through `schedulePictureInPictureRecovery("native_fullscreen_signal_while_in_pip", webContents)`
+    - removed the previous `cancelPictureInPictureRecoveryChain(...) + schedulePictureInPictureSignalRefresh(...)` override flow from that method
+  - Synced the patched Windows file to the WSL source-of-truth file used by build.
+  - Rebuilt from WSL and reinstalled the APK.
+- In progress now:
+  - No code edit in progress.
+  - Runtime verification on the new build has not started yet.
+- Blockers/risks:
+  - The new build has not yet been runtime-verified.
+  - The previously observed `pip_recovery_visual_guard_result active=1/0 result=none` issue is still unresolved by this patch and may still affect perceived stability.
+  - `dumpsys package` still reports `lastUpdateTime=2026-04-18 21:31:21` even though the rebuild/install commands completed successfully; runtime verification should rely on build/install command success and source diff rather than package timestamp alone.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build succeeded:
+    - `artifacts/android_build/release_build_pip_new_video_recovery_chain_20260418.log`
+  - `adb install -r` succeeded for:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - App launch command returned `Status: ok`
+  - Runtime verification: `not started yet`
+- Exact next concrete step:
+  - Start a fresh runtime capture on the installed build.
+  - Reproduce:
+    - PiP auto-advance/new-video
+    - unlock while in PiP
+    - manual `next_track`
+  - Confirm from log whether `native_fullscreen_signal_while_in_pip` now emits `pip_recovery_chain_start/probe/dispatch` instead of `pip_signal_refresh_start/apply`.
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [live_pip_native_guard_verify_20260418_213541.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_native_guard_verify_20260418_213541.txt)
+  - `artifacts/android_build/release_build_pip_new_video_recovery_chain_20260418.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Select-String -Path artifacts\\runtime_logs\\live_pip_native_guard_verify_20260418_213541.txt -Pattern 'OTB_PIP|cr_OneTabTubePerf|cr_VideoPersist|pip_recovery_|pip_signal_refresh_|track_navigation_restore_apply|arm_track_navigation_keepalive|recovery_pip_arm_current_video|on_resume|window_focus_changed|native_fullscreen_signal_while_in_pip'`
+  - `Copy-Item -LiteralPath C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_new_video_recovery_chain_20260418.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose:
+  - Prove the real runtime split between unlock and new-video PiP triggers, then route the new-video/native signal through the unlock-style recovery chain and rebuild from the real WSL tree.
+- Tool state:
+  - targeted analysis complete
+  - code edited
+  - build complete
+  - install complete
+  - runtime verification pending
+- Expected resume command:
+  - start fresh `adb logcat` capture and reproduce PiP auto-advance/new-video behavior
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — Java trigger routing between recovery chain and signal-refresh
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) — native fullscreen signal entry into Activity
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — page-side recovery helpers
+  - [live_pip_native_guard_verify_20260418_213541.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_native_guard_verify_20260418_213541.txt) — runtime proof used for this decision
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [live_pip_native_guard_verify_20260418_213541.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_native_guard_verify_20260418_213541.txt)
+  - `artifacts/android_build/release_build_pip_new_video_recovery_chain_20260418.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - runtime log shows `native_fullscreen_signal_while_in_pip` entering the recovery chain family (`pip_recovery_chain_start/probe/dispatch`) rather than the lightweight signal-refresh family
+- Expected failure signal:
+  - runtime log still dominated by `pip_signal_refresh_start/apply` after native fullscreen/new-video signal
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_native_guard_verify_20260418_213541.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_new_video_recovery_chain_20260418.log`
+- Recent decisions:
+  - New-video/native fullscreen signal should stop depending on the lightweight signal-refresh path.
+  - Use the same recovery chain family as unlock/onResume for new-video/native fullscreen signal.
+  - Keep fullscreen-first entry unchanged.
+- Rejected approaches:
+  - broad rollback
+  - changing PiP entry away from fullscreen-first
+  - guessing from symptoms without proving the trigger split from runtime logs first
+- Stop point classification:
+  - code edited, build passed, APK installed, runtime not yet verified
+- What is done but unverified:
+  - that the newly installed build now routes new-video/native signal through the recovery chain
+  - that this improves PiP focus restoration during auto-advance
+- What is verified:
+  - the old build split unlock and new-video into different trigger systems
+  - the new code routes native signal through the recovery chain
+  - build/install completed
+- External prerequisite:
+  - manual runtime testing on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 23:40:24 +07:00
+
+- Current phase:
+  - `PiP stabilization: runtime verification of auto-end carry-forward hardening + page-side visual guard helper rewrite`
+- Task/objective:
+  - `Collect fresh runtime evidence on the latest installed bundle because the user reports behavior still looks unchanged.`
+- Completed since last snapshot:
+  - Re-read [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md) and the latest [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md) entry before continuing.
+  - Verified that the new fresh-capture artifacts exist:
+    - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt)
+    - [live_pip_final_verify_20260418_233830.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.err.txt)
+  - Verified the background capture process is running as `adb` PID `11564`.
+- In progress now:
+  - Fresh runtime capture is still running.
+  - Waiting for the user to reproduce the issue and say `หยุดได้`.
+- Blockers/risks:
+  - The user already reports the behavior still looks unchanged, so the next decision must come from this fresh runtime log instead of code assumptions.
+  - No additional code should be touched until this running capture is analyzed.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Latest bundle remains:
+    - built
+    - installed
+    - launched
+  - Runtime verification: `capture running`
+- Exact next concrete step:
+  - When the user says `หยุดได้`, stop PID `11564`.
+  - Analyze [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt) for:
+    - `carry_forward_restore_check`
+    - `track_navigation_restore_apply`
+    - `pip_recovery_visual_guard_request`
+    - `pip_recovery_visual_guard_result`
+    - `pip_native_visual_guard_apply`
+    - `native_fullscreen_signal_while_in_pip`
+    - `pip_recovery_chain_start`
+    - `pip_recovery_probe`
+    - `pip_recovery_dispatch`
+    - `pip_recovery_chain_finish`
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md -TotalCount 250`
+  - `Get-Content -Path C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md -Tail 120`
+  - `Get-Process -Id 11564`
+  - `Get-Item C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt`
+- Tool purpose:
+  - `Confirm the running fresh-capture desk state before waiting for the user to finish reproduction.`
+- Tool state:
+  - capture confirmed running
+- Expected resume command:
+  - `Stop-Process -Id 11564`
+  - then inspect the fresh log with `rg`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) - latest code under test
+  - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt) - fresh runtime proof for the installed bundle
+  - [release_build_pip_autoadvance_guard_final_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_autoadvance_guard_final_20260418.log) - successful build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md) entry
+  - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - user must finish reproduction before stopping capture
+- Expected success signal:
+  - fresh log contains app markers for the failing case and is large enough to analyze the full transition
+- Expected failure signal:
+  - capture stops unexpectedly
+  - log contains no app markers for the reproduction window
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_autoadvance_guard_final_20260418.log`
+- Recent decisions:
+  - do not touch code again until the current fresh runtime capture is analyzed
+- Rejected approaches:
+  - guessing from symptoms without new log proof
+- Stop point classification:
+  - fresh capture running; waiting for user repro before analysis
+- What is done but unverified:
+  - latest patch bundle behavior on device
+- What is verified:
+  - capture files exist
+  - capture process is running
+- External prerequisite:
+  - manual repro on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 23:51:10 +07:00
+
+- Current phase:
+  - `PiP stabilization: runtime root-cause confirmation after fresh capture`
+- Task/objective:
+  - `Use the fresh capture to prove exactly what is still broken and what is no longer broken in the latest installed bundle.`
+- Completed since last snapshot:
+  - Stopped fresh capture PID `11564`.
+  - Analyzed [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt).
+  - Confirmed:
+    - `pip_recovery_visual_guard_result active=1 result=enabled` appears `38` times.
+    - `pip_recovery_visual_guard_result active=0 result=disabled` appears `6` times.
+    - there are no `pip_recovery_visual_guard_result ... result=none` lines in this capture.
+  - Confirmed native guard still applies `full_black=true`.
+  - Confirmed remaining carry-forward problem:
+    - `carry_forward_restore_check result=arm` appears `1` time.
+    - `carry_forward_restore_check result=none` appears `2` times.
+    - `carry_forward_restore_check result=expired` appears `1` time.
+  - Confirmed at least two reactive new-video recovery generations still fail:
+    - `native_fullscreen_signal_while_in_pip_probe2_recover_retry3_failed`
+- In progress now:
+  - No code edit is in progress.
+  - Narrowing the next fix to carry-forward consistency only.
+- Blockers/risks:
+  - If we keep treating visual guard callback as the primary problem now, we will patch the wrong layer because the fresh log shows that callback is already healthy.
+  - The remaining failure is narrower but more subtle: some auto-end rounds still do not reach carry-forward arm before recovery has to go reactive.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new build started after this analysis.
+  - Fresh runtime capture analyzed successfully.
+- Exact next concrete step:
+  - Inspect [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) around carry-forward save/consume flow before editing again.
+- Expected resume inspection scope:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Stop-Process -Id 11564 -Force`
+  - `rg -n "OTB_PIP event=(carry_forward_restore_check|track_navigation_restore_apply|arm_track_navigation_keepalive|pip_recovery_visual_guard_request|pip_recovery_visual_guard_result|pip_native_visual_guard_apply|native_fullscreen_signal_while_in_pip|pip_recovery_chain_start|pip_recovery_probe|pip_recovery_dispatch|pip_recovery_chain_finish|recovery_pip_arm_current_video)" artifacts/runtime_logs/live_pip_final_verify_20260418_233830.txt`
+  - `rg -c --fixed-strings "carry_forward_restore_check result=arm" artifacts/runtime_logs/live_pip_final_verify_20260418_233830.txt`
+  - `rg -c --fixed-strings "carry_forward_restore_check result=none" artifacts/runtime_logs/live_pip_final_verify_20260418_233830.txt`
+  - `rg -c --fixed-strings "pip_recovery_visual_guard_result active=1 result=enabled" artifacts/runtime_logs/live_pip_final_verify_20260418_233830.txt`
+- Tool purpose:
+  - `Separate the truly fixed layer from the still-failing layer using fresh runtime evidence.`
+- Tool state:
+  - runtime analysis complete
+- Expected resume command:
+  - inspect carry-forward save/consume logic in `youtube_script_injector_tab_helper.cc`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) - remaining carry-forward root cause
+  - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt) - proof that guard callback is fixed while carry-forward still fails intermittently
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md) entry
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none beyond existing log/source tree
+- Expected success signal:
+  - future patch removes `carry_forward_restore_check result=none` from auto-end/new-video cases
+- Expected failure signal:
+  - patching visual guard plumbing again without new evidence
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_autoadvance_guard_final_20260418.log`
+- Recent decisions:
+  - stop treating visual guard callback as the main blocker
+  - isolate the next fix to carry-forward consistency
+- Rejected approaches:
+  - guessing that the old page-side guard callback bug is still the root cause
+- Stop point classification:
+  - fresh capture analyzed, no new code edits yet
+- What is done but unverified:
+  - none newly added after this analysis
+- What is verified:
+  - visual guard callback now returns real `enabled` / `disabled`
+  - native guard applies `full_black=true`
+  - auto-end carry-forward still fails intermittently
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 23:59:42 +07:00
+
+- Current phase:
+  - `PiP stabilization: native-owned visual guard`
+- Current objective:
+  - `Make BraveActivity/controller the sole owner of visual-guard release so other paths cannot clear it early, and only release on a positive signal that video really entered PiP.`
+- Completed since last snapshot:
+  - Re-read [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md) and the latest [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md) entry before continuing.
+  - Inspected the real code only in the active PiP guard chain:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+    - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - Confirmed from code that multiple paths could still send `active=false` guard requests and that `BraveActivity` still allowed milestone-driven clears while in PiP.
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - added native-owner state:
+      - `mOneTabPictureInPictureNativeGuardHeld`
+      - `mOneTabPictureInPictureNativeGuardReleaseAuthorized`
+    - `onNativePictureInPictureRecoveryVisualGuardChanged(...)` now skips callback-driven clear requests while PiP owner still holds the guard
+    - added `onPictureInPictureVideoParamsApplied(...)`
+    - added `forceClearPictureInPictureRecoveryVisualGuard(...)`
+    - removed recovery-milestone guard clears while still in PiP
+    - changed `requestPictureInPictureRecoveryVisualGuard(...)` so in-PiP `active=false` requests no longer clear native guard directly
+  - Synced [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) from Windows repo to WSL source-of-truth:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java`
+  - Verified Windows/WSL hash match for `BraveActivity.java` after sync:
+    - `05E0D94C250108992C709962F8AAE78944A3333417E51FE0CDB46F851D5152C0`
+  - Patched WSL [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java):
+    - after successful `mActivity.setPictureInPictureParams(builder.build())`
+    - now calls `braveActivity.onPictureInPictureVideoParamsApplied(webContents)`
+  - Rebuilt successfully from WSL source-of-truth:
+    - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+- In progress now:
+  - No further code edit is in progress.
+  - Install and runtime verification of the native-owner build are still pending.
+- Blockers/risks:
+  - The new design is compiled but not yet proven on device.
+  - If controller `setPictureInPictureParams(...)` success is still earlier than the user's visible "video actually in PiP" moment, release timing may still be too early and must be proven by runtime logs before any further edit.
+  - Page-side helper still sends callbacks; the new expectation is that they cannot clear native guard while PiP owner still holds it.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build succeeded:
+    - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+  - Install status: `pending`
+  - Launch status: `pending`
+  - Runtime verification status: `pending`
+- Exact next concrete step:
+  - Install the newly built APK from WSL output.
+  - Launch the app.
+  - Confirm package version/update time.
+  - Then run a fresh capture and verify native owner behavior with real logs.
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path 'C:\\Users\\Master\\Desktop\\GO_PLAY\\docs\\current-status.md' -TotalCount 220`
+  - `Get-Content -Path 'C:\\Users\\Master\\Desktop\\GO_PLAY\\docs\\progress-log.md' -Tail 220`
+  - `Select-String -Path 'C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java' -Pattern 'mOneTabPictureInPictureNativeGuardHeld|onPictureInPictureVideoParamsApplied|forceClearPictureInPictureRecoveryVisualGuard|pip_native_visual_guard_skip_clear' -Context 2,2`
+  - `Select-String -Path '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\chrome\\android\\java\\src\\org\\chromium\\chrome\\browser\\media\\FullscreenVideoPictureInPictureController.java' -Pattern 'onPictureInPictureVideoParamsApplied|setPictureInPictureParams\\(' -Context 2,3`
+  - `Copy-Item -LiteralPath 'C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java' -Destination '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java' -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_native_owner_guard_20260418.log"`
+- Tool purpose:
+  - Implement the native-owner visual-guard policy carefully and stop any non-owner path from clearing guard while still in PiP.
+- Tool state:
+  - code inspection complete
+  - code edited
+  - WSL sync complete
+  - build complete
+  - install/runtime verification pending
+- Expected resume command:
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+- Expected output/artifact path:
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — single native owner for guard hold/release
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) — positive release signal after controller success
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) — callback path still relevant, unchanged this round
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — page-side still issues callbacks that native owner must ignore for release timing
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log) — compile evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md) entry
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected `adb` device
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - runtime log shows callback-driven false clears being skipped while in PiP
+  - runtime log shows guard release through positive signal path after controller success
+- Expected failure signal:
+  - runtime log still shows guard clearing on recovery milestone/failure while in PiP
+  - runtime log lacks positive-signal release after controller success
+- Last known log location:
+  - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt)
+- Last known artifact path:
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+- Recent decisions:
+  - follow the new direction exactly: native side owns guard release timing
+  - do not modify fullscreen-first PiP entry
+  - do not make page-side helper responsible for release timing
+- Rejected approaches:
+  - clearing guard from recovery success/failure milestones
+  - broad rollback
+  - another DOM-side guard-centric fix
+- Stop point classification:
+  - code edited, build passed, APK not yet installed, runtime not yet verified
+- What is done but unverified:
+  - native-owner guard policy in `BraveActivity`
+  - controller success callback into `onPictureInPictureVideoParamsApplied(...)`
+- What is verified:
+  - targeted source changes are present
+  - Windows and WSL `BraveActivity.java` hashes match
+  - WSL build passed
+- External prerequisite:
+  - manual runtime testing on device after install
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 00:11:12 +07:00
+
+- Current phase:
+  - `PiP stabilization: native-owned visual guard`
+- Current objective:
+  - `Carry the native-owner visual-guard patch through install/launch so runtime verification can start from the exact build that compiled from WSL source-of-truth.`
+- Completed since last snapshot:
+  - Verified the WSL APK output exists at:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - Verified connected device via `adb devices`:
+    - `R9TRC00GA2E`
+  - Installed the APK successfully:
+    - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+    - result: `Success`
+  - Launched the app successfully:
+    - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+    - result: `Status: ok`
+  - Confirmed package state on device:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 00:10:21`
+- In progress now:
+  - No new code edit is in progress.
+  - The installed native-owner build is ready for fresh runtime capture.
+- Blockers/risks:
+  - Runtime behavior of the new owner gate is still unverified.
+  - It is still possible that controller success happens earlier than the user's visible "video truly in PiP" moment; that must be proven from logs rather than assumed.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build succeeded:
+    - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+  - Install succeeded.
+  - Launch succeeded.
+  - Runtime verification: `pending`
+- Exact next concrete step:
+  - Start a fresh runtime capture on the installed build.
+  - Reproduce the PiP transition case that previously leaked or cleared guard early.
+  - Verify from logs that:
+    - callback-driven `active=false` requests are skipped while still in PiP
+    - native owner keeps guard held through transition
+    - release occurs only after `onPictureInPictureVideoParamsApplied(...)`
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Test-Path "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `Get-Item "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk" | Select-Object FullName,Length,LastWriteTime`
+  - `adb devices`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose:
+  - Carry the already-built native-owner patch to the device cleanly before runtime verification.
+- Tool state:
+  - install complete
+  - launch complete
+  - runtime verification pending
+- Expected resume command:
+  - start fresh `adb logcat` capture and reproduce PiP transition cases
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — native owner prevents early clears
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) — positive release signal source
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log) — build proof
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md) entry
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+- Expected success signal:
+  - runtime logs prove native owner holds guard until positive video-in-PiP signal
+- Expected failure signal:
+  - runtime logs still show guard clearing from non-owner callback/milestone path
+- Last known log location:
+  - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt)
+- Last known artifact path:
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+- Recent decisions:
+  - no more page-side release ownership
+  - no more milestone-driven release while still in PiP
+  - verify on device before changing anything else
+- Rejected approaches:
+  - guessing runtime success from build success
+  - making another code change before installing and checking the actual build
+- Stop point classification:
+  - code edited, build passed, APK installed and launched, runtime not yet verified
+- What is done but unverified:
+  - native-owner release policy under real PiP transitions
+- What is verified:
+  - build passed
+  - APK installed
+  - app launched
+  - package info reflects the latest install time
+- External prerequisite:
+  - manual runtime reproduction on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 00:21:48 +07:00
+
+- Current phase:
+  - `PiP source-of-truth sync and repo commit prep`
+- Current objective:
+  - `Use the APK installed on the connected device as the only source-of-truth, prove local source parity, and prepare a clean PiP+Visual guard commit/push.`
+- Completed since last snapshot:
+  - Pulled the installed APK from the device:
+    - [device_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_base_429000009_20260419.apk)
+  - Verified SHA256 match between device APK and WSL-built APK:
+    - `CC5B36004C18A9FD2446C541F60FCCB70515B76311C334866FBBD780F66F9A23`
+  - Verified all relevant PiP/visual-guard overlay files match between Windows repo and WSL source-of-truth:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+    - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc)
+    - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h)
+    - [youtube_native_tab_bridge.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_native_tab_bridge.cc)
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+    - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h)
+    - [onetab_fab_strings.xml](C:\Users\Master\Desktop\GO_PLAY\android\java\brave-res\values\onetab_fab_strings.xml)
+  - Confirmed the repo does not directly track the controller file used in WSL build:
+    - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - Regenerated the tracked repo representation of that controller change:
+    - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+- In progress now:
+  - Commit and push have not been executed yet.
+- Blockers/risks:
+  - Workspace has many unrelated modified/untracked files, so commit must remain strictly path-limited.
+  - The repo can only carry the controller change as a patch representation, not the raw WSL source file.
+- Files/modules touched:
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build/install/launch already verified in the previous snapshot.
+  - Device APK source-of-truth proof completed.
+  - Commit/push: `pending`
+- Exact next concrete step:
+  - Stage only the PiP+Visual guard files that match the installed APK.
+  - Commit them.
+  - Push to `origin`.
+- Expected resume inspection scope:
+  - [patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - `git status --short`
+  - `git remote -v`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull <device-base.apk> C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\device_base_429000009_20260419.apk`
+  - `Get-FileHash <device-apk> -Algorithm SHA256`
+  - `Get-FileHash <wsl-apk> -Algorithm SHA256`
+  - `wsl bash -lc "diff -u --label a/... --label b/... <upstream-base> <wsl-controller> > .../FullscreenVideoPictureInPictureController.java.patch"`
+  - `git status --short`
+  - `git remote -v`
+- Tool purpose:
+  - prove parity first, then commit only what truly matches the installed APK
+- Tool state:
+  - source-of-truth proof complete
+  - commit/push pending
+- Expected resume command:
+  - path-limited `git add` followed by `git commit` and `git push origin publish/go_play-sync-20260402`
+- Expected output/artifact path:
+  - [device_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_base_429000009_20260419.apk)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc)
+  - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h)
+  - [youtube_native_tab_bridge.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_native_tab_bridge.cc)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h)
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md) entry
+  - `git status --short`
+  - `git diff --stat -- <PiP paths>`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device still connected if re-proving APK is needed
+- Expected success signal:
+  - commit contains only PiP+Visual guard files that match the installed APK
+  - push to `origin` succeeds
+- Expected failure signal:
+  - unrelated files are staged
+  - push fails
+- Last known log location:
+  - [live_pip_final_verify_20260418_233830.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt)
+- Last known artifact path:
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+- Recent decisions:
+  - installed APK is the only source-of-truth for this round
+  - external controller must be represented through the tracked patch file
+- Rejected approaches:
+  - committing unrelated workspace changes
+  - claiming the repo tracks the raw controller file when it does not
+- Stop point classification:
+  - source-of-truth proven, commit/push not yet executed
+- What is done but unverified:
+  - commit/push
+- What is verified:
+  - device APK == WSL APK by SHA256
+  - overlay files Windows == WSL for the PiP working set
+  - controller patch representation regenerated
+- External prerequisite:
+  - network access to push to GitHub
+- Secret required but not stored:
+  - none
+
+## 2026-04-18 22:39:11 +07:00
+
+- Current phase:
+  - `PiP auto-advance pre-arm + visual-guard hardening`
+- Current objective:
+  - `Fix both remaining PiP weak points in one pass: auto-advance/new-video should arm fullscreen restore ownership before the new page settles, and visual guard should hold the PiP window safely until current video bounds/signal are back.`
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Re-analyzed [live_pip_rootcause_20260418_221934.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_rootcause_20260418_221934.txt) and confirmed:
+    - `native_fullscreen_signal_while_in_pip` already moved to the recovery chain
+    - manual `next_track` still pre-arms restore ownership correctly
+    - auto-advance/new-video remained reactive because no equivalent pre-arm existed
+    - `pip_recovery_visual_guard_result` still returned `result=none`
+  - Patched [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h) and [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc):
+    - added carry-forward check callback/method declarations
+    - `PrimaryMainDocumentElementAvailable()` now launches a carry-forward restore check before the usual restore attempt
+    - added `MaybeArmTrackNavigationRestoreFromCarryForwardIntent()`
+    - added `OnCarryForwardVideoPresentationCheckComplete(...)`
+    - when carry-forward result is `arm`, the new page now arms:
+      - `restore_video_presentation_after_track_navigation_ = true`
+      - `SetPictureInPictureRecoveryVisualGuard(true)`
+      - `SetFullscreenRequested(true)`
+      - `MaybeRestoreVideoPresentationAfterTrackNavigation("carry_forward_primary_main_document", true)`
+    - rewrote the page-side visual-guard runner from an async IIFE to a synchronous IIFE so callback values can return concrete strings
+  - Patched WSL source-of-truth [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java):
+    - `getCurrentOrLastVideoBoundsForPictureInPictureGuard()` now returns `null` when the current WebContents no longer has an active fullscreen video, so native guard falls back to `full_black` instead of reusing stale bounds
+  - Synced the patched Windows repo files to WSL source-of-truth:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc`
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h`
+  - Rebuilt from WSL and reinstalled:
+    - build log: `artifacts/android_build/release_build_pip_autoadvance_guard_bundle_20260418.log`
+    - install: `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+    - launch: `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+- In progress now:
+  - No code edit is in progress.
+  - Runtime verification of the bundled patch has not started yet.
+- Blockers/risks:
+  - Runtime behavior is still unverified.
+  - If page-side carry intent is not written for the failing auto-advance case, the new pre-arm path will not trigger and logs must prove that before any further patching.
+  - Page-side guard callback should now stop returning `none`, but that needs runtime proof.
+- Files/modules touched:
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Build succeeded:
+    - `artifacts/android_build/release_build_pip_autoadvance_guard_bundle_20260418.log`
+  - Install succeeded.
+  - Launch command returned `Status: ok`.
+  - `dumpsys package` now reports:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-18 21:45:30`
+  - Runtime verification: `pending`
+- Exact next concrete step:
+  - Start a fresh runtime capture on the installed build.
+  - Reproduce:
+    - auto-advance/new-video in PiP
+    - manual `next_track`
+  - Verify:
+    - `OTB_PIP event=carry_forward_restore_check result=arm`
+    - `OTB_PIP event=track_navigation_restore_apply reason=carry_forward_primary_main_document`
+    - `OTB_PIP event=pip_recovery_visual_guard_result ... result=enabled|waiting_for_video|disabled`
+    - native guard logs `full_black=true` whenever current fullscreen video bounds are unavailable
+- Expected resume inspection scope:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - `artifacts/android_build/release_build_pip_autoadvance_guard_bundle_20260418.log`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path docs/current-status.md`
+  - `Get-Content -Path docs/progress-log.md -Tail 120`
+  - `rg -n "...carry_forward..." ...`
+  - `Copy-Item -LiteralPath C:\\Users\\Master\\Desktop\\GO_PLAY\\browser\\android\\youtube_script_injector\\youtube_script_injector_tab_helper.cc -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\browser\\android\\youtube_script_injector\\youtube_script_injector_tab_helper.cc -Force`
+  - `Copy-Item -LiteralPath C:\\Users\\Master\\Desktop\\GO_PLAY\\browser\\android\\youtube_script_injector\\youtube_script_injector_tab_helper.h -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\browser\\android\\youtube_script_injector\\youtube_script_injector_tab_helper.h -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_autoadvance_guard_bundle_20260418.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose:
+  - Use the latest runtime truth to patch the missing auto-advance pre-arm path and visual-guard layer behavior in one cautious pass.
+- Tool state:
+  - targeted analysis complete
+  - code edited
+  - WSL sync complete
+  - build complete
+  - install complete
+  - runtime verification pending
+- Expected resume command:
+  - start fresh `adb logcat` capture and reproduce auto-advance/manual-next PiP behavior
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — auto-advance carry-forward arm + page-side guard contract
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h) — carry-forward callback declarations
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) — native full-black fallback when no current fullscreen video exists
+  - [live_pip_rootcause_20260418_221934.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_rootcause_20260418_221934.txt) — runtime proof for the chosen fix
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - `artifacts/android_build/release_build_pip_autoadvance_guard_bundle_20260418.log`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - auto-advance/new-video shows carry-forward arm in log before/at page load
+  - visual guard result stops returning `none`
+  - native guard uses full-black when current fullscreen video is unavailable
+- Expected failure signal:
+  - no carry-forward arm marker
+  - page-side guard still returns `result=none`
+  - stale-bounds hole still appears instead of full black
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_rootcause_20260418_221934.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_autoadvance_guard_bundle_20260418.log`
+- Recent decisions:
+  - keep fullscreen-first entry untouched
+  - use existing carry-forward intent rather than invent a new auto-next command path
+  - move native guard to full-black fallback whenever there is no current fullscreen video bounds
+- Rejected approaches:
+  - direct-entry PiP
+  - broad rollback
+  - guessing from symptoms without anchoring the patch to `live_pip_rootcause_20260418_221934.txt`
+- Stop point classification:
+  - code edited, build passed, APK installed, runtime not yet verified
+- What is done but unverified:
+  - carry-forward pre-arm path for auto-advance
+  - synchronous page-side visual-guard result contract
+  - native full-black fallback for guard
+- What is verified:
+  - previous runtime log already showed the new-video path on recovery chain
+  - manual next pre-arm path still existed
+  - this bundled patch compiles and installs
+- External prerequisite:
+  - manual runtime testing on device
 - Secret required but not stored:
   - none

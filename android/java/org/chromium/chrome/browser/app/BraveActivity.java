@@ -353,6 +353,11 @@ public abstract class BraveActivity extends ChromeActivity
     private static final int OTB_PIP_REFRESH_RETRY_DELAY_1_MS = 220;
     private static final int OTB_PIP_REFRESH_RETRY_DELAY_2_MS = 520;
     private static final int OTB_PIP_REFRESH_RETRY_DELAY_3_MS = 900;
+    private static final int OTB_PIP_RECOVERY_PROBE_DELAY_1_MS = 120;
+    private static final int OTB_PIP_RECOVERY_PROBE_DELAY_2_MS = 260;
+    private static final int OTB_PIP_RECOVERY_FINALIZE_DELAY_1_MS = 120;
+    private static final int OTB_PIP_RECOVERY_FINALIZE_DELAY_2_MS = 300;
+    private static final int OTB_PIP_RECOVERY_FINALIZE_DELAY_3_MS = 480;
     private static final int PIP_EXIT_TO_WATCH_PAGE_DELAY_MS = 250;
     private static final int PIP_EXIT_TO_WATCH_PAGE_MAX_AGE_MS = 3000;
     private static final int PIP_RECENT_WATCH_PAGE_RETURN_GRACE_MS = 5000;
@@ -396,6 +401,12 @@ public abstract class BraveActivity extends ChromeActivity
     // Boolean flag that indicates if the media session must be resumed
     // when switching in picture-in-picture mode.
     private boolean mResumeMediaSession;
+    private boolean mPictureInPictureRecoveryInFlight;
+    private int mPictureInPictureRecoveryGeneration;
+    @Nullable private String mPictureInPictureRecoveryBaseReason;
+    private boolean mPictureInPictureSignalRefreshInFlight;
+    private int mPictureInPictureSignalRefreshGeneration;
+    @Nullable private String mPictureInPictureSignalRefreshBaseReason;
     private boolean mPendingReturnToWatchPageAfterPictureInPictureExit;
     private long mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs;
     private long mLastReturnToWatchPageAfterPictureInPictureExitElapsedMs;
@@ -406,6 +417,13 @@ public abstract class BraveActivity extends ChromeActivity
     @Nullable private FrameLayout mOneTabStartupMaskView;
     @Nullable private FrameLayout mOneTabPackageLockedOverlayView;
     @Nullable private TextView mOneTabPackageLockedDetailView;
+    @Nullable private FrameLayout mOneTabPictureInPictureGuardOverlayView;
+    @Nullable private View mOneTabPictureInPictureGuardTopView;
+    @Nullable private View mOneTabPictureInPictureGuardLeftView;
+    @Nullable private View mOneTabPictureInPictureGuardRightView;
+    @Nullable private View mOneTabPictureInPictureGuardBottomView;
+    private boolean mOneTabPictureInPictureNativeGuardHeld;
+    private boolean mOneTabPictureInPictureNativeGuardReleaseAuthorized;
     @Nullable private OneTabFabMenuCoordinator mOneTabFabMenuCoordinator;
     @Nullable private OneTabFirebaseAuthManager mOneTabFirebaseAuthManager;
     @Nullable private OneTabFirebaseAppCheckManager mOneTabFirebaseAppCheckManager;
@@ -729,7 +747,7 @@ public abstract class BraveActivity extends ChromeActivity
         syncOneTabCleanModeUi();
         if (inPicture) {
             clearPendingReturnToWatchPageAfterPictureInPictureExit("entered_pip");
-            scheduleOneTabPictureInPictureRefresh("pip_mode_changed_enter");
+            schedulePictureInPictureRecovery("pip_mode_changed_enter", getCurrentWebContents());
         }
         WebContents currentWebContents = getCurrentWebContents();
         if (mResumeMediaSession) {
@@ -747,13 +765,37 @@ public abstract class BraveActivity extends ChromeActivity
             // wrong part of the screen and partially clipped before snapping to its normal place.
             PostTask.postDelayedTask(
                     TaskTraits.UI_BEST_EFFORT,
-                    (Runnable) this::refreshPictureInPictureParamsForCurrentVideo,
+                    () -> {
+                        if (mPictureInPictureRecoveryInFlight) {
+                            Log.i(
+                                    OTB_PERF_TAG,
+                                    "event=pip_refocus_skipped reason=%s recovery_in_flight=true",
+                                    "resume_media_session");
+                            return;
+                        }
+                        if (mPictureInPictureSignalRefreshInFlight) {
+                            Log.i(
+                                    OTB_PERF_TAG,
+                                    "event=pip_refocus_skipped reason=%s signal_refresh_in_flight=true",
+                                    "resume_media_session");
+                            return;
+                        }
+                        refreshPictureInPictureParamsForCurrentVideo();
+                    },
                     PIP_UPDATE_DELAY_MS);
+        }
+        if (!inPicture && mOneTabPictureInPictureNativeGuardHeld && currentWebContents == null) {
+            forceClearPictureInPictureRecoveryVisualGuard(
+                    null, "pip_mode_changed_exit_no_webcontents");
         }
         if (!inPicture
                 && currentWebContents != null
                 && BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
                         currentWebContents)) {
+            cancelPictureInPictureRecoveryChain("pip_mode_changed_exit");
+            cancelPictureInPictureSignalRefresh("pip_mode_changed_exit");
+            forceClearPictureInPictureRecoveryVisualGuard(
+                    currentWebContents, "pip_mode_changed_exit");
             if (shouldDeferOneTabPictureInPictureExitHandling()) {
                 clearPendingReturnToWatchPageAfterPictureInPictureExit(
                         "deferred_device_state_pip_exit");
@@ -796,6 +838,20 @@ public abstract class BraveActivity extends ChromeActivity
     public void onPictureInPictureUiStateChanged(@NonNull PictureInPictureUiState pipState) {
         super.onPictureInPictureUiStateChanged(pipState);
         if (!OneTabYouTubeMode.isEnabled() || !isInPictureInPictureMode()) {
+            return;
+        }
+        if (mPictureInPictureRecoveryInFlight) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_refocus_skipped reason=%s recovery_in_flight=true",
+                    "pip_ui_state_changed");
+            return;
+        }
+        if (mPictureInPictureSignalRefreshInFlight) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_refocus_skipped reason=%s signal_refresh_in_flight=true",
+                    "pip_ui_state_changed");
             return;
         }
         scheduleOneTabPictureInPictureRefresh("pip_ui_state_changed");
@@ -1264,7 +1320,7 @@ public abstract class BraveActivity extends ChromeActivity
                 PostTask.postTask(TaskTraits.UI_DEFAULT, this::resolveOneTabPackageAccess);
             }
             if (isInPictureInPictureMode()) {
-                scheduleOneTabPictureInPictureRefresh("on_resume");
+                schedulePictureInPictureRecovery("on_resume", getCurrentWebContents());
             }
         }
         maybeScheduleReturnToWatchPageAfterPictureInPictureExit("on_resume");
@@ -1278,7 +1334,7 @@ public abstract class BraveActivity extends ChromeActivity
             return;
         }
         if (isInPictureInPictureMode()) {
-            scheduleOneTabPictureInPictureRefresh("window_focus_changed");
+            schedulePictureInPictureRecovery("window_focus_changed", getCurrentWebContents());
         }
     }
 
@@ -1645,6 +1701,181 @@ public abstract class BraveActivity extends ChromeActivity
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private void ensureOneTabPictureInPictureGuardOverlay() {
+        if (mOneTabPictureInPictureGuardOverlayView != null) {
+            return;
+        }
+
+        ViewGroup overlayContainer = findViewById(android.R.id.content);
+        if (overlayContainer == null) {
+            overlayContainer = findViewById(R.id.compositor_view_holder);
+        }
+        if (overlayContainer == null) {
+            return;
+        }
+
+        FrameLayout overlay = new FrameLayout(this);
+        overlay.setClickable(false);
+        overlay.setFocusable(false);
+        overlay.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        overlay.setVisibility(View.GONE);
+
+        View top = new View(this);
+        top.setBackgroundColor(Color.BLACK);
+        View left = new View(this);
+        left.setBackgroundColor(Color.BLACK);
+        View right = new View(this);
+        right.setBackgroundColor(Color.BLACK);
+        View bottom = new View(this);
+        bottom.setBackgroundColor(Color.BLACK);
+
+        overlay.addView(top);
+        overlay.addView(left);
+        overlay.addView(right);
+        overlay.addView(bottom);
+
+        overlayContainer.addView(
+                overlay,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        mOneTabPictureInPictureGuardOverlayView = overlay;
+        mOneTabPictureInPictureGuardTopView = top;
+        mOneTabPictureInPictureGuardLeftView = left;
+        mOneTabPictureInPictureGuardRightView = right;
+        mOneTabPictureInPictureGuardBottomView = bottom;
+    }
+
+    private void setOneTabPictureInPictureGuardSegment(
+            @Nullable View view, int left, int top, int width, int height) {
+        if (view == null) {
+            return;
+        }
+        FrameLayout.LayoutParams params =
+                view.getLayoutParams() instanceof FrameLayout.LayoutParams
+                        ? (FrameLayout.LayoutParams) view.getLayoutParams()
+                        : new FrameLayout.LayoutParams(0, 0);
+        params.width = Math.max(0, width);
+        params.height = Math.max(0, height);
+        params.leftMargin = Math.max(0, left);
+        params.topMargin = Math.max(0, top);
+        view.setLayoutParams(params);
+        view.setVisibility(width > 0 && height > 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private @Nullable Rect getOneTabPictureInPictureGuardBounds() {
+        FullscreenVideoPictureInPictureController controller =
+                ensureFullscreenVideoPictureInPictureController();
+        if (controller == null) {
+            return null;
+        }
+        return controller.getCurrentOrLastVideoBoundsForPictureInPictureGuard();
+    }
+
+    private void applyOneTabPictureInPictureGuard(
+            boolean active, @Nullable Rect bounds, @NonNull String reason) {
+        ensureOneTabPictureInPictureGuardOverlay();
+        FrameLayout overlay = mOneTabPictureInPictureGuardOverlayView;
+        if (overlay == null) {
+            return;
+        }
+
+        if (!active) {
+            overlay.setVisibility(View.GONE);
+            Log.i(OTB_PERF_TAG, "event=pip_native_visual_guard_apply reason=%s active=false", reason);
+            return;
+        }
+
+        int containerWidth = overlay.getWidth();
+        int containerHeight = overlay.getHeight();
+        if (containerWidth <= 0 || containerHeight <= 0) {
+            View decorView = getWindow() != null ? getWindow().getDecorView() : null;
+            if (decorView != null) {
+                containerWidth = decorView.getWidth();
+                containerHeight = decorView.getHeight();
+            }
+        }
+        if (containerWidth <= 0 || containerHeight <= 0) {
+            overlay.post(() -> applyOneTabPictureInPictureGuard(true, bounds, reason + "_deferred"));
+            return;
+        }
+
+        overlay.setVisibility(View.VISIBLE);
+        overlay.bringToFront();
+        overlay.setTranslationZ(dp(44));
+        overlay.setElevation(dp(44));
+
+        setOneTabPictureInPictureGuardSegment(
+                mOneTabPictureInPictureGuardTopView, 0, 0, containerWidth, containerHeight);
+        setOneTabPictureInPictureGuardSegment(
+                mOneTabPictureInPictureGuardLeftView, 0, 0, 0, 0);
+        setOneTabPictureInPictureGuardSegment(
+                mOneTabPictureInPictureGuardRightView, 0, 0, 0, 0);
+        setOneTabPictureInPictureGuardSegment(
+                mOneTabPictureInPictureGuardBottomView, 0, 0, 0, 0);
+
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_native_visual_guard_apply reason=%s active=true full_black=true had_bounds=%b bounds=%s container=%dx%d",
+                reason,
+                bounds != null && bounds.width() > 0 && bounds.height() > 0,
+                bounds,
+                containerWidth,
+                containerHeight);
+    }
+
+    public void onNativePictureInPictureRecoveryVisualGuardChanged(
+            @Nullable WebContents webContents, boolean active) {
+        if (active) {
+            if (!isInPictureInPictureMode()) {
+                Log.i(
+                        OTB_PERF_TAG,
+                        "event=pip_native_visual_guard_skip reason=callback_active_not_in_pip");
+                return;
+            }
+            mOneTabPictureInPictureNativeGuardHeld = true;
+            mOneTabPictureInPictureNativeGuardReleaseAuthorized = false;
+        } else {
+            if (isInPictureInPictureMode()
+                    && mOneTabPictureInPictureNativeGuardHeld
+                    && !mOneTabPictureInPictureNativeGuardReleaseAuthorized) {
+                Log.i(
+                        OTB_PERF_TAG,
+                        "event=pip_native_visual_guard_skip_clear reason=callback_without_owner_release");
+                return;
+            }
+            mOneTabPictureInPictureNativeGuardHeld = false;
+            mOneTabPictureInPictureNativeGuardReleaseAuthorized = false;
+        }
+        Rect bounds = active ? getOneTabPictureInPictureGuardBounds() : null;
+        applyOneTabPictureInPictureGuard(
+                active,
+                bounds,
+                active ? "native_guard_on" : "native_guard_off");
+    }
+
+    public void onPictureInPictureVideoParamsApplied(@Nullable WebContents webContents) {
+        if (!isInPictureInPictureMode() || !mOneTabPictureInPictureNativeGuardHeld) {
+            return;
+        }
+        forceClearPictureInPictureRecoveryVisualGuard(webContents, "video_params_applied");
+    }
+
+    private void forceClearPictureInPictureRecoveryVisualGuard(
+            @Nullable WebContents webContents, @NonNull String reason) {
+        mOneTabPictureInPictureNativeGuardHeld = false;
+        mOneTabPictureInPictureNativeGuardReleaseAuthorized = true;
+        applyOneTabPictureInPictureGuard(false, null, reason + "_native");
+        if (webContents != null) {
+            BraveYouTubeScriptInjectorNativeHelper.setPictureInPictureRecoveryVisualGuard(
+                    webContents, false);
+        }
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_recovery_visual_guard_force_clear reason=%s",
+                reason);
     }
 
     private void pauseOneTabPlaybackForAuthGate() {
@@ -3656,6 +3887,20 @@ public abstract class BraveActivity extends ChromeActivity
         if (!isInPictureInPictureMode()) {
             return;
         }
+        if (mPictureInPictureRecoveryInFlight) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_refocus_skipped reason=%s recovery_in_flight=true",
+                    reason);
+            return;
+        }
+        if (mPictureInPictureSignalRefreshInFlight) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_refocus_skipped reason=%s signal_refresh_in_flight=true",
+                    reason);
+            return;
+        }
         refreshOneTabPictureInPictureParams(reason + "_immediate");
         PostTask.postDelayedTask(
                 TaskTraits.UI_BEST_EFFORT,
@@ -3695,6 +3940,447 @@ public abstract class BraveActivity extends ChromeActivity
         }
         Log.i(OTB_PERF_TAG, "event=pip_refocus_apply reason=%s", reason);
         refreshPictureInPictureParamsForCurrentVideo();
+    }
+
+    public void onNativeFullscreenSignalWhileInPictureInPicture(
+            @Nullable WebContents webContents) {
+        if (webContents != null && isInPictureInPictureMode()) {
+            requestPictureInPictureRecoveryVisualGuard(
+                    webContents, true, "native_fullscreen_signal_while_in_pip_signal");
+        }
+        // Route native watch-page/new-video fullscreen signals through the same
+        // recovery chain used after unlock/onResume so auto-advance does not
+        // depend on the lightweight signal-refresh path alone.
+        cancelPictureInPictureSignalRefresh("native_fullscreen_signal_while_in_pip_recovery");
+        schedulePictureInPictureRecovery("native_fullscreen_signal_while_in_pip", webContents);
+    }
+
+    private int startPictureInPictureSignalRefresh(@NonNull String baseReason) {
+        mPictureInPictureSignalRefreshGeneration++;
+        mPictureInPictureSignalRefreshInFlight = true;
+        mPictureInPictureSignalRefreshBaseReason = baseReason;
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_signal_refresh_start reason=%s generation=%d",
+                baseReason,
+                mPictureInPictureSignalRefreshGeneration);
+        return mPictureInPictureSignalRefreshGeneration;
+    }
+
+    private boolean isCurrentPictureInPictureSignalRefresh(int generation) {
+        return mPictureInPictureSignalRefreshInFlight
+                && generation == mPictureInPictureSignalRefreshGeneration
+                && isInPictureInPictureMode();
+    }
+
+    private void finishPictureInPictureSignalRefresh(
+            int generation, @NonNull String reason, boolean success) {
+        if (generation != mPictureInPictureSignalRefreshGeneration) {
+            return;
+        }
+        mPictureInPictureSignalRefreshInFlight = false;
+        mPictureInPictureSignalRefreshBaseReason = null;
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_signal_refresh_finish reason=%s generation=%d success=%b",
+                reason,
+                generation,
+                success);
+    }
+
+    private void cancelPictureInPictureSignalRefresh(@NonNull String reason) {
+        if (!mPictureInPictureSignalRefreshInFlight) {
+            return;
+        }
+        mPictureInPictureSignalRefreshInFlight = false;
+        mPictureInPictureSignalRefreshBaseReason = null;
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_signal_refresh_cancel reason=%s generation=%d",
+                reason,
+                mPictureInPictureSignalRefreshGeneration);
+    }
+
+    private void schedulePictureInPictureSignalRefresh(
+            @NonNull String baseReason, @Nullable WebContents preferredWebContents) {
+        if (!OneTabYouTubeMode.isEnabled()
+                || Build.VERSION.SDK_INT < Build.VERSION_CODES.O
+                || !isInPictureInPictureMode()) {
+            return;
+        }
+        if (mPictureInPictureSignalRefreshInFlight) {
+            if (mPictureInPictureSignalRefreshBaseReason != null
+                    && mPictureInPictureSignalRefreshBaseReason.equals(baseReason)) {
+                Log.i(
+                        OTB_PERF_TAG,
+                        "event=pip_signal_refresh_skip reason=%s active_generation=%d active_reason=%s",
+                        baseReason,
+                        mPictureInPictureSignalRefreshGeneration,
+                        String.valueOf(mPictureInPictureSignalRefreshBaseReason));
+                return;
+            }
+            cancelPictureInPictureSignalRefresh(baseReason + "_replace");
+        }
+        final int generation = startPictureInPictureSignalRefresh(baseReason);
+        runPictureInPictureSignalRefreshAttempt(baseReason, 0, preferredWebContents, generation);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () ->
+                        runPictureInPictureSignalRefreshAttempt(
+                                baseReason, 1, preferredWebContents, generation),
+                OTB_PIP_REFRESH_RETRY_DELAY_1_MS);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () ->
+                        runPictureInPictureSignalRefreshAttempt(
+                                baseReason, 2, preferredWebContents, generation),
+                OTB_PIP_REFRESH_RETRY_DELAY_2_MS);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () ->
+                        runPictureInPictureSignalRefreshAttempt(
+                                baseReason, 3, preferredWebContents, generation),
+                OTB_PIP_REFRESH_RETRY_DELAY_3_MS);
+    }
+
+    private void runPictureInPictureSignalRefreshAttempt(
+            @NonNull String baseReason,
+            int attemptIndex,
+            @Nullable WebContents preferredWebContents,
+            int generation) {
+        if (!isCurrentPictureInPictureSignalRefresh(generation)) {
+            return;
+        }
+        final boolean finalAttempt = attemptIndex >= 3;
+        WebContents currentWebContents =
+                preferredWebContents != null ? preferredWebContents : getCurrentWebContents();
+        if (currentWebContents == null) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_signal_refresh_attempt reason=%s_attempt%d has_webcontents=false final_attempt=%b",
+                    baseReason,
+                    attemptIndex,
+                    finalAttempt);
+            if (finalAttempt) {
+                finishPictureInPictureSignalRefresh(
+                        generation, baseReason + "_attempt" + attemptIndex + "_no_webcontents", false);
+            }
+            return;
+        }
+
+        final String attemptReason = baseReason + "_attempt" + attemptIndex;
+        boolean activeFullscreen = currentWebContents.hasActiveEffectivelyFullscreenVideo();
+        boolean requested =
+                BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
+                        currentWebContents);
+        boolean pipAvailable =
+                BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
+                        currentWebContents);
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_signal_refresh_attempt reason=%s active_fullscreen=%b requested=%b pip_available=%b final_attempt=%b",
+                attemptReason,
+                activeFullscreen,
+                requested,
+                pipAvailable,
+                finalAttempt);
+
+        if (activeFullscreen) {
+            Log.i(OTB_PERF_TAG, "event=pip_signal_refresh_apply reason=%s", attemptReason);
+            refreshPictureInPictureParamsForCurrentVideo();
+            finishPictureInPictureSignalRefresh(generation, attemptReason, true);
+            return;
+        }
+
+        requestPictureInPictureRecoveryVisualGuard(currentWebContents, true, attemptReason + "_waiting");
+        if (finalAttempt) {
+            finishPictureInPictureSignalRefresh(generation, attemptReason + "_failed", false);
+        }
+    }
+
+    private int startPictureInPictureRecoveryChain(@NonNull String baseReason) {
+        mPictureInPictureRecoveryGeneration++;
+        mPictureInPictureRecoveryInFlight = true;
+        mPictureInPictureRecoveryBaseReason = baseReason;
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_recovery_chain_start reason=%s generation=%d",
+                baseReason,
+                mPictureInPictureRecoveryGeneration);
+        return mPictureInPictureRecoveryGeneration;
+    }
+
+    private boolean isCurrentPictureInPictureRecoveryChain(int generation) {
+        return mPictureInPictureRecoveryInFlight
+                && generation == mPictureInPictureRecoveryGeneration
+                && isInPictureInPictureMode();
+    }
+
+    private void finishPictureInPictureRecoveryChain(
+            int generation, @NonNull String reason, boolean success) {
+        if (generation != mPictureInPictureRecoveryGeneration) {
+            return;
+        }
+        mPictureInPictureRecoveryInFlight = false;
+        mPictureInPictureRecoveryBaseReason = null;
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_recovery_chain_finish reason=%s generation=%d success=%b",
+                reason,
+                generation,
+                success);
+    }
+
+    private void cancelPictureInPictureRecoveryChain(@NonNull String reason) {
+        if (!mPictureInPictureRecoveryInFlight) {
+            return;
+        }
+        mPictureInPictureRecoveryInFlight = false;
+        mPictureInPictureRecoveryBaseReason = null;
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_recovery_chain_cancel reason=%s generation=%d",
+                reason,
+                mPictureInPictureRecoveryGeneration);
+    }
+
+    private void completePictureInPictureRecovery(
+            int generation, @NonNull String reason, @NonNull WebContents webContents) {
+        if (!isCurrentPictureInPictureRecoveryChain(generation)) {
+            return;
+        }
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_recovery_chain_apply reason=%s generation=%d",
+                reason,
+                generation);
+        refreshPictureInPictureParamsForCurrentVideo();
+        finishPictureInPictureRecoveryChain(generation, reason, true);
+    }
+
+    private void schedulePictureInPictureRecovery(
+            @NonNull String baseReason, @Nullable WebContents preferredWebContents) {
+        if (!OneTabYouTubeMode.isEnabled()
+                || Build.VERSION.SDK_INT < Build.VERSION_CODES.O
+                || !isInPictureInPictureMode()) {
+            return;
+        }
+        if (mPictureInPictureSignalRefreshInFlight) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_recovery_chain_skip reason=%s signal_refresh_in_flight=true active_generation=%d active_reason=%s",
+                    baseReason,
+                    mPictureInPictureSignalRefreshGeneration,
+                    String.valueOf(mPictureInPictureSignalRefreshBaseReason));
+            return;
+        }
+        if (mPictureInPictureRecoveryInFlight) {
+            boolean currentIsNativeSignal =
+                    mPictureInPictureRecoveryBaseReason != null
+                            && mPictureInPictureRecoveryBaseReason.startsWith(
+                                    "native_fullscreen_signal_while_in_pip");
+            boolean nextIsNativeSignal =
+                    baseReason.startsWith("native_fullscreen_signal_while_in_pip");
+            if (!nextIsNativeSignal
+                    || (currentIsNativeSignal
+                            && mPictureInPictureRecoveryBaseReason != null
+                            && mPictureInPictureRecoveryBaseReason.equals(baseReason))) {
+                Log.i(
+                        OTB_PERF_TAG,
+                        "event=pip_recovery_chain_skip reason=%s active_generation=%d active_reason=%s",
+                        baseReason,
+                        mPictureInPictureRecoveryGeneration,
+                        String.valueOf(mPictureInPictureRecoveryBaseReason));
+                return;
+            }
+        }
+        final int generation = startPictureInPictureRecoveryChain(baseReason);
+        runPictureInPictureRecoveryProbe(baseReason, 0, preferredWebContents, generation);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () ->
+                        runPictureInPictureRecoveryProbe(
+                                baseReason, 1, preferredWebContents, generation),
+                OTB_PIP_RECOVERY_PROBE_DELAY_1_MS);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () ->
+                        runPictureInPictureRecoveryProbe(
+                                baseReason, 2, preferredWebContents, generation),
+                OTB_PIP_RECOVERY_PROBE_DELAY_2_MS);
+    }
+
+    private void runPictureInPictureRecoveryProbe(
+            @NonNull String baseReason,
+            int probeIndex,
+            @Nullable WebContents preferredWebContents,
+            int generation) {
+        if (!isCurrentPictureInPictureRecoveryChain(generation)) {
+            return;
+        }
+        WebContents currentWebContents =
+                preferredWebContents != null ? preferredWebContents : getCurrentWebContents();
+        if (currentWebContents == null) {
+            if (probeIndex >= 2) {
+                finishPictureInPictureRecoveryChain(
+                        generation, baseReason + "_probe" + probeIndex + "_no_webcontents", false);
+            }
+            return;
+        }
+
+        boolean activeFullscreen = currentWebContents.hasActiveEffectivelyFullscreenVideo();
+        boolean requested =
+                BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
+                        currentWebContents);
+        boolean pipAvailable =
+                BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
+                        currentWebContents);
+        boolean allowRecovery = probeIndex >= 2;
+        String probeReason = baseReason + "_probe" + probeIndex;
+        boolean recoverySignalExpected =
+                baseReason.startsWith("native_fullscreen_signal_while_in_pip")
+                        || baseReason.startsWith("on_resume");
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_recovery_probe reason=%s allow_recovery=%b active_fullscreen=%b requested=%b pip_available=%b recovery_signal_expected=%b recovery_only=true",
+                probeReason,
+                allowRecovery,
+                activeFullscreen,
+                requested,
+                pipAvailable,
+                recoverySignalExpected);
+
+        if (activeFullscreen) {
+            completePictureInPictureRecovery(generation, probeReason + "_active", currentWebContents);
+            return;
+        }
+
+        requestPictureInPictureRecoveryVisualGuard(currentWebContents, true, probeReason + "_waiting");
+
+        if (!allowRecovery) {
+            return;
+        }
+
+        boolean shouldDispatchRecovery =
+                pipAvailable || requested || recoverySignalExpected;
+        if (!shouldDispatchRecovery) {
+            requestPictureInPictureRecoveryVisualGuard(
+                    currentWebContents, false, probeReason + "_not_dispatched");
+            finishPictureInPictureRecoveryChain(generation, probeReason + "_not_dispatched", false);
+            return;
+        }
+
+        requestPictureInPictureRecoveryVisualGuard(currentWebContents, true, probeReason);
+        boolean dispatched =
+                BraveYouTubeScriptInjectorNativeHelper.recoverPictureInPictureFocus(
+                        currentWebContents, false);
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_recovery_dispatch reason=%s dispatched=%b pip_available=%b requested=%b recovery_signal_expected=%b",
+                probeReason,
+                dispatched,
+                pipAvailable,
+                requested,
+                recoverySignalExpected);
+        schedulePictureInPictureRecoveryFinalizeWait(
+                probeReason + "_recover", dispatched, generation);
+    }
+
+    private void schedulePictureInPictureRecoveryFinalizeWait(
+            @NonNull String reasonBase, boolean recoveryDispatched, int generation) {
+        maybeFinalizePictureInPictureRecovery(
+                reasonBase + "_immediate", recoveryDispatched, generation, false);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () ->
+                        maybeFinalizePictureInPictureRecovery(
+                                reasonBase + "_retry1",
+                                recoveryDispatched,
+                                generation,
+                                false),
+                OTB_PIP_RECOVERY_FINALIZE_DELAY_1_MS);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () ->
+                        maybeFinalizePictureInPictureRecovery(
+                                reasonBase + "_retry2",
+                                recoveryDispatched,
+                                generation,
+                                false),
+                OTB_PIP_RECOVERY_FINALIZE_DELAY_2_MS);
+        PostTask.postDelayedTask(
+                TaskTraits.UI_BEST_EFFORT,
+                () ->
+                        maybeFinalizePictureInPictureRecovery(
+                                reasonBase + "_retry3",
+                                recoveryDispatched,
+                                generation,
+                                true),
+                OTB_PIP_RECOVERY_FINALIZE_DELAY_3_MS);
+    }
+
+    private void maybeFinalizePictureInPictureRecovery(
+            @NonNull String reason,
+            boolean recoveryDispatched,
+            int generation,
+            boolean finalAttempt) {
+        if (!isCurrentPictureInPictureRecoveryChain(generation)) {
+            return;
+        }
+        WebContents currentWebContents = getCurrentWebContents();
+        if (currentWebContents == null) {
+            if (finalAttempt) {
+                finishPictureInPictureRecoveryChain(generation, reason + "_no_webcontents", false);
+            }
+            return;
+        }
+        boolean activeFullscreen = currentWebContents.hasActiveEffectivelyFullscreenVideo();
+        boolean pipAvailable =
+                BraveYouTubeScriptInjectorNativeHelper.isPictureInPictureAvailable(
+                        currentWebContents);
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_recovery_finalize_wait reason=%s dispatched=%b generation=%d final_attempt=%b active_fullscreen=%b pip_available=%b",
+                reason,
+                recoveryDispatched,
+                generation,
+                finalAttempt,
+                activeFullscreen,
+                pipAvailable);
+        if (activeFullscreen) {
+            completePictureInPictureRecovery(generation, reason + "_settled", currentWebContents);
+            return;
+        }
+        if (finalAttempt) {
+            finishPictureInPictureRecoveryChain(generation, reason + "_failed", false);
+        }
+    }
+
+    private void requestPictureInPictureRecoveryVisualGuard(
+            @Nullable WebContents webContents, boolean active, @NonNull String reason) {
+        if (webContents == null) {
+            return;
+        }
+        if (!active) {
+            if (isInPictureInPictureMode()) {
+                Log.i(
+                        OTB_PERF_TAG,
+                        "event=pip_recovery_visual_guard_skip_clear reason=%s owner=native_until_video_ready",
+                        reason);
+                return;
+            }
+            forceClearPictureInPictureRecoveryVisualGuard(webContents, reason);
+            return;
+        }
+        mOneTabPictureInPictureNativeGuardHeld = true;
+        mOneTabPictureInPictureNativeGuardReleaseAuthorized = false;
+        BraveYouTubeScriptInjectorNativeHelper.setPictureInPictureRecoveryVisualGuard(
+                webContents, active);
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_recovery_visual_guard reason=%s active=%b",
+                reason,
+                active);
     }
 
     public static ChromeTabbedActivity getChromeTabbedActivity() {

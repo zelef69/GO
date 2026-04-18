@@ -104,4 +104,20 @@
     <string name="onetab_buy_receipt_expires_label">ใช้งานได้ถึง</string>
     <string name="onetab_buy_receipt_open_account">เปิดหน้าบัญชี</string>
     <string name="onetab_buy_receipt_unknown_value">ไม่พร้อมใช้งาน</string>
+    <string name="onetab_account_update_status_download_started">เริ่มดาวน์โหลดไฟล์อัปเดตแล้ว</string>
+    <string name="onetab_account_update_status_download_pending">ระบบกำลังจัดคิวดาวน์โหลดอัปเดต…</string>
+    <string name="onetab_account_update_status_download_waiting_network">รอเครือข่ายเพื่อดาวน์โหลดอัปเดตต่อ</string>
+    <string name="onetab_account_update_status_download_waiting_wifi">รอ Wi-Fi เพื่อดาวน์โหลดอัปเดตต่อ</string>
+    <string name="onetab_account_update_status_download_paused_progress">ดาวน์โหลดอัปเดตหยุดชั่วคราวที่ %1$d%%</string>
+    <string name="onetab_account_update_status_download_paused_unknown">ดาวน์โหลดอัปเดตหยุดชั่วคราว</string>
+    <string name="onetab_account_update_download_notification">กำลังดาวน์โหลดเวอร์ชันล่าสุดของ GO_PLAY</string>
+    <string name="onetab_account_update_error_prepare_directory">ยังเตรียมโฟลเดอร์อัปเดตไม่ได้</string>
+    <string name="onetab_account_update_error_download_service">ไม่พบระบบดาวน์โหลดของ Android ในขณะนี้</string>
+    <string name="onetab_account_update_error_download_start">ยังเริ่มดาวน์โหลดอัปเดตไม่ได้</string>
+    <string name="onetab_account_update_error_download_space">พื้นที่ในเครื่องไม่พอสำหรับดาวน์โหลดอัปเดต</string>
+    <string name="onetab_account_update_error_download_device">ไม่พบที่เก็บไฟล์สำหรับดาวน์โหลดอัปเดต</string>
+    <string name="onetab_account_update_error_download_resume">ไม่สามารถดาวน์โหลดต่อจากเดิมได้ กรุณาลองใหม่</string>
+    <string name="onetab_account_update_error_download_network">เชื่อมต่ออัปเดตล้มเหลว กรุณาตรวจสอบเครือข่าย</string>
+    <string name="onetab_account_update_error_download_file">ไม่สามารถบันทึกไฟล์อัปเดตได้</string>
+    <string name="onetab_account_update_error_download_unknown">ดาวน์โหลดอัปเดตไม่สำเร็จ</string>
 </resources>

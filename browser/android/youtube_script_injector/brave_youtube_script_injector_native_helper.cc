@@ -159,9 +159,67 @@ jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_Previous(
 }
 
 // static
+jboolean JNI_BraveYouTubeScriptInjectorNativeHelper_RecoverPictureInPictureFocus(
+    JNIEnv* env,
+    const base::android::JavaRef<jobject>& jweb_contents,
+    jboolean require_visible) {
+  content::WebContents* web_contents =
+      content::WebContents::FromJavaWebContents(jweb_contents);
+
+  YouTubeScriptInjectorTabHelper* helper =
+      YouTubeScriptInjectorTabHelper::FromWebContents(web_contents);
+  if (helper) {
+    return helper->RecoverPictureInPictureFocus(require_visible);
+  }
+
+  return false;
+}
+
+// static
+jboolean
+JNI_BraveYouTubeScriptInjectorNativeHelper_SetPictureInPictureRecoveryVisualGuard(
+    JNIEnv* env,
+    const base::android::JavaRef<jobject>& jweb_contents,
+    jboolean active) {
+  content::WebContents* web_contents =
+      content::WebContents::FromJavaWebContents(jweb_contents);
+
+  YouTubeScriptInjectorTabHelper* helper =
+      YouTubeScriptInjectorTabHelper::FromWebContents(web_contents);
+  if (helper) {
+    return helper->SetPictureInPictureRecoveryVisualGuard(active);
+  }
+
+  return false;
+}
+
+// static
 void EnterPictureInPicture(content::WebContents* web_contents) {
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_BraveYouTubeScriptInjectorNativeHelper_enterPictureInPicture(
+      env, web_contents->GetJavaWebContents());
+}
+
+void NotifyPictureInPictureRecoveryVisualGuardChanged(
+    content::WebContents* web_contents,
+    bool active) {
+  if (!web_contents) {
+    return;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_BraveYouTubeScriptInjectorNativeHelper_onPictureInPictureRecoveryVisualGuardChanged(
+      env, web_contents->GetJavaWebContents(), active);
+}
+
+bool ShouldPreserveVideoPresentationForPictureInPicture(
+    content::WebContents* web_contents) {
+  if (!web_contents) {
+    return false;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return Java_BraveYouTubeScriptInjectorNativeHelper_shouldPreserveVideoPresentationForPictureInPicture(
       env, web_contents->GetJavaWebContents());
 }
 

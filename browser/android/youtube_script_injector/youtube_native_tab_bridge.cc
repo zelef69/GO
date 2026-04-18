@@ -89,6 +89,19 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
     }
   }
 
+  function hasReliablePlaylistLikeContext() {
+    if (isPlaylistContext()) {
+      return true;
+    }
+    if (currentPlaylistContextKey()) {
+      return true;
+    }
+    return !!(lastReliablePlaylistContext
+        && Array.isArray(lastReliablePlaylistContext.candidates)
+        && lastReliablePlaylistContext.candidates.length > 1
+        && lastReliablePlaylistContext.key);
+  }
+
   function shouldObserveBridgeLifecycle() {
     return !!playerLikeRoot(currentVideo())
         || isPlaylistContext()
@@ -961,7 +974,7 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
   }
 
   function findReliableTrackHref(kind) {
-    if (!isPlaylistContext()) {
+    if (!hasReliablePlaylistLikeContext()) {
       return '';
     }
     return findTrackHrefInPlaylistPanel(kind) || findTrackHrefInInitialData(kind);
@@ -994,11 +1007,12 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
   }
 
   function findReliableTrackLink(kind) {
-    if (!isPlaylistContext()) {
+    if (!hasReliablePlaylistLikeContext()) {
       return null;
     }
 
     const currentVideoId = currentVideoIdFromUrl();
+    const reliableHref = findReliableTrackHref(kind);
     for (const root of candidateRoots()) {
       let links = [];
       try {
@@ -1032,6 +1046,14 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
             (candidate) => candidate.videoId && candidate.videoId === currentVideoId);
       }
       if (selectedIndex < 0) {
+        if (reliableHref) {
+          const matchingCandidate = candidates.find(
+              (candidate) => candidate.href === reliableHref
+                  && isActionable(candidate.link));
+          if (matchingCandidate) {
+            return matchingCandidate.link;
+          }
+        }
         continue;
       }
 
@@ -1112,6 +1134,7 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
         ? findTrackHrefInCachedPlaylistPanel(kind)
         : findTrackHrefInPlaylistPanel(kind);
     return !!playlistPanelHref
+        || !!findReliableTrackHref(kind)
         || hasReliablePlayerTrackCapability(kind)
         || hasReliableTransportCapability(kind)
         || !!findReliableTrackLink(kind);
@@ -1518,7 +1541,7 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
       return strategyResult(false, 'dom', 'unsupported-host');
     }
 
-    if (!isPlaylistContext()) {
+    if (!hasReliablePlaylistLikeContext()) {
       return strategyResult(false, 'dom', 'initial-data-playlist-context-required');
     }
 
@@ -1646,8 +1669,13 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
     }
     const beforeSnapshot = snapshotTrackIdentity();
     const link = findReliableTrackLink(kind);
+    const targetHref = findReliableTrackHref(kind);
     if (!link) {
-      return strategyResult(false, 'dom', 'reliable-link-unavailable');
+      if (!targetHref) {
+        return strategyResult(false, 'dom', 'reliable-link-unavailable');
+      }
+      return navigateTrackHref(
+          kind, targetHref, 'reliable-href-navigation', options || {});
     }
     if (!dispatchPrimaryClick(link)) {
       return strategyResult(false, 'dom', 'reliable-link-dispatch-failed');
@@ -1683,6 +1711,7 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
       let result = strategyResult(false, 'none', 'no-strategy');
       const hasPlayerTrack = hasReliablePlayerTrackCapability(kind);
       const reliableTrackLink = findReliableTrackLink(kind);
+      const reliableTrackHref = findReliableTrackHref(kind);
       const playlistPanelHref = findTrackHrefInPlaylistPanel(kind);
       if (playlistPanelHref) {
         result = await navigateTrackHref(
@@ -1706,7 +1735,7 @@ constexpr char16_t kYouTubeNativeTabBridgeScript[] =
           return result;
         }
       } else {
-        if (!hasPlayerTrack && !reliableTrackLink) {
+        if (!hasPlayerTrack && !reliableTrackLink && !reliableTrackHref) {
           return strategyResult(false, 'none', 'unreliable-track-context');
         }
       }

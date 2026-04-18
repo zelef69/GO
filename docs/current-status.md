@@ -1,139 +1,223 @@
 # Current Status
 
-- Last updated:
-  - 2026-04-11 21:55:16 +07:00
-- Current phase:
-  - Repo sync / pre-release staging
-- Current objective:
-  - Mirror the working PiP patch from the connected-device source of truth back into the tracked repo.
-  - Stage this repo snapshot as the next intended release target `429000010`.
-  - Do not build and do not publish updater metadata in this round.
+- Last updated: `2026-04-19 00:21:48 +07:00`
+- Current phase: `PiP stabilization: native-owned visual guard`
+- Current objective: `Treat the APK installed on the connected device as source-of-truth, prove local sources match that APK, sync every relevant source representation to that state, and prepare the PiP+Visual guard commit/push cleanly.`
 - Completed since last update:
-  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry per `AGENTS.md`.
-  - Verified the user-confirmed working PiP patch is the Android/native near-end trigger in:
-    - `//wsl.localhost/Ubuntu/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
-  - Copied that exact file into the tracked repo at:
-    - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
-  - Verified byte-for-byte parity between repo and WSL source-of-truth copies by SHA-256:
-    - `0AC6FB82CB2BAC18D12BABE347E4A7729EBEFDA64CCC33A913D540BF94E3753A`
-  - Reconfirmed the existing tracked PiP helper files already match the active WSL/device-truth copies:
-    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
-    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
-  - Decided not to touch `functions/seeds/app_update_android.seed.json` in this round because no `429000010` APK has been built yet, and changing release metadata now would misrepresent live updater truth.
+  - Re-read `docs/current-status.md` and the latest entry in `docs/progress-log.md` before continuing.
+  - Verified the new direction against real code instead of re-exploring the repo:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+    - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - Confirmed the old architecture problem from code:
+    - multiple paths could still request `active=false`
+    - `BraveActivity` previously honored those clear requests during recovery milestones
+    - page-side and native-side guard state were not strictly owned by a single native authority
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - added native-owner guard state:
+      - `mOneTabPictureInPictureNativeGuardHeld`
+      - `mOneTabPictureInPictureNativeGuardReleaseAuthorized`
+    - `onNativePictureInPictureRecoveryVisualGuardChanged(...)` now ignores callback-driven clear attempts while PiP guard is still held by native owner
+    - added `onPictureInPictureVideoParamsApplied(...)`
+    - added `forceClearPictureInPictureRecoveryVisualGuard(...)`
+    - changed PiP exit handling to use forced native-owner clear
+    - removed recovery/signal milestone-driven guard clears while still in PiP
+    - changed `requestPictureInPictureRecoveryVisualGuard(...)` so `active=false` is ignored during PiP unless native owner explicitly authorizes release
+  - Synced patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) to WSL source-of-truth:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java`
+  - Verified Windows and WSL hashes match for `BraveActivity.java` after sync:
+    - `05E0D94C250108992C709962F8AAE78944A3333417E51FE0CDB46F851D5152C0`
+  - Patched WSL source-of-truth [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java):
+    - after successful `mActivity.setPictureInPictureParams(builder.build())`
+    - now calls `braveActivity.onPictureInPictureVideoParamsApplied(webContents)`
+    - this becomes the positive native signal used to release guard
+  - Rebuilt from WSL source-of-truth successfully:
+    - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+  - Installed the rebuilt APK successfully:
+    - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+    - result: `Success`
+  - Launched the app successfully:
+    - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+    - result: `Status: ok`
+  - Confirmed package state on device:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 00:10:21`
+  - Pulled the installed APK from the connected device:
+    - [device_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_base_429000009_20260419.apk)
+  - Verified the device APK and the WSL-built APK are byte-identical:
+    - device APK SHA256 = `CC5B36004C18A9FD2446C541F60FCCB70515B76311C334866FBBD780F66F9A23`
+    - WSL APK SHA256 = `CC5B36004C18A9FD2446C541F60FCCB70515B76311C334866FBBD780F66F9A23`
+  - Verified the relevant PiP/visual-guard overlay files in Windows repo and WSL source-of-truth match exactly:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+    - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc)
+    - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h)
+    - [youtube_native_tab_bridge.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_native_tab_bridge.cc)
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+    - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h)
+    - [onetab_fab_strings.xml](C:\Users\Master\Desktop\GO_PLAY\android\java\brave-res\values\onetab_fab_strings.xml)
+  - Confirmed the upstream controller file used in build is not tracked directly in this repo:
+    - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) exists only in WSL source tree
+    - the repo-side representation is the tracked patch file:
+      - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - Regenerated [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch) from:
+    - base = `tmp_upstream_chromium_FullscreenVideoPictureInPictureController.java`
+    - current = WSL `FullscreenVideoPictureInPictureController.java`
 - In progress now:
-  - Finalize handoff for the synced repo state.
-  - Commit and push the source-of-truth patch snapshot with commit message `pip_plus`.
+  - No further code edit is in progress.
+  - Source-of-truth proof is complete for the installed APK.
+  - Repo is ready for a focused PiP+Visual guard commit, but commit/push has not been executed yet.
 - Files/modules touched:
-  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
-  - `docs/current-status.md`
-  - `docs/progress-log.md`
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc)
+  - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h)
+  - [youtube_native_tab_bridge.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_native_tab_bridge.cc)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h)
+  - [onetab_fab_strings.xml](C:\Users\Master\Desktop\GO_PLAY\android\java\brave-res\values\onetab_fab_strings.xml)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
 - Build/test status:
-  - No build was run in this round by user request.
-  - Source-of-truth for the synced patch is the already validated installed-device behavior on release baseline `429000009 / 1.90.3`.
-  - Repo-to-WSL file parity was verified by hash/diff for the working set listed above.
+  - Build succeeded:
+    - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
+  - Install status: `complete`
+  - Launch status: `complete`
+  - Installed APK equals WSL-built APK by SHA256
+  - Runtime verification status: `not rerun after source-of-truth proof`
 - Blockers/risks:
-  - The repo is only staged for the next intended release target `429000010`; there is still no built `429000010` artifact.
-  - Live updater metadata remains intentionally on `429000009` until a real `429000010` APK exists.
-  - There are many unrelated modified/untracked files in the workspace; only the focused PiP sync + handoff files should be committed.
+  - This repo does not directly track the WSL controller source file; the tracked representation is a patch file, not the raw controller file.
+  - `git status` contains many unrelated modified/untracked files in the workspace, so commit must be path-limited carefully.
+  - Runtime behavior of the new owner gate is still not re-verified after the source-of-truth sync step.
 - Next concrete step:
-  - Commit only the synced PiP source-of-truth file plus handoff docs.
-  - Push that commit to the user repo on `publish/go_play-sync-20260402`.
-  - If requested later, build from this repo snapshot as `429000010` and only then update release/updater metadata.
+  - Stage only the PiP+Visual guard files that are proven to match the installed APK.
+  - Commit them with a PiP+Visual guard message.
+  - Push that commit to `origin`.
 - Expected resume inspection scope:
-  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
-  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h`
-  - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc)
+  - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h)
+  - [youtube_native_tab_bridge.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_native_tab_bridge.cc)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
 - Current tool(s):
   - `shell_command`
   - `multi_tool_use.parallel`
-  - `git`
+  - `apply_patch`
 - Exact command(s):
-  - `Get-Content docs/current-status.md`
-  - `Get-Content docs/progress-log.md -Tail 120`
-  - `Get-Content "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\components\\browser_ui\\media\\android\\java\\src\\org\\chromium\\components\\browser_ui\\media\\MediaSessionHelper.java"`
-  - `Copy-Item "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\components\\browser_ui\\media\\android\\java\\src\\org\\chromium\\components\\browser_ui\\media\\MediaSessionHelper.java" "components\\browser_ui\\media\\android\\java\\src\\org\\chromium\\components\\browser_ui\\media\\MediaSessionHelper.java"`
-  - `Get-FileHash -Algorithm SHA256 <repo-file> <wsl-file>`
-  - `git diff --no-index -- <repo-file> <wsl-file>`
+  - `Get-Content -Path 'C:\\Users\\Master\\Desktop\\GO_PLAY\\docs\\current-status.md' -TotalCount 220`
+  - `Get-Content -Path 'C:\\Users\\Master\\Desktop\\GO_PLAY\\docs\\progress-log.md' -Tail 220`
+  - `Select-String -Path 'C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java' -Pattern 'mOneTabPictureInPictureNativeGuardHeld|onPictureInPictureVideoParamsApplied|forceClearPictureInPictureRecoveryVisualGuard|pip_native_visual_guard_skip_clear' -Context 2,2`
+  - `Select-String -Path '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\chrome\\android\\java\\src\\org\\chromium\\chrome\\browser\\media\\FullscreenVideoPictureInPictureController.java' -Pattern 'onPictureInPictureVideoParamsApplied|setPictureInPictureParams\\(' -Context 2,3`
+  - `Copy-Item -LiteralPath 'C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java' -Destination '\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java' -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_native_owner_guard_20260418.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull <device-base.apk> C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\device_base_429000009_20260419.apk`
+  - `Get-FileHash <device-apk> -Algorithm SHA256`
+  - `Get-FileHash <wsl-apk> -Algorithm SHA256`
+  - `wsl bash -lc "diff -u --label a/... --label b/... <upstream-base> <wsl-controller> > .../FullscreenVideoPictureInPictureController.java.patch"`
+  - `git remote -v`
   - `git status --short`
-  - `git show --stat --summary ac9a889ff`
 - Tool purpose:
-  - Sync the working device-truth PiP patch back into the tracked repo without inventing a new path and without pretending a new release artifact exists.
+  - `Prove the exact installed APK state, sync all local source representations to that state, and prepare a safe PiP+Visual guard commit/push.`
 - Tool state:
-  - Code sync complete.
-  - Commit/push pending.
+  - targeted code inspection complete
+  - code edited
+  - Windows-to-WSL sync complete
+  - build complete
+  - install complete
+  - source-of-truth proof complete
+  - commit/push pending
 - Expected resume command:
-  - `git status --short`
-  - `git add components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java docs/current-status.md docs/progress-log.md`
-  - `git commit -m "pip_plus"`
-  - `git push origin publish/go_play-sync-20260402`
+  - path-limited `git add` for the PiP+Visual guard files that match the installed APK
 - Expected output/artifact path:
-  - No new artifact expected in this round.
+  - [device_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_base_429000009_20260419.apk)
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `405ab5ab59472308d2b8ca93da725a09cf07755c`
+  - `005c1b995a1a7edd3ca62a520cd6fb40e6449f39`
 - Build flavor / target:
-  - No build in this round.
-  - Intended next release target only: `429000010`
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
 - Primary working set:
-  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java` - tracked copy of the working Android/native PiP near-end trigger that matched the device source of truth
-  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - confirmed already in sync with WSL/device-truth
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - confirmed already in sync with WSL/device-truth
-  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h` - confirmed already in sync with WSL/device-truth
-  - `docs/current-status.md` - handoff snapshot for the repo-sync stop point
-  - `docs/progress-log.md` - append-only audit trail for this repo-sync step
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — native-owner guard state and clear authorization
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) — Java bridge used by installed APK
+  - [brave_youtube_script_injector_native_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.cc) — native helper wiring used by installed APK
+  - [brave_youtube_script_injector_native_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\brave_youtube_script_injector_native_helper.h) — native helper declaration used by installed APK
+  - [youtube_native_tab_bridge.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_native_tab_bridge.cc) — PiP/media bridge used by installed APK
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — page-side PiP/visual guard logic used by installed APK
+  - [youtube_script_injector_tab_helper.h](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.h) — declarations paired with tab helper implementation
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) — positive signal after successful PiP params application
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch) — repo-tracked representation of the external controller file
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) — callback path still relevant, but no new edit in this round
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — page-side still issues guard callbacks, so later verification must confirm they no longer clear native guard
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log) — successful compile evidence
 - Files to inspect first after resume:
   - `docs/current-status.md`
-  - latest entry in `docs/progress-log.md`
-  - `components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
-  - `git status --short`
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - [release_build_pip_native_owner_guard_20260418.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log)
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - None beyond local git access.
+  - connected `adb` device
+  - WSL source tree available at `/home/master/src_ext4`
 - Expected success signal:
-  - `MediaSessionHelper.java` remains identical to the WSL source-of-truth copy.
-  - Only the intended files are staged.
-  - Commit `pip_plus` is created and pushed.
+  - the staged commit contains only PiP+Visual guard files that provably match the installed APK
+  - controller external-source change is reflected in the repo patch file
+  - push to `origin` succeeds
 - Expected failure signal:
-  - The repo copy of `MediaSessionHelper.java` drifts from the WSL source-of-truth file.
-  - Unrelated workspace files get staged into the commit by mistake.
+  - unrelated workspace files get swept into the commit
+  - controller external-source change is omitted from the repo representation
+  - push fails
 - Last known log location:
-  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_position_native_next_20260411.txt`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_final_verify_20260418_233830.txt`
 - Last known artifact path:
-  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_native_owner_guard_20260418.log`
 - Recent decisions:
-  - Treat the installed-device behavior as the source of truth.
-  - Sync code from the working WSL build tree back into the tracked repo exactly, instead of re-deriving the patch.
-  - Keep updater seed/live release metadata unchanged until a real `429000010` APK is built.
+  - follow the new direction exactly: native owner is the single source of truth for guard release
+  - do not touch fullscreen-first PiP entry
+  - do not keep patching page-side clear logic to decide release timing
+  - treat the installed APK on device as the only source-of-truth for this sync/commit round
+  - represent external WSL controller state in repo via the tracked patch file, because the raw controller file is not tracked here
 - Rejected approaches:
-  - Bumping live updater metadata to `429000010` without a built APK.
-  - Rewriting the working PiP patch into a different layer just to avoid syncing the actual source-of-truth file.
+  - clearing guard from recovery success/failure milestones
+  - letting page-side callbacks own release timing
+  - broad rollback
+  - guessing that the repo alone can track the raw controller file when it only tracks its patch representation
 - Stop point classification:
-  - code synced to repo and handoff updated; commit/push is the only remaining step in this round
+  - code edited, build passed, APK installed and proven as source-of-truth, commit/push not yet executed
 - What is done but unverified:
-  - The next intended repo release tag `429000010` is documented, but no build has verified it yet.
+  - commit/push of the PiP+Visual guard bundle
 - What is verified:
-  - The working patch file in repo matches the WSL/device source of truth exactly.
-  - The previously edited tracked PiP helper files already match the WSL/device source of truth.
-  - No build was performed in this round.
+  - targeted code changes are present in source
+  - Windows and WSL `BraveActivity.java` hashes match
+  - WSL build completed successfully
+  - APK installed successfully on device
+  - app launch returned `Status: ok`
+  - device package info reflects the newest install time
+  - device APK SHA256 matches the WSL-built APK SHA256 exactly
+  - all relevant Windows overlay files match their WSL counterparts
+  - controller diff is now regenerated into the repo patch file
 - External prerequisite:
-  - None.
+  - manual runtime reproduction on device
 - Secret required but not stored:
   - none
 - Actual code state after resume:
-  - The repo now contains the working `MediaSessionHelper.java` implementation that was previously only in the WSL build tree.
-  - The repo still contains unrelated modified/untracked workspace files outside this focused working set.
-  - Release/updater seed metadata still points to `429000009` because `429000010` has not been built.
+  - The repo now contains the native-owner guard patch locally, and the WSL build used that code successfully.
 - Chosen direction:
-  - Finish this round as a clean repo-sync-only change:
-    - source-of-truth code synced
-    - intended next release target documented as `429000010`
-    - no fake release metadata
-    - no build
+  - verify this installed build with fresh runtime logs before making any further PiP changes

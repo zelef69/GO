@@ -36,6 +36,8 @@ class YouTubeScriptInjectorTabHelper
   bool MaybeSeekBy(int offset_seconds);
   bool MaybeNextTrack(bool preserve_video_presentation = false);
   bool MaybePreviousTrack(bool preserve_video_presentation = false);
+  bool RecoverPictureInPictureFocus(bool require_visible);
+  bool SetPictureInPictureRecoveryVisualGuard(bool active);
 
   // Fullscreen state management using PageUserData
   bool HasFullscreenBeenRequested() const;
@@ -63,8 +65,14 @@ class YouTubeScriptInjectorTabHelper
       content::GlobalRenderFrameHostToken token);
   void OnExitFullscreenScriptComplete(content::GlobalRenderFrameHostToken token,
                                       base::Value value);
+  void OnCarryForwardVideoPresentationCheckComplete(
+      content::GlobalRenderFrameHostToken token,
+      base::Value value);
+  void OnPictureInPictureRecoveryVisualGuardScriptComplete(bool active,
+                                                           base::Value value);
   void OnNativeTabBridgeCommandComplete(const std::string& command_name,
                                         base::Value value);
+  void MaybeArmTrackNavigationRestoreFromCarryForwardIntent();
   bool MaybeRestoreVideoPresentationAfterTrackNavigation(const char* reason,
                                                          bool require_visible);
 
@@ -76,6 +84,8 @@ class YouTubeScriptInjectorTabHelper
   content::GlobalRenderFrameHostId bound_rfh_id_;
   bool restore_video_presentation_after_track_navigation_ = false;
   bool fullscreen_request_retry_pending_ = false;
+  bool pip_recovery_visual_guard_active_ = false;
+  bool pip_recovery_visual_guard_clear_pending_ = false;
 
   base::WeakPtrFactory<YouTubeScriptInjectorTabHelper> weak_factory_{this};
 };

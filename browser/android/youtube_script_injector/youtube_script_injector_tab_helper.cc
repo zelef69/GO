@@ -6,7 +6,9 @@
 #include "brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.h"
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 
 #include "base/feature_list.h"
 #include "base/logging.h"
@@ -35,6 +37,46 @@
 
 namespace {
 constexpr int32_t kMainWorldId = 0;
+
+std::string ExtractAsyncScriptStringResult(const base::Value& value) {
+  if (const std::string* result = value.GetIfString()) {
+    return *result;
+  }
+  if (const std::optional<bool> boolean_value = value.GetIfBool()) {
+    return *boolean_value ? "true" : "false";
+  }
+  if (value.is_none()) {
+    return "none";
+  }
+  if (const base::DictValue* dict = value.GetIfDict()) {
+    for (const char* key : {"result", "value", "status", "message"}) {
+      if (const base::Value* nested = dict->Find(key)) {
+        const std::string nested_result = ExtractAsyncScriptStringResult(*nested);
+        if (!nested_result.empty() && nested_result != "non_string_result") {
+          return nested_result;
+        }
+      }
+    }
+    for (const auto item : *dict) {
+      const std::string nested_result =
+          ExtractAsyncScriptStringResult(item.second);
+      if (!nested_result.empty() && nested_result != "non_string_result") {
+        return nested_result;
+      }
+    }
+    return "dict_result_missing";
+  }
+  if (const base::ListValue* list = value.GetIfList()) {
+    for (const auto& entry : *list) {
+      const std::string nested_result = ExtractAsyncScriptStringResult(entry);
+      if (!nested_result.empty() && nested_result != "non_string_result") {
+        return nested_result;
+      }
+    }
+    return "list_result_missing";
+  }
+  return "non_string_result";
+}
 
 constexpr char16_t kYoutubeBackgroundPlayback[] =
     uR"(
@@ -2521,10 +2563,17 @@ constexpr char16_t kYoutubeTransientOverlaySuppression[] =
     } catch (e) {}
   }
 
-  function saveCarryForwardVideoPresentation(reason) {
-    const video = document.querySelector('video.html5-main-video, video');
+  function saveCarryForwardVideoPresentation(reason, sourceVideo) {
+    const currentVideo = document.querySelector('video.html5-main-video, video');
+    const video = sourceVideo
+            && String(sourceVideo.tagName || '').toUpperCase() === 'VIDEO'
+        ? sourceVideo
+        : currentVideo;
     const currentId = currentVideoId();
-    if (!video || !currentId || !hasFullscreenPresentation(video)) {
+    if (!video || !currentId) {
+      return null;
+    }
+    if (currentVideo && video !== currentVideo) {
       return null;
     }
     const now = Date.now();
@@ -4255,8 +4304,11 @@ constexpr char16_t kYoutubeTransientOverlaySuppression[] =
     }
   }
 
-  function observeVideoLifecycle() {
-    const video = document.querySelector('video');
+  function observeVideoLifecycle(candidateVideo) {
+    const video = candidateVideo
+            && String(candidateVideo.tagName || '').toUpperCase() === 'VIDEO'
+        ? candidateVideo
+        : document.querySelector('video');
     if (!video) {
       return false;
     }
@@ -4275,12 +4327,10 @@ constexpr char16_t kYoutubeTransientOverlaySuppression[] =
 
     video.addEventListener('loadeddata', markStable, true);
     video.addEventListener('playing', markStable, true);
-    if (ENABLE_TRANSITION_PAGE_REVEAL) {
-      video.addEventListener(
-          'ended',
-          () => saveCarryForwardVideoPresentation('video_ended'),
-          true);
-    }
+    video.addEventListener(
+        'ended',
+        () => saveCarryForwardVideoPresentation('video_ended', video),
+        true);
     if (typeof video.requestVideoFrameCallback === 'function') {
       const waitForFrame = () => {
         video.requestVideoFrameCallback(() => {
@@ -4294,6 +4344,17 @@ constexpr char16_t kYoutubeTransientOverlaySuppression[] =
       return true;
     }
     return false;
+  }
+
+  function maybeObserveVideoLifecycleTarget(event, reason) {
+    const target = event && event.target;
+    if (!target || String(target.tagName || '').toUpperCase() !== 'VIDEO') {
+      return;
+    }
+    observeVideoLifecycle(target);
+    if (reason === 'ended_capture') {
+      saveCarryForwardVideoPresentation('video_ended_capture', target);
+    }
   }
 
   function maybeWarmForCurrentPage(delayMs) {
@@ -4335,7 +4396,102 @@ constexpr char16_t kYoutubeTransientOverlaySuppression[] =
     scheduleWarmNextAnchor(videoAlreadyStable ? Math.min(350, delayMs) : delayMs);
   }
 
+  function setPipRecoveryVisualGuard(active) {
+    try {
+      const KEY = '__onetabtubePipRecoveryVisualGuardState';
+      const state = window[KEY] || (window[KEY] = {
+        active: false,
+        overlay: null,
+        observer: null,
+        applyScheduled: false
+      });
+      const ensureOverlay = () => {
+        if (!state.overlay || !state.overlay.isConnected) {
+          const overlay = document.createElement('div');
+          overlay.setAttribute('data-otb-pip-recovery-overlay', '1');
+          overlay.style.position = 'fixed';
+          overlay.style.inset = '0';
+          overlay.style.backgroundColor = '#000';
+          overlay.style.pointerEvents = 'none';
+          overlay.style.zIndex = '2147483647';
+          overlay.style.opacity = '1';
+          overlay.style.visibility = 'visible';
+          state.overlay = overlay;
+        }
+        const parent = document.body || document.documentElement;
+        if (parent && state.overlay.parentElement !== parent) {
+          parent.appendChild(state.overlay);
+        }
+      };
+      const disconnectObserver = () => {
+        if (!state.observer) {
+          return;
+        }
+        state.observer.disconnect();
+        state.observer = null;
+      };
+      const clearGuard = () => {
+        document.documentElement.removeAttribute('data-otb-pip-recovery-guard');
+        document.documentElement.style.backgroundColor = '';
+        if (document.body) {
+          document.body.style.backgroundColor = '';
+        }
+        if (state.overlay && state.overlay.isConnected) {
+          state.overlay.remove();
+        }
+      };
+      const applyGuard = () => {
+        ensureOverlay();
+        document.documentElement.setAttribute('data-otb-pip-recovery-guard', '1');
+        document.documentElement.style.backgroundColor = '#000';
+        if (document.body) {
+          document.body.style.backgroundColor = '#000';
+        }
+        return 'enabled';
+      };
+      const ensureObserver = () => {
+        if (state.observer || !document.documentElement) {
+          return;
+        }
+        state.observer = new MutationObserver(() => {
+          if (!state.active || state.applyScheduled) {
+            return;
+          }
+          state.applyScheduled = true;
+          Promise.resolve().then(() => {
+            state.applyScheduled = false;
+            if (!state.active) {
+              return;
+            }
+            applyGuard();
+          });
+        });
+        state.observer.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class', 'style', 'hidden']
+        });
+      };
+
+      if (!active) {
+        state.active = false;
+        disconnectObserver();
+        clearGuard();
+        return 'disabled';
+      }
+
+      state.active = true;
+      ensureObserver();
+      return applyGuard();
+    } catch (error) {
+      return 'error:' + (error && error.message ? error.message : String(error));
+    }
+  }
+
   maybeWarmForCurrentPage(900);
+  window.__onetabtubeSetPipRecoveryVisualGuard =
+      active => setPipRecoveryVisualGuard(!!active);
   if (ENABLE_TRANSITION_PAGE_REVEAL) {
     window.__onetabtubeNavigateWatch = (targetHref, reason, options) =>
         commitCanonicalWatchNavigation(
@@ -4358,6 +4514,22 @@ constexpr char16_t kYoutubeTransientOverlaySuppression[] =
   document.addEventListener('DOMContentLoaded', () => maybeWarmForCurrentPage(700), true);
   window.addEventListener('pageshow', () => resumeWarmPipeline('pageshow'), true);
   document.addEventListener('yt-navigate-finish', () => maybeWarmForCurrentPage(900), true);
+  document.addEventListener(
+      'loadstart',
+      event => maybeObserveVideoLifecycleTarget(event, 'loadstart_capture'),
+      true);
+  document.addEventListener(
+      'loadedmetadata',
+      event => maybeObserveVideoLifecycleTarget(event, 'loadedmetadata_capture'),
+      true);
+  document.addEventListener(
+      'playing',
+      event => maybeObserveVideoLifecycleTarget(event, 'playing_capture'),
+      true);
+  document.addEventListener(
+      'ended',
+      event => maybeObserveVideoLifecycleTarget(event, 'ended_capture'),
+      true);
   if (ENABLE_TRANSITION_PAGE_REVEAL) {
     document.addEventListener(
         'fullscreenchange', () => maybeResolvePageReveal('fullscreenchange'),
@@ -4753,6 +4925,7 @@ void YouTubeScriptInjectorTabHelper::DidFinishNavigation(
   if (navigation_handle->IsSameDocument() &&
       navigation_handle->IsInMainFrame() && navigation_handle->HasCommitted()) {
     fullscreen_request_retry_pending_ = false;
+    MaybeArmTrackNavigationRestoreFromCarryForwardIntent();
     if (MaybeRestoreVideoPresentationAfterTrackNavigation(
             "same_document_navigation", true)) {
       return;
@@ -4795,6 +4968,10 @@ void YouTubeScriptInjectorTabHelper::PrimaryMainDocumentElementAvailable() {
     contents->GetPrimaryMainFrame()->ExecuteJavaScript(
         kYoutubePictureInPictureSupport, base::NullCallback());
   }
+  MaybeArmTrackNavigationRestoreFromCarryForwardIntent();
+  if (pip_recovery_visual_guard_active_) {
+    SetPictureInPictureRecoveryVisualGuard(true);
+  }
   if (MaybeRestoreVideoPresentationAfterTrackNavigation(
           "primary_main_document_available", true)) {
     return;
@@ -4811,10 +4988,8 @@ void YouTubeScriptInjectorTabHelper::MediaEffectivelyFullscreenChanged(
   if (is_fullscreen && HasFullscreenBeenRequested()) {
     fullscreen_request_retry_pending_ = false;
     SetFullscreenRequested(false);
-    if (web_contents()->GetVisibility() == content::Visibility::VISIBLE) {
-      LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_from_fullscreen";
-      ::youtube_script_injector::EnterPictureInPicture(web_contents());
-    }
+    LOG(INFO) << "OTB_PIP event=enter_picture_in_picture_from_fullscreen";
+    ::youtube_script_injector::EnterPictureInPicture(web_contents());
   }
 }
 
@@ -4956,6 +5131,7 @@ bool YouTubeScriptInjectorTabHelper::MaybeNextTrack(
   restore_video_presentation_after_track_navigation_ =
       preserve_video_presentation;
   if (preserve_video_presentation) {
+    SetPictureInPictureRecoveryVisualGuard(true);
     LOG(INFO) << "OTB_PIP event=arm_track_navigation_keepalive command=next_track";
     SetFullscreenRequested(true);
   }
@@ -4995,6 +5171,7 @@ bool YouTubeScriptInjectorTabHelper::MaybePreviousTrack(
   restore_video_presentation_after_track_navigation_ =
       preserve_video_presentation;
   if (preserve_video_presentation) {
+    SetPictureInPictureRecoveryVisualGuard(true);
     LOG(INFO)
         << "OTB_PIP event=arm_track_navigation_keepalive command=previous_track";
     SetFullscreenRequested(true);
@@ -5202,6 +5379,188 @@ void YouTubeScriptInjectorTabHelper::OnExitFullscreenScriptComplete(
   SetFullscreenRequested(false);
 }
 
+bool YouTubeScriptInjectorTabHelper::RecoverPictureInPictureFocus(
+    bool require_visible) {
+  if (!IsYouTubeDomain()) {
+    return false;
+  }
+
+  SetPictureInPictureRecoveryVisualGuard(true);
+  restore_video_presentation_after_track_navigation_ = true;
+  fullscreen_request_retry_pending_ = false;
+  LOG(INFO) << "OTB_PIP event=recovery_pip_arm_current_video"
+            << " require_visible=" << (require_visible ? 1 : 0)
+            << " visibility=" << static_cast<int>(web_contents()->GetVisibility())
+            << " url=" << web_contents()->GetLastCommittedURL();
+  return MaybeRestoreVideoPresentationAfterTrackNavigation("recovery_pip",
+                                                           require_visible);
+}
+
+void YouTubeScriptInjectorTabHelper::
+    MaybeArmTrackNavigationRestoreFromCarryForwardIntent() {
+  if (restore_video_presentation_after_track_navigation_ || !IsYouTubeDomain()) {
+    return;
+  }
+
+  if (!::youtube_script_injector::
+          ShouldPreserveVideoPresentationForPictureInPicture(web_contents())) {
+    return;
+  }
+
+  content::RenderFrameHost* rfh = web_contents()->GetPrimaryMainFrame();
+  if (!rfh || !rfh->IsRenderFrameLive()) {
+    return;
+  }
+
+  EnsureBound(rfh);
+  static constexpr char16_t kCarryForwardCheckCommand[] = uR"OTBCARRY(
+(() => {
+  try {
+    const KEY = '__onetabtubeVideoPresentationCarry';
+    const TTL_MS = 15000;
+    const raw = sessionStorage.getItem(KEY);
+    if (!raw) {
+      return 'none';
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      return 'none';
+    }
+    const armedAt = Number(parsed.armedAt || 0);
+    const updatedAt = Number(parsed.updatedAt || armedAt || 0);
+    const referenceAt = Math.max(armedAt, updatedAt);
+    if (!armedAt || !referenceAt || Date.now() - referenceAt > TTL_MS) {
+      sessionStorage.removeItem(KEY);
+      return 'expired';
+    }
+    const currentUrl = new URL(String(location.href || ''), location.origin);
+    const currentVideoId = String(currentUrl.searchParams.get('v') || '');
+    const sourceVideoId = String(parsed.sourceVideoId || '');
+    if (!currentVideoId || !sourceVideoId) {
+      return 'none';
+    }
+    if (currentVideoId === sourceVideoId) {
+      return 'same_video';
+    }
+    const video = document.querySelector('video.html5-main-video, video');
+    const hasFullscreenPresentation =
+        !!document.fullscreenElement
+        || !!document.webkitFullscreenElement
+        || !!(video && video.webkitDisplayingFullscreen);
+    sessionStorage.removeItem(KEY);
+    return hasFullscreenPresentation ? 'ready' : 'arm';
+  } catch (error) {
+    return 'error:' + (error && error.message ? error.message : String(error));
+  }
+})()
+)OTBCARRY";
+  script_injector_remote_->RequestAsyncExecuteScript(
+      kMainWorldId, kCarryForwardCheckCommand,
+      blink::mojom::UserActivationOption::kDoNotActivate,
+      blink::mojom::PromiseResultOption::kAwait,
+      base::BindOnce(
+          &YouTubeScriptInjectorTabHelper::
+              OnCarryForwardVideoPresentationCheckComplete,
+          weak_factory_.GetWeakPtr(), rfh->GetGlobalFrameToken()));
+}
+
+bool YouTubeScriptInjectorTabHelper::SetPictureInPictureRecoveryVisualGuard(
+    bool active) {
+  if (!active) {
+    const bool should_defer_clear =
+        restore_video_presentation_after_track_navigation_ ||
+        HasFullscreenBeenRequested() || fullscreen_request_retry_pending_;
+    if (should_defer_clear) {
+      pip_recovery_visual_guard_clear_pending_ = true;
+      LOG(INFO) << "OTB_PIP event=pip_recovery_visual_guard_deferred_clear"
+                << " restore_pending="
+                << restore_video_presentation_after_track_navigation_
+                << " fullscreen_requested=" << HasFullscreenBeenRequested()
+                << " retry_pending=" << fullscreen_request_retry_pending_;
+      return true;
+    }
+  }
+
+  pip_recovery_visual_guard_active_ = active;
+  pip_recovery_visual_guard_clear_pending_ = false;
+  ::youtube_script_injector::NotifyPictureInPictureRecoveryVisualGuardChanged(
+      web_contents(), active);
+  content::RenderFrameHost* rfh = web_contents()->GetPrimaryMainFrame();
+  if (!rfh || !rfh->IsRenderFrameLive() || !IsYouTubeDomain()) {
+    return false;
+  }
+
+  LOG(INFO) << "OTB_PIP event=pip_recovery_visual_guard_request active="
+            << (active ? 1 : 0);
+  EnsureBound(rfh);
+  const std::u16string command = base::StrCat(
+      {uR"OTBGUARD(
+(() => {
+  try {
+    const applyGuard = window.__onetabtubeSetPipRecoveryVisualGuard;
+    if (typeof applyGuard !== 'function') {
+      return 'missing_helper';
+    }
+    return applyGuard(
+)OTBGUARD",
+       active ? u"true" : u"false",
+       uR"OTBGUARD(
+);
+  } catch (error) {
+    return 'error:' + (error && error.message ? error.message : String(error));
+  }
+})()
+)OTBGUARD"});
+  script_injector_remote_->RequestAsyncExecuteScript(
+      kMainWorldId, command, blink::mojom::UserActivationOption::kDoNotActivate,
+      blink::mojom::PromiseResultOption::kAwait,
+      base::BindOnce(&YouTubeScriptInjectorTabHelper::
+                         OnPictureInPictureRecoveryVisualGuardScriptComplete,
+                     weak_factory_.GetWeakPtr(), active));
+  return true;
+}
+
+void YouTubeScriptInjectorTabHelper::
+    OnCarryForwardVideoPresentationCheckComplete(
+        content::GlobalRenderFrameHostToken token,
+        base::Value value) {
+  if (!web_contents() || !web_contents()->GetPrimaryMainFrame() ||
+      token != web_contents()->GetPrimaryMainFrame()->GetGlobalFrameToken()) {
+    return;
+  }
+
+  const std::string result = ExtractAsyncScriptStringResult(value);
+  LOG(INFO) << "OTB_PIP event=carry_forward_restore_check result=" << result
+            << " visibility="
+            << static_cast<int>(web_contents()->GetVisibility());
+
+  if (result == "ready") {
+    fullscreen_request_retry_pending_ = false;
+    SetFullscreenRequested(false);
+    SetPictureInPictureRecoveryVisualGuard(false);
+    return;
+  }
+
+  if (result != "arm") {
+    return;
+  }
+
+  restore_video_presentation_after_track_navigation_ = true;
+  fullscreen_request_retry_pending_ = false;
+  SetPictureInPictureRecoveryVisualGuard(true);
+  SetFullscreenRequested(true);
+  MaybeRestoreVideoPresentationAfterTrackNavigation(
+      "carry_forward_primary_main_document", true);
+}
+
+void YouTubeScriptInjectorTabHelper::
+    OnPictureInPictureRecoveryVisualGuardScriptComplete(bool active,
+                                                        base::Value value) {
+  const std::string result = ExtractAsyncScriptStringResult(value);
+  LOG(INFO) << "OTB_PIP event=pip_recovery_visual_guard_result active="
+            << (active ? 1 : 0) << " result=" << result;
+}
+
 void YouTubeScriptInjectorTabHelper::OnNativeTabBridgeCommandComplete(
     const std::string& command_name,
     base::Value value) {
@@ -5214,6 +5573,7 @@ void YouTubeScriptInjectorTabHelper::OnNativeTabBridgeCommandComplete(
       restore_video_presentation_after_track_navigation_ = false;
       fullscreen_request_retry_pending_ = false;
       SetFullscreenRequested(false);
+      SetPictureInPictureRecoveryVisualGuard(false);
     }
   }
   LOG(INFO) << "OTB_MEDIA event=native_tab_bridge_command"
@@ -5239,7 +5599,10 @@ bool YouTubeScriptInjectorTabHelper::MaybeRestoreVideoPresentationAfterTrackNavi
   }
 
   const content::Visibility visibility = web_contents()->GetVisibility();
-  if (require_visible && visibility != content::Visibility::VISIBLE) {
+  const bool allow_hidden =
+      reason != nullptr && std::string_view(reason) == "recovery_pip";
+  if (require_visible && visibility != content::Visibility::VISIBLE &&
+      !allow_hidden) {
     LOG(INFO) << "OTB_PIP event=track_navigation_restore_deferred"
               << " reason=" << reason
               << " visibility=" << static_cast<int>(visibility);
