@@ -77,7 +77,7 @@ npm --prefix functions run seed:app-update -- --project go-play-720c1 --service-
 ตัวอย่างใช้ APK baseline ที่ดึงจากเครื่อง:
 
 ```bash
-npm --prefix functions run publish:app-update -- --project go-play-720c1 --apk \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk
+npm --prefix functions run publish:app-update -- --project go-play-720c1 --apk \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk
 ```
 
 ถ้าต้องการตรวจเฉย ๆ ว่าจะเขียน payload อะไรโดยยังไม่ upload:
@@ -113,26 +113,32 @@ npm --prefix functions run publish:app-update:dry -- --project go-play-720c1 --a
 
 ## Current live closure status
 
-Updater metadata batch ถูกปิดแล้วในโปรเจกต์ `go-play-720c1` โดยใช้ APK baseline ที่ดึงจากเครื่องจริง:
+Updater metadata batch ล่าสุดถูกปิดแล้วในโปรเจกต์ `go-play-720c1` ด้วย release baseline `429000010` ที่ยืนยันตรงกันทั้ง build artifact และ APK ที่ติดตั้งบนอุปกรณ์:
 
-- artifact: `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64\apks\OneTabTube.apk`
+- artifact: `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- device proof: `artifacts/runtime_logs/device_stable_baseline_429000010_20260419.apk`
 - package: `com.onetabtube.browser_default`
-- versionCode: `429000005`
-- versionName: `1.90.1`
-- SHA-256: `5dacfc43d6286ff8778c448ebda3b8f5d64fe2c10944ba3ad864abac8c184b4e`
+- versionCode: `429000010`
+- versionName: `1.90.3`
+- packaged ABIs: `arm64-v8a`, `armeabi-v7a`
+- SHA-256: `0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f`
+- file size: `298165045`
 
 หลักฐานอ้างอิง:
 
-- publish log: `artifacts/firebase_build/publish_app_update_live_20260407_115257.log`
-- Firestore readback: `artifacts/firebase_build/app_update_firestore_readback_20260407_115327.json`
-- Storage HEAD check: `artifacts/firebase_build/app_update_storage_head_20260407_115327.txt`
+- build log: `artifacts/android_build/release_build_multiabi_429000010_20260419.log`
+- publish log: `artifacts/firebase_build/publish_app_update_live_20260419_202318_429000010.log`
+- publish payload: `artifacts/firebase_build/app_update_publish_payload_20260419_202318_429000010.json`
+- Firestore readback: `artifacts/firebase_build/app_update_firestore_readback_20260419_429000010.json`
+- Storage HEAD check: `artifacts/firebase_build/app_update_storage_head_20260419_429000010.txt`
 
 สิ่งที่ถือว่า verify แล้ว:
 
 - `app_updates/android` มี `apkUrl` จริง ไม่ใช่ placeholder
 - URL ของ APK ตอบ `HTTP 200`
-- `apkSha256` และ `apkFileSizeBytes` ตรงกับ artifact baseline
+- `apkSha256` และ `apkFileSizeBytes` ตรงกับ build artifact
+- APK ที่ติดตั้งบนอุปกรณ์ตรงกับ build artifact โดย hash เดียวกัน
 
 สิ่งที่ยังอยู่นอก scope ของ metadata batch:
 
-- true download/install flow บนอุปกรณ์จริงตอนนี้พร้อมทดสอบจากเครื่องที่ยังติดตั้ง `429000004` อยู่ให้เห็น `429000005` เป็นอัปเดตใหม่
+- true download/install flow จากเครื่องที่ยังติดตั้งเวอร์ชันเก่ากว่า `429000010` และต้องเห็น `429000010` เป็นอัปเดตใหม่

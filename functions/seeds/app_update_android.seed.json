@@ -3,18 +3,18 @@
     "android": {
       "appId": "com.onetabtube.browser_default",
       "releaseChannel": "stable",
-      "latestVersionCode": 429000009,
+      "latestVersionCode": 429000010,
       "latestVersionName": "1.90.3",
       "minimumSupportedVersionCode": 429000008,
       "updaterEnabled": true,
       "forceUpdate": false,
-      "apkUrl": "https://example.com/go-play/OneTabTube.apk",
-      "apkSha256": "51a13da56ab3daad4f0a2d2f41be55c3f8daa87d617d3cd929c2de032c1f42c4",
-      "apkFileSizeBytes": 210076304,
+      "apkUrl": "https://firebasestorage.googleapis.com/v0/b/go-play-720c1.firebasestorage.app/o/app-updates%2Fandroid%2Fcom.onetabtube.browser_default%2F429000010%2FOneTabTube-1.90.3-429000010.apk?alt=media&token=7b7d387a-e71a-420b-9168-64389fd8a7c0",
+      "apkSha256": "0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f",
+      "apkFileSizeBytes": 298165045,
       "releaseNotes": [
-        "เมลใหม่รับแพ็กเกจทดลองใช้งาน 14 วันอัตโนมัติ",
-        "อัปเดต release build รอบใหม่สำหรับทดสอบระบบอัปเดตในแอป",
-        "พร้อมใช้กับการอัปโหลด APK ขึ้น Firebase Storage และ Firestore metadata ล่าสุด"
+        "เพิ่มความเข้ากันได้ของอุปกรณ์ด้วย APK เดียวที่รวม arm64-v8a และ armeabi-v7a",
+        "ยึด baseline เสถียรจาก build ที่ติดตั้งบนอุปกรณ์และยืนยัน hash ตรงกับ release",
+        "พร้อมให้อัปเดตในแอปผ่าน Firebase Storage และ Firestore metadata เวอร์ชันล่าสุด"
       ],
       "rolloutPercent": 100
     }

@@ -121,3 +121,55 @@ index 432a235c4081327daf699f6c41e09f2091ae31a0..7410d2f8b1f4f4fdfd68d8b9bde5320d
  
      if (enable_screen_capture) {
        sources += [ "java/src/org/chromium/chrome/browser/media/MediaCapturePickerManagerBridge.java" ]
+
+@@ -2048,7 +2048,7 @@
+     if (brave_android_public_apk_name != "") {
+       apk_name = brave_android_public_apk_name
+     }
+-    if (defined(android_app_secondary_abi)) {
++    if (defined(android_app_secondary_abi) && !is_onetabyt) {
+       # Ensure 64-bit chrome does not depend on 32-bit things.
+       assert_no_deps =
+           [ "//build/config:toolchain_marker_" +
+@@ -3383,6 +3383,26 @@
+     }
+   }
+ 
++  if (defined(android_secondary_abi_toolchain) &&
++      current_toolchain == android_secondary_abi_toolchain) {
++    if (enable_resource_allowlist_generation) {
++      libchrome_impl("libchrome_inputs") {
++        collect_inputs_only = true
++      }
++    }
++    libchrome_impl("libchrome") {
++      define_unwind_table_target =
++          add_unwind_tables_in_chrome_32bit_apk && target_cpu == "arm"
++      if (enable_resource_allowlist_generation) {
++        deps = [ ":libchrome_inputs" ]
++      }
++
++      module_descs = chrome_module_descs
++
++      # Match the default-toolchain libchrome dependency boundary.
++      assert_no_deps = [ "//build/android:build_java" ]
++    }
++  }
+ }
+ 
+ # Trichrome equivalent of Chrome's APK or bundle library template.
+@@ -3448,6 +3468,14 @@
+ 
+   # 32-bit browser library alias targets, pulled in by 64-bit WebView builds.
+   if (defined(android_app_secondary_abi)) {
++    group("libchrome_secondary_abi_lib") {
++      public_deps = [ ":libchrome($android_secondary_abi_toolchain)" ]
++    }
++
++    group("chrome_crashpad_handler_secondary_abi_so") {
++      public_deps = [ "//components/crash/core/app:chrome_crashpad_handler_named_as_so($android_secondary_abi_toolchain)" ]
++    }
++
+     group("monochrome_secondary_abi_lib") {
+       public_deps = [ ":libmonochrome($android_secondary_abi_toolchain)" ]
+     }

@@ -16,3 +16,49 @@ diff --git a/chrome/android/chrome_public_apk_tmpl.gni b/chrome/android/chrome_p
 +        apk_name = brave_android_public_apk_name
 +      }
      }
+
+@@ -142,6 +142,7 @@
+   _is_64_bit_browser =
+       android_64bit_target_cpu &&
+       (!defined(invoker.is_64_bit_browser) || invoker.is_64_bit_browser)
++  _include_secondary_abi = false
+   if (_is_trichrome) {
+     _include_64_bit_webview =
+         android_64bit_target_cpu && (!defined(invoker.include_64_bit_webview) ||
+@@ -152,6 +153,13 @@
+                            _include_64_bit_webview
+     _include_secondary_abi = defined(android_app_secondary_abi) &&
+                              (!_is_64_bit_browser || _include_32_bit_webview)
++  } else if (is_onetabyt) {
++    _include_secondary_abi = defined(android_app_secondary_abi)
++  }
++  if (_include_secondary_abi) {
++    _secondary_out_dir =
++        get_label_info("X($android_secondary_abi_toolchain)", "root_out_dir")
++    not_needed([ "_secondary_out_dir" ])
+   }
+ 
+   assert(_is_trichrome == defined(invoker.static_library_provider),
+@@ -535,6 +543,10 @@
+       shared_libraries += [ "//chrome/android:libchrome" ]
+       srcjar_deps +=
+           [ "//chrome/android:libchrome__jni_registration($default_toolchain)" ]
++      if (_include_secondary_abi) {
++        secondary_abi_shared_libraries +=
++            [ "//chrome/android:libchrome_secondary_abi_lib" ]
++      }
+     }
+ 
+     if (enable_arcore) {
+@@ -581,6 +593,11 @@
+           [ "//components/crash/core/app:chrome_crashpad_handler_named_as_so" ]
+       loadable_modules += [ "$root_out_dir/libchrome_crashpad_handler.so" ]
+       library_always_compress += [ "libchrome_crashpad_handler.so" ]
++      if (_include_secondary_abi) {
++        deps += [ "//chrome/android:chrome_crashpad_handler_secondary_abi_so" ]
++        secondary_abi_loadable_modules +=
++            [ "$_secondary_out_dir/libchrome_crashpad_handler.so" ]
++      }
+     } else if (!_is_trichrome) {
+       # Crashpad trampoline lives in TrichromeLibrary.apk.
+       # https://chromium.googlesource.com/chromium/src/+/main/docs/android_native_libraries.md#Crashpad-Packaging
