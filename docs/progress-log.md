@@ -118,6 +118,2574 @@
 - Secret required but not stored:
   - none
 
+## Snapshot - 2026-04-20 14:51:56 +07:00
+
+- Current phase:
+  - `Phase 7 - locked-screen continuity + PiP recovery reality check`
+- Task/objective:
+  - Reconcile the latest handoff with the actual code because the dev device is again showing mid-play PiP focus-loss without self-recovery, which should not be treated as a device mystery without checking source reality first.
+- Completed since last snapshot:
+  - Re-read [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md) and the latest available handoff context.
+  - Re-inspected the real code path in:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - Verified current `recoveryPIP` reality:
+    - event-driven triggers still present in [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - controller-side `LEFT_FULLSCREEN / WEB_CONTENTS_LEFT_FULLSCREEN` preserve path still present in [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+  - Verified the dedicated playback-focus-loss hook is absent in current source:
+    - no `onPictureInPicturePlaybackFocusLostWhilePlaying(...)`
+    - no `maybeRecoverVideoFocusWhilePlaying(...)`
+  - Cross-checked earlier progress-log history and confirmed those hooks were once added and later explicitly removed during the fullscreen rollback-to-`a2f46...` step.
+- In progress now:
+  - The latest lock-screen capture [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt) still needs line-by-line analysis.
+  - The dev-device complaint about mid-play focus-loss now has a concrete source-level explanation: current code no longer contains the dedicated playback-focus-loss recovery hook.
+- Blockers/risks:
+  - The previously recorded handoff understated this separate PiP regression.
+  - We must keep lock-screen continuity and mid-play focus-loss recovery separated so fixes do not bleed into each other.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Files/modules inspected:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+- Build/test status:
+  - No new build or install was run in this snapshot.
+  - Current installed APK still corresponds to the previously built controllability-hold patch.
+  - No new runtime capture was started in this snapshot.
+- Exact next concrete step:
+  - Analyze [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt) first.
+  - Then decide separately whether to restore the missing playback-focus-loss recovery path based on the verified code regression.
+- Expected resume inspection scope:
+  - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `rg -n "shouldPreserveVideoPresentationForPictureInPictureControls|schedulePictureInPictureRecovery|onNativeFullscreenSignalWhileInPictureInPicture|screen_not_interactive|device_locked|LEFT_FULLSCREEN|WEB_CONTENTS_LEFT_FULLSCREEN" ...`
+  - `rg -n "onPictureInPicturePlaybackFocusLostWhilePlaying" -S .`
+  - `git diff --stat -- ...`
+- Tool purpose:
+  - Validate whether recorded handoff still matched real code and correct status when it did not.
+- Tool state:
+  - inspection complete
+  - no long-running process left active
+- Expected resume command:
+  - `Get-Content artifacts/runtime_logs/live_locked_controllability_hold_verify_20260420_142853.txt`
+- Expected output/artifact path:
+  - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device attached if a new runtime capture is needed later
+- Expected success signal:
+  - clear proof from the pending capture whether the controllability-hold wrapper path fires
+  - and a separate, code-grounded decision on whether the missing playback-focus-loss hook must be restored
+- Expected failure signal:
+  - continued ambiguity between lock-screen continuity and mid-play focus-loss recovery
+- Last known log location:
+  - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+- Last known artifact path:
+  - [release_build_locked_pip_controllability_hold_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_controllability_hold_20260420.log)
+- Recent decisions:
+  - Treat the missing playback-focus-loss hook as a real regression in code reality.
+  - Keep the lock-screen and mid-play focus-loss problems separated until each is proven by code/logs.
+- Rejected approaches:
+  - assuming the dev-device symptom is just a flaky runtime issue
+  - assuming the current source still contains the earlier mid-play recovery hook
+- Stop point classification:
+  - runtime capture pending analysis
+  - code-reality check completed and status files corrected
+- What is done but unverified:
+  - whether the wrapper hold fixes the lock-screen divergence
+- What is verified:
+  - the dedicated mid-play playback-focus-loss recovery hook is absent from current source
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
+## 2026-04-20 12:49:30 +07:00
+
+- Current phase:
+  - `Phase 7 - locked-screen PiP auto-next stabilization`
+- Task/objective:
+  - Replace the narrow callback-chasing approach with a lock-screen heartbeat helper that keeps the Android media session alive and continues feeding auto-next state while the device is locked in PiP.
+- Completed since last snapshot:
+  - Analyzed the broader chain in [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java):
+    - `mediaSessionStateChanged(...)`
+    - `mediaSessionActionsChanged(...)`
+    - `mediaSessionPositionChanged(...)`
+    - `maybeDispatchLockedPipAutoNext(...)`
+    - notification updates
+    - `activateAndroidMediaSession()`
+  - Confirmed [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java) still forwards `mediaSessionPositionChanged(...)` to the base helper and only filters actions / showNotification behavior.
+  - Implemented a lock-screen PiP heartbeat in [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java):
+    - new state:
+      - `mIsMediaSessionControllable`
+      - `mIsMediaSessionPaused`
+      - `mLockedPipMediaSessionHeartbeatTask`
+    - new interval:
+      - `LOCKED_PIP_MEDIA_SESSION_HEARTBEAT_INTERVAL_MILLIS = 1000`
+    - new control methods:
+      - `shouldRunLockedPipMediaSessionHeartbeat()`
+      - `updateLockedPipMediaSessionHeartbeat(...)`
+      - `stopLockedPipMediaSessionHeartbeat(...)`
+    - heartbeat tick behavior:
+      - synthesize fresh `MediaPosition`
+      - call `maybeDispatchLockedPipAutoNext(...)`
+      - call `activateAndroidMediaSession()`
+      - call `updateNotificationPosition()`
+    - start/stop hooks added around:
+      - `mediaSessionStateChanged(...)`
+      - `mediaSessionMetadataChanged(...)`
+      - `mediaSessionActionsChanged(...)`
+      - `mediaSessionArtworkChanged(...)`
+      - `mediaSessionPositionChanged(...)`
+      - `onVisibilityChanged(...)`
+      - `mediaSessionDestroyed()`
+      - navigation reset
+      - cleanup/destroy/hide
+    - screen-off kick added via `ScreenOffBroadcastReceiver` with delayed reevaluation
+  - Added runtime markers:
+    - `OTB_PIP event=locked_pip_heartbeat_start reason=...`
+    - `OTB_PIP event=locked_pip_heartbeat_stop reason=...`
+  - First build attempt failed cleanly because `mHandler` was referenced from a field initializer before constructor assignment.
+  - Fixed that by moving `mHideNotificationOnScreenOff` initialization into the constructor.
+  - Rebuilt successfully:
+    - [release_build_locked_pip_heartbeat_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_heartbeat_20260420.log)
+  - Reinstalled successfully with `--no-incremental`.
+  - Verified the rebuilt APK contains:
+    - `locked_pip_heartbeat_start`
+    - `locked_pip_heartbeat_stop`
+    - `screen_off`
+    - `heartbeat_preconditions_lost`
+- In progress now:
+  - No command is running.
+  - Heartbeat runtime has not been verified yet.
+- Blockers/risks:
+  - Main risk is over-refreshing the media notification or media session while locked.
+  - Runtime still needs proof that the heartbeat actually starts under the affected-device lock-screen sequence.
+- Files/modules touched:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Files/modules inspected:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+  - [release_build_locked_pip_heartbeat_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_heartbeat_20260420.log)
+- Build/test status:
+  - Rebuild passed.
+  - Install passed.
+  - No post-patch runtime capture yet.
+- Exact next concrete step:
+  - Start a fresh lock-screen capture on the heartbeat build.
+  - Reproduce `PiP -> lock -> let video approach end/change`.
+  - Inspect heartbeat markers and auto-next markers together.
+- Expected resume inspection scope:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [release_build_locked_pip_heartbeat_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_heartbeat_20260420.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+- Exact command(s):
+  - `wsl bash -lc "set -euo pipefail; cp /mnt/c/Users/Master/Desktop/GO_PLAY/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java /home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_locked_pip_heartbeat_20260420.log"`
+  - `adb install --no-incremental -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `wsl bash -lc "unzip -p /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk classes.dex 2>/dev/null | strings | rg 'locked_pip_heartbeat_(start|stop)|screen_off|heartbeat_preconditions_lost' -n -m 20"`
+- Tool purpose:
+  - Build and deploy the lock-screen heartbeat helper.
+- Tool state:
+  - completed
+- Expected resume command:
+  - start a fresh runtime capture on this build
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) - heartbeat owner
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java) - wrapper layer
+  - [release_build_locked_pip_heartbeat_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_heartbeat_20260420.log) - build evidence
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected device connected via `adb`
+  - reproducible lock-screen PiP scenario
+  - WSL source tree mounted
+- Expected success signal:
+  - heartbeat markers appear during lock-screen capture
+  - lock-screen auto-next markers appear without needing unlock
+- Expected failure signal:
+  - heartbeat never starts, or starts but still never reaches auto-next
+- Last known log location:
+  - [release_build_locked_pip_heartbeat_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_heartbeat_20260420.log)
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - Stop expanding diagnostics and move to a behavior-first fix.
+  - Keep the fix in `MediaSessionHelper` rather than PiP/recovery layers.
+- Rejected approaches:
+  - more piecemeal logging without a stabilizing behavior change
+  - touching downstream restore logic again
+- Stop point classification:
+  - code edited, rebuilt, installed; heartbeat runtime not yet verified
+- What is done but unverified:
+  - heartbeat effectiveness on the affected device
+- What is verified:
+  - helper code present in source and APK
+  - rebuild/install succeeded
+- External prerequisite:
+  - affected device available for runtime validation
+- Secret required but not stored:
+  - none
+
+## 2026-04-20 12:40:30 +07:00
+
+- Current phase:
+  - `Phase 7 - locked-screen PiP auto-next trigger tracing`
+- Task/objective:
+  - Use method-level `MediaSessionHelper` diagnostics to determine whether the locked-screen failure happens inside `maybeDispatchLockedPipAutoNext(...)` or before that method is entered.
+- Completed since last snapshot:
+  - Added gate-level logs to [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) for every early return inside `maybeDispatchLockedPipAutoNext(...)`.
+  - Synced the updated file into WSL and rebuilt successfully:
+    - [release_build_locked_pip_autonext_diag_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_autonext_diag_20260420.log)
+  - Reinstalled the rebuilt APK with `--no-incremental`.
+  - Verified from the APK contents that the new strings are present:
+    - `locked_pip_auto_next_skip reason=...`
+    - `locked_pip_auto_next_from_position`
+  - Started and stopped a fresh capture:
+    - [live_locked_pip_autonext_gate_20260420_123245.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt)
+    - [live_locked_pip_autonext_gate_20260420_123245.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.err.txt)
+  - Verified from runtime that:
+    - hidden state still occurs while locked:
+      - [live_locked_pip_autonext_gate_20260420_123245.txt:285](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt:285)
+    - unlock/on-resume recovery still occurs:
+      - [live_locked_pip_autonext_gate_20260420_123245.txt:298](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt:298)
+      - [live_locked_pip_autonext_gate_20260420_123245.txt:300](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt:300)
+    - repeated `native_fullscreen_signal_while_in_pip` generations fail after unlock in this capture:
+      - first cluster [live_locked_pip_autonext_gate_20260420_123245.txt:360](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt:360) through [live_locked_pip_autonext_gate_20260420_123245.txt:397](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt:397)
+  - Verified the key negative result:
+    - there are no `locked_pip_auto_next_skip reason=...` lines
+    - there is no `locked_pip_auto_next_from_position` line
+    - there are no `MediaSessionHelper` log lines at all in the capture
+- In progress now:
+  - No command is running.
+  - No further code changes after the method-level diagnostic patch.
+- Blockers/risks:
+  - Because the method now logs on all paths, the total absence of `MediaSessionHelper` output strongly suggests `maybeDispatchLockedPipAutoNext(...)` was never entered on this device during the locked-screen scenario.
+  - That shifts the unknown one layer earlier: callback delivery / observer invocation.
+  - The capture also shows downstream unlock recovery noise, which could distract future debugging if not kept separate from the lock-screen trigger problem.
+- Files/modules touched:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Files/modules inspected:
+  - [live_locked_pip_autonext_gate_20260420_123245.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [release_build_locked_pip_autonext_diag_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_autonext_diag_20260420.log)
+- Build/test status:
+  - Incremental rebuild passed.
+  - Reinstall passed.
+  - Fresh runtime capture on rebuilt APK completed.
+- Exact next concrete step:
+  - Add callback-level logs in `mediaSessionPositionChanged(@Nullable MediaPosition position)` and, if needed, `mediaSessionActionsChanged(...)` inside [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java).
+  - Rebuild/install.
+  - Rerun the same lock-screen capture.
+  - Determine whether observer delivery itself disappears while locked on the affected device.
+- Expected resume inspection scope:
+  - [live_locked_pip_autonext_gate_20260420_123245.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [release_build_locked_pip_autonext_diag_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_autonext_diag_20260420.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+- Exact command(s):
+  - `wsl bash -lc "set -euo pipefail; cp /mnt/c/Users/Master/Desktop/GO_PLAY/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java /home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java && cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_locked_pip_autonext_diag_20260420.log"`
+  - `adb install --no-incremental -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `wsl bash -lc "unzip -p /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk classes.dex 2>/dev/null | strings | rg 'locked_pip_auto_next_skip reason=|locked_pip_auto_next_from_position' -n -m 20"`
+  - `adb logcat -c`
+  - `Start-Process adb logcat -v time chromium:I cr_OneTabTubePerf:I cr_VideoPersist:I ActivityTaskManager:I WindowManager:I MediaSessionService:I MediaSessionHelper:I *:S`
+  - `Stop-Process -Id 12008 -Force`
+- Tool purpose:
+  - Prove whether the trigger method itself runs during the locked-screen scenario.
+- Tool state:
+  - completed
+- Expected resume command:
+  - add callback-level diagnostics, rebuild/install, rerun capture
+- Expected output/artifact path:
+  - next build log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\`
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) - method-level diagnostics added; callback level still uninstrumented
+  - [live_locked_pip_autonext_gate_20260420_123245.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt) - proof that method-level logs never appeared
+  - [release_build_locked_pip_autonext_diag_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_autonext_diag_20260420.log) - diagnostic rebuild evidence
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [live_locked_pip_autonext_gate_20260420_123245.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected device connected via `adb`
+  - reproducible locked-screen PiP scenario
+  - same active test build target in WSL
+- Expected success signal:
+  - callback-level logs appear in the next capture and reveal whether observer delivery happens
+- Expected failure signal:
+  - callback-level logs still do not appear, implying the issue sits even earlier than `MediaSessionHelper` observer entry
+- Last known log location:
+  - [live_locked_pip_autonext_gate_20260420_123245.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_gate_20260420_123245.txt)
+- Last known artifact path:
+  - [device_pip_exit_stability_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_pip_exit_stability_429000010_20260420.apk)
+- Recent decisions:
+  - Do not guess an early-return reason when there is no method-level log at all.
+  - Move one level higher in the callback chain next.
+- Rejected approaches:
+  - changing auto-next behavior blindly
+  - blaming downstream PiP recovery again
+- Stop point classification:
+  - diagnostic method-level patch built, deployed, and tested; runtime proved method-level trigger still absent
+- What is done but unverified:
+  - exact callback/observer layer where the trigger disappears
+- What is verified:
+  - method-level diagnostic strings are present in the APK
+  - `maybeDispatchLockedPipAutoNext(...)` produced no runtime logs in this locked-screen capture
+  - unlock/on-resume recovery still runs separately
+- External prerequisite:
+  - affected-device lock-screen PiP repro remains required
+- Secret required but not stored:
+  - none
+
+## 2026-04-20 12:25:30 +07:00
+
+- Current phase:
+  - `Phase 7 - locked-screen PiP auto-next trigger tracing`
+- Task/objective:
+  - Use a second focused capture to verify the user's new observation that unlocking the device causes playback to continue again, and determine what that proves about the locked-screen failure.
+- Completed since last snapshot:
+  - Started and stopped a second targeted runtime capture that explicitly included `MediaSessionHelper:I`:
+    - [live_locked_pip_autonext_trigger_20260420_122204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt)
+    - [live_locked_pip_autonext_trigger_20260420_122204.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.err.txt)
+  - Verified from runtime that the user's latest note is correct: unlock/on-resume recovery succeeds while still in PiP.
+    - [live_locked_pip_autonext_trigger_20260420_122204.txt:12](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:12)
+    - [live_locked_pip_autonext_trigger_20260420_122204.txt:14](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:14)
+    - [live_locked_pip_autonext_trigger_20260420_122204.txt:77](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:77)
+    - [live_locked_pip_autonext_trigger_20260420_122204.txt:90](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:90)
+    - [live_locked_pip_autonext_trigger_20260420_122204.txt:97](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:97)
+    - repeated again at [live_locked_pip_autonext_trigger_20260420_122204.txt:376](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:376), [live_locked_pip_autonext_trigger_20260420_122204.txt:378](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:378), [live_locked_pip_autonext_trigger_20260420_122204.txt:431](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:431), [live_locked_pip_autonext_trigger_20260420_122204.txt:465](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:465), [live_locked_pip_autonext_trigger_20260420_122204.txt:472](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:472)
+  - Verified again that downstream hidden `next_track` handling still works if a dispatch occurs:
+    - [live_locked_pip_autonext_trigger_20260420_122204.txt:346](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:346)
+    - [live_locked_pip_autonext_trigger_20260420_122204.txt:357](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:357)
+    - [live_locked_pip_autonext_trigger_20260420_122204.txt:364](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt:364)
+  - Verified that the capture still contains no visible `locked_pip_auto_next_from_position` line and no emitted `MediaSessionHelper` lines.
+- In progress now:
+  - No command is running.
+  - No source code has been changed for the locked-screen issue yet.
+- Blockers/risks:
+  - `MediaSessionHelper.java` logs only at the dispatch point of `maybeDispatchLockedPipAutoNext(...)`, not on its early returns.
+  - Because of that, the latest capture still cannot prove which gate failed before unlock.
+  - The new user observation could easily be misread as “the whole feature works” unless separated from the actual locked-screen trigger step.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Files/modules inspected:
+  - [live_locked_pip_autonext_trigger_20260420_122204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+- Build/test status:
+  - No new code build in this snapshot.
+  - Active tested device build is still `429000010 / 1.90.3`.
+  - Runtime proof added for unlock/on-resume recovery behavior.
+- Exact next concrete step:
+  - Add early-return diagnostic logs to `maybeDispatchLockedPipAutoNext(...)` in [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java).
+  - Rebuild/install the same target.
+  - Re-run the same lock-screen capture to identify the exact gating condition.
+- Expected resume inspection scope:
+  - [live_locked_pip_autonext_trigger_20260420_122204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `adb`
+- Exact command(s):
+  - `adb logcat -c`
+  - `Start-Process adb logcat -v time chromium:I cr_OneTabTubePerf:I cr_VideoPersist:I ActivityTaskManager:I WindowManager:I MediaSessionService:I MediaSessionHelper:I *:S`
+  - `rg -n "onResume while still in PiP|pip_recovery_chain_start reason=on_resume|native_fullscreen_signal_while_in_pip|refreshPictureInPictureParamsForCurrentVideo|locked_pip_auto_next_from_position|MediaSessionHelper|arm_track_navigation_keepalive command=next_track|track_navigation_restore_deferred|web_contents_visibility_changed visibility=0" "C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt"`
+  - `Stop-Process -Id 23016 -Force`
+- Tool purpose:
+  - Prove whether the lock-screen failure is in the upstream trigger step or only appears later.
+- Tool state:
+  - completed
+- Expected resume command:
+  - rebuild after adding `MediaSessionHelper` diagnostics, then rerun the same focused capture
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+  - next build log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - active tested build remains `429000010 / 1.90.3`
+- Primary working set:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) - locked-screen auto-next trigger gates
+  - [live_locked_pip_autonext_trigger_20260420_122204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt) - proof that unlock recovery works and hidden downstream dispatch still works
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) - proven `on_resume` recovery path
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [live_locked_pip_autonext_trigger_20260420_122204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected device connected via `adb`
+  - lock-screen PiP repro still available
+  - same `429000010` patch set installed before comparing logs
+- Expected success signal:
+  - next capture identifies the exact gate inside `maybeDispatchLockedPipAutoNext(...)`
+- Expected failure signal:
+  - next capture still lacks any trigger-level explanation because instrumentation is absent or not deployed
+- Last known log location:
+  - [live_locked_pip_autonext_trigger_20260420_122204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_trigger_20260420_122204.txt)
+- Last known artifact path:
+  - [device_pip_exit_stability_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_pip_exit_stability_429000010_20260420.apk)
+- Recent decisions:
+  - Treat “unlock then playback continues” as confirmed evidence for the on-resume recovery path, not as evidence that the locked-screen trigger itself fired.
+  - Keep downstream PiP restore code untouched until the trigger gate is proven.
+- Rejected approaches:
+  - blaming the latest PiP-exit patch without trigger-level proof
+  - inferring a specific `maybeDispatchLockedPipAutoNext(...)` failure reason from absence of the final dispatch log
+- Stop point classification:
+  - runtime capture completed; new user observation proven; exact trigger gate still unproven
+- What is done but unverified:
+  - exact early-return condition inside `maybeDispatchLockedPipAutoNext(...)`
+- What is verified:
+  - unlock/on-resume PiP recovery succeeds
+  - hidden downstream `next_track` path still works if a dispatch occurs
+- External prerequisite:
+  - reproducible affected-device lock-screen PiP scenario
+- Secret required but not stored:
+  - none
+
+## 2026-04-20 09:35:43 +07:00
+
+- Current phase:
+  - `Phase 7 - affected-device PiP/visual-guard runtime crash capture`
+- Current objective:
+  - Determine whether the fresh-installed affected device is missing visual guard because of the published build artifact, or because the runtime PiP/fullscreen/device path diverges on that device.
+- Completed since last update:
+  - Confirmed the connected affected device is:
+    - `Infinix X6871`
+    - `com.onetabtube.browser_default`
+    - `versionCode=429000010`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-20 09:22:45`
+  - Started and stopped a focused runtime capture:
+    - [fresh_device_visual_guard_20260420_092945.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fresh_device_visual_guard_20260420_092945.txt)
+    - [fresh_device_visual_guard_20260420_092945.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fresh_device_visual_guard_20260420_092945.err.txt)
+  - Verified the affected device does execute the visual-guard path in runtime:
+    - `OTB_PIP event=pip_recovery_visual_guard_request active=1`
+    - `OTB_PIP event=pip_recovery_visual_guard_result active=1 result=enabled`
+    - `event=pip_native_visual_guard_apply reason=native_guard_on active=true ...`
+  - Verified the visual guard is often cleared immediately after PiP params apply:
+    - `event=pip_native_visual_guard_apply reason=video_params_applied_native active=false`
+    - `event=pip_recovery_visual_guard_force_clear reason=video_params_applied`
+  - Found a real native Chromium crash on the affected device during PiP exit / configuration change:
+    - `FATAL:content/browser/screen_orientation/screen_orientation_provider.cc:188] DCHECK failed: !entered_fullscreen.`
+    - fatal dump passes through `onPictureInPictureModeChanged(...)`
+    - system then `Force finishing activity com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - Found a separate non-crash path that also explains the user-visible “เด้งออกแอป” behavior:
+    - `Dismiss activity with reason 7`
+    - `moveTaskToBack: Task{... com.onetabtube.browser_default}`
+    - this is the `WEB_CONTENTS_LEFT_FULLSCREEN` dismiss path in the PiP controller
+- In progress now:
+  - No command is running.
+  - Runtime evidence has been captured and analyzed.
+  - No fix has been applied yet.
+- Blockers/risks:
+  - Runtime logs contradict the earlier theory that the affected device lacks visual guard because of the published artifact lineage.
+  - The stronger issue on this device is runtime instability:
+    - native Chromium PiP/configuration crash
+    - dismiss-to-launcher PiP exit behavior
+  - Because the crash is native and happens during PiP transition, it can make visual guard seem absent or inconsistent even though the guard path activates.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Files/modules inspected:
+  - `artifacts/runtime_logs/fresh_device_visual_guard_20260420_092945.txt`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+- Build/test status:
+  - Published `429000010` artifact lineage was already verified before this step.
+  - Newly verified on the affected device:
+    - visual guard activates
+    - native crash exists during PiP/configuration transition
+    - dismiss-to-launcher path exists on `reason 7`
+- Exact next concrete step:
+  - Patch the PiP/fullscreen exit sequencing:
+    - first reduce or suppress the `dismissActivityIfNeeded(...)` path for `WEB_CONTENTS_LEFT_FULLSCREEN`
+    - then guard the `onPictureInPictureModeChanged(...)` / PiP-exit recovery path so Chromium does not hit the `entered_fullscreen` DCHECK during config change
+  - Rebuild, install, and rerun the same capture on the affected device.
+- Expected resume inspection scope:
+  - `artifacts/runtime_logs/fresh_device_visual_guard_20260420_092945.txt`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `adb devices -l`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb logcat -c`
+  - `Start-Process adb logcat -v time chromium:I cr_OneTabTubePerf:I cr_VideoPersist:I ActivityTaskManager:I WindowManager:I Layer:I BufferQueueProducer:I *:S`
+  - `Select-String ... fresh_device_visual_guard_20260420_092945.txt ...`
+  - `Get-Content android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+- Tool purpose:
+  - Capture and analyze the affected-device PiP/visual-guard/fullscreen exit behavior.
+- Tool state:
+  - completed
+- Expected resume command:
+  - targeted code edits followed by rebuild/install and a repeat of the same log capture command
+- Expected output/artifact path:
+  - next rebuilt APK under `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - next affected-device runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - PiP mode-change and visual-guard lifecycle
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java` - dismiss-on-exit and fullscreen-loss handling
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch` - patch mirror for Chromium controller behavior
+  - `artifacts/runtime_logs/fresh_device_visual_guard_20260420_092945.txt` - proof of visual-guard activation plus crash/dismiss evidence on the affected device
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/fresh_device_visual_guard_20260420_092945.txt`
+  - `android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected device connected via `adb`
+  - same PiP/fullscreen repro sequence available
+- Expected success signal:
+  - no `DCHECK failed: !entered_fullscreen`
+  - no `Dismiss activity with reason 7` launcher jump during the repro
+  - visual guard remains active long enough to cover the transition
+- Expected failure signal:
+  - same native Chromium fatal reappears
+  - same dismiss-to-launcher path still triggers on the affected device
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fresh_device_visual_guard_20260420_092945.txt`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - trust the affected-device runtime logs over the earlier artifact-only suspicion
+  - treat this as a runtime PiP/fullscreen stability issue rather than a missing-feature build issue
+  - prioritize the crash and dismiss path before more visual-guard tuning
+- Rejected approaches:
+  - rebuilding the same artifact again without changing the runtime transition code
+  - assuming visual guard never activated on the affected device
+  - treating all app exits as the same symptom; logs show both crash and non-crash dismiss behavior
+- Stop point classification:
+  - affected-device runtime evidence captured; root cause identified; code fix not started
+- What is done but unverified:
+  - no fix yet for the crash or dismiss-to-launcher path
+- What is verified:
+  - affected device is running `429000010`
+  - visual guard activates on the affected device
+  - native Chromium crash exists during PiP/configuration transition
+  - separate dismiss-to-launcher path exists on PiP exit
+- External prerequisite:
+  - affected device remains available for rebuild verification
+- Secret required but not stored:
+  - none
+
+## 2026-04-20 09:09:55 +07:00
+
+- Current phase:
+  - `Phase 7 - 429000010 artifact lineage verification`
+- Current objective:
+  - Verify whether published `429000010` is truly built from the newer PiP visual-guard source lineage or is effectively the older `429000009` runtime with only a version bump.
+- Completed since last update:
+  - Verified commit lineage:
+    - `ffeac9a4e5cf5b0967481b4580f2638480977bb3` (`stable-baseline`) is a direct child of `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+    - `stable-baseline` changes only packaging/update metadata files, not runtime Java/C++ PiP/fullscreen code
+  - Verified the visual-guard runtime entered earlier in:
+    - `c334f5ebad2669fccba1057d55d259fd08931fdb` (`PIP+Visaul guard`)
+  - Verified the diff from release `ac9a889ff` (`429000009`) to `a2f46c...` touches the expected visual-guard runtime files:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+    - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Verified the active WSL build tree `/home/master/src_ext4/brave` still contains the visual-guard code path and symbols.
+  - Verified the built `429000010` APK and the pulled installed-device APK both contain visual-guard strings inside `classes.dex`:
+    - `event=pip_recovery_visual_guard reason=`
+    - `event=pip_recovery_visual_guard_force_clear reason=`
+    - `event=pip_recovery_visual_guard_skip_clear reason=`
+    - `onPictureInPictureRecoveryVisualGuardChanged`
+    - `setPictureInPictureRecoveryVisualGuard`
+  - Verified the built `429000010` APK does not contain the later fullscreen-native experiment markers:
+    - no `fullscreen_native_backdrop_apply_skip`
+    - no `fullscreen_native_backdrop_apply`
+    - no `fullscreen_native_overlay_apply`
+  - Verified the built `429000010` APK still contains the baseline fullscreen marker:
+    - `Re-requesting fullscreen to keep PiP video-focused.`
+  - Confirmed a process issue that can explain operator confusion:
+    - multiple rebuilt APKs still used `versionCode=429000009` during local validation, so version code alone does not uniquely identify runtime behavior in this project history
+- In progress now:
+  - No build or publish command is active.
+  - Artifact/source lineage verification is complete.
+  - Fresh-device runtime divergence is still unverified.
+- Blockers/risks:
+  - Current evidence does not support the claim that `429000010` is simply old `ac9a889ff` runtime with only a version bump.
+  - Current evidence does support that `429000010` intentionally ships the `a2f46...` fullscreen baseline, not the later fullscreen-native experiment path.
+  - Without logs from the affected fresh-installed device, artifact provenance alone cannot explain why visual guard appears absent there.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Files/modules inspected:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `artifacts/runtime_logs/device_stable_baseline_429000010_20260419.apk`
+  - `artifacts/runtime_logs/device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+- Build/test status:
+  - Previously verified:
+    - dual-ABI `429000010` artifact exists
+    - connected-device APK matches the built artifact by hash
+    - Firestore/Storage live metadata points to that artifact
+  - Newly verified:
+    - `429000010` artifact lineage is `a2f46...` runtime + `ffeac9...` packaging/update metadata
+    - visual-guard code is compiled into the published APK
+    - later fullscreen-native experiment markers are absent from `429000010`
+- Exact next concrete step:
+  - Capture runtime logs from the affected fresh-installed device and compare against the connected test device using:
+    - `pip_recovery_visual_guard`
+    - `onPictureInPictureRecoveryVisualGuardChanged`
+    - `setPictureInPictureRecoveryVisualGuard`
+    - `OTB_PIP event=media_effectively_fullscreen_changed`
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - next fresh-device runtime log under `artifacts/runtime_logs/`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `wsl`
+- Exact command(s):
+  - `git log --oneline --decorate -n 25`
+  - `git show --stat --summary ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+  - `git show --stat --summary c334f5eba`
+  - `git show --stat --summary a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+  - `git rev-parse ffeac9a4e5cf5b0967481b4580f2638480977bb3^`
+  - `git diff --name-only ac9a889ff..a2f46c9883151bbb2a9b99cdec3f3aab16be3408 -- <visual-guard files>`
+  - `git grep -n "PictureInPictureRecoveryVisualGuard\\|pip_recovery_visual_guard\\|__onetabtubeSetPipRecoveryVisualGuard" a2f46c9883151bbb2a9b99cdec3f3aab16be3408 -- <visual-guard files>`
+  - `wsl bash -lc "rg -n 'PictureInPictureRecoveryVisualGuard|pip_recovery_visual_guard|__onetabtubeSetPipRecoveryVisualGuard|fullscreen_native_backdrop_apply_skip' /home/master/src_ext4/brave -S"`
+  - `wsl bash -lc "unzip -p /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk classes.dex 2>/dev/null | strings | rg 'pip_recovery_visual_guard|PictureInPictureRecoveryVisualGuard|__onetabtubeSetPipRecoveryVisualGuard' -n -m 20"`
+  - `wsl bash -lc "unzip -p /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk classes.dex 2>/dev/null | strings | rg 'fullscreen_native_backdrop_apply_skip|fullscreen_native_backdrop_apply|fullscreen_native_overlay_apply|Re-requesting fullscreen to keep PiP video-focused' -n -m 20"`
+- Tool purpose:
+  - Prove the exact source/artifact lineage of published `429000010` and separate build provenance from fresh-install runtime behavior.
+- Tool state:
+  - completed
+- Expected resume command:
+  - `adb logcat -d -v time | Select-String -Pattern 'pip_recovery_visual_guard|onPictureInPictureRecoveryVisualGuardChanged|setPictureInPictureRecoveryVisualGuard|OTB_PIP event=media_effectively_fullscreen_changed'`
+- Expected output/artifact path:
+  - fresh-device runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - Java-side visual-guard lifecycle and PiP/fullscreen recovery
+  - `android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java` - Java/native visual-guard bridge
+  - `browser/android/youtube_script_injector/brave_youtube_script_injector_native_helper.cc` - native JNI bridge
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - JS injection and native-side visual-guard state
+  - `artifacts/runtime_logs/device_stable_baseline_429000010_20260419.apk` - installed `429000010` proof artifact
+  - `artifacts/runtime_logs/device_fullscreen_revert_to_a2f46_429000009_20260419.apk` - rebuilt `429000009` proof artifact showing version-code ambiguity
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - next fresh-device runtime log in `artifacts/runtime_logs/`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected fresh-installed device connected via `adb`
+  - same PiP/fullscreen repro available on that device
+- Expected success signal:
+  - fresh-device logs reveal where the visual-guard path diverges from the connected test device
+- Expected failure signal:
+  - no `pip_recovery_visual_guard` markers appear at all on the affected fresh-installed device, or callbacks are skipped before PiP ownership is established
+- Last known log location:
+  - none yet for the affected fresh-installed device
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - verify compiled APK content directly instead of reasoning from version code only
+  - treat `a2f46...` as the shipped runtime baseline for `429000010`
+  - do not change code until the affected-device runtime path is proven
+- Rejected approaches:
+  - assuming missing visual guard on fresh install automatically means the published APK was built from old source
+  - assuming version code uniquely identifies runtime behavior across local rebuilt artifacts
+  - conflating the baseline fullscreen path with later fullscreen-native experiment builds
+- Stop point classification:
+  - artifact/source lineage verified; fresh-device runtime cause unverified
+- What is done but unverified:
+  - affected-device runtime capture
+- What is verified:
+  - `429000010` is built from `a2f46...` runtime lineage rather than the old `ac9a889ff` release alone
+  - visual-guard code is present in source and compiled into the published APK
+  - later fullscreen-native experiment markers are absent from `429000010` by design
+  - multiple rebuilt `429000009` APKs existed during local validation
+- External prerequisite:
+  - physical affected device or fresh-install profile available for `adb` capture
+- Secret required but not stored:
+  - none
+
+## Snapshot - 2026-04-19 20:11:27 +07:00
+
+- Current phase:
+  - `Phase 7 - widest-device release build`
+- Task/objective:
+  - Finish the next release artifact from the installed-device baseline as `429000010` while widening APK ABI coverage to the broadest practical single-APK set (`arm64-v8a + armeabi-v7a`) without changing runtime behavior.
+- Completed since last snapshot:
+  - Re-ran the same WSL `ninja` command with `PYTHONPATH=/home/master/src_ext4/brave/script` and let it finish successfully.
+  - Confirmed the appended build log ended successfully at:
+    - `[939/939] ACTION //chrome/android:chrome_public_apk__create(//build/toolchain/android:android_clang_arm64)`
+  - Verified the output APK metadata directly from the built artifact:
+    - package `com.onetabtube.browser_default`
+    - `versionCode=429000010`
+    - `versionName=1.90.3`
+  - Verified packaged native ABIs directly from `aapt`:
+    - `arm64-v8a`
+    - `armeabi-v7a`
+  - Verified the output APK changed from the previous installed-baseline artifact:
+    - SHA256 `0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f`
+    - size `298165045` bytes
+    - write time `2026-04-19 20:07:56.235536460 +0700`
+- In progress now:
+  - The widened dual-ABI release artifact exists and is verified locally.
+  - The successful packaging edits that produced it still live only in the active WSL build tree.
+  - Repo-side tracked patch mirrors, device install/hash proof, commit/push, and updater publish steps have not started yet.
+- Blockers/risks:
+  - If we move straight to commit or publish without mirroring the successful WSL packaging changes into tracked repo patch files, the repo will not faithfully reproduce the successful artifact.
+  - The new `429000010` APK has not yet been installed to the connected device, so runtime baseline parity on-device is still unverified.
+- Files/modules touched:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\chrome_public_apk_tmpl.gni`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\third_party\libvpx\source\libvpx\**\arm\*.asm`
+  - `artifacts/android_build/release_build_multiabi_429000010_20260419.log`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `chrome_public_apk` build finished successfully in WSL.
+  - Verified output APK path:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - Verified output APK metadata:
+    - `versionCode=429000010`
+    - `versionName=1.90.3`
+  - Verified packaged ABIs:
+    - `arm64-v8a`
+    - `armeabi-v7a`
+  - Verified output hash:
+    - `0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f`
+  - Not yet verified:
+    - install to device
+    - device/build hash equality
+    - updater metadata / Firestore publish
+- Exact next concrete step:
+  - Mirror the successful WSL multi-ABI packaging changes into the tracked repo-side patch files, then install the new `429000010` APK to the connected device and verify the device APK hash matches the built artifact before any commit or updater publish.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/release_build_multiabi_429000010_20260419.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\chrome_public_apk_tmpl.gni`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `patches/chrome-android-chrome_public_apk_tmpl.gni.patch`
+  - `patches/chrome-android-BUILD.gn.patch`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `wsl`
+- Exact command(s):
+  - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee -a /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_multiabi_429000010_20260419.log"`
+  - `wsl bash -lc "sha256sum /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk"`
+  - `wsl bash -lc "/home/master/src_ext4/third_party/android_sdk/public/build-tools/36.1.0/aapt dump badging /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk | grep 'package: name='"`
+  - `wsl bash -lc "/home/master/src_ext4/third_party/android_sdk/public/build-tools/36.1.0/aapt dump badging /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk | grep 'native-code:'"`
+  - `wsl bash -lc "ls -l --time-style=full-iso /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk"`
+- Tool purpose:
+  - Produce and verify the widened dual-ABI `429000010` release artifact from the active WSL build tree.
+- Tool state:
+  - build completed successfully
+  - artifact verified locally
+  - repo mirror/install/publish steps not started
+- Expected resume command:
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_multiabi_429000010_20260419.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\chrome_public_apk_tmpl.gni` - successful OneTabTube secondary ABI packaging path
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn` - successful secondary-toolchain bridge targets
+  - `patches/chrome-android-chrome_public_apk_tmpl.gni.patch` - tracked repo mirror still needs to catch up
+  - `patches/chrome-android-BUILD.gn.patch` - tracked repo mirror still needs to catch up
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk` - verified dual-ABI release artifact
+  - `artifacts/android_build/release_build_multiabi_429000010_20260419.log` - successful build proof
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `patches/chrome-android-chrome_public_apk_tmpl.gni.patch`
+  - `patches/chrome-android-BUILD.gn.patch`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL tree mounted and accessible
+  - `PYTHONPATH=/home/master/src_ext4/brave/script` on the WSL build command
+  - connected Android device only if moving to install verification
+- Expected success signal:
+  - repo-side patch mirrors match the successful WSL state
+  - device install succeeds
+  - device/build hashes match the new `429000010` APK
+- Expected failure signal:
+  - repo-side patch mirrors drift from the successful WSL state
+  - or install/device hash verification fails
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_multiabi_429000010_20260419.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - keep the widest-device strategy as one dual-ABI APK
+  - keep runtime/app behavior unchanged and solve this in build packaging only
+  - hold commit/publish until tracked repo patch mirrors catch up to the successful WSL state
+- Rejected approaches:
+  - pretending the earlier unchanged arm64-only APK was already `429000010`
+  - publishing updater metadata before a real `429000010` artifact existed
+  - narrowing back to a single-ABI fallback before finishing the dual-ABI build
+- Stop point classification:
+  - dual-ABI release build completed and locally verified; repo mirror/install/publish not started
+- What is done but unverified:
+  - repo-side patch mirror updates
+  - device install and device/build hash proof
+  - updater metadata / Firestore publish
+- What is verified:
+  - `429000010` APK exists
+  - APK contains both `arm64-v8a` and `armeabi-v7a`
+  - build finished successfully in WSL
+  - artifact hash changed from the old baseline artifact
+- External prerequisite:
+  - connected device only if moving to install verification
+- Secret required but not stored:
+  - none
+
+## Snapshot - 2026-04-19 20:14:45 +07:00
+
+- Current phase:
+  - `Phase 7 - widest-device release build`
+- Task/objective:
+  - Check whether the full requested flow is actually finished: keep the installed-device baseline aligned to the new `429000010` release artifact, commit it as `stable-baseline`, and publish updater metadata for immediate update delivery.
+- Completed since last snapshot:
+  - Checked repo history:
+    - current `HEAD` is still `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+    - no commit named `stable-baseline` exists
+  - Checked the updater seed file:
+    - `functions/seeds/app_update_android.seed.json` still reports `latestVersionCode=429000009`
+    - seed still points at old APK hash `51a13da56ab3daad4f0a2d2f41be55c3f8daa87d617d3cd929c2de032c1f42c4`
+  - Checked the connected device package state:
+    - installed package is still `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 10:29:37`
+  - Re-confirmed the built WSL release artifact is the new dual-ABI APK:
+    - built APK hash `0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f`
+- In progress now:
+  - Only the build portion of the requested flow is complete.
+  - Device install/hash sync, repo commit/push, and updater/Firestore publish are still pending.
+- Blockers/risks:
+  - The successful multi-ABI packaging state still needs to be mirrored back into tracked repo patch files before commit/publish.
+  - Installing or publishing before that repo mirror step would leave the repo out of sync with the artifact source of truth.
+- Files/modules touched:
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `functions/seeds/app_update_android.seed.json`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Build/test status:
+  - Build complete:
+    - `429000010`
+    - `arm64-v8a + armeabi-v7a`
+    - SHA256 `0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f`
+  - Not complete:
+    - device still on `429000009`
+    - no `stable-baseline` commit
+    - updater seed still on `429000009`
+- Exact next concrete step:
+  - Sync the successful WSL packaging changes into tracked repo patch files, then install the new `429000010` APK to device and verify device/build hash equality before creating commit `stable-baseline` and updating/publishing updater metadata.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `functions/seeds/app_update_android.seed.json`
+  - `patches/chrome-android-chrome_public_apk_tmpl.gni.patch`
+  - `patches/chrome-android-BUILD.gn.patch`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `git log --oneline --decorate -n 8`
+  - `git log --oneline --decorate --grep "^stable-baseline$" -n 5`
+  - `Get-Content -Raw functions/seeds/app_update_android.seed.json`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `wsl bash -lc "sha256sum /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk"`
+- Tool purpose:
+  - Verify whether the requested install/commit/publish flow is actually complete, instead of assuming the successful build finished the whole release request.
+- Tool state:
+  - inspection complete
+  - confirmed build-only completion, not end-to-end completion
+- Expected resume command:
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - `functions/seeds/app_update_android.seed.json`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `patches/chrome-android-chrome_public_apk_tmpl.gni.patch` - repo mirror needed before commit
+  - `patches/chrome-android-BUILD.gn.patch` - repo mirror needed before commit
+  - `functions/seeds/app_update_android.seed.json` - still points to `429000009`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk` - new verified artifact to install/publish
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `functions/seeds/app_update_android.seed.json`
+  - `patches/chrome-android-chrome_public_apk_tmpl.gni.patch`
+  - `patches/chrome-android-BUILD.gn.patch`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device for install verification
+  - tracked repo patch mirrors updated to match successful WSL build state before commit/publish
+- Expected success signal:
+  - device reports `versionCode=429000010`
+  - device APK hash matches `0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f`
+  - new commit `stable-baseline` exists
+  - updater metadata points to `429000010`
+- Expected failure signal:
+  - device remains on `429000009`
+  - no `stable-baseline` commit
+  - updater metadata remains on `429000009`
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_multiabi_429000010_20260419.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - treat the successful build as only one step in the requested release flow
+  - verify device, repo, and updater state explicitly before claiming completion
+- Rejected approaches:
+  - assuming the build success implied install/publish success
+  - claiming the repo/update flow finished without a real `stable-baseline` commit or metadata change
+- Stop point classification:
+  - build passed, but install/commit/publish flow not executed yet
+- What is done but unverified:
+  - repo patch mirror sync
+  - device install/hash proof
+  - commit/push as `stable-baseline`
+  - updater metadata / Firestore publish
+- What is verified:
+  - dual-ABI `429000010` APK exists
+  - device still runs `429000009`
+  - repo has no `stable-baseline` commit yet
+  - updater seed still points to `429000009`
+- External prerequisite:
+  - connected device
+- Secret required but not stored:
+  - any credentials needed later for remote publish are intentionally not stored here
+
+## Snapshot - 2026-04-19 20:29:34 +07:00
+
+- Current phase:
+  - `Phase 7 - widest-device stable baseline published`
+- Task/objective:
+  - Finish the requested end-to-end stable baseline flow for `429000010`: sync repo patch mirrors to the successful WSL build state, prove on-device baseline parity by hash, publish the real APK to Firebase Storage + Firestore, and push repo commit `stable-baseline`.
+- Completed since last snapshot:
+  - Mirrored the successful WSL dual-ABI packaging changes into tracked repo patch files:
+    - `patches/chrome-android-chrome_public_apk_tmpl.gni.patch`
+    - `patches/chrome-android-BUILD.gn.patch`
+  - Installed `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk` to the connected device.
+  - Verified installed device package state:
+    - `versionCode=429000010`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 20:21:18`
+  - Pulled the installed APK back to:
+    - `artifacts/runtime_logs/device_stable_baseline_429000010_20260419.apk`
+  - Verified build/device hash parity:
+    - build SHA256 `0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f`
+    - device SHA256 `0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f`
+  - Updated `functions/seeds/app_update_android.seed.json` to the real live `429000010` release metadata, including the actual published Storage URL.
+  - Published the APK to Firebase Storage and seeded Firestore live:
+    - Storage object `app-updates/android/com.onetabtube.browser_default/429000010/OneTabTube-1.90.3-429000010.apk`
+    - Firestore doc `app_updates/android`
+  - Saved publish/readback proof:
+    - `artifacts/firebase_build/publish_app_update_live_20260419_202318_429000010.log`
+    - `artifacts/firebase_build/app_update_publish_payload_20260419_202318_429000010.json`
+    - `artifacts/firebase_build/app_update_firestore_readback_20260419_429000010.json`
+    - `artifacts/firebase_build/app_update_storage_head_20260419_429000010.txt`
+  - Updated the operator doc:
+    - `docs/app-update-firestore.md`
+  - Created commit `ffeac9a4e5cf5b0967481b4580f2638480977bb3` with subject `stable-baseline`.
+  - Pushed `ffeac9a4e5cf5b0967481b4580f2638480977bb3` to `origin/publish/go_play-sync-20260402`.
+- In progress now:
+  - No active build/install/publish command remains.
+  - The requested stable baseline batch is complete.
+- Blockers/risks:
+  - No blocker remains for the requested flow.
+  - The only optional follow-up is updater smoke from a device still below `429000010`.
+- Files/modules touched:
+  - `patches/chrome-android-chrome_public_apk_tmpl.gni.patch`
+  - `patches/chrome-android-BUILD.gn.patch`
+  - `functions/seeds/app_update_android.seed.json`
+  - `docs/app-update-firestore.md`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - Verified WSL release artifact:
+    - `versionCode=429000010`
+    - `versionName=1.90.3`
+    - ABIs `arm64-v8a`, `armeabi-v7a`
+    - SHA256 `0041f78f354ea9787087d2a5324a0ada3ee08ffb8cd8c1d3bdae0999839f647f`
+    - size `298165045`
+  - Verified installed device APK matches the build artifact by hash.
+  - Verified published Storage URL responds `HTTP 200`.
+  - Verified Firestore readback contains `latestVersionCode=429000010` and the matching URL/hash/size.
+- Exact next concrete step:
+  - Optional only: use a device or profile still below `429000010`, open `Account -> อัปเดตแอป`, and verify it sees `429000010` as the available update from Firestore.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `functions/seeds/app_update_android.seed.json`
+  - `docs/app-update-firestore.md`
+  - `artifacts/firebase_build/publish_app_update_live_20260419_202318_429000010.log`
+  - `artifacts/firebase_build/app_update_firestore_readback_20260419_429000010.json`
+  - `artifacts/runtime_logs/device_stable_baseline_429000010_20260419.apk`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `wsl`
+  - `adb`
+- Exact command(s):
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull "<device base.apk path>" "C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\device_stable_baseline_429000010_20260419.apk"`
+  - `node scripts/publish_app_update_artifact.js --project go-play-720c1 --apk "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk" --output-json artifacts/firebase_build/app_update_publish_payload_20260419_202318_429000010.json`
+  - `git commit -m "stable-baseline"`
+  - `git push origin publish/go_play-sync-20260402`
+- Tool purpose:
+  - Close the stable-baseline release and live updater publish flow end-to-end.
+- Tool state:
+  - completed
+- Expected resume command:
+  - none required unless running optional updater smoke
+- Expected output/artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - `artifacts/runtime_logs/device_stable_baseline_429000010_20260419.apk`
+  - `artifacts/firebase_build/publish_app_update_live_20260419_202318_429000010.log`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `patches/chrome-android-chrome_public_apk_tmpl.gni.patch` - repo mirror for live dual-ABI packaging
+  - `patches/chrome-android-BUILD.gn.patch` - repo mirror for live secondary-toolchain packaging
+  - `functions/seeds/app_update_android.seed.json` - repo source of truth for live updater metadata
+  - `docs/app-update-firestore.md` - operator-facing live updater map
+  - `artifacts/firebase_build/publish_app_update_live_20260419_202318_429000010.log` - publish proof
+  - `artifacts/runtime_logs/device_stable_baseline_429000010_20260419.apk` - on-device proof
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `functions/seeds/app_update_android.seed.json`
+  - `docs/app-update-firestore.md`
+  - `artifacts/firebase_build/app_update_firestore_readback_20260419_429000010.json`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - none for the completed batch
+  - connected lower-version device only if running optional updater smoke
+- Expected success signal:
+  - already achieved:
+    - commit `ffeac9a4e5cf5b0967481b4580f2638480977bb3` pushed
+    - device/build hash parity
+    - Firestore latest version `429000010`
+    - Storage URL `HTTP 200`
+- Expected failure signal:
+  - future drift between repo seed, Firestore metadata, and the published APK
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\firebase_build\publish_app_update_live_20260419_202318_429000010.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - solved widest-device support in packaging/build wiring without changing runtime logic
+  - required device/build hash parity before calling the new release baseline stable
+  - reused the repo publish tool for Storage + Firestore instead of ad hoc manual writes
+  - kept unrelated dirty worktree files out of the `stable-baseline` commit
+- Rejected approaches:
+  - publishing metadata before the artifact existed
+  - claiming completion without on-device hash proof
+  - staging unrelated worktree changes into the release commit
+- Stop point classification:
+  - requested release/publish flow complete and pushed
+- What is done but unverified:
+  - optional updater smoke on a lower-version device
+- What is verified:
+  - dual-ABI `429000010` artifact exists
+  - installed device baseline equals the artifact by hash
+  - Firestore and Storage point to the matching live `429000010` release
+  - repo commit `stable-baseline` is pushed
+- External prerequisite:
+  - none for the completed batch
+- Secret required but not stored:
+  - Firebase CLI session/token remains external and intentionally not stored here
+
+## 2026-04-19 10:54:01 +07:00
+
+- Current phase:
+  - `Phase 7 - tablet/responsive compatibility scan`
+- Objective:
+  - Check whether the current browser/watch-page experience is implicitly phone-locked or can already stretch across tablet and other large-screen sizes.
+- Completed since previous snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Confirmed desk state is unchanged:
+    - branch `publish/go_play-sync-20260402`
+    - `HEAD` `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+  - Inspected:
+    - `android/app/src/main/AndroidManifest.xml`
+    - `lib/features/browser/presentation/browser_page.dart`
+    - `lib/features/browser/presentation/widgets/browser_controls.dart`
+    - `lib/features/browser/presentation/pip_dom_script.dart`
+    - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+  - Verified:
+    - no explicit `android:screenOrientation` lock was found
+    - no explicit `android:resizeableActivity="false"` was found
+    - the main `InAppWebView` host fills the available viewport via `Expanded` + `Positioned.fill`
+  - Identified the main tablet-specific risks:
+    - PiP/watch-page compact detection uses a fixed `0.70` width-ratio heuristic
+    - PiP aspect ratio is hard-coded to `16:9`
+    - browser chrome is still fixed-size rather than adaptive
+    - some overlays are intentionally constrained in width, but those are auxiliary UI, not the watch page itself
+- In progress now:
+  - Static responsive scan is complete and the user-facing findings are ready.
+  - No code changes or runtime tablet verification started yet.
+- Files/modules touched:
+  - `android/app/src/main/AndroidManifest.xml`
+  - `lib/features/browser/presentation/browser_page.dart`
+  - `lib/features/browser/presentation/widgets/browser_controls.dart`
+  - `lib/features/browser/presentation/pip_dom_script.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new build/test command was run in this scan round.
+  - Last verified build state remains:
+    - release build passed
+    - install passed
+    - build/device hash match passed
+- Blockers/risks:
+  - This is static analysis only; actual tablet rendering still needs a real device/emulator pass.
+  - Main risk is not a hard phone lock but phone-tuned geometry heuristics around PiP/watch-page repair.
+- Next concrete step:
+  - If tablet support becomes the next implementation task, start with:
+    - replacing fixed compact heuristics with breakpoint-aware logic
+    - making `BrowserControls` responsive
+    - validating tablet landscape + split-screen runtime behavior
+- Expected resume inspection scope:
+  - `android/app/src/main/AndroidManifest.xml`
+  - `lib/features/browser/presentation/browser_page.dart`
+  - `lib/features/browser/presentation/widgets/browser_controls.dart`
+  - `lib/features/browser/presentation/pip_dom_script.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `rg -n -C 3 "screenOrientation|resizeableActivity|supportsPictureInPicture|smallestScreenWidthDp|requiresSmallestWidthDp|supports-screens|maxAspectRatio|minAspectRatio|configChanges" android/app/src/main/AndroidManifest.xml android/app/src/main`
+  - `Get-Content lib/features/browser/presentation/browser_page.dart | Select-Object -Skip 2998 -First 90`
+  - `Get-Content lib/features/browser/presentation/widgets/browser_controls.dart`
+  - `rg -n -C 3 "_pipCompactWidthRatioThreshold|0\\.7|viewportWidth|videoCssWidth" lib/features/browser/presentation/browser_page.dart lib/features/browser/presentation/pip_dom_script.dart`
+  - `rg -n -C 3 "DEFAULT_PIP_WIDTH|DEFAULT_PIP_HEIGHT|Rational\\(|setAspectRatio|sourceRectHint" android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+- Tool purpose:
+  - Verify whether current code constrains the app to phone-sized rendering and identify the remaining responsive risks with exact references.
+- Tool state:
+  - targeted responsive scan complete
+  - findings prepared
+  - no build/test command running
+- Expected resume command:
+  - `rg -n -C 5 "_pipCompactWidthRatioThreshold|height: 42|padding: const EdgeInsets.symmetric\\(horizontal: 132\\)|maxWidth: 320|DEFAULT_PIP_WIDTH|DEFAULT_PIP_HEIGHT" lib/features/browser/presentation/browser_page.dart lib/features/browser/presentation/widgets/browser_controls.dart lib/features/browser/presentation/pip_dom_script.dart android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `android/app/src/main/AndroidManifest.xml` - activity is not explicitly screen-locked.
+  - `lib/features/browser/presentation/browser_page.dart` - main watch-page host fills viewport; compact heuristic is fixed-ratio.
+  - `lib/features/browser/presentation/widgets/browser_controls.dart` - browser chrome uses fixed height/padding.
+  - `lib/features/browser/presentation/pip_dom_script.dart` - viewport-based compact logic and fullscreen CSS.
+  - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt` - PiP aspect ratio fixed at `16:9`.
+- Files to inspect first after resume:
+  - `android/app/src/main/AndroidManifest.xml`
+  - `lib/features/browser/presentation/browser_page.dart`
+  - `lib/features/browser/presentation/widgets/browser_controls.dart`
+  - `lib/features/browser/presentation/pip_dom_script.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - repo available locally
+  - ripgrep available in shell
+- Expected success signal:
+  - responsive assessment clearly distinguishes the main watch-page host from auxiliary PiP/browser chrome assumptions.
+- Expected failure signal:
+  - a hidden size/orientation lock or width-constrained main browser container is found later and invalidates this scan.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_revert_to_a2f46_20260419.log`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+- Recent decisions:
+  - keep adblock out of scope
+  - focus on whether the app is phone-locked at the container/layout level
+  - separate main watch-page rendering from PiP/browser-chrome heuristics
+- Rejected approaches:
+  - broad repo re-scan
+  - assuming tablet incompatibility without checking the main WebView host
+  - modifying code before confirming whether the main viewport is actually constrained
+- Stop point classification:
+  - responsive scan complete; findings ready; no mitigation patch started
+- What is done but unverified:
+  - actual rendering on real tablet hardware or split-screen
+- What is verified:
+  - no explicit orientation/resizable lock found in current manifest
+  - main WebView host fills available space
+  - main tablet risks live in PiP/browser-chrome heuristics, not the watch-page host itself
+- External prerequisite:
+  - tablet device or emulator only if the next step moves to runtime validation
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 10:54:01 +07:00
+
+- Current phase:
+  - `Phase 7 - PiP/fullscreen/lifecycle/watch-page stabilization scan`
+- Objective:
+  - List non-adblock stabilization work for `PiP / fullscreen / lifecycle / watch page` that can improve smoothness and reduce crash/race risk without changing current behavior.
+- Completed since previous snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Confirmed desk state is unchanged:
+    - branch `publish/go_play-sync-20260402`
+    - `HEAD` `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+  - Performed targeted inspection in:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `lib/features/browser/presentation/browser_page.dart`
+    - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Identified the strongest stabilization-only candidates:
+    - dedupe / event-gate `syncOneTabCleanModeUi()` and the fullscreen UI polling loop
+    - coalesce delayed return-to-watch-page scheduling after PiP exit
+    - add single-flight guards for Flutter PiP action handling and app-resume recovery
+    - make PiP/fullscreen/watch-page JS bridge calls fail-soft when the controller/page changes mid-flight
+    - add page/controller tokens to the `onLoadStop` watch-page post-load chain
+    - avoid redundant foreground-service churn in `PipController`
+    - make page-reveal/watch-transition cleanup explicit on lifecycle boundaries
+- In progress now:
+  - Static scan is complete and the user-facing candidate list is ready.
+  - No remediation patch, build, or runtime verification has started from this scan.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `lib/features/browser/presentation/browser_page.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new build/test command was run in this scan round.
+  - Last verified build state remains:
+    - release build passed
+    - install passed
+    - build/device hash match passed
+- Blockers/risks:
+  - Findings are from static code inspection only; runtime severity still needs verification if we start patching.
+  - Candidate fixes must stay in dedupe/guard/cleanup/fail-soft territory to avoid accidental behavior drift.
+- Next concrete step:
+  - Choose one guard-only slice and implement it first:
+    - `BraveActivity` UI sync / return-to-watch scheduling cleanup
+    - Flutter PiP JS bridge fail-soft + single-flight guards
+    - `PipController` service/params dedupe
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `lib/features/browser/presentation/browser_page.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `rg -n -C 4 "onPictureInPictureModeChanged|schedulePictureInPictureRecovery|maybeScheduleReturnToWatchPageAfterPictureInPictureExit|returnToWatchPage|syncOneTabCleanModeUi\\(|startOneTabFullscreenUiSync|stopOneTabFullscreenUiSync|onPauseWithNative|onResumeWithNative|onWindowFocusChanged|onOrientationChange" android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `rg -n -C 4 "_onNativePiPEvent|_prepareWebViewForPiP|_restoreWebViewAfterPiP|_syncBackgroundPlaybackGuard|didChangeAppLifecycleState|onLoadStop|_publishVideoStateNow|_injectVideoStateScript|_nextVideoFromWebView|_pauseVideoInWebView" lib/features/browser/presentation/browser_page.dart`
+  - `rg -n -C 4 "METHOD_SET_VIDEO_STATE|setVideoState|refreshMediaSessionState|syncForegroundPlaybackService|updatePictureInPictureParamsIfSupported|onPictureInPictureModeChanged|PIP_PARAMS_MIN_UPDATE_MS|MEDIA_SESSION_MIN_UPDATE_MS" android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+  - `rg -n -C 4 "MaybeRestoreVideoPresentationAfterTrackNavigation|MaybeArmTrackNavigationRestoreFromCarryForwardIntent|PrimaryMainDocumentElementAvailable|pageReveal" browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `Get-Content <file> | Select-Object -Skip <n> -First <m>`
+- Tool purpose:
+  - Produce a stabilization-only work list grounded in the active PiP/fullscreen/lifecycle/watch-page code.
+- Tool state:
+  - scan complete
+  - findings prepared
+  - no build/test command running
+- Expected resume command:
+  - `rg -n -C 6 "syncOneTabCleanModeUi\\(|maybeScheduleReturnToWatchPageAfterPictureInPictureExit|_onNativePiPEvent|_publishVideoStateNow|syncForegroundPlaybackService|pageReveal" android/java/org/chromium/chrome/browser/app/BraveActivity.java lib/features/browser/presentation/browser_page.dart android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - PiP exit/watch-page scheduling and fullscreen UI sync.
+  - `lib/features/browser/presentation/browser_page.dart` - Flutter lifecycle, PiP event handling, JS bridge, and watch-page load-stop chain.
+  - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt` - PiP params/media session/foreground service dedupe opportunities.
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - watch-page reveal/restore cleanup opportunities.
+- Files to inspect first after resume:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `lib/features/browser/presentation/browser_page.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/pip/PipController.kt`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - repo available locally
+  - ripgrep available in shell
+- Expected success signal:
+  - stabilization items remain scoped to guard/dedupe/cleanup work and do not require adblock logic changes.
+- Expected failure signal:
+  - a candidate fix requires changing recovery semantics rather than adding robustness around the current flow.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_revert_to_a2f46_20260419.log`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+- Recent decisions:
+  - keep adblock logic out of scope
+  - focus on guard/cancel/dedupe/fail-soft work only
+  - prioritize smallest low-risk stabilization slices first
+- Rejected approaches:
+  - touching adblock core behavior
+  - broad repo rediscovery
+  - changing runtime ordering before listing guard-style fixes
+- Stop point classification:
+  - stabilization scan complete; candidate list prepared; no mitigation patch started
+- What is done but unverified:
+  - runtime severity ordering of the listed stabilization items
+- What is verified:
+  - the candidate stabilization points exist in current code with exact references
+  - repo/branch/HEAD still match the restored fullscreen baseline desk state
+- External prerequisite:
+  - none for static continuation
+  - connected device only if the next step switches to runtime verification
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 10:39:00 +07:00
+
+- Current phase:
+  - `Phase 7 - hotspot and crash-risk scan`
+- Objective:
+  - Scan the active OneTab/YouTube code paths and list the biggest runtime bottlenecks plus the code most likely to cause crashes or hard-fail flows before the next fullscreen/runtime pass.
+- Completed since previous snapshot:
+  - Reused the restored fullscreen baseline as the current runtime baseline and confirmed repo state:
+    - `HEAD`: `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+    - branch: `publish/go_play-sync-20260402`
+  - Performed a targeted scan across the current hot-path working set instead of re-scanning the whole repo.
+  - Identified the main bottleneck clusters in:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `lib/features/browser/presentation/browser_page.dart`
+    - `lib/features/adblock/core/engine_request_policy.dart`
+    - `lib/services/security_service.dart`
+    - `lib/services/secure_http_service.dart`
+    - `android/app/src/main/kotlin/com/example/go_play/security/SecurityBridge.kt`
+  - Verified concrete hotspot evidence in code:
+    - `BraveActivity.java` still posts `mOneTabFullscreenUiSyncRunnable` every `250ms` and also calls `syncOneTabCleanModeUi()` from many lifecycle/navigation hooks.
+    - `youtube_native_tab_bridge.cc` still uses `querySelectorAll('*')` shadow-root traversal, repeated `candidateRoots()` scans, and a persistent keepalive `setInterval(...)`.
+    - `youtube_script_injector_tab_helper.cc` still stacks multiple `MutationObserver`, timeout-based retries, and several `ExecuteJavaScript(...)` calls on primary-document availability.
+    - `browser_page.dart` still enables `shouldInterceptRequest`, `shouldInterceptAjaxRequest`, and `shouldInterceptFetchRequest` together and routes them through async policy/adblock evaluation while also issuing many `evaluateJavascript(...)` calls for PiP/adblock state sync.
+    - `engine_request_policy.dart` still does large per-request cache, metrics, guard-state, timestamp, and logging work around `evaluate(...)`.
+    - `secure_http_service.dart` still triggers `checkpointSensitiveAction(...)` on every HTTP request, and `SecurityBridge.kt` can answer those checkpoints with randomized `/proc`, hook, Frida, and root scans.
+  - Cleared a few false positives:
+    - `RustAdblockBridge.kt` is guarded with `runCatching` around `System.loadLibrary(...)` and native calls, so it is not the strongest direct crash source from this pass.
+    - `PlaybackForegroundService.kt` initializes its `lateinit` notification controller in `onCreate()`, so it is not the first crash candidate from this scan.
+- In progress now:
+  - Static scan is complete and the user-facing findings list is being prepared.
+  - No remediation patch or new runtime profiling has started yet.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `lib/features/browser/presentation/browser_page.dart`
+  - `lib/features/adblock/core/engine_request_policy.dart`
+  - `lib/services/security_service.dart`
+  - `lib/services/secure_http_service.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/security/SecurityBridge.kt`
+  - `android/app/src/main/kotlin/com/example/go_play/RustAdblockBridge.kt`
+  - `android/app/src/main/kotlin/com/example/go_play/pip/PlaybackForegroundService.kt`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - No new build/test command was run in this scan round.
+  - Last verified build state remains:
+    - release fullscreen-baseline build passed
+    - install passed
+    - build/device hash match passed
+- Blockers/risks:
+  - Findings are from static inspection only and still need runtime profiling/logging to quantify impact.
+  - Working tree remains dirty in unrelated areas, so avoid conflating `git status` noise with new hotspot behavior.
+- Next concrete step:
+  - Validate the top three hotspots with runtime evidence and then patch them in this order:
+    - event-gate or reduce the `BraveActivity` fullscreen UI sync loop
+    - reduce duplicated YouTube JS observers/injection work
+    - throttle or cache per-request security checkpoints
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `lib/features/browser/presentation/browser_page.dart`
+  - `lib/features/adblock/core/engine_request_policy.dart`
+  - `lib/services/security_service.dart`
+  - `lib/services/secure_http_service.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/security/SecurityBridge.kt`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `rg -n -C 6 "OTB_FULLSCREEN_UI_SYNC_INTERVAL_MS|mOneTabFullscreenUiSyncRunnable|checkForVpn\\(|new Thread\\(|mStartupMaskTimeoutRunnable|runOnUiThread\\(" android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `rg -n -C 6 "candidateRoots\\(|querySelectorAll\\('\\*'\\)|keepAliveTimer|setInterval\\(|MutationObserver|PrimaryMainDocumentElementAvailable\\(|ExecuteJavaScript\\(|MaybeArmTrackNavigationRestoreFromCarryForwardIntent|media_effectively_fullscreen_changed" browser/android/youtube_script_injector/youtube_native_tab_bridge.cc browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `rg -n -C 5 "Timer.periodic|addListener\\(|setMethodCallHandler|dispose\\(|evaluateJavascript\\(|attachRuntime|setState\\(|mounted|lateinit var notificationController|System.loadLibrary|external fun" lib/features/browser/presentation/browser_page.dart android/app/src/main/kotlin/com/example/go_play/RustAdblockBridge.kt android/app/src/main/kotlin/com/example/go_play/security/SecurityNativeBridge.kt android/app/src/main/kotlin/com/example/go_play/pip/PlaybackForegroundService.kt`
+  - `Get-Content <file> | Select-Object -Skip <n> -First <m>`
+  - `Select-String -Path <file> -Pattern <pattern> -Context 1,1 -SimpleMatch`
+  - `git rev-parse HEAD`
+  - `git branch --show-current`
+  - `git status --short --untracked-files=no`
+- Tool purpose:
+  - Produce a code-backed hotspot list with exact references and confirm the active desk state without changing product behavior.
+- Tool state:
+  - scan complete
+  - findings prepared
+  - no build/test command running
+- Expected resume command:
+  - `rg -n -C 8 "syncOneTabCleanModeUi\\(|candidateRoots\\(|PrimaryMainDocumentElementAvailable\\(|checkpointSensitiveAction\\(" android/java/org/chromium/chrome/browser/app/BraveActivity.java browser/android/youtube_script_injector/youtube_native_tab_bridge.cc browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc lib/services/security_service.dart lib/services/secure_http_service.dart`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md`
+  - `C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java` - UI-thread fullscreen/clean-mode enforcement hotspot.
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc` - DOM traversal and keepalive hotspot.
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc` - observer/injection/retry hotspot.
+  - `lib/features/browser/presentation/browser_page.dart` - interception and JS-bridge hotspot.
+  - `lib/features/adblock/core/engine_request_policy.dart` - per-request policy state hotspot.
+  - `lib/services/secure_http_service.dart` - per-request security checkpoint hook.
+  - `android/app/src/main/kotlin/com/example/go_play/security/SecurityBridge.kt` - randomized native integrity scan hotspot.
+- Files to inspect first after resume:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_native_tab_bridge.cc`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `lib/features/browser/presentation/browser_page.dart`
+  - `lib/services/secure_http_service.dart`
+  - `android/app/src/main/kotlin/com/example/go_play/security/SecurityBridge.kt`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - repo available locally
+  - ripgrep available in shell
+- Expected success signal:
+  - hotspot list stays tied to actual code and can drive the next optimization pass without another broad scan.
+- Expected failure signal:
+  - targeted files no longer match the suspected hot paths, forcing a reality-check update before optimization.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_revert_to_a2f46_20260419.log`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+- Recent decisions:
+  - Keep the fullscreen rollback baseline untouched during this scan.
+  - Focus on hot-path custom layers before revisiting fullscreen-specific changes.
+  - Treat guarded native bridges as lower-priority crash suspects than request interception and security checkpoint paths.
+- Rejected approaches:
+  - broad repo rediscovery
+  - blaming the fullscreen baseline without inspecting current hot paths
+  - promoting guarded native library loads to the top crash list without evidence
+- Stop point classification:
+  - hotspot scan complete; prioritization ready; no mitigation patch started
+- What is done but unverified:
+  - runtime severity of the listed hotspots under fresh profiler/log capture
+- What is verified:
+  - hotspot patterns exist in code with exact references
+  - repo/branch/HEAD still match the recorded fullscreen baseline desk state
+- External prerequisite:
+  - none for static continuation
+  - connected device only if the next step switches to runtime profiling
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 05:01:49 +07:00
+
+- Current phase: `Fullscreen native-layer hard disable`
+- Current objective: `Kill the native fullscreen blocking layer in BraveActivity itself so that even a hidden caller cannot render the overlay/backdrop above video.`
+- Completed since last snapshot:
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - added `disableOneTabFullscreenBackdropOwner(...)`
+    - `onOneTabFullscreenVideoBoundsAvailable(...)` now cleans up/skips instead of applying overlay
+    - `onOneTabFullscreenBackdropOwnerChanged(...)` now cleans up/skips instead of activating native fullscreen backdrop
+  - Synced the patched BraveActivity into the WSL Brave tree.
+  - Build passed:
+    - [release_build_fullscreen_native_owner_killed_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_owner_killed_20260419.log)
+  - Initial `adb install -r` left the old APK on device; hashes proved mismatch.
+  - Reinstalled with:
+    - `adb install --no-incremental -r ...`
+  - Verified device/build hashes now match exactly:
+    - [device_fullscreen_native_layer_removed_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_native_layer_removed_429000009_20260419.apk)
+    - SHA256 build/device: `6C1DD80826DCC84E4DB1CB93B20862B6D586F66EAD5A23788344723BA9DC92F3`
+- In progress now:
+  - Runtime verification has not yet been run on the new hard-disabled native-layer build.
+- Blockers/risks:
+  - Ambient still has no runtime proof yet; this step only ensures the native fullscreen owner in BraveActivity cannot render anymore.
+  - Build log still emits the recurring Chromium-side `Failed JNI assertion!` warning, but APK creation completed successfully in this environment.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build succeeded.
+  - Non-incremental install succeeded.
+  - Launch succeeded.
+  - Device/build hash verification succeeded.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh fullscreen capture on the new build.
+  - Reproduce fullscreen entry and playback.
+  - Verify that any native fullscreen owner marker now appears only as `disabled=1` or does not appear at all.
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [release_build_fullscreen_native_owner_killed_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_owner_killed_20260419.log)
+  - [device_fullscreen_native_layer_removed_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_native_layer_removed_429000009_20260419.apk)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Copy-Item -LiteralPath C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_fullscreen_native_owner_killed_20260419.log"`
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull <device-base.apk> C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\device_fullscreen_native_layer_removed_429000009_20260419.apk`
+  - `Get-FileHash -Algorithm SHA256 <build-apk>`
+  - `Get-FileHash -Algorithm SHA256 <device-apk>`
+- Tool purpose:
+  - Hard-disable the native fullscreen owner in BraveActivity and prove the device is actually running that binary.
+- Tool state:
+  - code edited
+  - WSL sync complete
+  - build complete
+  - non-incremental install complete
+  - hash verification complete
+  - runtime verification pending
+- Expected resume command:
+  - start a fresh fullscreen `adb logcat` capture on the new build
+- Expected output/artifact path:
+  - next fullscreen runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [release_build_fullscreen_native_owner_killed_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_owner_killed_20260419.log)
+  - [device_fullscreen_native_layer_removed_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_native_layer_removed_429000009_20260419.apk)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - runtime proves the native fullscreen layer no longer activates
+- Expected failure signal:
+  - active `fullscreen_native_overlay_apply` ownership still appears on this new binary
+- Last known log location:
+  - [live_fullscreen_retry_verify_20260419_042204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_native_owner_killed_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_owner_killed_20260419.log)
+- Recent decisions:
+  - don’t trust hook removal alone; disable the native owner at the activity layer itself
+  - don’t trust incremental install when hashes prove it kept the old binary
+- Rejected approaches:
+  - more fullscreen geometry/timing changes before removing the owner entirely
+  - runtime claims on a device build that had not been hash-verified
+- Stop point classification:
+  - code edited, build passed, APK installed, device/build hash verified, runtime not yet verified
+- What is done but unverified:
+  - fullscreen runtime behavior on the native-layer-disabled build
+- What is verified:
+  - device APK now matches the latest built APK exactly
+  - native fullscreen owner entry points in BraveActivity now disable/clean up instead of rendering
+- External prerequisite:
+  - manual fullscreen repro on device for fresh runtime verification
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 04:41:45 +07:00
+
+- Current phase: `Fullscreen rollback to legacy path + ambient path retention`
+- Current objective: `Disconnect the native fullscreen owner runtime path, keep ambient injection available, and get the device build back to legacy fullscreen behavior before new runtime claims.`
+- Completed since last snapshot:
+  - Confirmed fullscreen ambient script still exists and is injected on main-document availability:
+    - [youtube_script_injector_tab_helper.cc:475](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc:475)
+    - [youtube_script_injector_tab_helper.cc:4981](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc:4981)
+  - Removed native fullscreen owner hook calls from:
+    - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+    - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - Removed the non-PiP fullscreen bounds callback from:
+    - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - Synced the fullscreen handler edits into the WSL Brave tree.
+  - Build passed:
+    - [release_build_fullscreen_revert_to_ambient_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_revert_to_ambient_20260419.log)
+  - Install passed.
+  - Launch passed.
+  - Verified device APK matches build APK exactly:
+    - [device_fullscreen_revert_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_revert_429000009_20260419.apk)
+    - SHA256 build/device: `1A0C3EA239F363ABC7DC3F42165D21C9B195A524A577504D39D407E5A0305FA1`
+- In progress now:
+  - No runtime verification yet on the reverted fullscreen build.
+- Blockers/risks:
+  - Ambient still lacks direct runtime proof in recent captures, so the next step must be a fresh fullscreen capture on this reverted build.
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) still contains dormant fullscreen native owner code, but it should no longer be reachable after hook removal.
+- Files/modules touched:
+  - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+  - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build succeeded.
+  - Install succeeded.
+  - Launch succeeded.
+  - Device/build hash verification succeeded.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh fullscreen capture on the reverted build.
+  - Reproduce fullscreen entry and steady-state playback.
+  - Verify that `fullscreen_native_backdrop_apply` and `fullscreen_native_overlay_apply` no longer appear.
+- Expected resume inspection scope:
+  - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+  - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - [release_build_fullscreen_revert_to_ambient_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_revert_to_ambient_20260419.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_fullscreen_revert_to_ambient_20260419.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull <device-base.apk> C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\device_fullscreen_revert_429000009_20260419.apk`
+  - `Get-FileHash -Algorithm SHA256 <build-apk>`
+  - `Get-FileHash -Algorithm SHA256 <device-apk>`
+- Tool purpose:
+  - Restore legacy fullscreen runtime and prove the installed APK matches the built APK before new testing.
+- Tool state:
+  - code edited
+  - WSL sync complete
+  - build complete
+  - install complete
+  - hash verification complete
+  - runtime verification pending
+- Expected resume command:
+  - start a fresh fullscreen `adb logcat` capture on the reverted build
+- Expected output/artifact path:
+  - next fullscreen runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+  - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - [release_build_fullscreen_revert_to_ambient_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_revert_to_ambient_20260419.log)
+  - [device_fullscreen_revert_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_revert_429000009_20260419.apk)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+  - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - fresh fullscreen runtime no longer shows native fullscreen owner markers
+- Expected failure signal:
+  - native fullscreen owner markers still appear despite hook removal
+- Last known log location:
+  - [live_fullscreen_retry_verify_20260419_042204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_revert_to_ambient_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_revert_to_ambient_20260419.log)
+- Recent decisions:
+  - stop the native fullscreen owner experiment
+  - restore fullscreen to the legacy path first
+  - keep ambient injection code path available and unchanged
+- Rejected approaches:
+  - more fullscreen overlay debugging before trying the legacy path again
+  - widening the rollback into PiP/recovery code
+- Stop point classification:
+  - code edited, build passed, APK installed, device/build hash verified, runtime not yet verified
+- What is done but unverified:
+  - fullscreen runtime behavior on the reverted build
+- What is verified:
+  - APK on device matches the newly built APK
+  - native fullscreen owner hook calls were removed from the fullscreen handlers
+  - non-PiP fullscreen bounds callback was removed from the controller path
+- External prerequisite:
+  - manual fullscreen repro on device for fresh runtime verification
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 04:24:49 +07:00
+
+- Current phase: `Fullscreen runtime root-cause narrowing`
+- Current objective: `Use a valid fullscreen-marked capture to decide whether the remaining black-screen symptom is still overlay math or something higher in the fullscreen owner/lifecycle chain.`
+- Completed since last snapshot:
+  - Started and stopped a new valid fullscreen capture:
+    - [live_fullscreen_retry_verify_20260419_042204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt)
+    - [live_fullscreen_retry_verify_20260419_042204.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.err.txt)
+  - Verified the capture contains required fullscreen markers:
+    - `fullscreen_native_backdrop_apply` at [live_fullscreen_retry_verify_20260419_042204.txt:32224](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:32224)
+    - waiting-for-bounds overlay markers at [live_fullscreen_retry_verify_20260419_042204.txt:32239](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:32239), [live_fullscreen_retry_verify_20260419_042204.txt:32572](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:32572), [live_fullscreen_retry_verify_20260419_042204.txt:33660](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:33660), [live_fullscreen_retry_verify_20260419_042204.txt:33850](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:33850)
+    - positive fullscreen signal and bounds at [live_fullscreen_retry_verify_20260419_042204.txt:34060](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34060), [live_fullscreen_retry_verify_20260419_042204.txt:34062](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34062)
+    - translated local cutout math at [live_fullscreen_retry_verify_20260419_042204.txt:34063](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34063) and [live_fullscreen_retry_verify_20260419_042204.txt:34481](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34481)
+  - Proved the local-coordinate patch is active and no longer the blocker:
+    - `bounds=Rect(244, 0 - 2164, 1080)` is translated to `local_bounds=Rect(179, 0 - 2099, 1080)`
+  - Proved the remaining fullscreen symptom persists after valid bounds arrive:
+    - video + compositor + overlay are all visible together at [live_fullscreen_retry_verify_20260419_042204.txt:34490](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34490), [live_fullscreen_retry_verify_20260419_042204.txt:34491](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34491), [live_fullscreen_retry_verify_20260419_042204.txt:34492](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34492)
+    - then the video surface hides again at [live_fullscreen_retry_verify_20260419_042204.txt:34633](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34633)
+    - while compositor + overlay remain at [live_fullscreen_retry_verify_20260419_042204.txt:34642](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34642), [live_fullscreen_retry_verify_20260419_042204.txt:34643](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34643), [live_fullscreen_retry_verify_20260419_042204.txt:35312](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:35312), [live_fullscreen_retry_verify_20260419_042204.txt:35313](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:35313)
+  - Confirmed there are still no `OTB_FULLSCREEN_AMBIENT` markers in this runtime, so ambient is not part of the proven runtime path yet.
+- In progress now:
+  - No code changes are underway.
+  - Current stop point is analysis-only: runtime proof is now good, but the remaining issue has moved above overlay geometry.
+- Blockers/risks:
+  - Patching overlay-local math again would be guesswork.
+  - The next step must explain why `ChromeChildSurface#8811` gets hidden after `fullscreen_bounds_ready`, or when overlay ownership should end once the real video layer is visible.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Current installed build still comes from:
+    - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+  - Build succeeded.
+  - Install succeeded.
+  - Launch succeeded.
+  - Latest runtime capture is valid and analyzed.
+- Exact next concrete step:
+  - Inspect [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) and the fullscreen owner/lifecycle around the interval between:
+    - [live_fullscreen_retry_verify_20260419_042204.txt:34063](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34063)
+    - [live_fullscreen_retry_verify_20260419_042204.txt:34633](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt:34633)
+  - Determine what makes the real video surface hide again after `bounds_ready`.
+  - Do not start another geometry-only patch without new code evidence.
+- Expected resume inspection scope:
+  - [live_fullscreen_retry_verify_20260419_042204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `adb logcat -c`
+  - `Start-Process adb logcat ... -> live_fullscreen_retry_verify_20260419_042204.txt`
+  - `rg -n "fullscreen_native_overlay_apply|fullscreen_native_backdrop_apply|getVideoBounds: fullscreen=|fullscreen video size is null|media_effectively_fullscreen_changed|OneTabFullscreenBackdrop|ChromeChildSurface#|hidden!! flag\\(1\\)|OTB_FULLSCREEN_AMBIENT|Effective video fullscreen change" live_fullscreen_retry_verify_20260419_042204.txt`
+- Tool purpose:
+  - Narrow the remaining fullscreen root cause using only valid runtime proof.
+- Tool state:
+  - capture complete
+  - analysis complete
+  - result: root cause moved past overlay-local math
+- Expected resume command:
+  - targeted code inspection around fullscreen owner/lifecycle and video-surface visibility after `bounds_ready`
+- Expected output/artifact path:
+  - next analysis notes or runtime logs under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [live_fullscreen_retry_verify_20260419_042204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt) — latest valid fullscreen proof
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — overlay owner and local-bounds code already proven active
+  - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log) — build artifact for the installed APK
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_fullscreen_retry_verify_20260419_042204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - manual fullscreen repro on the installed `429000009 / 1.90.3` build
+- Expected success signal:
+  - code inspection reveals a concrete fullscreen owner/lifecycle explanation for why the video surface hides after `bounds_ready`
+- Expected failure signal:
+  - investigation falls back to patching overlay geometry again without new proof
+- Last known log location:
+  - [live_fullscreen_retry_verify_20260419_042204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+- Recent decisions:
+  - accept the newest capture as valid fullscreen proof
+  - stop blaming missing signal or coordinate translation
+  - move the next investigation up to fullscreen owner/lifecycle and video-surface visibility
+- Rejected approaches:
+  - another overlay math patch without new evidence
+  - claiming ambient is active without runtime markers
+- Stop point classification:
+  - runtime capture analyzed; new root cause narrowed, no new code patch started
+- What is done but unverified:
+  - any fullscreen fix beyond the local-coordinate translation patch
+- What is verified:
+  - current build installs and launches
+  - fullscreen markers appear in runtime
+  - positive fullscreen bounds arrive
+  - local-coordinate translation patch executes
+  - video surface can still hide again after `bounds_ready` while overlay remains
+- External prerequisite:
+  - none beyond connected device for future verification
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 03:40:52 +07:00
+
+- Current phase:
+  - `Fullscreen overlay runtime proof`
+- Task/objective:
+  - Prove from a fresh fullscreen runtime capture whether the current black screen is still caused by missing signal or by a later-stage overlay/stacking problem.
+- Completed since last snapshot:
+  - Started and stopped fresh capture:
+    - [live_fullscreen_signal_verify_20260419_033147.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt)
+    - [live_fullscreen_signal_verify_20260419_033147.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.err.txt)
+  - Verified positive signal arrives:
+    - [live_fullscreen_signal_verify_20260419_033147.txt:126778](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt:126778)
+    - [live_fullscreen_signal_verify_20260419_033147.txt:126779](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt:126779)
+    - [live_fullscreen_signal_verify_20260419_033147.txt:126928](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt:126928)
+    - [live_fullscreen_signal_verify_20260419_033147.txt:126931](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt:126931)
+  - Verified ambient still has no runtime markers in this capture.
+- In progress now:
+  - No code edits yet.
+  - Narrowing the next patch to the fullscreen overlay owner only.
+- Blockers/risks:
+  - The overlay still blacks out fullscreen even after the positive signal path runs.
+  - The overlay is attached as `APPLICATION_PANEL fmt=TRANSLUCENT`, so a local-coordinate bug can still mask the video.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Installed build still comes from:
+    - [release_build_fullscreen_overlay_signal_fix_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_signal_fix_20260419.log)
+  - Runtime capture complete and analyzed.
+- Exact next concrete step:
+  - Patch [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) so fullscreen bounds are translated from full-window coordinates into overlay-local coordinates before applying the cutout.
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [live_fullscreen_signal_verify_20260419_033147.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `adb logcat -c`
+  - `Start-Process adb logcat ... -> live_fullscreen_signal_verify_20260419_033147.txt`
+  - `Select-String ... live_fullscreen_signal_verify_20260419_033147.txt -Pattern 'fullscreen_native_overlay|fullscreen_root_backdrop|fullscreen video size|fullscreen video rect|OTB_FULLSCREEN_AMBIENT|OneTabFullscreenBackdrop|ChromeChildSurface#|media_effectively_fullscreen_changed|VideoPersist|fullscreen_bounds_ready'`
+  - `rg -n "OneTabFullscreenBackdrop|fullscreen_native_overlay_apply|onOneTabFullscreenVideoBoundsAvailable|applyOneTabFullscreenBackdropOverlay" android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- Tool purpose:
+  - Capture the new fullscreen symptom and map it directly to the overlay-owner code path.
+- Tool state:
+  - runtime capture complete
+  - targeted analysis complete
+- Expected resume command:
+  - inspect `applyOneTabFullscreenBackdropOverlay(...)` and patch overlay-local bounds conversion
+- Expected output/artifact path:
+  - next build log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — overlay owner and cutout math
+  - [live_fullscreen_signal_verify_20260419_033147.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt) — proof that signal arrives but overlay/container coordinates differ
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [live_fullscreen_signal_verify_20260419_033147.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+- Expected success signal:
+  - fullscreen runtime still shows positive bounds signal, and the overlay no longer blacks out the video after applying those bounds
+- Expected failure signal:
+  - overlay still blacks out fullscreen even though `fullscreen_native_overlay_apply ... full_black=false had_bounds=true` appears
+- Last known log location:
+  - [live_fullscreen_signal_verify_20260419_033147.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_overlay_signal_fix_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_signal_fix_20260419.log)
+- Recent decisions:
+  - Treat the newest symptom as a coordinate-space bug in the native overlay owner rather than another missing-signal case.
+- Rejected approaches:
+  - Guessing that ambient or missing signal is still the primary issue.
+  - Widening scope before fixing the proven overlay-local bounds mismatch.
+- Stop point classification:
+  - runtime analyzed, next code fix not started
+- What is done but unverified:
+  - overlay-local bounds correction patch
+- What is verified:
+  - positive fullscreen signal arrives
+  - overlay receives `full_black=false had_bounds=true`
+  - ambient still has no runtime markers
+  - latest symptom survives after signal arrival
+- External prerequisite:
+  - connected device for rebuild/run verification
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 03:56:20 +07:00
+
+- Current phase:
+  - `Fullscreen overlay local-coordinates fix`
+- Task/objective:
+  - Finish the remaining fullscreen black-screen bug in one narrow pass by converting full-window bounds into overlay-local coordinates before cutting the native fullscreen overlay.
+- Completed since last snapshot:
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - added `translateOneTabFullscreenBackdropBoundsToOverlaySpace(...)`
+    - changed fullscreen overlay cutout math to use translated `local_bounds`
+    - expanded logging to emit both `bounds=` and `local_bounds=` for the next runtime proof
+  - Synced [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) into the WSL Brave tree and verified Windows/WSL hashes match:
+    - `37F83DADE78F5641DF22C632E4E9C684D4B1B9D8098EF51A93EC39749E022DBF`
+  - Build passed:
+    - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+  - Install passed.
+  - Launch passed.
+  - `dumpsys package` after install:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 03:55:39`
+- In progress now:
+  - No runtime verification has been taken yet on the local-coordinates fix build.
+- Blockers/risks:
+  - Ambient still has no runtime proof, but this patch intentionally stays out of that scope.
+  - The fix is code-complete but still needs device proof.
+- Files/modules touched:
+  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build succeeded:
+    - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+  - Install succeeded.
+  - Launch succeeded.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh fullscreen runtime capture on the installed local-coordinates fix build.
+  - Reproduce fullscreen entry and verify the new `local_bounds=` marker against the visible result.
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `update_plan`
+- Exact command(s):
+  - `Copy-Item -LiteralPath C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_fullscreen_overlay_local_coords_20260419.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose:
+  - Apply the narrow fullscreen overlay coordinate fix and get the exact APK onto device.
+- Tool state:
+  - analysis complete
+  - code edited
+  - sync complete
+  - build complete
+  - install complete
+  - runtime verification pending
+- Expected resume command:
+  - start fresh fullscreen `adb logcat` capture on the installed local-coordinates fix build
+- Expected output/artifact path:
+  - next fullscreen runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — fullscreen overlay owner and local-coordinate conversion
+  - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log) — successful build evidence for this patch
+  - [live_fullscreen_signal_verify_20260419_033147.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt) — proof used to justify the fix
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - runtime proves overlay-local translation is applied and fullscreen no longer blacks out after signal arrival
+- Expected failure signal:
+  - fullscreen still blacks out even though the new log shows translated `local_bounds=...`
+- Last known log location:
+  - [live_fullscreen_signal_verify_20260419_033147.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_signal_verify_20260419_033147.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+- Recent decisions:
+  - Keep the fix in [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) only because the controller signal path is already proven good.
+- Rejected approaches:
+  - Widening scope back into ambient or PiP logic.
+  - Treating the issue as another missing-signal bug.
+- Stop point classification:
+  - code edited, build passed, APK installed, runtime not yet verified
+- What is done but unverified:
+  - fullscreen overlay local-coordinate fix runtime behavior
+- What is verified:
+  - previous signal path
+  - current local-coordinate fix build compiles and installs
+- External prerequisite:
+  - manual fullscreen runtime testing on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 04:04:20 +07:00
+
+- Current phase:
+  - `Fullscreen runtime evidence check`
+- Task/objective:
+  - Validate the installed local-coordinates fix from a fresh fullscreen runtime capture before touching code again.
+- Completed since last snapshot:
+  - Started and stopped:
+    - [live_fullscreen_localcoords_verify_20260419_040150.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_localcoords_verify_20260419_040150.txt)
+    - [live_fullscreen_localcoords_verify_20260419_040150.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_localcoords_verify_20260419_040150.err.txt)
+  - Checked the capture for:
+    - `fullscreen_native_overlay_apply`
+    - `fullscreen_native_backdrop_apply`
+    - `cr_VideoPersist`
+    - `OTB_FULLSCREEN_AMBIENT`
+  - Result: none of the required fullscreen markers appeared in this capture.
+  - Only app-side marker found was:
+    - [live_fullscreen_localcoords_verify_20260419_040150.txt:4621](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_localcoords_verify_20260419_040150.txt:4621)
+      `event=pip_presentation_restore_allowed allowed=false reason=not_in_pip`
+- In progress now:
+  - No code edits in progress.
+  - Latest capture is considered invalid for fullscreen proof.
+- Blockers/risks:
+  - Any conclusion about the fullscreen fix from this log would be a guess.
+  - We still do not have runtime proof that the latest fullscreen path ran during this capture.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Current build still comes from:
+    - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+  - Build/install/launch remain verified.
+  - Latest runtime capture is not usable for fullscreen validation.
+- Exact next concrete step:
+  - Re-run fresh capture and make sure fullscreen is actually entered while capture is active.
+  - Before trusting the result, confirm the live log contains fullscreen markers.
+- Expected resume inspection scope:
+  - [live_fullscreen_localcoords_verify_20260419_040150.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_localcoords_verify_20260419_040150.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `adb logcat -c`
+  - `Start-Process adb logcat ... -> live_fullscreen_localcoords_verify_20260419_040150.txt`
+  - `rg -n "fullscreen_native_overlay_apply|fullscreen_native_backdrop_apply|fullscreen_bounds_ready|OTB_FULLSCREEN_AMBIENT|OneTabFullscreenBackdrop|getVideoBounds: fullscreen=|fullscreen video size is null|media_effectively_fullscreen_changed" live_fullscreen_localcoords_verify_20260419_040150.txt`
+  - `rg -n "Entering persistent fullscreen mode|Exiting persistent fullscreen mode|Fullscreen|fullscreen|setFullscreen|cr_VideoPersist|cr_OneTabTubePerf|OTB_PIP" live_fullscreen_localcoords_verify_20260419_040150.txt`
+- Tool purpose:
+  - Determine whether the latest runtime log is valid evidence for the fullscreen patch.
+- Tool state:
+  - capture complete
+  - analysis complete
+  - result insufficient
+- Expected resume command:
+  - start another fullscreen capture and confirm fullscreen markers appear before ending it
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [live_fullscreen_localcoords_verify_20260419_040150.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_localcoords_verify_20260419_040150.txt) — invalid fullscreen proof because required markers are missing
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — still contains the latest local-coordinate patch
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_fullscreen_localcoords_verify_20260419_040150.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_localcoords_verify_20260419_040150.txt)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - manual repro must include actual fullscreen entry
+- Expected success signal:
+  - next log shows fullscreen markers and can be correlated with the symptom
+- Expected failure signal:
+  - next log still lacks fullscreen markers, so it cannot validate the patch
+- Last known log location:
+  - [live_fullscreen_localcoords_verify_20260419_040150.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_localcoords_verify_20260419_040150.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_overlay_local_coords_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_local_coords_20260419.log)
+- Recent decisions:
+  - Keep code steady until we get a valid fullscreen-marked capture.
+- Rejected approaches:
+  - Interpreting the latest capture as fullscreen proof when the fullscreen markers never appeared.
+- Stop point classification:
+  - runtime capture analyzed, but unusable for fullscreen validation
+- What is done but unverified:
+  - fullscreen overlay local-coordinate fix runtime behavior
+- What is verified:
+  - current build installs and launches
+  - latest capture lacks required fullscreen markers
+- External prerequisite:
+  - another manual fullscreen repro on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 02:24:26 +07:00
+
+- Current phase:
+  - `Fullscreen native backdrop implementation`
+- Task/objective:
+  - Implement the approved narrow fullscreen fix:
+    - keep compositor ownership intact
+    - keep page-side ambient disabled
+    - make native fullscreen lifecycle own a uniform black backdrop while fullscreen is active
+- What changed since the previous snapshot:
+  - Inspected fullscreen lifecycle code in:
+    - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+    - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+    - [FullscreenHtmlApiHandlerBase.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\fullscreen\FullscreenHtmlApiHandlerBase.java)
+  - Reused the pattern of native-owned visual state from [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) rather than adding a new JS/DOM owner.
+  - Added fullscreen native backdrop ownership in [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - `OneTabViewBackgroundState`
+    - `collectOneTabFullscreenBackdropStates()`
+    - `onOneTabFullscreenBackdropOwnerChanged(...)`
+    - backdrop applies/restores black backgrounds for:
+      - `decor_view`
+      - `android.R.id.content`
+      - `R.id.coordinator`
+      - `R.id.compositor_view_holder`
+  - Hooked fullscreen enter/exit callbacks in:
+    - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+    - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - Synced those 3 files from Windows repo into WSL source-of-truth.
+  - First build failed with concrete compile errors:
+    - missing `ArrayList` import in [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - unresolved `R.id.edge_to_edge_base_layout`
+  - Fixed both issues narrowly:
+    - added `import java.util.ArrayList;`
+    - removed the unresolved `edge_to_edge_base_layout` target from the native backdrop state list
+  - Rebuilt successfully and reinstalled the APK.
+- In progress now:
+  - No code edit is running.
+  - Waiting for fullscreen runtime verification of the new native backdrop owner.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+  - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build passed:
+    - [release_build_fullscreen_native_uniform_backdrop_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_uniform_backdrop_20260419.log)
+  - Install passed.
+  - Launch passed.
+  - `dumpsys package` after install:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 00:47:10`
+  - Fullscreen runtime verification: `pending`
+- Blockers / risks:
+  - This patch does not suppress `ChromeChildSurface#6818`; if the mismatch is painted entirely inside the compositor content, the visual improvement may be partial.
+  - Fullscreen controls/captions are intentionally left untouched; runtime proof is still required to confirm we improved backdrop uniformity without side effects.
+  - Because the owner is now background-state based, any missed fullscreen-exit callback could leave black backgrounds active longer than intended; this also needs runtime verification.
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path docs/current-status.md`
+  - `Get-Content -Path docs/progress-log.md -Tail 120`
+  - `Get-Content -Path android/java/.../BraveActivity.java`
+  - `Get-Content -Path android/java/.../BraveFullscreenHtmlApiHandlerCompat.java`
+  - `Get-Content -Path android/java/.../BraveFullscreenHtmlApiHandlerLegacy.java`
+  - `Get-Content -Path \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\chrome\\android\\java\\src\\org\\chromium\\chrome\\browser\\fullscreen\\FullscreenHtmlApiHandlerBase.java`
+  - `Copy-Item -LiteralPath ...BraveActivity.java -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Force`
+  - `Copy-Item -LiteralPath ...BraveFullscreenHtmlApiHandlerCompat.java -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\fullscreen\\BraveFullscreenHtmlApiHandlerCompat.java -Force`
+  - `Copy-Item -LiteralPath ...BraveFullscreenHtmlApiHandlerLegacy.java -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\fullscreen\\BraveFullscreenHtmlApiHandlerLegacy.java -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_fullscreen_native_uniform_backdrop_20260419.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose:
+  - Implement and validate a narrow native fullscreen backdrop owner without changing PiP or suppressing the compositor layer.
+- Tool state:
+  - targeted inspection complete
+  - code edited
+  - WSL sync complete
+  - build complete
+  - install complete
+  - launch complete
+  - runtime verification pending
+- Expected resume command:
+  - start fresh fullscreen `adb logcat` capture and reproduce fullscreen enter, playback, video-change, and exit
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — native fullscreen backdrop state owner
+  - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java) — compat enter/exit hook
+  - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java) — legacy enter/exit hook
+  - [release_build_fullscreen_native_uniform_backdrop_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_uniform_backdrop_20260419.log) — compile proof
+  - [live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt) — pre-patch fullscreen reference
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+  - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - [release_build_fullscreen_native_uniform_backdrop_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_uniform_backdrop_20260419.log)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+  - fullscreen runtime reference evidence already collected
+- Expected success signal:
+  - `event=fullscreen_native_backdrop_apply reason=... active=true`
+  - `event=fullscreen_native_backdrop_apply reason=... active=false`
+  - visible fullscreen background becomes more uniform without regressions in controls or exit
+- Expected failure signal:
+  - backdrop markers do not align with fullscreen lifecycle
+  - visible mismatch remains unchanged
+  - fullscreen controls/captions/exit regress
+- Last known log location:
+  - [live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_native_uniform_backdrop_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_uniform_backdrop_20260419.log)
+- Recent decisions:
+  - keep fullscreen visual fix separate from PiP/recovery work
+  - keep page-side ambient disabled
+  - do not suppress compositor layer `#6818`
+  - use native background ownership on root views as the narrow first patch
+- Rejected approaches:
+  - suppress/remove `ChromeChildSurface#6818`
+  - revive old fullscreen ambient JS as owner
+  - widen the patch into fullscreen controls/compositor changes before runtime proof
+- Stop point classification:
+  - code edited, build passed, APK installed, launch passed, runtime not yet verified
+- What is done but unverified:
+  - native fullscreen backdrop owner during fullscreen enter/playback/video-change/exit
+- What is verified:
+  - compile succeeded
+  - install succeeded
+  - launch succeeded
+  - source-of-truth WSL files now match the edited Windows repo files for this change
+- External prerequisite:
+  - manual fullscreen runtime test on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 01:49:40 +07:00
+
+- Current phase:
+  - `Fullscreen transition-background ownership analysis`
+- Task/objective:
+  - `Correct the fullscreen screenshot interpretation and treat the current visual defect as a transition-state issue during video change.`
+- Completed since last snapshot:
+  - Pulled the exact user screenshot from device storage:
+    - [Screenshot_20260419_014341_GO_PLAY.jpg](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\Screenshot_20260419_014341_GO_PLAY.jpg)
+  - User clarified that this screenshot shows the background while changing `vdo`, not the steady fullscreen frame.
+  - Created enhanced/cropped inspection copies for that screenshot.
+  - Corrected the interpretation:
+    - the current fullscreen problem should be modeled as `transition-state background ownership`
+    - not as a general steady fullscreen backdrop problem
+- In progress now:
+  - No code edit.
+  - Proposal stage only.
+- Blockers / risks:
+  - Transition-state screenshot clarifies the target but still does not prove exact runtime layer ownership by itself.
+  - Broad suppression of `ChromeChildSurface#6818` is still too risky as a first move.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - No new build.
+  - No code changed.
+- Exact next concrete step:
+  - If approved, implement a fullscreen native backdrop owner that specifically covers the `video-change transition` window while leaving the main compositor alive.
+- Expected resume inspection scope:
+  - [artifacts/runtime_logs/Screenshot_20260419_014341_GO_PLAY.jpg](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\Screenshot_20260419_014341_GO_PLAY.jpg)
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump1.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump1.txt)
+  - [patches/chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch)
+- Current tool(s):
+  - `shell_command`
+  - `view_image`
+  - `apply_patch`
+- Exact command(s):
+  - `adb pull /sdcard/DCIM/Screenshots/Screenshot_20260419_014341_GO_PLAY.jpg ...`
+  - `view_image` on the pulled screenshot
+  - inline Python/PIL enhancement
+- Tool purpose:
+  - `Anchor fullscreen analysis to the correct screenshot and the correct timing interpretation.`
+- Tool state:
+  - screenshot analysis complete
+  - no code edited
+- Expected resume command:
+  - inspect fullscreen lifecycle classes and patch transition-state native backdrop ownership
+- Expected output/artifact path:
+  - next fullscreen build log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - none in this step
+- Primary working set:
+  - [artifacts/runtime_logs/Screenshot_20260419_014341_GO_PLAY.jpg](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\Screenshot_20260419_014341_GO_PLAY.jpg)
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump1.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump1.txt)
+  - [patches/chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [artifacts/runtime_logs/Screenshot_20260419_014341_GO_PLAY.jpg](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\Screenshot_20260419_014341_GO_PLAY.jpg)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - user clarification on screenshot timing
+- Expected success signal:
+  - next patch specifically stabilizes fullscreen background during video-change transition
+- Expected failure signal:
+  - patch treats steady fullscreen instead of the transition window and misses the symptom
+- Last known log location:
+  - [artifacts/runtime_logs/live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt)
+- Last known artifact path:
+  - [artifacts/runtime_logs/Screenshot_20260419_014341_GO_PLAY.jpg](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\Screenshot_20260419_014341_GO_PLAY.jpg)
+- Recent decisions:
+  - stop using the earlier fullscreen-live screenshot as the primary symptom reference
+  - treat fullscreen issue as transition-state background ownership
+- Rejected approaches:
+  - using the wrong screenshot as primary evidence
+  - broad compositor suppression as first fix
+- Stop point classification:
+  - screenshot interpretation corrected; no code edited yet
+- What is done but unverified:
+  - none
+- What is verified:
+  - the user screenshot corresponds to the `vdo` transition moment
+- External prerequisite:
+  - user approval on the narrow transition-state native-backdrop approach
+- Secret required but not stored:
+  - none
+
 - Timestamp: `2026-04-18 16:58:12 +07:00`
 - Current phase: `Windows baseline evidence audit for PiP restore strategy`
 - Task/objective: `Verify whether Windows-side copies can serve as a real pre-15:43 PiP baseline without destroying recoveryPIP.`
@@ -18587,6 +21155,854 @@
   - none
 # Progress Log
 
+## Snapshot - 2026-04-20 14:34:30 +07:00
+
+- Current phase:
+  - `Phase 7 - locked-screen playback continuity under PiP`
+- Task/objective:
+  - Move the remaining lock-screen playback fix to the Brave wrapper layer so the solution generalizes across future devices, not just the current problematic handset.
+- Completed since last snapshot:
+  - Compared the problematic-device log [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt) with the working reference-device log [live_locked_devdevice_reference_20260420_141015.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_devdevice_reference_20260420_141015.txt).
+  - Verified the intended flow is real on the reference device:
+    - dispatch under lock succeeds
+    - the next clip keeps playing while still locked
+    - unlock later runs `on_resume -> recoveryPIP`
+  - Re-inspected the runtime wiring and confirmed `BraveMediaSessionHelper` is still active through bytecode weaving:
+    - `MediaSessionHelper` superclass is patched to `BraveMediaSessionHelper`
+    - method owners for `showNotification()` and `createMediaSessionObserver(...)` are still redirected to the Brave wrapper
+  - Patched [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java):
+    - added narrow context detection for `YouTube + locked + hidden + in PiP + recent locked auto-next dispatch`
+    - during that context, `mediaSessionStateChanged(false, ...)` is held as controllable instead of dropping immediately
+    - added `OTB_PIP event=locked_pip_controllability_hold ...` logging
+  - Synced the wrapper file into WSL and rebuilt successfully:
+    - [release_build_locked_pip_controllability_hold_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_controllability_hold_20260420.log)
+  - Reinstalled successfully with `--no-incremental`.
+  - Started and then stopped a new runtime capture for this patch:
+    - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+- In progress now:
+  - No commands are running.
+  - The newest capture exists but has not yet been analyzed against the new wrapper marker.
+- Blockers/risks:
+  - Remaining failure may still bypass `mediaSessionStateChanged(...)`.
+  - Any next fix must continue to preserve the lock-screen design invariant:
+    - hold media continuity only
+    - leave presentation recovery to unlock `recoveryPIP`
+  - Device-specific hacks are explicitly out because the requirement now includes future devices.
+- Files/modules touched:
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - build passed
+  - install passed
+  - fresh capture collected and stopped
+  - runtime outcome of the new patch still unverified
+- Exact next concrete step:
+  - Read [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+  - verify whether `OTB_PIP event=locked_pip_controllability_hold ...` appears before the old collapse point
+  - compare that against the problematic-device and reference-device captures
+- Expected resume inspection scope:
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt)
+  - [live_locked_devdevice_reference_20260420_141015.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_devdevice_reference_20260420_141015.txt)
+  - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+- Exact command(s):
+  - `Copy-Item -LiteralPath 'C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java' -Destination '\\wsl.localhost\Ubuntu\home\master\src_ext4\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java' -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_locked_pip_controllability_hold_20260420.log"`
+  - `adb install --no-incremental -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - runtime capture command that produced [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+- Tool purpose:
+  - Test whether the Brave wrapper can hold lock-screen media-session controllability across devices.
+- Tool state:
+  - build/install done
+  - capture stopped
+  - analysis pending
+- Expected resume command:
+  - `Get-Content artifacts/runtime_logs/live_locked_controllability_hold_verify_20260420_142853.txt`
+- Expected output/artifact path:
+  - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+  - [release_build_locked_pip_controllability_hold_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_controllability_hold_20260420.log)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt)
+  - [live_locked_devdevice_reference_20260420_141015.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_devdevice_reference_20260420_141015.txt)
+  - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs/progress-log.md)
+  - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - device connected
+  - WSL tree available
+  - reproducible lock-screen auto-next flow
+- Expected success signal:
+  - wrapper marker appears and problematic device keeps playing under lock like the reference device
+- Expected failure signal:
+  - no wrapper marker or the same `media_session_not_controllable` collapse returns
+- Last known log location:
+  - [live_locked_controllability_hold_verify_20260420_142853.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_controllability_hold_verify_20260420_142853.txt)
+- Last known artifact path:
+  - [release_build_locked_pip_controllability_hold_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_controllability_hold_20260420.log)
+- Recent decisions:
+  - interpret “must work on every device” as including future devices
+  - move the next fix to the Brave wrapper layer, not heartbeat timing
+- Rejected approaches:
+  - reintroducing hidden PiP/fullscreen restore during lock
+  - device-specific hacks
+  - continuing to patch heartbeat timing after it was already proven
+- Stop point classification:
+  - wrapper patch applied, built, installed, capture collected and stopped; analysis pending
+- What is done but unverified:
+  - whether the new wrapper hold resolves the problematic device
+- What is verified:
+  - reference device matches intended flow
+  - problematic device diverges at controllability transition
+  - Brave wrapper is live in runtime through bytecode weaving
+- External prerequisite:
+  - connected device for future captures
+- Secret required but not stored:
+  - none
+
+## Snapshot - 2026-04-20 14:05:40 +07:00
+
+- Current phase:
+  - `Phase 7 - locked-screen playback continuity under PiP`
+- Task/objective:
+  - Test whether a post-dispatch recovery window in `MediaSessionHelper` can keep the new track playing under lock after auto-next navigation.
+- Completed since last snapshot:
+  - Patched [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java):
+    - keep heartbeat alive across `primary_main_frame_navigation`
+    - add `LOCKED_PIP_POST_DISPATCH_RECOVERY_WINDOW_MILLIS`
+    - add `locked_pip_playback_recovery` recovery path intended to `play/resume` during the post-dispatch window
+  - Synced the updated file into the active WSL source tree.
+  - Rebuilt successfully:
+    - [release_build_locked_pip_postdispatch_resume_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_postdispatch_resume_20260420.log)
+  - Reinstalled successfully with `--no-incremental`.
+  - Verified the device APK matches the build APK exactly:
+    - build/device SHA256 `F41EB7A903F9D83835C5ED9AAAA01F28D672DC846CA89C6298963C1B56FCCAFB`
+    - device proof: [device_locked_postdispatch_resume_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_locked_postdispatch_resume_429000010_20260420.apk)
+  - Ran and analyzed a fresh runtime capture:
+    - [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt)
+  - Confirmed the new keepalive survives navigation:
+    - line 459: `locked_pip_heartbeat_keepalive reason=primary_main_frame_navigation`
+  - Confirmed dispatch still happens under lock:
+    - line 453: `locked_pip_auto_next_from_position dispatched=true remaining_ms=1030 visibility=0`
+    - line 456: `native_tab_bridge_command command=next_track result={"ok":true,...}`
+  - Confirmed the design invariant still holds:
+    - lines 452 and 460: `pip_presentation_restore_allowed allowed=false reason=screen_not_interactive`
+  - Confirmed the patch still does not solve the user-facing pause:
+    - line 461: `locked_pip_heartbeat_stop reason=media_session_not_controllable`
+    - no `locked_pip_playback_recovery` lines appear in the capture
+    - line 469: Blink sees `Effective playback rate changed from 0 to 1`
+    - lines 475-478: playback later drops to `playback_rate=0.000000`
+- In progress now:
+  - No command is running.
+  - Latest experiment is complete.
+  - Remaining issue is specifically the media-session controllability drop right after locked navigation.
+- Blockers/risks:
+  - The helper now survives navigation timing, so timing is no longer the first blocker.
+  - The media session becomes non-controllable immediately after navigation, which shuts the helper down before recovery can act.
+  - Any next change must still avoid bringing hidden PiP/fullscreen restore back under lock.
+- Files/modules touched:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - build passed
+  - reinstall passed
+  - device/build hash verification passed
+  - runtime verification completed and shows the patch did not solve the pause-under-lock bug
+- Exact next concrete step:
+  - If continuing, inspect the `mediaSessionStateChanged(false, ...)` transition and Brave background-video pause suppression path, because controllability loss is now the first proven failure after dispatch.
+- Expected resume inspection scope:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+  - [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt)
+  - [release_build_locked_pip_postdispatch_resume_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_postdispatch_resume_20260420.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+- Exact command(s):
+  - `Copy-Item -LiteralPath 'C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java' -Destination '\\wsl.localhost\Ubuntu\home\master\src_ext4\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java' -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_locked_pip_postdispatch_resume_20260420.log"`
+  - `adb install --no-incremental -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - `adb pull <device-base.apk> C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_locked_postdispatch_resume_429000010_20260420.apk`
+  - runtime capture command that produced [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt)
+- Tool purpose:
+  - Validate the post-dispatch recovery hypothesis with a single-file patch and a verified device binary.
+- Tool state:
+  - build/install/hash verification complete
+  - runtime capture complete
+  - analysis complete
+- Expected resume command:
+  - no rerun required unless continuing into controllability-state debugging
+- Expected output/artifact path:
+  - [release_build_locked_pip_postdispatch_resume_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_postdispatch_resume_20260420.log)
+  - [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) - heartbeat / post-dispatch continuity logic
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java) - Brave wrapper and pause suppression surface
+  - [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt) - runtime proof
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected device connected via `adb`
+  - reproducible locked PiP auto-next scenario
+  - WSL tree available
+- Expected success signal:
+  - runtime proves whether the helper now survives navigation and can keep playback alive
+- Expected failure signal:
+  - helper still shuts down before recovery because controllability drops first
+- Last known log location:
+  - [live_locked_postdispatch_resume_verify_20260420_140025.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_postdispatch_resume_verify_20260420_140025.txt)
+- Last known artifact path:
+  - [release_build_locked_pip_postdispatch_resume_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_postdispatch_resume_20260420.log)
+- Recent decisions:
+  - Keep scope to one file.
+  - Verify installed binary by hash before trusting runtime.
+  - Treat runtime as source of truth over patch intent.
+- Rejected approaches:
+  - reintroducing hidden PiP/fullscreen restore during lock
+  - assuming navigation timing was still the root cause after keepalive landed
+- Stop point classification:
+  - patch applied, built, installed, hash-verified, and runtime-verified; experiment completed but did not resolve the bug
+- What is done but unverified:
+  - exact code path responsible for the `media_session_not_controllable` transition
+- What is verified:
+  - keepalive survives navigation
+  - dispatch still happens
+  - controllability drops immediately after navigation
+  - playback still pauses under lock
+- External prerequisite:
+  - affected device for any next runtime capture
+- Secret required but not stored:
+  - none
+
+## Snapshot - 2026-04-20 13:47:30 +07:00
+
+- Current phase:
+  - `Phase 7 - locked-screen playback continuity under PiP`
+- Task/objective:
+  - Validate the new `no preserve under lock` design and determine what still fails while the device remains locked.
+- Completed since last snapshot:
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) so `shouldPreserveVideoPresentationForPictureInPictureControls()` now returns `false` when the screen is not interactive or the device is locked.
+  - Patched [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) so `next()` / `previous()` now respect the new preserve decision instead of blindly preserving while merely in PiP.
+  - Synced those two files into the active WSL source tree under `\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\...`.
+  - Rebuilt the active release target successfully:
+    - [release_build_locked_pip_no_preserve_under_lock_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_no_preserve_under_lock_20260420.log)
+  - Reinstalled successfully with `--no-incremental`.
+  - Verified package identity after install:
+    - `versionCode=429000010`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-20 13:35:43`
+  - Ran and analyzed a fresh runtime capture on the new build:
+    - [live_locked_no_preserve_verify_20260420_133550.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_no_preserve_verify_20260420_133550.txt)
+  - Confirmed hidden lock-screen state still occurs:
+    - line 379: `visibility=0 restore_pending=0`
+  - Confirmed heartbeat is now definitely active in runtime:
+    - line 384: `locked_pip_heartbeat_start reason=screen_off visibility=0`
+  - Confirmed auto-next dispatch still happens while locked:
+    - line 410: `locked_pip_auto_next_from_position dispatched=true remaining_ms=992 visibility=0`
+    - line 412: `native_tab_bridge_command command=next_track result={"ok":true,"strategy":"dom","reason":"playlist-panel-navigation"}`
+  - Confirmed the intended design change is active:
+    - lines 409 and 415: `pip_presentation_restore_allowed allowed=false reason=screen_not_interactive`
+    - this run has no hidden `arm_track_navigation_keepalive`, no hidden `track_navigation_restore_deferred`, and no hidden `recovery_pip_arm_current_video` before unlock
+  - Confirmed the new track is actually reached while locked:
+    - lines 421-422: `estimated_position_ms=4/5 duration_ms=213961`
+    - line 428: Blink reports `Effective playback rate changed from 0 to 1`
+  - Confirmed the remaining failure happens after that:
+    - lines 434-435: `locked_pip_auto_next_skip reason=invalid_position duration_ms=213961 playback_rate=0.000000`
+  - Confirmed unlock still uses the separate recovery path and restores presentation:
+    - line 448: `pip_recovery_chain_start reason=on_resume`
+    - line 480: `recovery_pip_arm_current_video`
+- In progress now:
+  - No command is running.
+  - Source and installed APK are aligned with the `no preserve under lock` design.
+  - Remaining issue is specifically post-dispatch playback pausing under lock.
+- Blockers/risks:
+  - The remaining failure is no longer media-session liveness, no longer missing heartbeat, and no longer hidden PiP presentation preserve.
+  - Any next behavior change must not reintroduce hidden PiP/fullscreen restore during lock.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - release rebuild passed
+  - reinstall passed
+  - runtime verification passed for the design change itself
+  - runtime bug remains for playback continuity after dispatch under lock
+- Exact next concrete step:
+  - If continuing, inspect the post-dispatch playback-state owner around `MediaSessionHelper` / media delegate / Android playback state flow, using the latest runtime capture as source of truth.
+- Expected resume inspection scope:
+  - [live_locked_no_preserve_verify_20260420_133550.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_no_preserve_verify_20260420_133550.txt)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+- Exact command(s):
+  - `Copy-Item -LiteralPath 'C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java' -Destination '\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java' -Force`
+  - `Copy-Item -LiteralPath 'C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java' -Destination '\\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java' -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_locked_pip_no_preserve_under_lock_20260420.log"`
+  - `adb install --no-incremental -r "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+  - runtime capture command that produced [live_locked_no_preserve_verify_20260420_133550.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_no_preserve_verify_20260420_133550.txt)
+- Tool purpose:
+  - Ship and verify the design where locked playback no longer tries to hold PiP presentation alive.
+- Tool state:
+  - build/install finished
+  - runtime capture finished
+  - analysis finished
+- Expected resume command:
+  - no rerun required unless continuing into post-dispatch playback-state debugging
+- Expected output/artifact path:
+  - [release_build_locked_pip_no_preserve_under_lock_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_no_preserve_under_lock_20260420.log)
+  - [live_locked_no_preserve_verify_20260420_133550.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_no_preserve_verify_20260420_133550.txt)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) - heartbeat/auto-next owner
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) - preserve disablement under lock
+  - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java) - preserve flag forwarding
+  - [live_locked_no_preserve_verify_20260420_133550.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_no_preserve_verify_20260420_133550.txt) - source of truth for the latest behavior
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_locked_no_preserve_verify_20260420_133550.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_no_preserve_verify_20260420_133550.txt)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected device connected via `adb`
+  - reproducible lock-screen PiP scenario
+  - WSL tree available
+- Expected success signal:
+  - latest capture proves the design change and shows exactly whether playback continues after dispatch while locked
+- Expected failure signal:
+  - capture missing the new markers or source/install mismatch
+- Last known log location:
+  - [live_locked_no_preserve_verify_20260420_133550.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_no_preserve_verify_20260420_133550.txt)
+- Last known artifact path:
+  - [release_build_locked_pip_no_preserve_under_lock_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_no_preserve_under_lock_20260420.log)
+- Recent decisions:
+  - During lock, hold only media-session/playback continuity.
+  - Do not preserve PiP/fullscreen presentation under lock.
+  - Keep unlock `recoveryPIP` as the place where presentation is restored.
+- Rejected approaches:
+  - restoring hidden PiP presentation under lock
+  - treating the latest symptom as “nothing happened” without checking logs
+- Stop point classification:
+  - design patch applied, built, installed, and runtime-verified; remaining bug narrowed to post-dispatch playback pause while still locked
+- What is done but unverified:
+  - exact code owner that drops playback rate to zero after the new track starts
+- What is verified:
+  - heartbeat runs
+  - dispatch happens
+  - preserve is disabled under lock
+  - next track is reached under lock
+  - playback still pauses before unlock
+- External prerequisite:
+  - affected device for any next runtime capture
+- Secret required but not stored:
+  - none
+
+## 2026-04-20 13:12:24 +07:00
+
+- Current phase:
+  - `Phase 7 - locked-screen PiP auto-next stabilization`
+- Current objective:
+  - Analyze the first runtime capture from the new lock-screen heartbeat build and determine whether the user-visible stop under lock happens before dispatch or after dispatch.
+- Completed since last snapshot:
+  - Inspected [live_locked_pip_heartbeat_verify_20260420_125122.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_heartbeat_verify_20260420_125122.txt) against the current source in [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) and [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java).
+  - Verified the lock-screen hidden state still happens:
+    - line 140: `OTB_PIP event=web_contents_visibility_changed visibility=0`
+  - Verified that a `next_track` dispatch still happens while the device remains locked/hidden:
+    - line 151: `arm_track_navigation_keepalive command=next_track`
+    - line 153: `native_tab_bridge_command command=next_track result={"ok":true,...}`
+    - line 158: `track_navigation_restore_deferred ... visibility=0`
+  - Verified that the stalled behavior now happens after dispatch:
+    - while the device remains locked there is no successful fullscreen reacquire for the new video
+    - recovery resumes only after unlock/visibility returns
+  - Verified the unlock path is still separate:
+    - line 171: `pip_recovery_chain_start reason=on_resume`
+    - line 200: `recovery_pip_arm_current_video`
+    - line 214: `Background activity launch blocked ... BAL_BLOCK`
+    - later `native_fullscreen_signal_while_in_pip` recovery completes
+  - Verified the current capture contains no heartbeat-tagged runtime lines:
+    - no `locked_pip_heartbeat_start`
+    - no `locked_pip_heartbeat_stop`
+    - no `locked_pip_auto_next_*`
+    - no `MediaSessionHelper` / `cr_MediaSessionHelper`
+- In progress now:
+  - No command is running.
+  - Source is unchanged after the heartbeat build/install; only runtime analysis was performed.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Files/modules inspected:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+  - [live_locked_pip_heartbeat_verify_20260420_125122.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_heartbeat_verify_20260420_125122.txt)
+- Build/test status:
+  - No new build was run in this step.
+  - Existing heartbeat build remains the active device build.
+  - Runtime analysis result:
+    - verified: locked `next_track` dispatch still happens
+    - verified: restore remains deferred while hidden and recovers on unlock
+    - unverified: heartbeat helper participation in this run
+- Blockers/risks:
+  - The capture is now strong enough to rule out "nothing happened" under lock.
+  - The remaining stall is after dispatch, around hidden restore / fullscreen reacquire while locked.
+  - Heartbeat runtime participation is still not provable from this capture because no heartbeat-tagged lines appear.
+- Exact next concrete step:
+  - If continuing diagnosis, take one more lock-screen capture with explicit coverage for the actual `org.chromium.base.Log` runtime tag used by `MediaSessionHelper`, then re-run the same scenario and correlate heartbeat markers with:
+    - hidden state
+    - locked `next_track`
+    - deferred restore
+    - unlock recovery
+- Expected resume inspection scope:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - this progress entry
+  - [live_locked_pip_heartbeat_verify_20260420_125122.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_heartbeat_verify_20260420_125122.txt)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - targeted `rg` searches over [live_locked_pip_heartbeat_verify_20260420_125122.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_heartbeat_verify_20260420_125122.txt)
+  - targeted `Get-Content` slices around the locked dispatch and unlock recovery windows
+  - targeted `rg` and `Get-Content` inspection of [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) and [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+- Tool purpose:
+  - Correlate the heartbeat runtime capture with the current media-session / lock-screen source chain.
+- Tool state:
+  - completed
+- Expected resume command:
+  - start the next lock-screen runtime capture with corrected heartbeat tag coverage if diagnosis continues
+- Expected output/artifact path:
+  - next lock-screen log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) - heartbeat and auto-next gates
+  - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java) - Brave observer forwarding wrapper
+  - [live_locked_pip_heartbeat_verify_20260420_125122.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_heartbeat_verify_20260420_125122.txt) - first heartbeat runtime proof
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_locked_pip_heartbeat_verify_20260420_125122.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_heartbeat_verify_20260420_125122.txt)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected device connected via `adb`
+  - reproducible lock-screen PiP scenario
+- Expected success signal:
+  - heartbeat markers appear and can be correlated with the locked dispatch/deferred restore chain
+- Expected failure signal:
+  - another capture still lacks heartbeat markers and still cannot disambiguate runtime entry from tag/filter mismatch
+- Last known log location:
+  - [live_locked_pip_heartbeat_verify_20260420_125122.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_heartbeat_verify_20260420_125122.txt)
+- Last known artifact path:
+  - [release_build_locked_pip_heartbeat_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_locked_pip_heartbeat_20260420.log)
+- Recent decisions:
+  - Treat the latest runtime as proof that dispatch under lock still happens.
+  - Treat the remaining user-visible stop as a post-dispatch stall while hidden, not as a pure "media session died before doing anything" case.
+  - Hold source steady until heartbeat participation itself is proven or disproven by runtime evidence.
+- Rejected approaches:
+  - claiming from this capture alone that the heartbeat definitely ran or definitely did not run
+  - changing downstream PiP restore again before proving heartbeat participation
+- Stop point classification:
+  - runtime captured and analyzed; no new source edits; heartbeat participation still unverified
+- What is done but unverified:
+  - whether the heartbeat helper actually enters during the affected lock-screen scenario
+- What is verified:
+  - locked hidden state
+  - locked `next_track` dispatch
+  - deferred restore while hidden
+  - unlock-triggered recovery path
+- External prerequisite:
+  - affected device available for another capture if work continues
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 01:32:40 +07:00
+
+- Current phase:
+  - `Fullscreen backdrop ownership analysis`
+- Task/objective:
+  - `Use correlated SurfaceFlinger evidence to decide whether fullscreen compositor surface ChromeChildSurface#6818 can be removed as background-only, or whether fullscreen needs a native-black backdrop owner instead.`
+- Completed since last snapshot:
+  - Re-read [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md) and the latest recorded progress before acting.
+  - Ran a burst capture while the user kept fullscreen active and tapped to bring controls up:
+    - [surfaceflinger_fullscreen_20260419_013002_dump1.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump1.txt)
+    - [surfaceflinger_fullscreen_20260419_013002_dump2.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump2.txt)
+    - [surfaceflinger_fullscreen_20260419_013002_dump3.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump3.txt)
+    - [surfaceflinger_fullscreen_20260419_013002_shot1.png](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_shot1.png)
+    - [surfaceflinger_fullscreen_20260419_013002_shot2.png](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_shot2.png)
+  - Compared all three dumps with targeted `rg` only for `ChromeChildSurface#6818`, `ChromeChildSurface#6819`, status/navigation layers, and overlay-related layer names.
+  - Confirmed that every dump still shows only two app-visible HWC layers:
+    - `com.onetabtube.browser_default/ChromeChildSurface#6819` as the letterboxed video layer
+    - `com.onetabtube.browser_default/ChromeChildSurface#6818` as the full-window RGBA compositor layer
+  - Confirmed no separate third visible app layer appears in the dumps when controls were expected to show.
+- In progress now:
+  - No code edit.
+  - We are at decision stage for the first fullscreen fix.
+- Blockers / risks:
+  - The new correlated dump is strong enough to reject broad compositor suppression as a safe first move, but it still does not semantically label subcontent inside `#6818`.
+  - Because no separate fullscreen-UI layer appears, removing `#6818` wholesale is risky and may remove controls/captions together with the unwanted background/layout.
+  - `view_image` could not decode the captured PNGs in-session, so the strongest evidence is the multi-dump layer stability rather than screenshot annotation.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - No new build.
+  - Runtime burst capture succeeded.
+  - No source code modified.
+- Exact next concrete step:
+  - If the user approves implementation, patch fullscreen narrowly:
+    - add a fullscreen-only native black backdrop owner
+    - keep `ChromeChildSurface#6818` alive in the first pass
+    - do not touch PiP or recovery logic
+    - verify fullscreen again after the patch
+- Expected resume inspection scope:
+  - [patches/chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch)
+  - [android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+  - [android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump1.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump1.txt)
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump2.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump2.txt)
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump3.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump3.txt)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path docs/current-status.md -TotalCount 200`
+  - `Get-Content -Path docs/progress-log.md -Tail 120`
+  - burst capture command using `adb shell dumpsys SurfaceFlinger`, `adb exec-out screencap -p`, and `Start-Sleep`
+  - `rg -n -C 8 "ChromeChildSurface#6818|ChromeChildSurface#6819|SurfaceView\\[com.onetabtube.browser_default/com.google.android.apps.chrome.MainActivity\\]|Dim Layer|StatusBar|NavigationBar|Subtitle|caption|controls|Overlay" ...dump*.txt`
+- Tool purpose:
+  - `Capture and compare fullscreen layer ownership while controls are expected to appear.`
+- Tool state:
+  - capture complete
+  - targeted analysis complete
+  - no code edited
+- Expected resume command:
+  - patch fullscreen lifecycle classes to add a native black backdrop owner without suppressing the compositor
+- Expected output/artifact path:
+  - next fullscreen build log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - none in this step
+- Primary working set:
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump1.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump1.txt) — first fullscreen snapshot
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump2.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump2.txt) — middle fullscreen snapshot
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump3.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump3.txt) — final fullscreen snapshot
+  - [patches/chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch) — native fullscreen lifecycle representation
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump1.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump1.txt)
+  - [patches/chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - user holding fullscreen active and tapping controls while capture ran
+- Expected success signal:
+  - later patch produces native-black fullscreen backdrop without losing controls/captions
+- Expected failure signal:
+  - controls/captions disappear or fullscreen transitions regress after backdrop change
+- Last known log location:
+  - [artifacts/runtime_logs/live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt)
+- Last known artifact path:
+  - [artifacts/runtime_logs/surfaceflinger_fullscreen_20260419_013002_dump1.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\surfaceflinger_fullscreen_20260419_013002_dump1.txt)
+- Recent decisions:
+  - keep fullscreen analysis separate from PiP
+  - do not blame the disabled ambient JS block for current runtime behavior
+  - reject broad suppression/removal of `ChromeChildSurface#6818` as first fix
+- Rejected approaches:
+  - patch from symptoms without correlated runtime evidence
+  - suppress compositor wholesale before proving controls impact
+- Stop point classification:
+  - runtime capture complete, fullscreen ownership analysis refined, no code edited yet
+- What is done but unverified:
+  - none
+- What is verified:
+  - `ChromeChildSurface#6818` remains the only full-window app compositor layer across the burst
+  - no separate app-visible control-only layer appears during the burst
+- External prerequisite:
+  - user approval on the narrow native-backdrop approach
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 01:36:55 +07:00
+
+- Current phase:
+  - `Fullscreen backdrop ownership analysis`
+- Task/objective:
+  - `Decide whether the visible fullscreen tone mismatch can be solved by cropping only the upper band, or whether fullscreen needs a uniform native backdrop behind the compositor.`
+- Completed since last snapshot:
+  - Captured a fresh fullscreen frame at [fullscreen_live_20260419_013541.png](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fullscreen_live_20260419_013541.png).
+  - Opened the live frame and checked whether the upper differently toned area looks like a clean standalone strip.
+  - Ran quick pixel-band sampling with PIL to compare broad horizontal tone changes:
+    - top 120 rows about `143/130/130`
+    - upper band about `159/126/126`
+    - middle about `130/90/109`
+    - bottom about `180/146/151`
+  - Refined the screenshot conclusion:
+    - the visible upper mismatch is not a clean isolated top-only band
+    - logos/text are rendered inside that upper area
+    - so a narrow “cut only the top strip” fix is not proven safe from the screenshot evidence
+- In progress now:
+  - No code edit.
+  - Waiting at proposal stage for the first fullscreen backdrop patch.
+- Blockers / risks:
+  - A top-strip crop/mask may cover active rendered content, not just unwanted backdrop.
+  - We still do not have proof that the problematic region is separable from `ChromeChildSurface#6818` content.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - No new build.
+  - Screenshot capture succeeded.
+  - No code changed.
+- Exact next concrete step:
+  - If approved, patch fullscreen with a native-owned uniform backdrop behind the compositor instead of trying to crop only the upper strip.
+- Expected resume inspection scope:
+  - [artifacts/runtime_logs/fullscreen_live_20260419_013541.png](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fullscreen_live_20260419_013541.png)
+  - [patches/chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch)
+  - [android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+- Current tool(s):
+  - `shell_command`
+  - `view_image`
+  - `apply_patch`
+- Exact command(s):
+  - `adb shell screencap -p /sdcard/... && adb pull ...`
+  - `view_image` on [fullscreen_live_20260419_013541.png](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fullscreen_live_20260419_013541.png)
+  - inline Python/PIL band sampling
+- Tool purpose:
+  - `Determine whether the upper differently toned fullscreen area is a clean strip or part of active rendered content.`
+- Tool state:
+  - screenshot analysis complete
+  - no code edited
+- Expected resume command:
+  - inspect fullscreen lifecycle classes and implement the uniform native backdrop owner
+- Expected output/artifact path:
+  - next fullscreen build log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - none in this step
+- Primary working set:
+  - [artifacts/runtime_logs/fullscreen_live_20260419_013541.png](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fullscreen_live_20260419_013541.png) — live fullscreen frame
+  - [patches/chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch) — fullscreen lifecycle representation
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [artifacts/runtime_logs/fullscreen_live_20260419_013541.png](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fullscreen_live_20260419_013541.png)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - app held in fullscreen during screenshot
+- Expected success signal:
+  - later patch yields a uniform fullscreen backdrop without hiding active video content
+- Expected failure signal:
+  - upper overlay/crop hides actual rendered content or breaks fullscreen visuals
+- Last known log location:
+  - [artifacts/runtime_logs/live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt)
+- Last known artifact path:
+  - [artifacts/runtime_logs/fullscreen_live_20260419_013541.png](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fullscreen_live_20260419_013541.png)
+- Recent decisions:
+  - do not treat the visible upper mismatch as a proven clean top-only strip
+  - prefer uniform native backdrop over partial upper-band cropping if we patch fullscreen next
+- Rejected approaches:
+  - patch only the top strip first
+- Stop point classification:
+  - screenshot analyzed, no code edited yet
+- What is done but unverified:
+  - none
+- What is verified:
+  - the upper differently toned area is not clearly isolated from active rendered content in the live fullscreen frame
+- External prerequisite:
+  - user approval on the fullscreen native uniform backdrop approach
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 01:15:10 +07:00
+
+- Phase: `Fullscreen backdrop ownership analysis`
+- Objective: `Capture fresh fullscreen runtime evidence first, then decide whether the remaining fullscreen background/layout leak should be fixed by removing old page-side ambient backdrop ownership and leaning on native black ownership instead.`
+- Completed since last snapshot:
+  - Started and stopped a fresh fullscreen-only `adb logcat` capture:
+    - [live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt)
+    - [live_fullscreen_reference_20260419_010340.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.err.txt)
+  - Confirmed from log that fullscreen currently uses mixed ownership:
+    - `cr_VideoPersist: Effective video fullscreen change: true` at [live_fullscreen_reference_20260419_010340.txt:389](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt:389)
+    - separate video surface and full-window RGBA compositor surface active together at [live_fullscreen_reference_20260419_010340.txt:681](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt:681) and [live_fullscreen_reference_20260419_010340.txt:682](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt:682)
+    - app window remains `fmt=TRANSLUCENT` during fullscreen at [live_fullscreen_reference_20260419_010340.txt:690](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt:690) and [live_fullscreen_reference_20260419_010340.txt:700](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt:700)
+  - Confirmed from source that old page-side fullscreen ambient/backdrop code still exists in [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc):
+    - `kYoutubeFullscreenAmbientBackdrop` at line `476`
+    - `backdropVideo` created at lines `601-610`
+    - `captureStream` / `mozCaptureStream` used at lines `630-638`
+  - Follow-up inspection corrected the earlier risk weighting:
+    - the old ambient/backdrop block is wrapped in `#if 0 ... #endif` at lines `475-740`
+    - it is not injected by `PrimaryMainDocumentElementAvailable()`
+    - therefore it is a leftover in source, but not an active runtime owner
+  - Follow-up reasoning tightened the runtime suspect set further:
+    - the active background ownership problem is more likely the full-window RGBA compositor surface `ChromeChildSurface#6818` together with the translucent app window
+    - removing that compositor wholesale is risky because it likely also carries fullscreen web controls/captions
+    - a native-black backdrop owner is therefore the narrower/safe-first change, not unnecessary extra work
+- In progress now:
+  - No code patch yet.
+  - We are at decision/proposal stage only for fullscreen.
+- Blockers / risks:
+  - Log proves mixed layer ownership but does not, by itself, identify the exact painter of the visible non-black background.
+  - The disabled ambient block is no longer the primary runtime suspect.
+  - The stronger runtime suspects are now:
+    - the full-window RGBA compositor surface `ChromeChildSurface#6818`
+    - the app window remaining `fmt=TRANSLUCENT` during fullscreen
+  - Any native-owner patch that suppresses the compositor wholesale may also suppress fullscreen web controls/captions that likely live on that surface.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - No build this round.
+  - Fullscreen runtime capture succeeded.
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `adb logcat -c`
+  - `Start-Process adb logcat ...`
+  - `Stop-Process -Id 6156 -Force`
+  - `rg -n "OTB_|Fullscreen|fullscreen|VideoPersist|SurfaceView|surfaceDestroyed|surfaceCreated|surfaceChanged|Compositor|backdrop|ambient|captureStream|WindowManager|Relayout|BufferQueue|BLAST|Exiting fullscreen|Entering fullscreen" ...`
+  - `rg -n "kYoutubeFullscreenAmbientBackdrop|captureStream|mozCaptureStream|backdropVideo" browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Tool purpose:
+  - `Gather fullscreen-specific runtime evidence before changing fullscreen background ownership.`
+- Tool state:
+  - capture done
+  - analysis done
+  - no code edits made
+- Next concrete step:
+  - Present the fullscreen chain and impact analysis to the user first.
+  - If approved, patch narrowly:
+    - add fullscreen-only native black ownership at effective-fullscreen lifecycle points
+    - keep PiP/recovery paths untouched
+    - avoid hiding the compositor wholesale on the first pass
+    - verify controls/captions before attempting stronger suppression
+- Expected resume inspection scope:
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt)
+  - [FullscreenHtmlApiHandlerBase.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - none in this step
+- Primary working set:
+  - [live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt) — fullscreen runtime proof
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — old page-side ambient/backdrop owner
+  - [FullscreenHtmlApiHandlerBase.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-fullscreen-FullscreenHtmlApiHandlerBase.java.patch) — native fullscreen lifecycle representation
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt)
+- Expected success signal:
+  - after future patch, fullscreen shows native black behind video with no page/layout leak and no PiP regression
+- Expected failure signal:
+  - page/compositor layer still visible behind video
+  - fullscreen exit/rotation regressions
+- Last known log location:
+  - [live_fullscreen_reference_20260419_010340.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_reference_20260419_010340.txt)
+- Last known artifact path:
+  - none new this round
+- Recent decisions:
+  - do not patch fullscreen before getting a fresh log
+  - do not mix fullscreen and PiP fixes in this round
+  - treat page-side ambient backdrop as a strong candidate for wrong-layer ownership, not a proven root cause by log alone
+- Rejected approaches:
+  - symptom-only patching
+  - broad rollback
+  - adding more page-side guard logic before proving ownership
+- Stop point classification:
+  - fullscreen runtime evidence collected and analyzed; proposal only, no code edit yet
+- What is done but unverified:
+  - no new code in this round
+- What is verified:
+  - fullscreen uses mixed video/compositor surfaces
+  - app window is translucent during fullscreen
+  - old page-side ambient backdrop code still exists in source but is compiled out and not injected
+
 ## 2026-04-18 23:34:04 +07:00
 
 - Current phase: `PiP stabilization: auto-end carry-forward hardening + page-side visual guard helper rewrite`
@@ -32554,6 +35970,153 @@
 - Secret required but not stored:
   - none
 
+## 2026-04-19 00:54:25 +07:00
+
+- Current phase:
+  - `PiP stabilization: playback-focus-loss recovery`
+- Current objective:
+  - `Upgrade recoveryPIP so it can self-recover when video focus is lost while playback is still ongoing, without changing fullscreen-first PiP entry.`
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Re-inspected the real code path in:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+    - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - Confirmed from code that fullscreen-loss while `mIsPlaying` already had a preserve path, but it only re-requested fullscreen inline and never explicitly entered the Java recovery chain.
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - added `OTB_PIP_PLAYBACK_FOCUS_LOSS_DEBOUNCE_MS`
+    - added playback-focus-loss debounce fields
+    - added `onPictureInPicturePlaybackFocusLostWhilePlaying(...)`
+    - new method holds the visual guard, cancels signal-refresh, and schedules the existing recovery chain with a dedicated `playback_focus_lost_while_playing_*` reason
+  - Patched WSL source-of-truth [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java):
+    - added `maybeRecoverVideoFocusWhilePlaying(...)`
+    - replaced inline fullscreen re-request in the fullscreen-loss-while-playing block with that helper
+    - added the same helper call in `mediaStartedPlaying(...)`
+  - Synced Windows [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) to the WSL source-of-truth file via `wsl bash -lc cp ...`.
+  - Verified `BraveActivity.java` hashes match between Windows and WSL via `sha256sum` in WSL:
+    - `9A5D714F2E4A8F0AE0662FE36A78C3599C806DEF91C133F9F0D6985C311D123D`
+  - Restored [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch) from `git HEAD` after an earlier failed regenerate left it empty.
+  - Updated the repo-side patch representation with the new playback-focus-loss recovery hunks.
+  - Rebuilt from WSL source-of-truth successfully:
+    - [release_build_pip_focus_loss_recovery_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_focus_loss_recovery_20260419.log)
+  - Installed the rebuilt APK successfully:
+    - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+    - result: `Success`
+  - Launched the app successfully:
+    - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+    - result: `Status: ok`
+  - Confirmed package state:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 00:47:10`
+- In progress now:
+  - No code edit is in progress.
+  - Runtime verification for the new playback-focus-loss trigger has not been run yet.
+- Blockers/risks:
+  - The new trigger still needs runtime proof to show it helps the real failure case without over-triggering during normal PiP entry.
+  - The repo cannot directly track the WSL controller Java source; it only tracks the `.patch` representation.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build succeeded:
+    - [release_build_pip_focus_loss_recovery_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_focus_loss_recovery_20260419.log)
+  - Install succeeded.
+  - Launch succeeded.
+  - Runtime verification: `pending`
+- Exact next concrete step:
+  - Start a fresh runtime capture on the installed build.
+  - Reproduce the failure case where PiP loses video focus while playback continues.
+  - Verify the new markers:
+    - `event=pip_playback_focus_loss_recovery`
+    - `event=pip_playback_focus_loss_recovery_skip`
+    - `event=pip_recovery_chain_start reason=playback_focus_lost_while_playing_*`
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - [release_build_pip_focus_loss_recovery_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_focus_loss_recovery_20260419.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `rg -n "..." android/java/org/chromium/chrome/browser/app/BraveActivity.java ...`
+  - `wsl bash -lc "cp /mnt/c/.../BraveActivity.java /home/master/src_ext4/brave/.../BraveActivity.java"`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_focus_loss_recovery_20260419.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose:
+  - `Connect controller-side playback/focus-loss detection to the existing recoveryPIP chain and ship a build for runtime verification.`
+- Tool state:
+  - inspection complete
+  - code edited
+  - WSL sync complete
+  - build complete
+  - install complete
+  - runtime verification pending
+- Expected resume command:
+  - start fresh `adb logcat` capture and reproduce PiP focus-loss while playback continues
+- Expected output/artifact path:
+  - next runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — debounce + new recovery entrypoint
+  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) — controller-side trigger of the new entrypoint
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch) — repo representation of the controller change
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest `docs/progress-log.md`
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [release_build_pip_focus_loss_recovery_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_focus_loss_recovery_20260419.log)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected `adb` device
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - runtime logs show the new playback-focus-loss marker and the recovery chain starts from it
+- Expected failure signal:
+  - failure case still occurs with no new marker, or duplicate triggers churn and recovery still misses
+- Last known log location:
+  - [live_pip_visual_guard_autoadvance_20260418_231032.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_pip_visual_guard_autoadvance_20260418_231032.txt)
+- Last known artifact path:
+  - [release_build_pip_focus_loss_recovery_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_focus_loss_recovery_20260419.log)
+- Recent decisions:
+  - keep fullscreen-first PiP entry unchanged
+  - reuse recoveryPIP instead of inventing another PiP flow
+  - detect “playing but not focused” in the native/controller layer
+- Rejected approaches:
+  - direct-entry PiP
+  - speculative rollback
+  - patching page-side helper again before proving the new controller-side trigger
+- Stop point classification:
+  - code edited, build passed, APK installed, runtime not yet verified
+- What is done but unverified:
+  - new playback-focus-loss trigger path
+  - manual `.patch` representation update for the controller file
+- What is verified:
+  - code compiles
+  - app installs
+  - app launches
+  - package state updated on device
+- External prerequisite:
+  - manual runtime test on device
+- Secret required but not stored:
+  - none
+
 ## 2026-04-18 23:40:24 +07:00
 
 - Current phase:
@@ -33237,6 +36800,128 @@
 - Secret required but not stored:
   - none
 
+## 2026-04-19 02:36:06 +07:00
+
+- Current phase:
+  - `Fullscreen backdrop root-cause verification`
+- Current objective:
+  - `Use the latest fullscreen capture to verify whether the native fullscreen backdrop patch is attached to the correct visual layer, and verify whether ambient is actually enabled in runtime.`
+- Completed since last snapshot:
+  - Re-read [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md) and the latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md).
+  - Checked the latest fullscreen capture session and confirmed it was no longer running.
+  - Analyzed [live_fullscreen_ambient_rootcause_20260419_023139.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_ambient_rootcause_20260419_023139.txt).
+  - Verified runtime markers:
+    - `event=fullscreen_native_backdrop_apply reason=legacy_fullscreen_enter active=true` at lines `7513` and `38010`
+    - `event=fullscreen_native_backdrop_apply reason=legacy_fullscreen_exit active=false` at lines `72` and `33614`
+  - Verified the runtime still has multiple fullscreen-visible surfaces while native backdrop is active:
+    - `ChromeChildSurface#8063` (video)
+    - `ChromeChildSurface#8062` (full-window RGBA compositor)
+    - `com.google.android.apps.chrome.Main$_31605#8049` (app main surface)
+  - Verified `BASE_APPLICATION fmt=TRANSLUCENT` still persists during fullscreen after native backdrop activation.
+  - Re-verified ambient source/runtime state:
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) still wraps `kYoutubeFullscreenAmbientBackdrop` in `#if 0`
+    - no active injection/callsite was found for that ambient block
+- In progress now:
+  - No code edit is running.
+  - Current work is evidence-only analysis and reporting.
+- Blockers/risks:
+  - The current native backdrop patch only colors root view backgrounds.
+  - Runtime evidence shows higher fullscreen-visible surfaces remain active above that backdrop layer.
+  - Ambient is not actually enabled in the current source/runtime, so `native owner + ambient enable` is not the true current configuration.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - No new build run in this snapshot.
+  - Latest analyzed runtime evidence:
+    - [live_fullscreen_ambient_rootcause_20260419_023139.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_ambient_rootcause_20260419_023139.txt)
+- Exact next concrete step:
+  - Report the verified chain to the user:
+    - native backdrop hook fires correctly on fullscreen lifecycle
+    - it appears to sit below still-visible compositor/app surfaces
+    - ambient is still disabled in source/runtime
+  - Wait for direction before any new fullscreen code edit.
+- Expected resume inspection scope:
+  - [live_fullscreen_ambient_rootcause_20260419_023139.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_ambient_rootcause_20260419_023139.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+  - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Get-Content -Path docs/current-status.md -TotalCount 250`
+  - `Get-Content -Path docs/progress-log.md -Tail 250`
+  - `rg -n "fullscreen_native_backdrop_apply|fullscreen_native_backdrop|ambient|fullscreen|TRANSLUCENT|ChromeChildSurface|VideoPersist|OTB_PIP" artifacts/runtime_logs/live_fullscreen_ambient_rootcause_20260419_023139.txt`
+  - `Get-Content -Path android/java/.../BraveActivity.java | Select-String -Pattern 'onOneTabFullscreenBackdropOwnerChanged|fullscreen_native_backdrop_apply|mOneTabFullscreenBackdropActive|Color.BLACK' -Context 3,6`
+  - `Get-Content -Path android/java/.../BraveFullscreenHtmlApiHandlerCompat.java | Select-String -Pattern 'onEnterFullscreen|onOneTabFullscreenBackdropOwnerChanged|compat_fullscreen' -Context 3,6`
+  - `Get-Content -Path android/java/.../BraveFullscreenHtmlApiHandlerLegacy.java | Select-String -Pattern 'onEnterFullscreen|onOneTabFullscreenBackdropOwnerChanged|legacy_fullscreen' -Context 3,6`
+  - `rg -n "kYoutubeFullscreenAmbientBackdrop|#if 0|ambient|captureStream|backdropVideo" browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Tool purpose:
+  - verify current fullscreen layer ownership and ambient runtime state before any further code edit
+- Tool state:
+  - targeted inspection complete
+  - runtime capture analyzed
+  - no code edit in progress
+- Expected resume command:
+  - continue from the analyzed runtime log unless a new fullscreen capture is explicitly needed
+- Expected output/artifact path:
+  - [live_fullscreen_ambient_rootcause_20260419_023139.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_ambient_rootcause_20260419_023139.txt)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [live_fullscreen_ambient_rootcause_20260419_023139.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_ambient_rootcause_20260419_023139.txt) — runtime evidence
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — native backdrop owner
+  - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java) — compat fullscreen lifecycle hook
+  - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java) — legacy fullscreen lifecycle hook
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — disabled ambient source block
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_fullscreen_ambient_rootcause_20260419_023139.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_ambient_rootcause_20260419_023139.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - latest fullscreen runtime log already collected
+- Expected success signal:
+  - evidence clearly distinguishes whether the native backdrop patch is above or below the currently visible fullscreen owner chain, and whether ambient is truly enabled in runtime
+- Expected failure signal:
+  - analysis still cannot distinguish active owners or ambient runtime state
+- Last known log location:
+  - [live_fullscreen_ambient_rootcause_20260419_023139.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_ambient_rootcause_20260419_023139.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_native_uniform_backdrop_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_uniform_backdrop_20260419.log)
+- Recent decisions:
+  - keep PiP/recovery untouched during fullscreen analysis
+  - verify current runtime before changing fullscreen ownership again
+  - treat ambient as disabled until source/runtime proves otherwise
+- Rejected approaches:
+  - claiming ambient is enabled without source/runtime proof
+  - claiming the native backdrop patch is sufficient without checking higher visible surfaces
+- Stop point classification:
+  - runtime analyzed, no code edited after analysis, waiting on direction decision
+- What is done but unverified:
+  - none in this snapshot
+- What is verified:
+  - native backdrop hook fires on fullscreen enter/exit
+  - fullscreen still shows multiple higher-level visible surfaces while native backdrop is active
+  - old ambient source block remains disabled and un-injected
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+
 ## 2026-04-18 22:39:11 +07:00
 
 - Current phase:
@@ -33394,3 +37079,1775 @@
   - manual runtime testing on device
 - Secret required but not stored:
   - none
+
+## 2026-04-19 02:58:23 +07:00
+
+- Current phase: `Fullscreen ambient + native owner integration`
+- Current objective: `Finish the fullscreen visual-owner patch in one pass by enabling ambient and moving native ownership above root-view backgrounds, then confirm the installed device build matches the current WSL build output exactly before runtime verification.`
+- Completed since last snapshot:
+  - Re-read [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md) and the latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md).
+  - Verified actual source state for the fullscreen patch:
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) now enables and injects `kYoutubeFullscreenAmbientBackdrop` and uses `ambientState()` for `HTMLVideoElement` fullscreen.
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) now contains the overlay-based fullscreen native owner above root-view background level.
+    - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java) and [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java) still hook fullscreen enter/exit into the owner.
+  - Confirmed the latest fullscreen build artifact exists:
+    - [release_build_fullscreen_ambient_native_owner_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_ambient_native_owner_20260419.log)
+  - Installed the built APK from:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+  - Launched the app successfully with:
+    - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - Pulled the installed device APK and compared it against the WSL build output:
+    - device APK: [device_fullscreen_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_base_429000009_20260419.apk)
+    - WSL APK SHA256: `7132F488E56F0D98D1D207A1D1EF1C1E2ECA515D43E80CDE659892DF6ECA19C1`
+    - device APK SHA256: `7132F488E56F0D98D1D207A1D1EF1C1E2ECA515D43E80CDE659892DF6ECA19C1`
+  - Resolved the install-trust ambiguity:
+    - `dumpsys package` still shows `lastUpdateTime=2026-04-19 02:24:15`
+    - but the installed device APK is now proven identical to the 02:54:59 WSL build output by SHA256, so device/runtime source-of-truth is aligned.
+- In progress now:
+  - No new code edit is running.
+  - Current stop point is ready for fullscreen runtime verification on the exact installed build.
+- Blockers/risks:
+  - Ambient is enabled in source but still runtime-unverified.
+  - The higher native owner exists in source but still runtime-unverified.
+  - Until fresh fullscreen capture is taken on this exact build, no claim should be made that the visual mismatch is resolved.
+- Files/modules touched:
+  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+  - [android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+  - [browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build passed:
+    - [release_build_fullscreen_ambient_native_owner_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_ambient_native_owner_20260419.log)
+  - Install passed.
+  - Launch passed.
+  - Installed device APK hash matches WSL build output hash exactly.
+  - Runtime verification on this build: `pending`
+- Exact next concrete step:
+  - Start a fresh fullscreen runtime capture.
+  - Reproduce fullscreen steady-state and video-change behavior on the installed build.
+  - Verify:
+    - `OTB_FULLSCREEN_AMBIENT` markers
+    - `event=fullscreen_native_overlay_apply`
+    - visual result on-screen
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [release_build_fullscreen_ambient_native_owner_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_ambient_native_owner_20260419.log)
+  - [device_fullscreen_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_base_429000009_20260419.apk)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull <device base.apk path> artifacts/runtime_logs/device_fullscreen_base_429000009_20260419.apk`
+  - `Get-FileHash -Algorithm SHA256 "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `Get-FileHash -Algorithm SHA256 artifacts/runtime_logs/device_fullscreen_base_429000009_20260419.apk`
+- Tool purpose:
+  - Lock device and build artifacts together before fullscreen runtime verification.
+- Tool state:
+  - inspection complete
+  - code already edited
+  - build complete
+  - install complete
+  - device APK hash verification complete
+  - runtime verification pending
+- Expected resume command:
+  - fresh fullscreen `adb logcat` capture on the installed build
+- Expected output/artifact path:
+  - next fullscreen runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — higher fullscreen native owner
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — ambient enable/injection
+  - [release_build_fullscreen_ambient_native_owner_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_ambient_native_owner_20260419.log) — build proof
+  - [device_fullscreen_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_base_429000009_20260419.apk) — installed device proof
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs/current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs/progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+  - [release_build_fullscreen_ambient_native_owner_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_ambient_native_owner_20260419.log)
+  - [device_fullscreen_base_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_base_429000009_20260419.apk)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - ambient and native overlay markers both appear on the installed build and the fullscreen background becomes visually uniform
+- Expected failure signal:
+  - missing markers or fullscreen still visibly mismatched
+- Last known log location:
+  - [live_fullscreen_ambient_rootcause_20260419_023139.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_ambient_rootcause_20260419_023139.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_ambient_native_owner_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_ambient_native_owner_20260419.log)
+- Recent decisions:
+  - do both requested changes in one patch
+  - verify device APK by hash instead of trusting package timestamp alone
+- Rejected approaches:
+  - claiming runtime success before a fresh fullscreen capture
+  - trusting `lastUpdateTime` as sole install proof
+- Stop point classification:
+  - code edited, build passed, APK installed, device APK hash-verified, runtime not yet verified
+- What is done but unverified:
+  - fullscreen runtime behavior of ambient + raised native owner
+- What is verified:
+  - source changes exist
+  - build succeeded
+  - device APK matches WSL output exactly
+- External prerequisite:
+  - manual fullscreen runtime test on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 03:08:30 +07:00
+
+- Current phase: `Fullscreen ambient + native owner runtime verification`
+- Current objective: `Use a fresh fullscreen capture on the installed ambient+overlay build to determine whether the black-screen-on-enter symptom is caused by ambient, the root-background path, or the new higher overlay owner.`
+- Completed since last snapshot:
+  - Started and stopped fresh fullscreen capture:
+    - [live_fullscreen_patch_verify_20260419_030348.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt)
+    - [live_fullscreen_patch_verify_20260419_030348.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.err.txt)
+  - Reproduced the user-reported symptom: entering fullscreen can appear black.
+  - Verified root backdrop path still activates:
+    - [live_fullscreen_patch_verify_20260419_030348.txt:37356](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:37356)
+  - Verified the higher overlay owner is created and rendered as its own application panel:
+    - `OneTabFullscreenBackdrop$_1660` creation/relayout around [live_fullscreen_patch_verify_20260419_030348.txt:37975](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:37975)
+  - Verified all overlay applies in this run are `full_black=true had_bounds=false`:
+    - [live_fullscreen_patch_verify_20260419_030348.txt:37379](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:37379)
+    - [live_fullscreen_patch_verify_20260419_030348.txt:37857](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:37857)
+    - [live_fullscreen_patch_verify_20260419_030348.txt:38178](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:38178)
+    - [live_fullscreen_patch_verify_20260419_030348.txt:38809](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:38809)
+    - [live_fullscreen_patch_verify_20260419_030348.txt:38817](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:38817)
+    - [live_fullscreen_patch_verify_20260419_030348.txt:39240](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:39240)
+  - Verified why those overlay applies stay full-black:
+    - `cr_VideoPersist` reports `fullscreen video size is null` for every scheduled overlay refresh before video is ready.
+  - Verified the video becomes effectively fullscreen later:
+    - [live_fullscreen_patch_verify_20260419_030348.txt:39806](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:39806)
+    - [live_fullscreen_patch_verify_20260419_030348.txt:39807](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:39807)
+  - Verified there is no subsequent `fullscreen_native_overlay_apply ... had_bounds=true full_black=false` after valid video bounds arrive in this run.
+  - Verified ambient still has no runtime evidence in this capture:
+    - no `OTB_FULLSCREEN_AMBIENT` markers were emitted.
+  - Verified SurfaceFlinger/HWC sees the overlay as a real visible layer during the failing window:
+    - [live_fullscreen_patch_verify_20260419_030348.txt:40335](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:40335)
+    - [live_fullscreen_patch_verify_20260419_030348.txt:40336](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:40336)
+    - [live_fullscreen_patch_verify_20260419_030348.txt:40367](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt:40367)
+- In progress now:
+  - No code edit in progress.
+  - Current work is evidence-backed diagnosis before another fullscreen patch.
+- Blockers/risks:
+  - The higher native owner now appears to be the thing painting black over fullscreen during the failing window.
+  - Ambient still is not proven active in runtime, so it is not helping handoff or masking.
+  - If we patch again, it should be tightly scoped to overlay refresh/release timing rather than another broad fullscreen rewrite.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Installed build unchanged:
+    - [release_build_fullscreen_ambient_native_owner_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_ambient_native_owner_20260419.log)
+  - Device APK remains hash-verified against WSL output.
+  - Fresh runtime verification completed for this fullscreen symptom.
+- Exact next concrete step:
+  - Report the verified root cause to the user.
+  - If fullscreen work continues, inspect and patch only:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+      - overlay refresh scheduling
+      - positive fullscreen-video signal hookup
+      - overlay clear/transition timing
+  - Do not touch PiP/recovery work in that patch.
+- Expected resume inspection scope:
+  - [live_fullscreen_patch_verify_20260419_030348.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Stop-Process -Id 8476`
+  - `rg -n "OTB_FULLSCREEN_AMBIENT|fullscreen_native_overlay_apply|fullscreen_native_backdrop_apply|getVideoBounds|Effective video fullscreen change|Dismiss activity" artifacts/runtime_logs/live_fullscreen_patch_verify_20260419_030348.txt`
+  - `Get-Content ...live_fullscreen_patch_verify_20260419_030348.txt | Select-Object -Index (37970..40460)`
+- Tool purpose:
+  - Prove whether the new fullscreen regression is caused by the overlay owner and whether ambient is actually active.
+- Tool state:
+  - capture complete
+  - analysis complete
+  - no code edit running
+- Expected resume command:
+  - inspect `BraveActivity.java` overlay refresh hooks before any next fullscreen patch
+- Expected output/artifact path:
+  - [live_fullscreen_patch_verify_20260419_030348.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt)
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [live_fullscreen_patch_verify_20260419_030348.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt) — runtime proof of the black-screen regression
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — overlay scheduling and visibility control
+  - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) — ambient path, still lacking runtime proof
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [live_fullscreen_patch_verify_20260419_030348.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - fullscreen patch build already installed
+- Expected success signal:
+  - logs clearly distinguish overlay timing from video-ready timing
+- Expected failure signal:
+  - ambiguity remains between overlay and ambient
+- Last known log location:
+  - [live_fullscreen_patch_verify_20260419_030348.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_ambient_native_owner_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_ambient_native_owner_20260419.log)
+- Recent decisions:
+  - trust runtime evidence over design intent
+  - keep next fullscreen patch as narrow as possible
+- Rejected approaches:
+  - assuming ambient is active because it is enabled in source
+  - blaming compositor generically without checking the overlay layer
+- Stop point classification:
+  - runtime reproduced and analyzed; no corrective patch applied yet
+- What is done but unverified:
+  - ambient runtime behavior remains unverified because no markers appeared
+- What is verified:
+  - overlay becomes full-black before video bounds are ready
+  - overlay is not re-cut after valid video bounds arrive in this run
+  - fullscreen black symptom reproduces on the current build
+- External prerequisite:
+  - none for current analysis snapshot
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 03:18:40 +07:00
+
+- Current phase: `Fullscreen overlay signal fix`
+- Current objective: `Close the fullscreen black-screen regression in one narrow patch by waiting for real fullscreen bounds and re-cutting the higher native owner from a verified positive signal instead of from fixed retries alone.`
+- Completed since last snapshot:
+  - Re-read [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md) and the latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md).
+  - Confirmed from [live_fullscreen_patch_verify_20260419_030348.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt) that:
+    - overlay became visible full-black before bounds
+    - valid bounds appeared later
+    - there was no later overlay re-cut with those bounds
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - removed the forced first-time full-black overlay behavior when no bounds exist yet
+    - preserve the last valid cutout instead of switching back to a new black cover if bounds temporarily disappear
+    - added `onOneTabFullscreenVideoBoundsAvailable(...)` so a positive signal can re-cut the overlay immediately
+  - Patched the actual WSL controller source:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+    - `updateAutoPictureInPictureStatusIfNeeded()` now forwards real fullscreen bounds into `BraveActivity` when not in PiP
+  - Updated representation patch:
+    - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - Synced [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) into the WSL Brave tree and verified Windows/WSL hashes match.
+  - Build passed:
+    - [release_build_fullscreen_overlay_signal_fix_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_signal_fix_20260419.log)
+  - Install passed.
+  - Launch passed.
+  - `dumpsys package` after install:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 02:57:05`
+- In progress now:
+  - No runtime verification has been performed yet on the signal-fix build.
+  - Current stop point is ready for fresh fullscreen capture.
+- Blockers/risks:
+  - Ambient still lacks runtime proof and may still be a separate issue, but it is no longer part of the black-screen root cause patch.
+  - Until fresh runtime capture is taken, we cannot claim the fullscreen symptom is resolved.
+- Files/modules touched:
+  - [android/java/org/chromium/chrome/browser/app/BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build succeeded:
+    - [release_build_fullscreen_overlay_signal_fix_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_signal_fix_20260419.log)
+  - Install succeeded.
+  - Launch succeeded.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh fullscreen runtime capture on the installed signal-fix build.
+  - Reproduce fullscreen entry and fullscreen video-change behavior.
+  - Verify:
+    - overlay waits for bounds instead of painting a new full-black cover
+    - positive fullscreen bounds trigger `full_black=false had_bounds=true`
+    - no fullscreen black-screen-on-enter remains
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - [release_build_fullscreen_overlay_signal_fix_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_signal_fix_20260419.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Copy-Item -LiteralPath C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_fullscreen_overlay_signal_fix_20260419.log"`
+  - `adb install -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+- Tool purpose:
+  - Apply the narrow fullscreen signal fix and get it onto device for immediate runtime verification.
+- Tool state:
+  - analysis complete
+  - code edited
+  - sync complete
+  - build complete
+  - install complete
+  - runtime verification pending
+- Expected resume command:
+  - fresh fullscreen `adb logcat` capture on the signal-fix build
+- Expected output/artifact path:
+  - next fullscreen runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — fullscreen overlay owner behavior
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java` — fullscreen bounds positive signal source
+  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch) — repo representation of controller changes
+  - [live_fullscreen_patch_verify_20260419_030348.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt) — failing runtime proof used to choose the patch
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [release_build_fullscreen_overlay_signal_fix_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_signal_fix_20260419.log)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - runtime proves overlay waits for bounds and re-cuts on positive signal
+- Expected failure signal:
+  - overlay still paints a blocking black cover before valid bounds
+- Last known log location:
+  - [live_fullscreen_patch_verify_20260419_030348.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_patch_verify_20260419_030348.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_overlay_signal_fix_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_overlay_signal_fix_20260419.log)
+- Recent decisions:
+  - fix the verified overlay timing bug instead of widening scope
+  - use the controller’s real fullscreen-bounds computation as the positive signal source
+- Rejected approaches:
+  - more blind timers
+  - keeping full-black overlay during first fullscreen entry before bounds are ready
+- Stop point classification:
+  - code edited, build passed, APK installed, runtime not yet verified
+- What is done but unverified:
+  - fullscreen signal-fix runtime behavior
+- What is verified:
+  - previous black-screen root cause
+  - signal-fix build compiles and installs
+- External prerequisite:
+  - manual fullscreen runtime test on device
+- Secret required but not stored:
+  - none
+# Progress Log
+
+## 2026-04-20 12:19:30 +07:00
+
+- Current phase:
+  - `Phase 7 - locked-screen PiP auto-next trigger tracing`
+- Current objective:
+  - Determine whether the lock-screen continuation failure is upstream Java-trigger failure or something later in the PiP/restore chain.
+- Completed since last snapshot:
+  - Started and stopped a focused lock-screen capture:
+    - [live_locked_pip_autonext_20260420_121637.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_20260420_121637.txt)
+    - [live_locked_pip_autonext_20260420_121637.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_20260420_121637.err.txt)
+  - Re-checked [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java) and confirmed the lock-screen auto-next trigger still requires:
+    - locked device
+    - PiP mode
+    - hidden `WebContents`
+    - `NEXT_TRACK` available
+    - valid duration/playback rate
+    - remaining time within trigger window
+  - Verified the runtime log proves downstream handling still works when `next_track` is dispatched while hidden:
+    - `web_contents_visibility_changed visibility=0`
+    - `arm_track_navigation_keepalive command=next_track`
+    - `native_tab_bridge_command command=next_track result={\"ok\":true,...}`
+    - `track_navigation_restore_deferred ... visibility=0`
+- In progress now:
+  - No command is running.
+  - No code patch has been made for this new issue.
+- Blockers / risks:
+  - The capture filter did not include the Java tag `MediaSessionHelper`, so the root trigger marker `locked_pip_auto_next_from_position` is not observable in this log.
+  - Therefore this run does not prove whether the Java trigger fired or not.
+- Files/modules touched:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - No new build.
+  - New runtime evidence captured.
+- Exact next concrete step:
+  - Run another lock-screen capture that explicitly includes `MediaSessionHelper:I`.
+  - Reproduce the same case and inspect `locked_pip_auto_next_from_position`.
+- Expected resume inspection scope:
+  - [live_locked_pip_autonext_20260420_121637.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_20260420_121637.txt)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `adb`
+- Exact command(s):
+  - `adb logcat -c`
+  - `Start-Process adb logcat -v time chromium:I cr_OneTabTubePerf:I cr_VideoPersist:I ActivityTaskManager:I WindowManager:I MediaSessionService:I *:S`
+  - `rg -n ... live_locked_pip_autonext_20260420_121637.txt`
+  - `Stop-Process -Id 18552 -Force`
+- Tool purpose:
+  - Capture and analyze the lock-screen auto-next behavior on the affected device.
+- Tool state:
+  - completed
+- Expected resume command:
+  - new `adb logcat` capture including `MediaSessionHelper:I`
+- Expected output/artifact path:
+  - next lock-screen runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - active device build remains `429000010 / 1.90.3`
+- Primary working set:
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [live_locked_pip_autonext_20260420_121637.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_20260420_121637.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+  - [live_locked_pip_autonext_20260420_121637.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_20260420_121637.txt)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected device connected via `adb`
+  - lock-screen PiP repro available
+- Expected success signal:
+  - next capture contains `MediaSessionHelper` marker `locked_pip_auto_next_from_position`
+- Expected failure signal:
+  - trigger marker is absent even with the correct tag enabled
+- Last known log location:
+  - [live_locked_pip_autonext_20260420_121637.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_locked_pip_autonext_20260420_121637.txt)
+- Last known artifact path:
+  - [device_pip_exit_stability_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_pip_exit_stability_429000010_20260420.apk)
+- Recent decisions:
+  - do not blame the latest PiP-exit patch without evidence
+  - do not patch MediaSessionHelper blindly before capturing its tag
+- Rejected approaches:
+  - guessing from downstream markers alone
+  - rolling back unrelated PiP work
+- Stop point classification:
+  - focused runtime evidence captured; downstream chain verified; upstream trigger still unproven
+- What is done but unverified:
+  - exact upstream failure point of locked-screen auto-next
+- What is verified:
+  - downstream hidden-visibility `next_track` path still works
+  - capture config must include `MediaSessionHelper:I`
+- External prerequisite:
+  - affected device still available
+- Secret required but not stored:
+  - none
+
+## 2026-04-20 12:08:19 +07:00
+
+- Current phase:
+  - `Phase 7 - affected-device PiP exit stability patch installed`
+- Current objective:
+  - Patch the exact PiP exit sequencing identified in the affected-device handoff and prepare the build for fresh runtime proof.
+- Completed since last snapshot:
+  - Re-read the handoff and validated the recorded evidence against the real log and code.
+  - Confirmed again from [fresh_device_visual_guard_20260420_092945.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fresh_device_visual_guard_20260420_092945.txt):
+    - visual guard really activates
+    - `video_params_applied_native active=false` clears it during PiP flow
+    - `Dismiss activity with reason 7` exists independently
+    - native crash `screen_orientation_provider.cc:188` exists on the affected device
+  - Patched [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
+    - deferred PiP exit handling out of `onPictureInPictureModeChanged(false, ...)`
+    - added recent-exit tracking and suppression signal method
+  - Patched [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java):
+    - suppresses `LEFT_FULLSCREEN` / `WEB_CONTENTS_LEFT_FULLSCREEN` dismiss when the activity just exited PiP
+  - Synced both files into the WSL Brave tree.
+  - Built successfully:
+    - [release_build_pip_exit_stability_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_exit_stability_20260420.log)
+  - Installed successfully with `adb install --no-incremental -r ...`
+  - Pulled device `base.apk` and verified build/device hash match:
+    - SHA256 `7FDF16663B17E8BBCC2A06379F40A525BD04DC1177B780D352C5B308B93C9D19`
+    - device proof: [device_pip_exit_stability_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_pip_exit_stability_429000010_20260420.apk)
+- In progress now:
+  - No command is running.
+  - Runtime verification has not yet been re-run on the patched affected-device build.
+- Blockers / risks:
+  - The patch is still unverified in runtime.
+  - Visual-guard timing may still need further work later, but this round intentionally did not widen scope beyond exit sequencing.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build passed.
+  - Install passed.
+  - Device/build hash verification passed.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh affected-device `adb logcat` capture and rerun the same PiP exit / config-change repro.
+  - Look for:
+    - absence of `DCHECK failed: !entered_fullscreen`
+    - absence of launcher jump tied to `Dismiss activity with reason 7`
+    - new markers `event=pip_exit_handling_schedule ...`
+    - new markers `event=pip_exit_dismiss_suppression ...`
+- Expected resume inspection scope:
+  - [fresh_device_visual_guard_20260420_092945.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fresh_device_visual_guard_20260420_092945.txt)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+  - [release_build_pip_exit_stability_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_exit_stability_20260420.log)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `Get-Content ... fresh_device_visual_guard_20260420_092945.txt`
+  - `rg -n ... fresh_device_visual_guard_20260420_092945.txt`
+  - `Copy-Item ... BraveActivity.java -> \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\...`
+  - `Copy-Item ... BraveFullscreenVideoPictureInPictureController.java -> \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\...`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_exit_stability_20260420.log"`
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull <device-base.apk> C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\device_pip_exit_stability_429000010_20260420.apk`
+  - `Get-FileHash -Algorithm SHA256 <build-apk>`
+  - `Get-FileHash -Algorithm SHA256 <device-apk>`
+- Tool purpose:
+  - Implement and verify the narrow PiP exit stability patch against the affected-device evidence.
+- Tool state:
+  - code edited
+  - sync complete
+  - build complete
+  - install complete
+  - hash verification complete
+  - runtime verification pending
+- Expected resume command:
+  - fresh affected-device runtime capture
+- Expected output/artifact path:
+  - next affected-device runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+  - build artifact under `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) - deferred PiP exit handling
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java) - recent-exit dismiss suppression
+  - [fresh_device_visual_guard_20260420_092945.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fresh_device_visual_guard_20260420_092945.txt) - original affected-device evidence
+  - [release_build_pip_exit_stability_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_exit_stability_20260420.log) - patched build evidence
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - affected device connected via `adb`
+  - same PiP exit repro available
+- Expected success signal:
+  - no `screen_orientation_provider.cc:188` crash
+  - no launcher jump from `reason 7`
+  - new exit-sequencing markers appear in log
+- Expected failure signal:
+  - crash or launcher-dismiss still appears unchanged
+- Last known log location:
+  - [fresh_device_visual_guard_20260420_092945.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fresh_device_visual_guard_20260420_092945.txt)
+- Last known artifact path:
+  - [device_pip_exit_stability_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_pip_exit_stability_429000010_20260420.apk)
+- Recent decisions:
+  - keep the patch narrow and focused on exit sequencing
+  - prove install with hash before trusting runtime
+- Rejected approaches:
+  - widen scope into PiP entry or ambient/fullscreen visual work
+  - rebuild without fixing the crash/dismiss path
+- Stop point classification:
+  - patch implemented, build passed, installed, hash verified, runtime verification not yet run
+- What is done but unverified:
+  - runtime outcome of the PiP exit patch on the affected device
+- What is verified:
+  - affected device is on the exact patched build
+  - source changes match the intended narrow exit fix
+- External prerequisite:
+  - affected device still available for runtime retest
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 05:21:44 +07:00
+
+- Current phase:
+  - `Phase 7 — fullscreen runtime stabilization`
+- Current objective:
+  - Remove the native fullscreen blocking layer completely from runtime ownership and verify the device is actually running that exact build.
+- Completed since last snapshot:
+  - Removed the native fullscreen backdrop/overlay machinery block from [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java).
+  - Reduced the two public entry points to skip-only logs:
+    - `onOneTabFullscreenVideoBoundsAvailable(...)`
+    - `onOneTabFullscreenBackdropOwnerChanged(...)`
+  - Synced the updated file into the WSL Brave tree.
+  - Built the newest APK successfully:
+    - [release_build_fullscreen_native_layer_removed_all_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_layer_removed_all_20260419.log)
+  - Installed with `adb install --no-incremental -r ...`.
+  - Pulled device `base.apk` and verified the hash matches the built APK exactly:
+    - SHA256 `354F7C519A53ED675C949681871AE9554F626FEA0FD08F1D25756359BBD76649`
+    - device proof: [device_fullscreen_native_layer_removed_all_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_native_layer_removed_all_429000009_20260419.apk)
+- In progress now:
+  - Runtime verification has not yet been re-run on the fully removed native-layer build.
+- Blockers / risks:
+  - Without a fresh fullscreen runtime capture on this exact binary, we must not claim the symptom is fixed.
+  - Ambient remains unverified in runtime on this build.
+- Files/modules touched:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+- Build/test status:
+  - Build passed.
+  - Install passed.
+  - Device/build hash verification passed.
+  - Runtime verification pending.
+- Exact next concrete step:
+  - Start a fresh fullscreen `adb logcat` capture on the installed build and verify that only `fullscreen_native_backdrop_apply_skip ... disabled=1` markers remain.
+- Expected resume inspection scope:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - [release_build_fullscreen_native_layer_removed_all_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_layer_removed_all_20260419.log)
+  - [device_fullscreen_native_layer_removed_all_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_native_layer_removed_all_429000009_20260419.apk)
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+- Exact command(s):
+  - `Copy-Item -LiteralPath C:\\Users\\Master\\Desktop\\GO_PLAY\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\brave\\android\\java\\org\\chromium\\chrome\\browser\\app\\BraveActivity.java -Force`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_fullscreen_native_layer_removed_all_20260419.log"`
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull <device-base.apk> C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\device_fullscreen_native_layer_removed_all_429000009_20260419.apk`
+  - `Get-FileHash -Algorithm SHA256 <build-apk>`
+  - `Get-FileHash -Algorithm SHA256 <device-apk>`
+- Tool purpose:
+  - Remove the native fullscreen owner block, build it, install it safely, and prove the device is on that exact binary.
+- Tool state:
+  - code edited
+  - sync complete
+  - build complete
+  - install complete
+  - hash verification complete
+  - runtime verification pending
+- Expected resume command:
+  - fresh fullscreen `adb logcat` capture
+- Expected output/artifact path:
+  - next fullscreen runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — native fullscreen owner removed.
+  - [release_build_fullscreen_native_layer_removed_all_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_layer_removed_all_20260419.log) — newest build proof.
+  - [device_fullscreen_native_layer_removed_all_429000009_20260419.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_native_layer_removed_all_429000009_20260419.apk) — installed-binary proof.
+- Files to inspect first after resume:
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device via `adb`
+  - WSL source tree available at `/home/master/src_ext4`
+- Expected success signal:
+  - fullscreen runtime shows only disabled skip markers and no fullscreen native owner overlay.
+- Expected failure signal:
+  - fullscreen runtime still activates native fullscreen owner behavior.
+- Last known log location:
+  - [live_fullscreen_retry_verify_20260419_042204.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_retry_verify_20260419_042204.txt)
+- Last known artifact path:
+  - [release_build_fullscreen_native_layer_removed_all_20260419.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_native_layer_removed_all_20260419.log)
+- Recent decisions:
+  - Stop chasing fullscreen overlay geometry and remove the entire native owner block instead.
+  - Always use non-incremental install for fullscreen validation builds.
+- Rejected approaches:
+  - more overlay coordinate math
+  - more overlay timing retries
+  - trusting hook-only removal without removing the activity-level owner
+- Stop point classification:
+  - code edited, build passed, installed, hash verified, runtime not yet re-verified
+- What is done but unverified:
+  - fullscreen runtime behavior after full native owner removal
+- What is verified:
+  - newest build compiles
+  - device APK matches newest build exactly
+  - `BraveActivity` public fullscreen owner entry points now skip with `disabled=1`
+- External prerequisite:
+  - manual fullscreen repro on device
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 10:13:47 +07:00
+
+- Current phase:
+  - `Phase 7 - fullscreen runtime stabilization`
+- Current objective:
+  - Verify the current live fullscreen overlay repro on the installed `native-layer-removed-all` build and determine whether the symptom still belongs to the removed BraveActivity native owner path.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Confirmed the actual source still matches the recorded removal patch in `android/java/org/chromium/chrome/browser/app/BraveActivity.java`:
+    - `onOneTabFullscreenVideoBoundsAvailable(...)` logs only `fullscreen_native_backdrop_apply_skip ... disabled=1`
+    - `onOneTabFullscreenBackdropOwnerChanged(...)` logs only `fullscreen_native_backdrop_apply_skip ... disabled=1`
+  - Reconfirmed device package metadata:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 05:20:59`
+  - Reconfirmed `adb` device connectivity on `R9TRC00GA2E`.
+  - Armed a fresh filtered runtime capture:
+    - `artifacts/runtime_logs/live_fullscreen_removed_all_verify_20260419_100930.txt`
+    - `artifacts/runtime_logs/live_fullscreen_removed_all_verify_20260419_100930.err.txt`
+    - `artifacts/runtime_logs/live_fullscreen_removed_all_verify_20260419_100930.pid`
+  - Brought the app to foreground and waited for manual fullscreen repro.
+  - Stopped the capture after repro and inspected both the filtered log and the broader device logcat buffer.
+  - Verified the fresh repro does not emit any BraveActivity native overlay markers:
+    - no `OneTabTubePerf`
+    - no `cr_OneTabTubePerf`
+    - no `fullscreen_native_backdrop_apply_skip`
+    - no `fullscreen_native_backdrop_apply`
+    - no `fullscreen_native_overlay_apply`
+  - Verified fullscreen still transitions in runtime during the repro:
+    - `OTB_PIP event=media_effectively_fullscreen_changed fullscreen=1 requested=0 visibility=2`
+    - `cr_VideoPersist: Effective video fullscreen change: true`
+    - repeated `cr_VideoPersist: getVideoBounds ... computed=Rect(244, 0 - 2164, 1080)`
+  - Found the strongest new clue in system/compositor logs:
+    - `04-19 10:10:13.192 I/Layer: Layer [com.onetabtube.browser_default/ChromeChildSurface#9133] hidden!! flag(1)`
+    - SurfaceFlinger still showed the other RGBA child surface full-screen underneath it.
+  - Compared with the old failing fullscreen log and confirmed:
+    - `ChromeChildSurface` hide/unhide activity existed in the older failing path too
+    - the fresh repro differs because BraveActivity native overlay markers are now absent.
+- In progress now:
+  - The visible overlay still reproduces, but the active runtime clue now points at the child-surface/compositor path instead of the removed BraveActivity native owner path.
+- Blockers/risks:
+  - The symptom remains user-visible.
+  - Current logs prove the old native overlay markers are gone, but they do not yet identify the exact code path that hides `ChromeChildSurface` at fullscreen entry.
+  - `requested=0` during `media_effectively_fullscreen_changed fullscreen=1` suggests the fullscreen request ownership path may differ from the previously instrumented Java path.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/runtime_logs/live_fullscreen_removed_all_verify_20260419_100930.txt`
+  - `artifacts/runtime_logs/live_fullscreen_removed_all_verify_20260419_100930.err.txt`
+  - `artifacts/runtime_logs/live_fullscreen_removed_all_verify_20260419_100930.pid`
+- Build/test status:
+  - Previously verified build still stands.
+  - Installed package metadata still matches the expected build.
+  - Fresh fullscreen runtime capture completed.
+  - Fresh runtime analysis completed.
+  - Result: overlay still reproduces, but the BraveActivity native overlay path does not log during the repro.
+- Exact next concrete step:
+  - Run a broader fullscreen repro capture including `SurfaceFlinger`, `Layer`, `BufferQueueProducer`, `cr_VideoPersist`, and `chromium`.
+  - Focus analysis on why `ChromeChildSurface` gets `hidden!! flag(1)` at fullscreen entry and which surface remains full-screen underneath it.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/live_fullscreen_removed_all_verify_20260419_100930.txt`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+- Exact command(s):
+  - `adb start-server`
+  - `adb devices -l`
+  - `rg -n "fullscreen_native_|OneTabFullscreen|fullscreen overlay|backdrop_apply|overlay_apply|disabled=1" android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `adb logcat -c`
+  - `Start-Process -FilePath adb -ArgumentList @('logcat','-v','time','cr_OneTabTubePerf:I','chromium:I','*:S') -RedirectStandardOutput C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_removed_all_verify_20260419_100930.txt -RedirectStandardError C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_removed_all_verify_20260419_100930.err.txt -WindowStyle Hidden -PassThru`
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - `Stop-Process -Id (Get-Content C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_removed_all_verify_20260419_100930.pid) -Force`
+  - `adb logcat -d -v time | Select-String -Pattern 'OTB_PIP event=media_effectively_fullscreen_changed|OTB_PIP event=web_contents_visibility_changed|ChromeChildSurface|hidden!! flag\\(1\\)|Effective video fullscreen change|getVideoBounds|Dismiss activity' -Context 0,1`
+- Tool purpose:
+  - Capture the live fullscreen repro on the exact installed build and determine whether the remaining visible overlay still belongs to the removed Java native owner path.
+- Tool state:
+  - fresh capture completed
+  - fresh runtime analysis completed
+  - next direction selected
+- Expected resume command:
+  - `adb logcat -c`
+  - then start a broader capture including `SurfaceFlinger`, `Layer`, `BufferQueueProducer`, `cr_VideoPersist`, and `chromium`
+- Expected output/artifact path:
+  - next broader fullscreen runtime log under `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `artifacts/runtime_logs/live_fullscreen_removed_all_verify_20260419_100930.txt`
+    - fresh repro evidence showing fullscreen transition without BraveActivity native overlay markers
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - source of the `OTB_PIP` markers that still fire during fullscreen entry
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - now only contains skip-only native overlay entry points and no longer explains the visible overlay symptom
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/runtime_logs/live_fullscreen_removed_all_verify_20260419_100930.txt`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device visible to `adb`
+  - manual fullscreen repro on the connected device
+  - installed build `429000009 / 1.90.3`
+- Expected success signal:
+  - broader runtime evidence identifies why `ChromeChildSurface` is hidden at fullscreen entry and which remaining surface produces the visible overlay.
+- Expected failure signal:
+  - broader capture still shows the child surface being hidden but without enough evidence to map the behavior back to a repo-visible code path.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_removed_all_verify_20260419_100930.txt`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_removed_all_verify_20260419_100930.txt`
+- Recent decisions:
+  - Trust the fresh runtime capture over the older assumption that the remaining overlay must still be the BraveActivity native owner.
+  - Treat `ChromeChildSurface hidden!! flag(1)` as the strongest current clue.
+- Rejected approaches:
+  - claiming the native overlay removal failed without fresh evidence
+  - continuing to patch BraveActivity native overlay code even though the new repro does not log that path
+  - re-scanning the whole repo instead of following the new runtime clue into the child-surface/compositor path
+- Stop point classification:
+  - fresh capture completed and analyzed; overlay still reproduces; next step is broader surface/compositor capture
+- What is done but unverified:
+  - exact repo-visible code path responsible for hiding `ChromeChildSurface` at fullscreen entry
+- What is verified:
+  - fullscreen still transitions on the current build
+  - `cr_VideoPersist` still computes positive fullscreen bounds
+  - BraveActivity native overlay markers do not appear in the fresh repro
+  - `ChromeChildSurface#9133` is hidden by the compositor at fullscreen entry during the fresh repro
+- External prerequisite:
+  - another manual fullscreen repro when running the broader compositor-focused capture
+- Secret required but not stored:
+  - none
+
+## 2026-04-19 10:30:44 +07:00
+
+- Current phase:
+  - `Phase 7 - fullscreen rollback to recorded baseline`
+- Current objective:
+  - Restore the fullscreen system to commit `a2f46c9883151bbb2a9b99cdec3f3aab16be3408` only, rebuild it, and make sure the connected device is actually running that rebuilt baseline binary.
+- Completed since last snapshot:
+  - Re-read `docs/current-status.md` and the latest `docs/progress-log.md` entry before continuing.
+  - Confirmed `HEAD` is still `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`.
+  - Inspected fullscreen-only local modifications against `HEAD` and narrowed the rollback scope to:
+    - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java`
+    - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java`
+    - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+    - active WSL controller source at `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - Reverted the repo-visible fullscreen-only changes back to the recorded baseline:
+    - removed the skip-only fullscreen backdrop hooks and PiP playback-focus recovery hook from `BraveActivity.java`
+    - removed the extra no-op `onEnterFullscreen(...)` overrides from both Brave fullscreen HTML API handler classes
+    - disabled fullscreen ambient backdrop injection again in `youtube_script_injector_tab_helper.cc`
+    - restored the tracked controller patch file to its recorded baseline content
+  - Reverted the active WSL controller source away from the newer `maybeRecoverVideoFocusWhilePlaying(...)` branch:
+    - removed `maybeRecoverVideoFocusWhilePlaying(...)`
+    - restored the older direct fullscreen re-request path in `dismissActivityIfNeeded(...)`
+    - removed the extra `mediaStartedPlaying(...)` recovery hook
+  - Synced the reverted Brave-side fullscreen files into the WSL build tree.
+  - Verified no remaining content diff against `HEAD` in the repo-visible fullscreen working set:
+    - `git diff --ignore-cr-at-eol --exit-code -- ...` returned `NO_CONTENT_DIFF`
+    - `git status` still shows `M` on those files because of working-tree line-ending behavior, but not because fullscreen content still differs
+  - Verified the active WSL tree no longer contains the newer fullscreen symbols:
+    - no `maybeRecoverVideoFocusWhilePlaying`
+    - no `onPictureInPicturePlaybackFocusLostWhilePlaying`
+    - no `ExecuteJavaScript(kYoutubeFullscreenAmbientBackdrop`
+    - no `fullscreen_native_backdrop_apply_skip`
+  - Rebuilt successfully:
+    - `artifacts/android_build/release_build_fullscreen_revert_to_a2f46_20260419.log`
+  - Installed the rebuilt APK with `adb install --no-incremental -r`.
+  - Rechecked installed package metadata:
+    - `versionCode=429000009`
+    - `versionName=1.90.3`
+    - `lastUpdateTime=2026-04-19 10:29:37`
+  - Pulled device `base.apk` and verified build/device hashes match exactly:
+    - build SHA256 `C883C39CB28D817A2E0CD01968F66BA5264F24EAB23506443585209D7F307A22`
+    - device SHA256 `C883C39CB28D817A2E0CD01968F66BA5264F24EAB23506443585209D7F307A22`
+    - device proof: `artifacts/runtime_logs/device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+- In progress now:
+  - Rollback/build/install/hash verification is complete.
+  - The restored fullscreen baseline has not yet been smoke-tested manually in runtime during this session.
+- Blockers/risks:
+  - Runtime fullscreen behavior on the restored baseline is still unverified.
+  - `git status` on the repo-visible fullscreen files remains noisy because of line-ending/worktree behavior even though content diff is clear.
+- Files/modules touched:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java`
+  - `android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `patches/chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+  - `artifacts/android_build/release_build_fullscreen_revert_to_a2f46_20260419.log`
+  - `artifacts/runtime_logs/device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+- Build/test status:
+  - release build passed
+  - non-incremental install passed
+  - build/device SHA256 verification passed
+  - runtime fullscreen smoke test pending
+- Exact next concrete step:
+  - Launch the currently installed build and manually smoke-test fullscreen on the restored baseline.
+  - If the issue still reproduces, capture a fresh runtime log from this restored baseline before changing fullscreen code again.
+- Expected resume inspection scope:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/release_build_fullscreen_revert_to_a2f46_20260419.log`
+  - `artifacts/runtime_logs/device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `adb`
+  - `wsl`
+- Exact command(s):
+  - `git diff -- <fullscreen files>`
+  - `git show HEAD:<path>`
+  - `Copy-Item -LiteralPath <repo file> -Destination \\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\<path> -Force`
+  - `wsl bash -lc "sed -n '720,805p' /home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java"`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_fullscreen_revert_to_a2f46_20260419.log"`
+  - `adb install --no-incremental -r "\\\\wsl.localhost\\Ubuntu\\home\\master\\src_ext4\\out\\android_Release_arm64_multiabi\\apks\\OneTabTube.apk"`
+  - `adb shell dumpsys package com.onetabtube.browser_default | Select-String -Pattern 'versionCode=|versionName=|lastUpdateTime='`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull <device-base.apk> C:\\Users\\Master\\Desktop\\GO_PLAY\\artifacts\\runtime_logs\\device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+  - `Get-FileHash -Algorithm SHA256 <build-apk>`
+  - `Get-FileHash -Algorithm SHA256 <device-apk>`
+- Tool purpose:
+  - Restore fullscreen code to the recorded baseline in both source trees and prove the device is running that rebuilt baseline binary.
+- Tool state:
+  - source rollback complete
+  - WSL sync complete
+  - rebuild complete
+  - install complete
+  - hash verification complete
+  - runtime smoke test pending
+- Expected resume command:
+  - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - then perform manual fullscreen smoke test
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_revert_to_a2f46_20260419.log`
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - restored fullscreen/PiP behavior to recorded baseline content
+  - `browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+    - restored fullscreen ambient behavior to recorded baseline content
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java`
+    - restored active controller behavior to the recorded baseline branch
+  - `artifacts/android_build/release_build_fullscreen_revert_to_a2f46_20260419.log`
+    - rebuild evidence
+  - `artifacts/runtime_logs/device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+    - installed-binary proof
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/release_build_fullscreen_revert_to_a2f46_20260419.log`
+  - `artifacts/runtime_logs/device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - connected device visible to `adb`
+  - WSL build tree available
+- Expected success signal:
+  - source is back on the recorded baseline, build passes, and device hash matches the rebuilt APK.
+- Expected failure signal:
+  - rebuild fails on missing restored symbol/hook, or device hash differs after install.
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_revert_to_a2f46_20260419.log`
+- Last known artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_revert_to_a2f46_429000009_20260419.apk`
+- Recent decisions:
+  - Use commit `a2f46...` itself as the fullscreen source of truth.
+  - Revert only fullscreen-related changes and leave unrelated workspace changes alone.
+  - Re-verify install by hash because versionCode/versionName stayed the same.
+- Rejected approaches:
+  - reverting unrelated changes outside fullscreen scope
+  - trusting install success without device/build hash proof
+  - leaving newer fullscreen recovery hooks in place while calling the build "baseline"
+- Stop point classification:
+  - fullscreen rollback applied, rebuilt, installed, and hash-verified; runtime smoke test not yet rerun
+- What is done but unverified:
+  - actual user-visible fullscreen behavior on the restored baseline build
+- What is verified:
+  - repo-visible fullscreen content matches the recorded baseline logically
+  - WSL fullscreen symbols from the newer branch are gone
+  - release build succeeded
+  - device APK matches rebuilt APK exactly
+- External prerequisite:
+  - manual fullscreen smoke test on the connected device
+- Secret required but not stored:
+  - none
+
+## Snapshot - 2026-04-19 13:48:33 +07:00
+
+- Current phase:
+  - `Phase 7 - widest-device release build`
+- Task/objective:
+  - Build the next release target from the installed-device baseline as `429000010` while widening APK ABI coverage to the broadest practical Android device set (`arm64-v8a + armeabi-v7a`).
+- Completed since last snapshot:
+  - Confirmed the pre-change output APK was still the baseline artifact and still `arm64-v8a` only.
+  - Patched the active WSL build graph in:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\chrome_public_apk_tmpl.gni`
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - Bumped the active WSL release target to `android_override_version_code="429000010"` in:
+    - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn`
+  - Fixed two new secondary-toolchain blockers:
+    - exported `PYTHONPATH=/home/master/src_ext4/brave/script` for Python build actions
+    - normalized CRLF to LF for 18 ARM assembly source files under `third_party/libvpx/source/libvpx/**/arm/*.asm`
+  - Resumed the long-running `ninja` build twice and verified the secondary ARM toolchain is actively compiling:
+    - first long run advanced to roughly `[19167/39677]`
+    - second long run advanced to roughly `[7610/20419]`
+- In progress now:
+  - The dual-ABI build is still compiling-heavy and has not reached final APK packaging before the tool timeout.
+  - The output `OneTabTube.apk` has not changed yet and is still the old single-ABI baseline artifact.
+- Blockers/risks:
+  - Current blocker is wall-clock build duration.
+  - Because the output APK has not changed, updater metadata / Firestore / release staging must remain on `429000009`.
+  - The multi-ABI packaging edits are WSL-only right now; tracked repo patch mirrors still need to be updated later if the build succeeds.
+- Files/modules touched:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\chrome_public_apk_tmpl.gni`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\third_party\libvpx\source\libvpx\**\arm\*.asm`
+  - `artifacts/android_build/release_build_multiabi_429000010_20260419.log`
+  - `docs/current-status.md`
+  - `docs/progress-log.md`
+- Build/test status:
+  - `GN` regeneration succeeds with the new multi-ABI packaging logic.
+  - Secondary ARM compile path is active.
+  - Previous blockers from `brave_chromium_utils` imports and `libvpx` assembly CRLF are resolved.
+  - Final release packaging is still incomplete.
+  - Current APK at `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk` remains:
+    - `arm64-v8a` only
+    - old baseline hash / old baseline artifact
+- Exact next concrete step:
+  - Resume the exact same WSL `ninja` command with the same `PYTHONPATH` export until `chrome_public_apk` fully completes.
+  - Then inspect the resulting APK and verify:
+    - `versionCode=429000010`
+    - both `arm64-v8a` and `armeabi-v7a` are packaged
+- Expected resume inspection scope:
+  - `artifacts/android_build/release_build_multiabi_429000010_20260419.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\chrome_public_apk_tmpl.gni`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Current tool(s):
+  - `shell_command`
+  - `multi_tool_use.parallel`
+  - `apply_patch`
+  - `wsl`
+- Exact command(s):
+  - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee -a /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_multiabi_429000010_20260419.log"`
+  - `wsl bash -lc "set -euo pipefail; cd /home/master/src_ext4 && find third_party/libvpx/source/libvpx -path '*arm/*.asm' -type f -print0 | xargs -0 sed -i 's/\\r$//'"`
+- Tool purpose:
+  - Finish the widened dual-ABI release build and verify the actual packaged APK.
+- Tool state:
+  - compile resumed twice
+  - no build process currently left running
+  - final artifact still unchanged
+- Expected resume command:
+  - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee -a /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_multiabi_429000010_20260419.log"`
+- Expected output/artifact path:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_multiabi_429000010_20260419.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Repo root / working directory:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Current branch:
+  - `publish/go_play-sync-20260402`
+- Base commit / HEAD seen:
+  - `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+- Build flavor / target:
+  - `out/android_Release_arm64_multiabi`
+  - `chrome_public_apk`
+- Primary working set:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\chrome_public_apk_tmpl.gni` - OneTabTube secondary ABI packaging
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\BUILD.gn` - secondary-toolchain `libchrome` / crashpad wiring
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn` - active target `429000010`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\third_party\libvpx\source\libvpx\**\arm\*.asm` - normalized ARM assembly sources
+  - `artifacts/android_build/release_build_multiabi_429000010_20260419.log` - current build evidence
+- Files to inspect first after resume:
+  - `docs/current-status.md`
+  - latest entry in `docs/progress-log.md`
+  - `artifacts/android_build/release_build_multiabi_429000010_20260419.log`
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Command run from:
+  - `C:\Users\Master\Desktop\GO_PLAY`
+- Prerequisites before command:
+  - WSL tree mounted and accessible
+  - keep `PYTHONPATH=/home/master/src_ext4/brave/script` on the build command
+  - enough machine time for a long Chromium build
+- Expected success signal:
+  - `ninja` exits `0`
+  - APK hash changes from the old baseline
+  - APK packages both `arm64-v8a` and `armeabi-v7a`
+  - APK reports `versionCode=429000010`
+- Expected failure signal:
+  - a new compile or link failure appears in the appended log
+  - or the command times out again while the APK remains unchanged
+- Last known log location:
+  - `C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_multiabi_429000010_20260419.log`
+- Last known artifact path:
+  - `\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+- Recent decisions:
+  - target a single dual-ABI APK rather than changing runtime logic
+  - fix build-environment blockers first instead of downgrading to a narrower fallback artifact immediately
+  - keep live updater metadata untouched until a real artifact exists
+- Rejected approaches:
+  - pretending the unchanged APK is the new release
+  - publishing `429000010` metadata before the artifact is real
+  - assuming `enable_android_secondary_abi=true` alone solved packaging
+- Stop point classification:
+  - multi-ABI build wiring applied; compile resumed twice; tool timeout hit again; output APK still unchanged
+- What is done but unverified:
+  - full `ninja` completion for the dual-ABI build
+  - final packaged ABI list and final versionCode for the new APK
+- What is verified:
+  - secondary ARM compilation is active
+  - `PYTHONPATH` fix and `libvpx` line-ending fix removed the earlier hard blockers
+  - the current output APK is still the old baseline artifact
+- External prerequisite:
+  - none
+- Secret required but not stored:
+  - none
+- `2026-04-20 16:33:13 +07:00` — Phase 7: candidate timeline restore build
+  - Objective:
+    - restore the current code and rebuild release from the `latest known-good pre-fullscreen-native-layer` candidate timeline
+    - anchor the runtime back to the `00:47/00:54 -> before 02:23:47` state instead of the post-rollback tree
+  - What I found before changing code:
+    - the active WSL source-of-truth still diverged from the intended candidate state
+    - WSL `BraveActivity.java` did not yet contain `onPictureInPicturePlaybackFocusLostWhilePlaying(...)`
+    - WSL media helpers still contained later `2026-04-20` experiment markers:
+      - `locked_pip_controllability_hold`
+      - `locked_pip_playback_recovery`
+    - if we built from that WSL tree again, we would recreate the same mixed post-rollback artifact
+  - Chain decision:
+    - keep the candidate reconstruction narrow and system-level:
+      - baseline behavior around `a2f46c9883151bbb2a9b99cdec3f3aab16be3408`
+      - plus the `2026-04-19 00:54:25 +07:00` playback-focus-loss recovery additions
+      - explicitly excluding later fullscreen native-layer experiments
+      - explicitly excluding later `2026-04-20` lock-screen media-session experiments
+  - Source changes applied:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+      - re-added `OTB_PIP_PLAYBACK_FOCUS_LOSS_DEBOUNCE_MS`
+      - re-added playback-focus-loss debounce fields
+      - re-added `onPictureInPicturePlaybackFocusLostWhilePlaying(...)`
+    - WSL Chromium controller already contained:
+      - `maybeRecoverVideoFocusWhilePlaying(...)`
+      - `mediaStartedPlaying(...)` -> `maybeRecoverVideoFocusWhilePlaying(...)`
+    - synced the candidate working set from Windows repo into WSL source-of-truth:
+      - `brave/android/.../BraveActivity.java`
+      - `brave/android/.../BraveFullscreenVideoPictureInPictureController.java`
+      - `brave/android/.../BraveYouTubeScriptInjectorNativeHelper.java`
+      - `components/.../BraveMediaSessionHelper.java`
+      - `components/.../MediaSessionHelper.java`
+    - normalized CRLF -> LF on the synced WSL Java files with `sed -i 's/\r$//'`
+    - updated [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch) so the repo-side representation matches the helper-based fullscreen-loss recovery branch again
+  - Verification before build:
+    - WSL `BraveActivity.java` now reports:
+      - `OTB_PIP_PLAYBACK_FOCUS_LOSS_DEBOUNCE_MS`
+      - `onPictureInPicturePlaybackFocusLostWhilePlaying(...)`
+    - WSL `BraveMediaSessionHelper.java` and `MediaSessionHelper.java` no longer contain:
+      - `locked_pip_controllability_hold`
+      - `locked_pip_playback_recovery`
+    - WSL `FullscreenVideoPictureInPictureController.java` still contains:
+      - `maybeRecoverVideoFocusWhilePlaying(...)`
+      - `mediaStartedPlaying(...)` recovery trigger
+  - Build:
+    - command:
+      - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_candidate_restore_20260420.log"`
+    - result:
+      - build passed
+      - log: [release_build_candidate_restore_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_candidate_restore_20260420.log)
+  - Artifact verification:
+    - copied build artifact to:
+      - [OneTabTube_candidate_restore_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_candidate_restore_429000010_20260420.apk)
+    - `aapt dump badging` reports:
+      - `package: name='com.onetabtube.browser_default' versionCode='429000010' versionName='1.90.3'`
+      - `native-code: 'arm64-v8a' 'armeabi-v7a'`
+    - build SHA256:
+      - `2C7AE70250BD066D32A62B61864326C2C371FD171619979E7AA78EF26250ADBE`
+  - Install and device proof:
+    - install command:
+      - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_candidate_restore_429000010_20260420.apk`
+    - install result:
+      - `Success`
+    - device:
+      - `R9TRC00GA2E`
+    - device package state:
+      - `versionCode=429000010`
+      - `versionName=1.90.3`
+      - `lastUpdateTime=2026-04-20 16:32:24`
+    - pulled installed `base.apk` to:
+      - [device_candidate_restore_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_candidate_restore_429000010_20260420.apk)
+    - pulled APK SHA256:
+      - `2C7AE70250BD066D32A62B61864326C2C371FD171619979E7AA78EF26250ADBE`
+    - conclusion:
+      - device-installed APK is byte-identical to the rebuilt candidate artifact
+  - Files/modules touched:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+    - WSL:
+      - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+      - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+      - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/youtube_script_injector/BraveYouTubeScriptInjectorNativeHelper.java`
+      - `/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java`
+      - `/home/master/src_ext4/components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java`
+      - `/home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java`
+    - [release_build_candidate_restore_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_candidate_restore_20260420.log)
+    - [OneTabTube_candidate_restore_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_candidate_restore_429000010_20260420.apk)
+    - [device_candidate_restore_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_candidate_restore_429000010_20260420.apk)
+  - Build/test status:
+    - build passed
+    - install passed
+    - device hash proof passed
+    - runtime verification on the rebuilt candidate build not run yet
+  - Blockers/risks:
+    - no build blocker now
+    - remaining unknown is pure runtime behavior on the rebuilt candidate artifact
+    - exact historical debounce interval from the original `00:54` state is still reconstructed rather than directly recovered
+  - Next concrete step:
+    - run `fresh capture` on the rebuilt candidate artifact and validate:
+      - PiP entry
+      - mid-play focus-loss recovery
+      - visual guard
+      - lock-screen continuity
+      - unlock `recoveryPIP`
+  - Stop point:
+    - candidate-timeline code restored
+    - WSL source-of-truth synced
+    - release built
+    - APK installed and hash-verified on device
+    - runtime still unverified on this rebuilt state
+- `2026-04-20 16:48:49 +07:00` — Direction lock after candidate-restore verification
+  - The rebuilt candidate `429000010` remains the correct lineage checkpoint for the restored PiP/fullscreen baseline, but it should not be treated as the final visual-guard target.
+  - Confirmed with operator feedback that the right reconstruction strategy is now:
+    - keep the restored current timeline as the PiP/fullscreen baseline
+    - restore only the visual-guard layer from the later `a2f46... / ~2026-04-19 12:28` period
+  - Engineering rule for the next patch:
+    - do broad chain analysis first
+    - inspect the full ownership flow across `BraveActivity`, controller, `tab_helper`, native guard, page-side guard, and clear paths
+    - then graft only the visual-guard-specific logic back into the current baseline
+    - do not transplant later logic blindly or pull unrelated timing/ownership changes across layers
+  - This direction is now the source-of-truth plan for the next code-edit round.
+- `2026-04-20 17:07:30 +07:00` — Visual-guard owner narrowing on top of the restored baseline
+  - Objective:
+    - keep the restored `PiP/fullscreen` baseline intact and narrow only the extra visual-guard owner that current runtime evidence shows is overlapping the existing carry-forward/native-fullscreen chain
+  - What I verified before editing:
+    - current `tab_helper` visual-guard core is already close to `a2f46...`
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) already contains:
+      - `window.__onetabtubeSetPipRecoveryVisualGuard`
+      - `MaybeArmTrackNavigationRestoreFromCarryForwardIntent()`
+      - `carry_forward_restore_check`
+      - deferred clear logic for `SetPictureInPictureRecoveryVisualGuard(false)`
+    - the meaningful remaining delta is in [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java), where the restored candidate still kept the later `onPictureInPicturePlaybackFocusLostWhilePlaying(...)` hook
+    - the runtime proof in [live_candidate_restore_verify_20260420_164201.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_candidate_restore_verify_20260420_164201.txt) shows that hook asserting guard ownership during:
+      - `playback_focus_lost_while_playing_web_contents_left_fullscreen_*`
+      - `playback_focus_lost_while_playing_media_started_playing_*`
+      while the baseline recovery chain is already active or about to own the transition
+  - Chain decision:
+    - keep `tab_helper` guard ownership unchanged
+    - keep `native` guard ownership unchanged for the main chain
+    - narrow only the `playback-focus-loss` hook so it escalates recovery without becoming a second guard owner
+  - Source change applied:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+      - in `onPictureInPicturePlaybackFocusLostWhilePlaying(...)`
+      - removed direct `requestPictureInPictureRecoveryVisualGuard(...)`
+      - kept `cancelPictureInPictureSignalRefresh(...)`
+      - kept `schedulePictureInPictureRecovery(...)`
+      - added log:
+        - `event=pip_playback_focus_loss_recovery_guard source=%s owner=recovery_chain_only`
+  - WSL/source-of-truth sync:
+    - synced the patched file to:
+      - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - normalized line endings with `sed -i 's/\r$//'`
+  - Build:
+    - command:
+      - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_visual_guard_owner_narrow_20260420.log"`
+    - result:
+      - build passed
+      - log: [release_build_visual_guard_owner_narrow_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_visual_guard_owner_narrow_20260420.log)
+  - Files/modules touched:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs/current-status.md)
+    - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - Build/test status:
+    - build passed
+    - install not run yet
+    - runtime verification not run yet
+  - Blockers/risks:
+    - `native` still intentionally owns guard in the baseline chain
+    - this patch only narrows the extra playback-focus-loss owner
+    - runtime proof is still required before claiming the overlap is fixed
+  - Next concrete step:
+    - install the narrow owner build to the device
+    - run `fresh capture`
+    - verify that `playback_focus_lost_while_playing_*` no longer becomes a second visual-guard owner during auto-advance/manual-next
+  - Stop point:
+    - code edited
+    - WSL source-of-truth synced
+    - build passed
+    - install not yet done
+    - runtime not yet verified on the new owner-narrow build
+- `2026-04-20 17:26:30 +07:00` — Installed owner-narrow build and started fresh runtime capture
+  - Objective:
+    - deploy the narrow visual-guard-owner build to the device and collect runtime evidence on the exact binary now installed
+  - Completed since last snapshot:
+    - copied WSL output APK to:
+      - [OneTabTube_visual_guard_owner_narrow_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_visual_guard_owner_narrow_429000010_20260420.apk)
+    - local artifact SHA256:
+      - `E72D5A5330D6B72D4E7C2973AC1B89BBBB004CF8C9F0B67F7C82263D0AE25952`
+    - installed with:
+      - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_visual_guard_owner_narrow_429000010_20260420.apk`
+    - install result:
+      - `Success`
+    - verified package state:
+      - `versionCode=429000010`
+      - `versionName=1.90.3`
+      - `lastUpdateTime=2026-04-20 17:24:47`
+    - pulled device `base.apk` to:
+      - [device_visual_guard_owner_narrow_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_visual_guard_owner_narrow_429000010_20260420.apk)
+    - pulled APK SHA256:
+      - `E72D5A5330D6B72D4E7C2973AC1B89BBBB004CF8C9F0B67F7C82263D0AE25952`
+    - conclusion:
+      - the device-installed APK is byte-identical to the fresh owner-narrow build artifact
+    - launched the app and started a fresh runtime capture:
+      - [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt)
+      - [live_visual_guard_owner_narrow_verify_20260420_172519.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.err.txt)
+    - verified the capture is actually growing before stopping work:
+      - latest observed length `25298`
+      - latest lines include `cr_OneTabTubePerf` and `cr_VideoPersist`
+  - In progress now:
+    - capture is running and waiting for operator reproduction on the installed owner-narrow build
+  - Files/modules touched:
+    - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs/current-status.md)
+    - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - Build/test status:
+    - build passed
+    - install passed
+    - device hash proof passed
+    - runtime capture started and confirmed growing
+  - Exact next concrete step:
+    - let the operator reproduce the target PiP/visual-guard flow on the running capture
+    - then stop capture and inspect:
+      - `owner=recovery_chain_only`
+      - `playback_focus_lost_while_playing_*`
+      - `pip_recovery_visual_guard`
+      - `pip_native_visual_guard_apply`
+      - `carry_forward_restore_check`
+  - Current tool(s):
+    - `shell_command`
+    - `adb`
+  - Exact command(s):
+    - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_visual_guard_owner_narrow_429000010_20260420.apk`
+    - `adb shell dumpsys package com.onetabtube.browser_default | Select-String 'versionCode=|versionName=|lastUpdateTime='`
+    - `adb shell pm path com.onetabtube.browser_default`
+    - `adb pull <device base.apk> artifacts\\runtime_logs\\device_visual_guard_owner_narrow_429000010_20260420.apk`
+    - `adb logcat -c`
+    - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+    - `adb logcat -v threadtime cr_OneTabTubePerf:I cr_VideoPersist:I BravePipWrapper:I MediaSessionHelper:I AndroidRuntime:E chromium:I *:S`
+  - Tool purpose:
+    - ensure the device really runs the new owner-narrow build and capture runtime proof on that exact binary
+  - Tool state:
+    - `adb logcat` is currently running in the background
+  - Expected resume command:
+    - stop the running capture and inspect the new log after reproduction
+  - Expected output/artifact path:
+    - [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt)
+  - Repo root / working directory:
+    - `C:\Users\Master\Desktop\GO_PLAY`
+  - Current branch:
+    - `publish/go_play-sync-20260402`
+  - Base commit / HEAD seen:
+    - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+  - Build flavor / target:
+    - `out/android_Release_arm64_multiabi`
+    - `chrome_public_apk`
+  - Primary working set:
+    - [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt) - active runtime proof for the installed owner-narrow build
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) - narrowed playback-focus-loss owner
+  - Files to inspect first after resume:
+    - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs/current-status.md)
+    - latest [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md) entry
+    - [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt)
+  - Command run from:
+    - `C:\Users\Master\Desktop\GO_PLAY`
+  - Prerequisites before command:
+    - connected adb device
+  - Expected success signal:
+    - runtime proves the owner overlap is gone and the target guard flow is healthier on the fresh build
+  - Expected failure signal:
+    - runtime still shows the same overlap or new regressions on the installed owner-narrow build
+  - Last known log location:
+    - [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt)
+  - Last known artifact path:
+    - [OneTabTube_visual_guard_owner_narrow_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_visual_guard_owner_narrow_429000010_20260420.apk)
+  - Recent decisions:
+    - verify the device-installed binary by hash before trusting runtime evidence
+  - Rejected approaches:
+    - assuming `adb install -r` reused the correct binary without proof
+  - Stop point:
+    - install passed
+    - device hash verified
+    - runtime capture running
+    - waiting operator reproduction
+- `2026-04-20 17:33:40 +07:00` — Owner narrowing verified; PiP still drops through dismiss reason 7
+  - Objective:
+    - analyze the fresh runtime capture from the installed owner-narrow build and determine whether the extra playback-focus-loss guard owner was removed without regressing the flow
+  - Capture analyzed:
+    - [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt)
+  - What was verified:
+    - the new log contains:
+      - `event=pip_playback_focus_loss_recovery_guard source=web_contents_left_fullscreen owner=recovery_chain_only`
+    - this proves the playback-focus-loss hook no longer requests guard directly
+    - the old extra owner overlap is therefore removed
+  - What still failed:
+    - PiP dropped once without app crash
+    - the failing sequence shows:
+      - `Dismiss activity with reason 7`
+      - `PiP playback focus recovery source=web_contents_left_fullscreen activeFullscreen=false requested=false playing=true`
+      - re-request fullscreen
+      - `owner=recovery_chain_only`
+      - recovery chain generation `3`
+      - probe/finalize retries
+      - `event=pip_recovery_chain_finish ... success=false`
+      - later a separate `native_fullscreen_signal_while_in_pip` chain succeeds
+    - the actual PiP drop happens later when the log shows:
+      - `media_effectively_fullscreen_changed fullscreen=0 requested=0 visibility=2`
+      - `Dismiss activity with reason 7`
+      - `Exited picture in picture with reason: 7`
+      - `Framework exited picture in picture`
+  - Conclusion:
+    - the owner-narrow patch did what it was supposed to do
+    - but a different root cause remains:
+      - fullscreen-loss / dismiss path can still exit PiP through `reason 7`
+    - this is not an app crash
+    - and it is no longer evidence of the old extra guard-owner overlap
+  - Files/modules touched:
+    - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+    - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - Build/test status:
+    - build passed
+    - install passed
+    - device hash proof passed
+    - runtime capture completed and analyzed
+  - Exact next concrete step:
+    - inspect the controller/fullscreen-loss exit path around:
+      - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+      - and the corresponding WSL Chromium controller
+    - determine why `reason 7` still exits PiP after the recovery chain finishes or while fullscreen is temporarily lost
+  - Current tool(s):
+    - `shell_command`
+    - `adb`
+    - `rg`
+  - Tool state:
+    - no active process left running
+  - Stop point:
+    - runtime proof gathered
+    - owner narrowing verified
+    - next fix not yet started
+- `2026-04-20 17:51:48 +07:00` — Broadened fullscreen-loss hold on top of the verified owner-narrow baseline
+  - Objective:
+    - patch the surviving `dismiss/fullscreen-loss -> reason 7` PiP exit path without undoing the already-verified visual-guard owner narrowing
+  - What I verified before editing:
+    - [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt) proves:
+      - first `reason 7` event enters recovery and is ignored
+      - later `reason 7` event exits PiP directly
+      - no crash occurs
+    - the actual runtime chain is:
+      - `DismissActivityOnWebContentsObserver.hasEffectivelyFullscreenVideoChange(false)`
+      - `dismissActivityIfNeeded(... WEB_CONTENTS_LEFT_FULLSCREEN)`
+      - conditional recovery branch
+      - default Chromium dismiss path if not intercepted
+    - in the real runtime controller the interception gate was still:
+      - `activity.isInPictureInPictureMode() && mIsPlaying`
+    - so the surviving failure is consistent with a transient `mIsPlaying=false` / `not playing` state causing the second fullscreen-loss event to fall through to exit
+  - Chain decision:
+    - keep the owner-narrow patch
+    - do not touch `tab_helper` core
+    - broaden fullscreen-loss interception at the actual runtime controller layer so PiP session keepalive is decided by:
+      - active PiP session
+      - `shouldPreserveVideoPresentationForPictureInPictureControls()`
+      - presence of `WebContents`
+      - fullscreen actually being lost
+    - not by `mIsPlaying` alone
+  - Source changes applied:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+      - added `onPictureInPictureFullscreenLostWhileInPictureInPicture(...)`
+      - factored shared recovery escalation into `requestPictureInPictureFocusRecovery(...)`
+      - preserved `owner=recovery_chain_only`
+    - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+      - aligned local wrapper semantics with the broader fullscreen-loss hold logic
+    - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
+      - updated representation to reflect the broader fullscreen-loss recovery path
+    - WSL runtime source:
+      - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+      - added `maybeRecoverFullscreenLossWhileInPictureInPicture(...)`
+      - changed `dismissActivityIfNeeded(...)` to route `LEFT_FULLSCREEN` / `WEB_CONTENTS_LEFT_FULLSCREEN` through that helper
+      - added `mediaStartedPlaying` / `mediaStoppedPlaying` logs for next verification
+  - WSL/source-of-truth sync:
+    - synced:
+      - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+      - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java`
+    - WSL Chromium controller edited in place via [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
+  - Build:
+    - command:
+      - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_reason7_fullscreen_loss_hold_20260420.log"`
+    - result:
+      - build passed
+      - log: [release_build_reason7_fullscreen_loss_hold_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_reason7_fullscreen_loss_hold_20260420.log)
+  - Install and artifact proof:
+    - copied artifact to:
+      - [OneTabTube_reason7_fullscreen_loss_hold_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_reason7_fullscreen_loss_hold_429000010_20260420.apk)
+    - build SHA256:
+      - `05075773760E81A9E8AF452673A840B2C05414BD633C3A4DA3A708CD34429D80`
+    - install command:
+      - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_reason7_fullscreen_loss_hold_429000010_20260420.apk`
+    - install result:
+      - `Success`
+    - pulled device APK:
+      - [device_reason7_fullscreen_loss_hold_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_reason7_fullscreen_loss_hold_429000010_20260420.apk)
+    - device SHA256:
+      - `05075773760E81A9E8AF452673A840B2C05414BD633C3A4DA3A708CD34429D80`
+    - conclusion:
+      - device-installed APK is byte-identical to the new fullscreen-loss hold build
+  - Fresh runtime capture:
+    - running on the installed build at:
+      - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt)
+      - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.err.txt)
+    - latest observed `adb` PID:
+      - `1620`
+    - log was confirmed growing before snapshot:
+      - `LOG_SIZE=8486`
+  - Current tool(s):
+    - `shell_command`
+    - `apply_patch`
+    - `multi_tool_use.parallel`
+    - `wsl`
+    - `adb`
+  - Exact next concrete step:
+    - let the operator reproduce the PiP flow on the running capture
+    - stop the capture
+    - inspect whether:
+      - `mediaStoppedPlaying` appears before the old failing fullscreen-loss moment
+      - the later `reason 7` event now logs `PiP fullscreen-loss recovery source=...`
+      - PiP stays alive instead of exiting
+  - Stop point:
+    - code edited
+    - WSL source-of-truth synced
+    - build passed
+    - install passed
+    - device hash verified
+    - runtime capture running
+    - waiting operator reproduction
+- `2026-04-20 17:58:35 +07:00` — Fresh capture stopped; latest symptom looks like control loss / playback stop, not a clean verification of the `reason 7` branch
+  - Objective:
+    - inspect the fresh runtime capture on the fullscreen-loss hold build and decide whether it verified the broadened `reason 7` hold path
+  - Capture analyzed:
+    - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt)
+  - What the capture actually showed:
+    - first PiP session entered normally
+    - then framework PiP exit callbacks happened early:
+      - `Framework exited picture in picture`
+      - `Exited picture in picture with reason: 0`
+    - then `pip_exit_to_watch_page_*` ran:
+      - `pip_exit_to_watch_page_schedule`
+      - `Exiting fullscreen`
+      - `Dismiss activity with reason 6`
+      - `fullscreen_exited`
+    - after that there was another fullscreen / PiP entry:
+      - `enter_picture_in_picture_from_fullscreen`
+      - `Entered Picture-in-picture`
+    - the session then ended in:
+      - `mediaStoppedPlaying id=0 inPip=true wasPlaying=true`
+  - What the capture did NOT show:
+    - no `next_track`
+    - no auto-advance markers
+    - no `PiP fullscreen-loss recovery source=...`
+    - no fresh `reason 7` exit sequence after the new patch that would prove or disprove the broadened interception branch directly
+  - Conclusion:
+    - this capture is not a clean proof of the new fullscreen-loss hold patch on the original failing branch
+    - it surfaces a different visible symptom:
+      - playback/control loss ending with `mediaStoppedPlaying ... inPip=true`
+    - so the correct next step is to separate that symptom from the earlier `reason 7` branch instead of claiming this run verified the new patch
+  - Tool state:
+    - stopped `adb logcat` capture cleanly
+  - Stop point:
+    - runtime capture completed
+    - install/hash state still verified
+    - fullscreen-loss hold patch still unverified on the original failing branch
+- `2026-04-20 18:12:40 +07:00` — Re-inspected latest capture against real PiP-exit/watch-page code; confirmed an interfering logic path exists before auto-next
+  - Objective:
+    - answer whether a "let video flow to next and it hangs" run can still leave actionable logs, and whether another logic path is interfering before the expected auto-next branch
+  - Files inspected:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+    - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt)
+  - What was verified:
+    - the latest run still leaves useful logs before the user-visible stall
+    - the run shows:
+      - `Framework exited picture in picture`
+      - `pip_exit_to_watch_page_armed`
+      - `pip_exit_to_watch_page_schedule`
+      - `pip_exit_to_watch_page_wait_for_page_exit`
+      - `Exiting fullscreen`
+      - `Dismiss activity with reason 6`
+      - `Dismiss activity with reason 7`
+      before any `next_track` / auto-next markers appear
+    - code correlation confirms this branch comes from:
+      - `BraveActivity.onPictureInPictureModeChanged(false, ...)`
+      - `maybeScheduleReturnToWatchPageAfterPictureInPictureExit(...)`
+      - `maybeReturnToWatchPageAfterPictureInPictureExit(...)`
+  - Conclusion:
+    - yes, there is a concrete logic path interfering with the intended flow in this run
+    - the user-visible "hang" does not imply "there can be no logs"
+    - instead, the session is diverted into the PiP-exit/watch-page branch first, and only later lands in the visible `mediaStoppedPlaying ... inPip=true` symptom
+    - this is different from proving the original auto-next branch itself failed
+  - Build/test status:
+    - no code edits
+    - no rebuild
+    - latest installed build/hash proof unchanged
+  - Exact next concrete step:
+    - decide whether `pip_exit_to_watch_page_*` should be suppressed/guarded while the intended flow is to keep PiP alive, then capture that branch directly
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - targeted code/log correlation complete
+    - interference branch identified
+- `2026-04-20 18:42:30 +07:00` — Added intent gate for `pip_exit_to_watch_page_*`, rebuilt, installed, and hash-verified
+  - Objective:
+    - make `pip_exit_to_watch_page_*` smart enough to run only on likely user-intended PiP exits instead of generic framework/transient PiP exits
+  - Chain analysis:
+    - the old branch was:
+      - `Framework exited picture in picture`
+      - `onPictureInPictureModeChanged(false, ...)`
+      - `activeFullscreen && shouldReturnToWatchPageAfterPictureInPictureExit()`
+      - `pip_exit_to_watch_page_armed/schedule`
+      - `exitFullscreen(...)`
+      - `Dismiss activity with reason 6/7`
+    - the bug was that `shouldReturnToWatchPageAfterPictureInPictureExit()` only checked:
+      - device not locked/non-interactive
+      - activity state `RESUMED` or `PAUSED`
+    - it had no user-intent signal, so transient PiP exits could still arm the watch-page return branch
+  - Design choice:
+    - use `onPictureInPictureUiStateChanged(...)` as the narrowest existing user-intent proxy in this layer
+    - record recent PiP UI interaction
+    - require that recent interaction before arming `pip_exit_to_watch_page_*`
+  - Source changes:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+      - added `PIP_EXIT_TO_WATCH_PAGE_UI_INTERACTION_GRACE_MS`
+      - added `mLastPictureInPictureUiInteractionElapsedMs`
+      - `onPictureInPictureUiStateChanged(...)` now logs `event=pip_ui_interaction`
+      - added `hadRecentPictureInPictureUiInteractionForExit()`
+      - `shouldReturnToWatchPageAfterPictureInPictureExit()` now logs:
+        - `event=pip_exit_to_watch_page_intent ...`
+        - `event=pip_exit_to_watch_page_allowed ...`
+      - fullscreen-active PiP exits without recent PiP UI interaction now log:
+        - `event=pip_exit_to_watch_page_suppressed ...`
+        instead of arming the watch-page return path
+  - WSL/source-of-truth sync:
+    - synced local [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) into:
+      - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - Build:
+    - command:
+      - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_exit_watchpage_intent_gate_20260420.log"`
+    - result:
+      - build passed
+      - log: [release_build_pip_exit_watchpage_intent_gate_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_exit_watchpage_intent_gate_20260420.log)
+  - Install and artifact proof:
+    - copied artifact to:
+      - [OneTabTube_pip_exit_watchpage_intent_gate_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_pip_exit_watchpage_intent_gate_429000010_20260420.apk)
+    - build SHA256:
+      - `12CD8AC1CCD45CBC16307055F9E4FD2558651A855995E5A3B6DB7DD2D07C2053`
+    - install command:
+      - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_pip_exit_watchpage_intent_gate_429000010_20260420.apk`
+    - install result:
+      - `Success`
+    - pulled device APK:
+      - [device_pip_exit_watchpage_intent_gate_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_pip_exit_watchpage_intent_gate_429000010_20260420.apk)
+    - device SHA256:
+      - `12CD8AC1CCD45CBC16307055F9E4FD2558651A855995E5A3B6DB7DD2D07C2053`
+    - conclusion:
+      - device-installed APK is byte-identical to the new intent-gated build
+  - Runtime status:
+    - app relaunched successfully
+    - no fresh capture started yet
+  - Exact next concrete step:
+    - run a fresh PiP capture on the installed intent-gated build and verify that transient/framework exits now log `pip_exit_to_watch_page_suppressed ...` instead of arming the watch-page return branch
+  - Stop point:
+    - code edited
+    - build passed
+    - install passed
+    - device hash verified
+    - runtime verification not started

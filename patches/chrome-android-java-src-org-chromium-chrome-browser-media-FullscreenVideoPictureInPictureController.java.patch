@@ -179,36 +179,81 @@
      }
  
      /**
-@@ -609,6 +730,32 @@
+@@ -609,6 +730,54 @@
          // Something interesting happened -- make sure we've updated our preference for auto-PiP
          // with the framework, if applicable.
          Log.i(TAG, "Dismiss activity with reason " + reason);
 +
 +        if ((reason == MetricsEndReason.LEFT_FULLSCREEN
 +                        || reason == MetricsEndReason.WEB_CONTENTS_LEFT_FULLSCREEN)
-+                && activity.isInPictureInPictureMode()
-+                && mIsPlaying) {
++                && activity.isInPictureInPictureMode()) {
 +            final WebContents webContents = getWebContents();
-+            final boolean activeFullscreen =
-+                    webContents != null && webContents.hasActiveEffectivelyFullscreenVideo();
-+            final boolean fullscreenRequested =
-+                    webContents != null
-+                            && BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
-+                                    webContents);
++            final String source =
++                    reason == MetricsEndReason.LEFT_FULLSCREEN
++                            ? "left_fullscreen"
++                            : "web_contents_left_fullscreen";
++            if (maybeRecoverFullscreenLossWhileInPictureInPicture(webContents, source)) {
++                mDismissPending = false;
++                Log.i(TAG, "Ignoring fullscreen-loss dismiss while PiP session is still active.");
++                return;
++            }
++        }
++
++    private boolean maybeRecoverFullscreenLossWhileInPictureInPicture(
++            @Nullable WebContents webContents, String source) {
++        if (!(mActivity instanceof BraveActivity braveActivity)) return false;
++        if (!mActivity.isInPictureInPictureMode()) return false;
++        if (!isPipSessionActive()) return false;
++        if (webContents == null) return false;
++        if (!braveActivity.shouldPreserveVideoPresentationForPictureInPictureControls()) {
++            return false;
++        }
++
++        final boolean activeFullscreen = webContents.hasActiveEffectivelyFullscreenVideo();
++        final boolean fullscreenRequested =
++                BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(webContents);
++        Log.i(
++                TAG,
++                "PiP fullscreen-loss recovery source=%s activeFullscreen=%b requested=%b playing=%b pipSessionActive=%b",
++                source,
++                activeFullscreen,
++                fullscreenRequested,
++                mIsPlaying,
++                isPipSessionActive());
++        if (activeFullscreen) {
++            return false;
++        }
++        if (!fullscreenRequested) {
 +            Log.i(
 +                    TAG,
-+                    "Pinned fullscreen-loss while playing: activeFullscreen=%b requested=%b",
-+                    activeFullscreen,
-+                    fullscreenRequested);
-+            if (webContents != null && !activeFullscreen && !fullscreenRequested) {
-+                Log.i(TAG, "Re-requesting fullscreen to keep PiP video-focused.");
-+                BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
-+            }
-+            mDismissPending = false;
-+            Log.i(TAG, "Ignoring fullscreen-loss dismiss while PiP media is still playing.");
-+            return;
++                    "Re-requesting fullscreen to keep PiP alive after fullscreen loss. source=%s",
++                    source);
++            BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
 +        }
++        braveActivity.onPictureInPictureFullscreenLostWhileInPictureInPicture(webContents, source);
++        return true;
++    }
 +
          updateAutoPictureInPictureStatusIfNeeded();
          mDismissPending = false;
  
+@@ -835,6 +952,16 @@
+         updateAutoPictureInPictureStatusIfNeeded();
++        Log.i(
++                TAG,
++                "mediaStartedPlaying id=%d hasAudio=%b hasVideo=%b inPip=%b",
++                id,
++                hasAudio,
++                hasVideo,
++                mActivity.isInPictureInPictureMode());
+         mIsPlaying = true;
+         mIsSuspendedForStash = false;
++        maybeRecoverVideoFocusWhilePlaying(getWebContents(), "media_started_playing");
+     }
++
++        Log.i(
++                TAG,
++                "mediaStoppedPlaying id=%d inPip=%b wasPlaying=%b",
++                id,
++                mActivity.isInPictureInPictureMode(),
++                mIsPlaying);

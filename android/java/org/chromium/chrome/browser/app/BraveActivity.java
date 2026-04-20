@@ -350,6 +350,7 @@ public abstract class BraveActivity extends ChromeActivity
             Arrays.asList("AM", "AZ", "BY", "KG", "KZ", "MD", "RU", "TJ", "TM", "UZ");
 
     private static final int PIP_UPDATE_DELAY_MS = 500;
+    private static final int OTB_PIP_PLAYBACK_FOCUS_LOSS_DEBOUNCE_MS = PIP_UPDATE_DELAY_MS;
     private static final int OTB_PIP_REFRESH_RETRY_DELAY_1_MS = 220;
     private static final int OTB_PIP_REFRESH_RETRY_DELAY_2_MS = 520;
     private static final int OTB_PIP_REFRESH_RETRY_DELAY_3_MS = 900;
@@ -361,6 +362,7 @@ public abstract class BraveActivity extends ChromeActivity
     private static final int PIP_EXIT_TO_WATCH_PAGE_DELAY_MS = 250;
     private static final int PIP_EXIT_TO_WATCH_PAGE_MAX_AGE_MS = 3000;
     private static final int PIP_RECENT_WATCH_PAGE_RETURN_GRACE_MS = 5000;
+    private static final int PIP_EXIT_TO_WATCH_PAGE_UI_INTERACTION_GRACE_MS = 3000;
     private static final long OTB_FULLSCREEN_UI_SYNC_INTERVAL_MS = 250L;
     private static final long OTB_DEFERRED_ENTITLEMENT_INIT_DELAY_MS = 2500;
     private static final long OTB_SAFE_BROWSING_INIT_DELAY_MS = 1500;
@@ -407,9 +409,12 @@ public abstract class BraveActivity extends ChromeActivity
     private boolean mPictureInPictureSignalRefreshInFlight;
     private int mPictureInPictureSignalRefreshGeneration;
     @Nullable private String mPictureInPictureSignalRefreshBaseReason;
+    private long mLastPictureInPicturePlaybackFocusLossElapsedMs;
+    @Nullable private String mLastPictureInPicturePlaybackFocusLossSource;
     private boolean mPendingReturnToWatchPageAfterPictureInPictureExit;
     private long mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs;
     private long mLastReturnToWatchPageAfterPictureInPictureExitElapsedMs;
+    private long mLastPictureInPictureUiInteractionElapsedMs;
     private boolean mOneTabSafeBrowsingInitScheduled;
     private boolean mOneTabDeferredEntitlementInitScheduled;
     private boolean mResetOneTabHomeAfterColdLauncherStart;
@@ -817,10 +822,13 @@ public abstract class BraveActivity extends ChromeActivity
                 return;
             }
             if (activeFullscreen) {
+                clearPendingReturnToWatchPageAfterPictureInPictureExit(
+                        "suppressed_without_recent_pip_ui_interaction");
                 Log.i(
                         OTB_PERF_TAG,
-                        "event=pip_exit_cleanup_skipped active_fullscreen=%b",
-                        activeFullscreen);
+                        "event=pip_exit_to_watch_page_suppressed active_fullscreen=%b state=%d",
+                        activeFullscreen,
+                        ApplicationStatus.getStateForActivity(this));
                 return;
             }
             // PiP has been dismissed when watching a YT video, then pause it.
@@ -840,6 +848,7 @@ public abstract class BraveActivity extends ChromeActivity
         if (!OneTabYouTubeMode.isEnabled() || !isInPictureInPictureMode()) {
             return;
         }
+        markRecentPictureInPictureUiInteraction("pip_ui_state_changed");
         if (mPictureInPictureRecoveryInFlight) {
             Log.i(
                     OTB_PERF_TAG,
@@ -3717,6 +3726,28 @@ public abstract class BraveActivity extends ChromeActivity
         return recent;
     }
 
+    private void markRecentPictureInPictureUiInteraction(@NonNull String reason) {
+        mLastPictureInPictureUiInteractionElapsedMs = SystemClock.elapsedRealtime();
+        Log.i(OTB_PERF_TAG, "event=pip_ui_interaction reason=%s", reason);
+    }
+
+    private boolean hadRecentPictureInPictureUiInteractionForExit() {
+        if (mLastPictureInPictureUiInteractionElapsedMs <= 0L) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_exit_to_watch_page_intent recent=false age_ms=-1 reason=no_interaction_recorded");
+            return false;
+        }
+        long ageMs = SystemClock.elapsedRealtime() - mLastPictureInPictureUiInteractionElapsedMs;
+        boolean recent = ageMs >= 0L && ageMs <= PIP_EXIT_TO_WATCH_PAGE_UI_INTERACTION_GRACE_MS;
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_exit_to_watch_page_intent recent=%b age_ms=%d reason=recent_pip_ui_interaction",
+                recent,
+                ageMs);
+        return recent;
+    }
+
     private void armReturnToWatchPageAfterPictureInPictureExit() {
         mPendingReturnToWatchPageAfterPictureInPictureExit = true;
         mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs = SystemClock.elapsedRealtime();
@@ -3828,7 +3859,25 @@ public abstract class BraveActivity extends ChromeActivity
             return false;
         }
         int activityState = ApplicationStatus.getStateForActivity(this);
-        return activityState == ActivityState.RESUMED || activityState == ActivityState.PAUSED;
+        if (activityState != ActivityState.RESUMED && activityState != ActivityState.PAUSED) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_exit_to_watch_page_allowed allowed=false reason=activity_state state=%d",
+                    activityState);
+            return false;
+        }
+        if (!hadRecentPictureInPictureUiInteractionForExit()) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=pip_exit_to_watch_page_allowed allowed=false reason=no_recent_pip_ui_interaction state=%d",
+                    activityState);
+            return false;
+        }
+        Log.i(
+                OTB_PERF_TAG,
+                "event=pip_exit_to_watch_page_allowed allowed=true reason=recent_pip_ui_interaction state=%d",
+                activityState);
+        return true;
     }
 
     public boolean shouldPreserveVideoPresentationForPictureInPictureControls() {
@@ -3953,6 +4002,90 @@ public abstract class BraveActivity extends ChromeActivity
         // depend on the lightweight signal-refresh path alone.
         cancelPictureInPictureSignalRefresh("native_fullscreen_signal_while_in_pip_recovery");
         schedulePictureInPictureRecovery("native_fullscreen_signal_while_in_pip", webContents);
+    }
+
+    public void onPictureInPicturePlaybackFocusLostWhilePlaying(
+            @Nullable WebContents webContents, @NonNull String source) {
+        requestPictureInPictureFocusRecovery(
+                webContents,
+                source,
+                "playback_focus_lost_while_playing_",
+                "pip_playback_focus_loss_recovery");
+    }
+
+    public void onPictureInPictureFullscreenLostWhileInPictureInPicture(
+            @Nullable WebContents webContents, @NonNull String source) {
+        requestPictureInPictureFocusRecovery(
+                webContents,
+                source,
+                "fullscreen_lost_while_in_pip_",
+                "pip_fullscreen_loss_recovery");
+    }
+
+    private void requestPictureInPictureFocusRecovery(
+            @Nullable WebContents webContents,
+            @NonNull String source,
+            @NonNull String recoveryReasonPrefix,
+            @NonNull String eventPrefix) {
+        if (!OneTabYouTubeMode.isEnabled() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+        if (!isInPictureInPictureMode()) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=%s_skip source=%s reason=not_in_pip",
+                    eventPrefix,
+                    source);
+            return;
+        }
+        if (!shouldPreserveVideoPresentationForPictureInPictureControls()) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=%s_skip source=%s reason=presentation_restore_not_allowed",
+                    eventPrefix,
+                    source);
+            return;
+        }
+
+        WebContents currentWebContents =
+                webContents != null ? webContents : getCurrentWebContents();
+        if (currentWebContents == null) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=%s_skip source=%s reason=no_webcontents",
+                    eventPrefix,
+                    source);
+            return;
+        }
+
+        long now = SystemClock.elapsedRealtime();
+        long ageMs = now - mLastPictureInPicturePlaybackFocusLossElapsedMs;
+        if (TextUtils.equals(source, mLastPictureInPicturePlaybackFocusLossSource)
+                && ageMs >= 0L
+                && ageMs < OTB_PIP_PLAYBACK_FOCUS_LOSS_DEBOUNCE_MS) {
+            Log.i(
+                    OTB_PERF_TAG,
+                    "event=%s_skip source=%s reason=debounce age_ms=%d",
+                    eventPrefix,
+                    source,
+                    ageMs);
+            return;
+        }
+
+        mLastPictureInPicturePlaybackFocusLossSource = source;
+        mLastPictureInPicturePlaybackFocusLossElapsedMs = now;
+
+        String recoveryReason = recoveryReasonPrefix + source;
+        // Let the existing recovery/carry-forward pipeline own the guard lifecycle.
+        // These hooks should only escalate focus recovery, not become a second guard owner.
+        cancelPictureInPictureSignalRefresh(recoveryReason + "_signal");
+        Log.i(
+                OTB_PERF_TAG,
+                "event=%s_guard source=%s owner=recovery_chain_only",
+                eventPrefix,
+                source);
+        Log.i(OTB_PERF_TAG, "event=%s source=%s", eventPrefix, source);
+        schedulePictureInPictureRecovery(recoveryReason, currentWebContents);
     }
 
     private int startPictureInPictureSignalRefresh(@NonNull String baseReason) {

@@ -63,16 +63,19 @@ public class BraveFullscreenVideoPictureInPictureController {
                     webContents != null
                             && BraveYouTubeScriptInjectorNativeHelper.hasFullscreenBeenRequested(
                                     webContents);
+            String source =
+                    reason == 6 /*MetricsEndReason.LEFT_FULLSCREEN*/
+                            ? "left_fullscreen"
+                            : "web_contents_left_fullscreen";
             Log.i(
                     TAG,
-                    "fullscreen-loss in PiP reason=%d playing=%b activeFullscreen=%b requested=%b",
+                    "fullscreen-loss in PiP reason=%d playing=%b activeFullscreen=%b requested=%b hasWebContents=%b",
                     reason,
                     Boolean.TRUE.equals(isPlaying),
                     activeFullscreen,
-                    fullscreenRequested);
-            if (webContents != null
-                    && !activeFullscreen
-                    && (Boolean.TRUE.equals(isPlaying) || fullscreenRequested)) {
+                    fullscreenRequested,
+                    webContents != null);
+            if (webContents != null && !activeFullscreen) {
                 if (!fullscreenRequested) {
                     Log.i(TAG, "re-request fullscreen while keeping PiP alive reason=%d", reason);
                     BraveYouTubeScriptInjectorNativeHelper.setFullscreen(webContents);
@@ -81,6 +84,10 @@ public class BraveFullscreenVideoPictureInPictureController {
                             TAG,
                             "keep PiP alive while fullscreen restore is still pending reason=%d",
                             reason);
+                }
+                if (activity instanceof BraveActivity braveActivity) {
+                    braveActivity.onPictureInPictureFullscreenLostWhileInPictureInPicture(
+                            webContents, source);
                 }
                 mDismissPending = false;
                 return;
