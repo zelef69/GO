@@ -11,7 +11,6 @@ import android.app.KeyguardManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PictureInPictureParams;
-import android.app.PictureInPictureUiState;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -362,7 +361,6 @@ public abstract class BraveActivity extends ChromeActivity
     private static final int PIP_EXIT_TO_WATCH_PAGE_DELAY_MS = 250;
     private static final int PIP_EXIT_TO_WATCH_PAGE_MAX_AGE_MS = 3000;
     private static final int PIP_RECENT_WATCH_PAGE_RETURN_GRACE_MS = 5000;
-    private static final int PIP_EXIT_TO_WATCH_PAGE_UI_INTERACTION_GRACE_MS = 3000;
     private static final long OTB_FULLSCREEN_UI_SYNC_INTERVAL_MS = 250L;
     private static final long OTB_DEFERRED_ENTITLEMENT_INIT_DELAY_MS = 2500;
     private static final long OTB_SAFE_BROWSING_INIT_DELAY_MS = 1500;
@@ -414,7 +412,6 @@ public abstract class BraveActivity extends ChromeActivity
     private boolean mPendingReturnToWatchPageAfterPictureInPictureExit;
     private long mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs;
     private long mLastReturnToWatchPageAfterPictureInPictureExitElapsedMs;
-    private long mLastPictureInPictureUiInteractionElapsedMs;
     private boolean mOneTabSafeBrowsingInitScheduled;
     private boolean mOneTabDeferredEntitlementInitScheduled;
     private boolean mResetOneTabHomeAfterColdLauncherStart;
@@ -821,16 +818,6 @@ public abstract class BraveActivity extends ChromeActivity
                 maybeScheduleReturnToWatchPageAfterPictureInPictureExit("pip_exit_callback");
                 return;
             }
-            if (activeFullscreen) {
-                clearPendingReturnToWatchPageAfterPictureInPictureExit(
-                        "suppressed_without_recent_pip_ui_interaction");
-                Log.i(
-                        OTB_PERF_TAG,
-                        "event=pip_exit_to_watch_page_suppressed active_fullscreen=%b state=%d",
-                        activeFullscreen,
-                        ApplicationStatus.getStateForActivity(this));
-                return;
-            }
             // PiP has been dismissed when watching a YT video, then pause it.
             MediaSession mediaSession = MediaSession.fromWebContents(currentWebContents);
             if (mediaSession != null) {
@@ -840,30 +827,6 @@ public abstract class BraveActivity extends ChromeActivity
                 fullscreenManager.exitPersistentFullscreenMode();
             }
         }
-    }
-
-    @Override
-    public void onPictureInPictureUiStateChanged(@NonNull PictureInPictureUiState pipState) {
-        super.onPictureInPictureUiStateChanged(pipState);
-        if (!OneTabYouTubeMode.isEnabled() || !isInPictureInPictureMode()) {
-            return;
-        }
-        markRecentPictureInPictureUiInteraction("pip_ui_state_changed");
-        if (mPictureInPictureRecoveryInFlight) {
-            Log.i(
-                    OTB_PERF_TAG,
-                    "event=pip_refocus_skipped reason=%s recovery_in_flight=true",
-                    "pip_ui_state_changed");
-            return;
-        }
-        if (mPictureInPictureSignalRefreshInFlight) {
-            Log.i(
-                    OTB_PERF_TAG,
-                    "event=pip_refocus_skipped reason=%s signal_refresh_in_flight=true",
-                    "pip_ui_state_changed");
-            return;
-        }
-        scheduleOneTabPictureInPictureRefresh("pip_ui_state_changed");
     }
 
     /**
@@ -3726,28 +3689,6 @@ public abstract class BraveActivity extends ChromeActivity
         return recent;
     }
 
-    private void markRecentPictureInPictureUiInteraction(@NonNull String reason) {
-        mLastPictureInPictureUiInteractionElapsedMs = SystemClock.elapsedRealtime();
-        Log.i(OTB_PERF_TAG, "event=pip_ui_interaction reason=%s", reason);
-    }
-
-    private boolean hadRecentPictureInPictureUiInteractionForExit() {
-        if (mLastPictureInPictureUiInteractionElapsedMs <= 0L) {
-            Log.i(
-                    OTB_PERF_TAG,
-                    "event=pip_exit_to_watch_page_intent recent=false age_ms=-1 reason=no_interaction_recorded");
-            return false;
-        }
-        long ageMs = SystemClock.elapsedRealtime() - mLastPictureInPictureUiInteractionElapsedMs;
-        boolean recent = ageMs >= 0L && ageMs <= PIP_EXIT_TO_WATCH_PAGE_UI_INTERACTION_GRACE_MS;
-        Log.i(
-                OTB_PERF_TAG,
-                "event=pip_exit_to_watch_page_intent recent=%b age_ms=%d reason=recent_pip_ui_interaction",
-                recent,
-                ageMs);
-        return recent;
-    }
-
     private void armReturnToWatchPageAfterPictureInPictureExit() {
         mPendingReturnToWatchPageAfterPictureInPictureExit = true;
         mPendingReturnToWatchPageAfterPictureInPictureExitElapsedMs = SystemClock.elapsedRealtime();
@@ -3866,16 +3807,9 @@ public abstract class BraveActivity extends ChromeActivity
                     activityState);
             return false;
         }
-        if (!hadRecentPictureInPictureUiInteractionForExit()) {
-            Log.i(
-                    OTB_PERF_TAG,
-                    "event=pip_exit_to_watch_page_allowed allowed=false reason=no_recent_pip_ui_interaction state=%d",
-                    activityState);
-            return false;
-        }
         Log.i(
                 OTB_PERF_TAG,
-                "event=pip_exit_to_watch_page_allowed allowed=true reason=recent_pip_ui_interaction state=%d",
+                "event=pip_exit_to_watch_page_allowed allowed=true reason=fullscreen_exit_state state=%d",
                 activityState);
         return true;
     }

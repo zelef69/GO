@@ -38851,3 +38851,699 @@
     - install passed
     - device hash verified
     - runtime verification not started
+- `2026-04-20 20:34:30 +07:00` — Removed the PiP UI-state watch-page gate, rebuilt, installed, and hash-verified
+  - Objective:
+    - fix the new regression where the PiP `return to watch page` button exits PiP but leaves fullscreen latched instead of returning to the watch page
+  - Latest recorded status:
+    - the repo was still on the recently-added `pip_exit_to_watch_page_*` intent gate that depended on `PictureInPictureUiState`
+    - that gate had not been runtime-verified on the exact build that the user later reported as regressed
+  - Actual code state after resume:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) still required `hadRecentPictureInPictureUiInteractionForExit()` before arming `pip_exit_to_watch_page_*`
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) still explicitly documented the intended behavior:
+      - `PiP expand should return to the watch page, not keep any stale fullscreen latch.`
+  - Chain analysis:
+    - intended flow:
+      - system/user exits PiP toward app/watch-page
+      - `BraveActivity.onPictureInPictureModeChanged(false, ...)`
+      - if fullscreen video is still active and device/activity state is eligible
+      - arm `pip_exit_to_watch_page_*`
+      - wait until app is resumed and page-side fullscreen has cleared
+      - call `fullscreenManager.exitPersistentFullscreenMode()`
+      - land on the watch page
+    - regressed flow after the intent-gate patch:
+      - same PiP exit callback arrives
+      - but `onPictureInPictureUiStateChanged(...)` is not guaranteed to have fired first on every device / Android version
+      - `hadRecentPictureInPictureUiInteractionForExit()` returns false
+      - `pip_exit_to_watch_page_*` never arms
+      - app exits PiP but remains latched in fullscreen
+    - conclusion:
+      - the gate was added at the wrong layer
+      - it used a framework callback that is not a reliable cross-device proxy for the watch-page button
+  - Design decision:
+    - remove the `PictureInPictureUiState` / recent-interaction gate entirely
+    - restore the watch-page path to the original PiP/fullscreen state machine
+    - keep the newer controller-side fullscreen-loss / reason-7 work in place
+  - Source changes:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+      - removed `PictureInPictureUiState` import
+      - removed `PIP_EXIT_TO_WATCH_PAGE_UI_INTERACTION_GRACE_MS`
+      - removed `mLastPictureInPictureUiInteractionElapsedMs`
+      - removed `onPictureInPictureUiStateChanged(...)`
+      - removed `markRecentPictureInPictureUiInteraction(...)`
+      - removed `hadRecentPictureInPictureUiInteractionForExit()`
+      - restored `shouldReturnToWatchPageAfterPictureInPictureExit()` to:
+        - check device state via `shouldDeferOneTabPictureInPictureExitHandling()`
+        - allow only when activity state is `RESUMED` or `PAUSED`
+      - restored fullscreen-active PiP exits to arm `pip_exit_to_watch_page_*` again instead of suppressing them for missing UI-state interaction
+  - WSL/source-of-truth sync:
+    - synced local [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) into:
+      - `/home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+  - Build:
+    - command:
+      - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_pip_watch_page_regression_fix_20260420.log"`
+    - result:
+      - build passed
+      - log: [release_build_pip_watch_page_regression_fix_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_watch_page_regression_fix_20260420.log)
+  - Install and artifact proof:
+    - copied artifact to:
+      - [OneTabTube_pip_watch_page_regression_fix_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_pip_watch_page_regression_fix_429000010_20260420.apk)
+    - build SHA256:
+      - `A9CE849782EB91A0C54852390C3B6612DBF66ED871A65DCD1AA542C02FAFA770`
+    - install command:
+      - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_pip_watch_page_regression_fix_429000010_20260420.apk`
+    - install result:
+      - `Success`
+    - package state after install:
+      - `versionCode=429000010`
+      - `versionName=1.90.3`
+      - `lastUpdateTime=2026-04-20 20:31:42`
+    - pulled device APK:
+      - [device_pip_watch_page_regression_fix_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_pip_watch_page_regression_fix_429000010_20260420.apk)
+    - device SHA256:
+      - `A9CE849782EB91A0C54852390C3B6612DBF66ED871A65DCD1AA542C02FAFA770`
+    - conclusion:
+      - the device-installed APK is byte-identical to the new watch-page regression fix build
+  - Runtime status:
+    - app relaunched successfully
+    - no fresh capture started yet on this build
+  - Recent decisions:
+    - trust the PiP/watch-page state machine documented in `tab_helper` more than the newly-added `PictureInPictureUiState` heuristic
+    - undo only the watch-page intent gate
+    - keep the newer controller-side reason-7 / fullscreen-loss protections in place
+  - Rejected approaches:
+    - keeping the gate and tuning timeout values
+    - inventing another user-intent proxy without evidence
+    - mixing this watch-page regression fix with visual-guard edits
+  - Exact next concrete step:
+    - start a fresh PiP runtime capture and verify that the PiP watch-page button now exits back to the watch page instead of leaving fullscreen latched, while also checking that the older unintended `Framework exited picture in picture -> pip_exit_to_watch_page_*` derailment has not returned
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - code edited
+    - WSL source-of-truth synced
+    - build passed
+    - install passed
+    - device hash verified
+    - runtime verification not started yet
+- `2026-04-20 20:47:20 +07:00` — Analyzed why fullscreen looks smoother after `PiP -> watch page -> fullscreen`
+  - Objective:
+    - answer whether the visual difference between:
+      - direct fullscreen from the watch page
+      - and fullscreen after `PiP -> watch page -> fullscreen`
+      is caused by ambient or by another chain/state difference
+  - Files inspected:
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+  - What was verified:
+    - fullscreen ambient is not active on the current runtime path:
+      - `kYoutubeFullscreenAmbientBackdrop` still exists
+      - but it is still behind `#if 0`
+      - and there is no active injection call for it on the current path
+    - the watch-page return path explicitly clears stale fullscreen state:
+      - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+      - `MaybeExitFullscreen()`
+      - comment: `PiP expand should return to the watch page, not keep any stale fullscreen latch.`
+    - [BraveYouTubeScriptInjectorNativeHelper.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\youtube_script_injector\BraveYouTubeScriptInjectorNativeHelper.java)
+      - `recent_watch_page_return` only changes PiP re-entry retry strategy
+      - it does not drive direct fullscreen visuals
+  - Conclusion:
+    - the current build's fullscreen visual difference is not explained by ambient
+    - the more plausible explanation is state/settling:
+      - `PiP -> watch page` explicitly clears fullscreen latch/state
+      - then re-entering fullscreen happens from a cleaner fullscreen/page state
+      - while direct fullscreen from the watch page goes straight into the mixed page/compositor/video-surface fullscreen path
+  - Evidence boundary:
+    - this is a code-backed conclusion
+    - but not yet a fresh runtime proof with a dedicated capture on the exact visual difference
+  - Build/test status:
+    - no code changes
+    - no rebuild
+    - no new install
+  - Exact next concrete step:
+    - if needed, run a dedicated fullscreen capture comparing:
+      - direct watch-page fullscreen
+      - `PiP -> watch page -> fullscreen`
+      while tagging `cr_VideoPersist` and `OTB_PIP` to see whether fullscreen settling differs in runtime
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - targeted analysis complete
+- `2026-04-20 21:18:04 +07:00` — Implemented page-side fullscreen presentation normalize flow on top of the restored PiP/fullscreen baseline
+  - Objective:
+    - make direct watch-page fullscreen look closer to `PiP -> watch page -> fullscreen` without:
+      - re-enabling ambient
+      - hard-resetting fullscreen
+      - touching native dismiss / reason-7 / PiP controller paths
+  - Chain analysis:
+    - direct watch-page fullscreen still goes straight through:
+      - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+      - `MaybeSetFullscreen()`
+    - `PiP -> watch page -> fullscreen` benefits from:
+      - `MaybeExitFullscreen()`
+      - explicit clearing of stale fullscreen latch before re-entering fullscreen
+    - fullscreen video changes still converge through:
+      - `MaybeRestoreVideoPresentationAfterTrackNavigation(...)`
+      - `MaybeSetFullscreen()`
+    - conclusion:
+      - fix should target page/root/background state normalization inside the page-side fullscreen chain
+      - not real fullscreen exit/reset
+  - Design decision:
+    - add a page-side fullscreen presentation normalizer in `kYoutubeTransitionOptimization`
+    - keep it JS-only and scoped to fullscreen root/player-chain backgrounds
+    - reapply during:
+      - direct fullscreen entry
+      - fullscreenchange
+      - video-change churn while already fullscreen
+    - hold normalized state through transient fullscreen/video churn instead of tearing it down too early
+  - Source changes:
+    - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+      - added `window.__onetabtubeFullscreenPresentationState`
+      - added helper functions:
+        - `fullscreenPresentationVideo()`
+        - `fullscreenPresentationVisible(video)`
+        - `fullscreenPresentationRoot(video)`
+        - `collectFullscreenPresentationTargets(root, video)`
+        - `rememberFullscreenPresentationTargets(targets)`
+        - `activeFullscreenPresentationTargets()`
+        - `applyFullscreenPresentationNormalize(reason)`
+        - `teardownFullscreenPresentationNormalize(reason)`
+        - `scheduleFullscreenPresentationNormalize(reason)`
+        - `maybeScheduleFullscreenPresentationNormalize(reason)`
+        - `ensureFullscreenPresentationObserver()`
+      - new behavior:
+        - black out fullscreen root/player chain backgrounds
+        - remove background-image and box-shadow from that chain
+        - cache and restore inline styles
+        - remember touched targets so teardown still works after root/video churn
+        - treat transient fullscreen invisibility during active transitions as `pending` instead of immediate teardown
+      - exported:
+        - `window.__onetabtubeNormalizeFullscreenPresentation`
+        - `window.__onetabtubeScheduleFullscreenPresentationNormalize`
+        - `window.__onetabtubeClearFullscreenPresentationNormalize`
+      - wired lifecycle events:
+        - `fullscreenchange`
+        - `webkitfullscreenchange`
+        - `loadstart`
+        - `loadedmetadata`
+        - `playing`
+        - `ended`
+        - `yt-navigate-finish`
+        - `DOMContentLoaded`
+        - `pageshow`
+        - `focus`
+        - `pagehide`
+        - `freeze`
+        - `resume`
+      - updated `kYoutubeFullscreen` to schedule normalization after:
+        - `fullscreen_request_direct`
+        - `fullscreen_request_button`
+        - `already_fullscreen`
+  - WSL/source-of-truth sync:
+    - synced local [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc) into:
+      - `/home/master/src_ext4/brave/browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc`
+  - Build:
+    - command:
+      - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_fullscreen_normalize_20260420.log"`
+    - result:
+      - build passed
+      - log: [release_build_fullscreen_normalize_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_fullscreen_normalize_20260420.log)
+  - Install and artifact proof:
+    - copied artifact to:
+      - [OneTabTube_fullscreen_normalize_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_fullscreen_normalize_429000010_20260420.apk)
+    - build SHA256:
+      - `CB96EB32E5CD7F6A39DF6048018952E92F41F0F0A889C2FDB4B49742EFF15C2F`
+    - install command:
+      - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_fullscreen_normalize_429000010_20260420.apk`
+    - install result:
+      - `Success`
+    - pulled device APK:
+      - [device_fullscreen_normalize_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_fullscreen_normalize_429000010_20260420.apk)
+    - device SHA256:
+      - `CB96EB32E5CD7F6A39DF6048018952E92F41F0F0A889C2FDB4B49742EFF15C2F`
+    - conclusion:
+      - the device-installed APK is byte-identical to the fullscreen-normalize build
+    - note:
+      - `lastUpdateTime` remained unchanged in package manager output, but the installed package path changed and the device APK hash matches the new build exactly, so hash proof is the source of truth
+  - Runtime status:
+    - app relaunched successfully
+    - no fresh capture started yet on this build
+  - Recent decisions:
+    - keep the restored PiP/fullscreen baseline intact
+    - solve the fullscreen background difference in JS/page-side only
+    - avoid ambient and avoid real fullscreen reset
+  - Rejected approaches:
+    - re-enabling fullscreen ambient
+    - calling `MaybeExitFullscreen()` as a normalize step for direct/fullscreen transitions
+    - touching native fullscreen owner or reason-7 flow for this task
+  - Exact next concrete step:
+    - start a fresh runtime capture on the installed build and compare:
+      - `watch page -> fullscreen`
+      - `PiP -> watch page -> fullscreen`
+    - verify:
+      - direct fullscreen background is less layered / smoother
+      - in-fullscreen video changes remain normalized
+      - no regressions in PiP/watch-page or reason-7 / visual-guard flows
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - code edited
+    - WSL source-of-truth synced
+    - build passed
+    - install passed
+    - device hash verified
+    - runtime verification not started yet
+- `2026-04-20 21:29:58 +07:00` — Rejected the fullscreen-normalize experiment after direct fullscreen regressed to black
+  - Objective:
+    - evaluate the newly installed fullscreen-normalize build on-device
+  - Runtime capture:
+    - started:
+      - [live_fullscreen_normalize_verify_20260420_212232.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_normalize_verify_20260420_212232.txt)
+    - user-reported symptom:
+      - direct fullscreen now turns black
+  - What the capture actually proved:
+    - the run did not surface native/helper-side fullscreen markers such as `fullscreen_script_complete`
+    - it did surface:
+      - `cr_VideoPersist: Exiting fullscreen`
+      - `Dismiss activity with reason 6`
+      - `Dismiss activity with reason 0`
+      - `Attempted picture-in-picture with result: failure`
+      - `pip_presentation_restore_allowed allowed=false reason=not_in_pip`
+    - conclusion:
+      - the capture does not isolate the exact JS line that fails
+      - but the experimental build is clearly not acceptable
+      - and the newly added page-side fullscreen-normalize helper is the strongest code-backed suspect because it was the only new layer touching direct watch-page fullscreen
+  - Decision:
+    - reject the fullscreen-normalize experiment entirely
+    - do not keep the experimental build on-device
+    - restore the previously verified watch-page regression-fix baseline immediately
+  - Source state:
+    - reverted the fullscreen-normalize helper locally from:
+      - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+    - result:
+      - no fullscreen-normalize helper remains in the local working tree
+  - Device recovery:
+    - reinstalled:
+      - [OneTabTube_pip_watch_page_regression_fix_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_pip_watch_page_regression_fix_429000010_20260420.apk)
+    - build SHA256:
+      - `A9CE849782EB91A0C54852390C3B6612DBF66ED871A65DCD1AA542C02FAFA770`
+    - pulled device APK:
+      - [device_recovered_watchpage_baseline_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_recovered_watchpage_baseline_429000010_20260420.apk)
+    - device SHA256:
+      - `A9CE849782EB91A0C54852390C3B6612DBF66ED871A65DCD1AA542C02FAFA770`
+    - conclusion:
+      - the device is back on the known-good watch-page regression-fix baseline
+  - Recent decisions:
+    - fullscreen visual refinement is not worth destabilizing the recovered PiP/watch-page baseline
+    - future fullscreen visual work must start with better observability and a much narrower change
+  - Rejected approaches:
+    - continuing to debug on the bad fullscreen-normalize build
+    - pushing more fullscreen visual tweaks without first restoring the stable baseline
+  - Exact next concrete step:
+    - run a short sanity check / fresh capture on the restored baseline if needed to confirm:
+      - direct fullscreen is no longer black
+      - PiP/watch-page flow remains healthy
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - bad experiment rejected
+    - local experiment reverted
+    - stable baseline restored on-device
+    - restored baseline runtime not re-verified yet
+- `2026-04-20 22:05:00 +07:00` — Inspected OneTabTube adblock startup loading behavior and recurrence model
+  - Objective:
+    - answer whether a first install / first launch still loads external adblock filters
+    - answer whether that loading is one-shot or recurring
+  - Code inspection scope:
+    - [brave_browser_process_impl.cc](C:\Users\Master\Desktop\GO_PLAY\browser\brave_browser_process_impl.cc)
+    - [ad_block_component_service_manager.cc](C:\Users\Master\Desktop\GO_PLAY\components\brave_shields\core\browser\ad_block_component_service_manager.cc)
+    - [ad_block_subscription_service_manager.cc](C:\Users\Master\Desktop\GO_PLAY\components\brave_shields\content\browser\ad_block_subscription_service_manager.cc)
+    - [ad_block_service.cc](C:\Users\Master\Desktop\GO_PLAY\components\brave_shields\content\browser\ad_block_service.cc)
+    - [ad_block_subscription_download_manager.cc](C:\Users\Master\Desktop\GO_PLAY\components\brave_shields\content\browser\ad_block_subscription_download_manager.cc)
+  - What the code proved:
+    - Android OneTabTube startup explicitly warms Brave adblock components in `StartBraveServices()` by constructing `ad_block_service()` and calling `EnsureInstalled(...)` + `OnDemandUpdate(...)` for:
+      - `kAdBlockResourceComponentId`
+      - `kAdBlockFilterListCatalogComponentId`
+    - OneTabTube also seeds bundled bootstrap custom filters into prefs on first run via `GetOneTabTubeDefaultCustomFilters()`
+    - default regional filter enabling is one-time in prefs (`kAdBlockCheckedDefaultRegion` / `kAdBlockCheckedAllDefaultRegions`)
+    - component-backed catalog/resource/filter updates are not one-time; they continue on a periodic timer after the catalog loads
+    - OneTabTube local builds without a `BRAVE_SERVICES_KEY` have an additional public-list fallback path that is documented as:
+      - browser startup downloads
+      - periodic filter refreshes
+      - eager startup downloads for some built-in lists
+    - generic subscription downloads are also designed to refresh according to list `Expires` or daily otherwise
+  - Decision:
+    - answer the user with a precise split:
+      - some initialization is local and one-time
+      - external network-backed filter/catalog/resource loading still exists
+      - recurring refresh behavior is expected and intentional
+  - Rejected approaches:
+    - claiming the app is bundled-only on first launch
+    - claiming the filter loading happens only once
+    - claiming the OneTabTube public-fallback path is definitely active for every generated build without checking generated build flags
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - code inspected
+    - no source edited
+    - ready to provide a code-backed answer
+- `2026-04-20 22:13:00 +07:00` — Verified the active release lane and runtime are actually using the OneTabTube fallback adblock path
+  - Objective:
+    - confirm whether the currently used build lane / APK is really in fallback mode, not just capable of it in source
+  - Build-lane inspection:
+    - opened generated header:
+      - [brave_services_key.h](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\gen\brave\components\constants\brave_services_key.h)
+    - result:
+      - `#define BUILDFLAG_INTERNAL_BRAVE_SERVICES_KEY() ("")`
+    - conclusion:
+      - the active WSL `out/android_Release_arm64_multiabi` release lane is built with an empty Brave services key
+  - Runtime evidence inspected:
+    - [fresh_device_visual_guard_20260420_092945.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\fresh_device_visual_guard_20260420_092945.txt)
+    - [live_candidate_restore_verify_20260420_164201.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_candidate_restore_verify_20260420_164201.txt)
+    - [live_fullscreen_normalize_verify_20260420_212213.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_normalize_verify_20260420_212213.txt)
+    - older fallback download proof:
+      - [live_fullscreen_removed_all_verify_20260419_100930.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_fullscreen_removed_all_verify_20260419_100930.txt)
+  - What runtime proved:
+    - startup repeatedly logs:
+      - `OTB_ADBLOCK event=resource_provider fallback_mode=1`
+      - `OTB_ADBLOCK event=fallback_resources_download_start`
+      - `OTB_ADBLOCK event=load_resources source=fallback`
+      - `OTB_ADBLOCK event=startup phase=WarmAdBlockComponents`
+      - `OTB_ADBLOCK event=built_in_subscriptions_ready ...`
+    - other captures show periodic fallback list download markers such as:
+      - `OTB_ADBLOCK event=list_download_start mode=fallback ...`
+      - `OTB_ADBLOCK event=list_downloaded ...`
+  - Decision:
+    - answer the user that the active project/build still performs external fallback adblock loading
+    - answer clearly that only some preference/bootstrap steps are one-time; the network-backed parts are recurring
+  - Rejected approaches:
+    - answering from source only without checking generated build flags
+    - claiming the current installed/release lane is bundled-only
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - generated build flag verified
+    - runtime fallback behavior verified from logs
+    - ready to provide a build-and-runtime-backed answer
+- `2026-04-20 22:23:00 +07:00` — Measured the fallback resource payload size envelope
+  - Objective:
+    - answer how heavy `fallback resources` are in practice
+  - Code inspection:
+    - [ad_block_default_resource_provider.cc](C:\Users\Master\Desktop\GO_PLAY\components\brave_shields\core\browser\ad_block_default_resource_provider.cc)
+    - found:
+      - fallback URL points to Brave public GitHub-hosted `resources.json`
+      - `kMaxFallbackResourcesDownloadBytes = 1024 * 1024`
+  - Live upstream check:
+    - `HEAD https://raw.githubusercontent.com/brave/brave-core/master/ios/brave-ios/Tests/ClientTests/Resources/ad-block-resources/resources.json`
+    - returned:
+      - `Content-Length: 522039`
+  - Conclusion:
+    - current fallback resource payload is about `522 KB`
+    - code-side hard cap is `1 MB`
+  - Additional attempt:
+    - tried to confirm the on-device cached file size with `adb shell run-as ...`
+    - result was inconclusive in this pass; no reliable `stat` result was obtained
+  - Decision:
+    - answer with the measured current upstream size plus the code-side ceiling
+    - clearly mark the device-side cache file stat as not yet proven
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - fallback resource size envelope measured
+    - ready to answer user
+- `2026-04-20 22:31:00 +07:00` — Verified the current cold-start path already prefers `m.youtube.com` over watch-page restore
+  - Objective:
+    - answer whether a true app cold start can land on `m.youtube.com` instead of restoring a watch page
+  - Files inspected:
+    - [OneTabYouTubeMode.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\OneTabYouTubeMode.java)
+    - [BraveHomepageManager.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\homepage\BraveHomepageManager.java)
+    - [BraveIntentHandler.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\BraveIntentHandler.java)
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [TabUtils.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\util\TabUtils.java)
+  - What the code proved:
+    - OneTab default homepage is already `https://m.youtube.com/`
+    - launcher cold start is detected by:
+      - `savedInstanceState == null`
+      - `Intent.ACTION_MAIN`
+      - `Intent.CATEGORY_LAUNCHER`
+    - when that condition is met, `mResetOneTabHomeAfterColdLauncherStart` is armed in `maybeDispatchLaunchIntent(...)`
+    - `enforceOneTabYouTubeModeOnInitializedState(...)` then executes `resetOneTabHomeAfterColdLauncherStart(...)`
+    - that reset path explicitly loads `OneTabYouTubeMode.getDefaultHomepageUrl()`
+    - `pip_exit_to_watch_page_*` is guarded by `mPendingReturnToWatchPageAfterPictureInPictureExit`
+    - `maybeScheduleReturnToWatchPageAfterPictureInPictureExit("on_resume")` is a no-op unless that pending flag is already armed
+    - on true cold start the pending flag is not restored because `savedInstanceState` is null
+  - Conclusion:
+    - for true launcher cold starts, the current code already prefers `m.youtube.com` instead of watch-page restore
+    - the only scenarios where watch-page restore can still survive are non-cold-start flows or recreation/state-restoration flows, not the strict launcher cold-start path
+  - Decision:
+    - answer the user that no broad behavior change is needed if the requirement is limited to true cold launcher starts
+    - warn that widening this to all fresh-process intents would affect deep-link/auth flows handled by `BraveIntentHandler`
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - startup-vs-restore chain verified from code
+    - ready to answer user
+- `2026-04-20 23:21:00 +07:00` — Verified baseline alignment between the currently attached Infinix test device and the last recorded development-device proof
+  - Objective:
+    - answer whether the currently restored stable baseline now matches the development device baseline
+  - Recorded desk state:
+    - [current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md) already showed the attached Infinix device was restored to:
+      - [OneTabTube_pip_watch_page_regression_fix_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_pip_watch_page_regression_fix_429000010_20260420.apk)
+    - only one physical device is attached right now:
+      - `124322549S102380`
+      - `Infinix_X6871`
+  - Commands run:
+    - `adb devices -l`
+    - `Get-FileHash -Algorithm SHA256 'artifacts/android_build/OneTabTube_pip_watch_page_regression_fix_429000010_20260420.apk'`
+    - `Get-FileHash -Algorithm SHA256 'artifacts/runtime_logs/device_pip_watch_page_regression_fix_429000010_20260420.apk'`
+    - `rg -n "R9TRC00GA2E|SM_A226B|device_pip_watch_page_regression_fix|device_recovered_watchpage_baseline|A9CE8497|OneTabTube_pip_watch_page_regression_fix_429000010_20260420.apk" docs/progress-log.md docs/current-status.md`
+  - What the check proved:
+    - current stable baseline build SHA256:
+      - `A9CE849782EB91A0C54852390C3B6612DBF66ED871A65DCD1AA542C02FAFA770`
+    - last recorded development-device proof artifact:
+      - [device_pip_watch_page_regression_fix_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_pip_watch_page_regression_fix_429000010_20260420.apk)
+      - SHA256:
+        - `A9CE849782EB91A0C54852390C3B6612DBF66ED871A65DCD1AA542C02FAFA770`
+    - last recorded restored-baseline proof on the currently attached Infinix device:
+      - [device_infinix_watchpage_baseline_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_infinix_watchpage_baseline_429000010_20260420.apk)
+      - SHA256:
+        - `A9CE849782EB91A0C54852390C3B6612DBF66ED871A65DCD1AA542C02FAFA770`
+  - Conclusion:
+    - yes, the baseline matches the development device at the APK level
+    - the currently attached Infinix device and the last recorded development-device proof are byte-identical against the same stable baseline artifact
+    - however, the development device is not attached right now, so current live runtime parity on that device was not re-verified in this pass
+  - Decision:
+    - answer the user with a precise split:
+      - baseline parity is confirmed at the installed APK level
+      - live runtime parity on the development device cannot be freshly claimed until that device is connected again
+  - Rejected approaches:
+    - claiming full live runtime parity on the development device without it being attached
+    - answering from memory instead of comparing stored proof artifacts and hashes
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - targeted baseline-parity check completed
+    - ready to answer user
+- `2026-04-20 23:27:00 +07:00` — Verified that the currently installed test-device baseline does not include every local code edit now present in the workspace
+  - Objective:
+    - answer whether “all code we have edited so far” is actually in use on the current test device
+  - Commands run:
+    - `git status --short`
+    - `git rev-parse HEAD`
+    - `git log --oneline -5`
+  - What the check proved:
+    - `HEAD` is still:
+      - `94176269efc93a536a809d4bf7d4881db3555296`
+      - `stable(true)`
+    - however, the working tree is still dirty with additional code edits after the installed stable baseline artifact, including:
+      - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+      - [BraveFullscreenHtmlApiHandlerCompat.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerCompat.java)
+      - [BraveFullscreenHtmlApiHandlerLegacy.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\fullscreen\BraveFullscreenHtmlApiHandlerLegacy.java)
+      - [youtube_script_injector_tab_helper.cc](C:\Users\Master\Desktop\GO_PLAY\browser\android\youtube_script_injector\youtube_script_injector_tab_helper.cc)
+      - [BraveMediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\BraveMediaSessionHelper.java)
+      - [MediaSessionHelper.java](C:\Users\Master\Desktop\GO_PLAY\components\browser_ui\media\android\java\src\org\chromium\components\browser_ui\media\MediaSessionHelper.java)
+    - therefore:
+      - the currently attached Infinix device is on the restored stable baseline APK
+      - but it is not running every code edit currently present in the repo/workspace
+  - Conclusion:
+    - baseline parity with the last recorded development-device APK is true
+    - full parity with the current dirty workspace is false
+    - to put “all current code edits” onto the test device, we must rebuild/install from the present workspace first
+  - Decision:
+    - answer the user directly that the test device is on the restored stable baseline only
+    - do not imply that every current local edit is already in use on the device
+  - Rejected approaches:
+    - equating baseline APK parity with full workspace parity
+    - claiming the current test device already reflects all code changes because `HEAD` is `stable(true)`
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - repo-vs-device parity check completed
+    - ready to answer user
+- `2026-04-20 23:44:00 +07:00` — Caught and corrected the wrong WSL build desk before any install touched the development device
+  - Objective:
+    - treat the current development-machine working tree as source of truth and rebuild/install/verify the correct browser artifact
+  - Commands run:
+    - `git diff --name-only`
+    - `git diff --stat`
+    - `git diff -- android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `Get-Content android/app/build.gradle.kts`
+    - `Get-Content android/app/src/main/AndroidManifest.xml`
+    - `Get-Content android/app/src/main/kotlin/com/example/go_play/MainActivity.kt`
+    - `Get-Content pubspec.yaml`
+    - `Get-Content docs/build-workbench-map.md`
+    - `powershell -ExecutionPolicy Bypass -File tools/sync_changed_files_to_wsl.ps1 -RepoRoot 'C:\Users\Master\Desktop\GO_PLAY' -PathList '.codex_build_sync_list.txt'`
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Component_arm64 brave/build/android:onetabtube_android_package 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_working_tree_source_of_truth_20260420.log"`
+    - `aapt dump badging "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+    - `Get-FileHash -Algorithm SHA256 "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Component_arm64\apks\OneTabTube.apk"`
+    - `Get-Content "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn"`
+    - `aapt dump badging "\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk"`
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_working_tree_source_of_truth_429000010_20260420.log"`
+    - `adb devices -l`
+    - `Get-Process | Where-Object { $_.ProcessName -match 'ninja|autoninja|wsl' }`
+  - What the check proved:
+    - the working tree currently contains two desks:
+      - Brave/OneTabTube browser lane
+      - Flutter/update lane
+    - both desks share `com.onetabtube.browser_default`, so picking the wrong one would be dangerous
+    - only one real Brave browser source diff is present beyond `HEAD` in this pass:
+      - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - the first rebuild this pass used the wrong out dir:
+      - `out/android_Component_arm64`
+      - resulting package:
+        - `429000004 / 1.90.0`
+      - resulting artifact SHA256:
+        - `CE6608A74D011874BBBC6B48E40B73E9D9826FCEB433CCE86EB4FDCDA3B0F1E2`
+    - the correct development-device lane is:
+      - `out/android_Release_arm64_multiabi`
+      - proven by args:
+        - `android_override_version_name="1.90.3"`
+        - `android_override_version_code="429000010"`
+      - existing artifact there reports:
+        - `429000010 / 1.90.3`
+        - SHA256:
+          - `CB96EB32E5CD7F6A39DF6048018952E92F41F0F0A889C2FDB4B49742EFF15C2F`
+    - no install command was executed on the development device in this pass
+    - no long-running ninja/wsl build process is active now
+    - the development device remained:
+      - `R9TRC00GA2E unauthorized`
+  - Conclusion:
+    - the earlier build in this pass was from the wrong version lane
+    - that mistake was caught before any install or push happened
+    - the device was not touched by the incorrect build
+    - the next valid step is to continue only with the `android_Release_arm64_multiabi` lane after ADB authorization
+  - Decision:
+    - stop before install
+    - do not claim verification or push readiness yet
+    - resume only after the device accepts the ADB trust prompt
+  - Rejected approaches:
+    - pretending the `429000004 / 1.90.0` build matched the dev device
+    - installing anything while the device remains `unauthorized`
+    - pushing this state before install/hash/runtime proof on the correct lane
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - wrong build desk identified
+    - correct `429000010` desk identified
+    - install/verify blocked by ADB authorization
+- `2026-04-20 23:57:46 +07:00` — Reality-check completed: current working tree source-of-truth is split across browser lane and update lane
+  - Objective:
+    - verify exactly what the current development-machine working tree would mean if treated as source of truth before any new build/install
+  - Commands run:
+    - `Get-Content docs/current-status.md`
+    - `Get-Content docs/progress-log.md -Tail 120`
+    - `git rev-parse --abbrev-ref HEAD`
+    - `git rev-parse HEAD`
+    - `git status --short`
+    - `git diff --stat -- android/java/org/chromium/chrome/browser/app/BraveActivity.java android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerCompat.java android/java/org/chromium/chrome/browser/fullscreen/BraveFullscreenHtmlApiHandlerLegacy.java browser/android/youtube_script_injector/youtube_script_injector_tab_helper.cc components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/BraveMediaSessionHelper.java components/browser_ui/media/android/java/src/org/chromium/components/browser_ui/media/MediaSessionHelper.java android/app/build.gradle.kts android/app/src/main/AndroidManifest.xml lib/services/update_service.dart`
+    - `git diff -- android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `git diff -- android/app/build.gradle.kts android/app/src/main/AndroidManifest.xml lib/services/update_service.dart`
+    - `Get-Content \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn`
+    - `aapt dump badging \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+    - `Get-FileHash -Algorithm SHA256 \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk`
+    - `Get-FileHash -Algorithm SHA256 android/java/org/chromium/chrome/browser/app/BraveActivity.java`
+    - `Get-FileHash -Algorithm SHA256 \\wsl.localhost\Ubuntu\home\master\src_ext4\brave\android\java\org\chromium\chrome\browser\app\BraveActivity.java`
+    - `adb devices -l`
+  - What the check proved:
+    - the current working tree does not map to a single build lane
+    - there are four real diffs relevant to the current source-of-truth request:
+      - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+      - [android/app/build.gradle.kts](C:\Users\Master\Desktop\GO_PLAY\android\app\build.gradle.kts)
+      - [android/app/src/main/AndroidManifest.xml](C:\Users\Master\Desktop\GO_PLAY\android\app\src\main\AndroidManifest.xml)
+      - [lib/services/update_service.dart](C:\Users\Master\Desktop\GO_PLAY\lib\services\update_service.dart)
+    - only [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) belongs to the Chromium/Brave browser APK lane
+    - the browser-lane diff is already synced into the WSL source tree used by the correct `429000010` out dir
+    - the correct browser lane remains:
+      - `out/android_Release_arm64_multiabi`
+      - package:
+        - `com.onetabtube.browser_default`
+      - version:
+        - `429000010 / 1.90.3`
+      - current artifact SHA256:
+        - `CB96EB32E5CD7F6A39DF6048018952E92F41F0F0A889C2FDB4B49742EFF15C2F`
+    - the development device is still:
+      - `R9TRC00GA2E unauthorized`
+  - Conclusion:
+    - the phrase `use the current working tree as source of truth` is ambiguous unless we explicitly say whether that means:
+      - only the browser lane that feeds the `429000010` APK
+      - or the browser lane plus the separate update lane edits
+    - continuing straight to build/install without surfacing this split would risk misleading the user about what is actually inside the APK
+  - Decision:
+    - stop before any new build/install
+    - update handoff to reflect the lane split and exact verified state
+    - next response must present the checklist and the lane-scope split clearly
+  - Rejected approaches:
+    - silently treating the browser APK as if it represented every current working-tree edit
+    - rebuilding/installing before the device authorizes ADB
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - pre-build verification completed cleanly
+    - waiting for device authorization and explicit lane-scope agreement
+- `2026-04-21 00:15:30 +07:00` — Browser-lane source-of-truth build/install/hash verification completed on the development device
+  - Objective:
+    - proceed with the Chromium/Brave browser lane only and verify that exact `429000010` APK on the development device
+  - Commands run:
+    - `adb devices -l`
+    - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_browser_lane_source_of_truth_429000010_20260421.log"`
+    - `wsl.exe bash -lc "cp /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk"`
+    - `aapt dump badging artifacts/android_build/OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk`
+    - `Get-FileHash -Algorithm SHA256 artifacts/android_build/OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk`
+    - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk`
+    - `adb shell pm path com.onetabtube.browser_default`
+    - `adb shell dumpsys package com.onetabtube.browser_default | Select-String "versionCode=|versionName=|lastUpdateTime="`
+    - `adb pull "/data/app/.../base.apk" artifacts\\runtime_logs\\device_browser_lane_source_of_truth_429000010_20260421.apk`
+    - `Get-FileHash -Algorithm SHA256 artifacts/runtime_logs/device_browser_lane_source_of_truth_429000010_20260421.apk`
+    - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+  - What the check proved:
+    - the development device is now authorized again
+    - the correct browser desk remained:
+      - `out/android_Release_arm64_multiabi`
+      - `429000010 / 1.90.3`
+    - the browser-lane source diff in [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) was already present in the WSL source tree
+    - the resulting browser APK used for install is:
+      - [OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk)
+      - package:
+        - `com.onetabtube.browser_default`
+      - version:
+        - `429000010 / 1.90.3`
+      - SHA256:
+        - `CB96EB32E5CD7F6A39DF6048018952E92F41F0F0A889C2FDB4B49742EFF15C2F`
+    - the pulled installed device APK is:
+      - [device_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_browser_lane_source_of_truth_429000010_20260421.apk)
+      - SHA256:
+        - `CB96EB32E5CD7F6A39DF6048018952E92F41F0F0A889C2FDB4B49742EFF15C2F`
+    - conclusion:
+      - the development device is now running the exact same browser-lane artifact byte-for-byte
+  - Decision:
+    - treat the browser lane as verified
+    - keep the update lane out of this verification/push step
+    - next repo action must add only browser-lane files plus docs
+  - Rejected approaches:
+    - pushing the entire dirty working tree
+    - implying that update-lane files are part of this verified APK
+  - Tool state:
+    - no active processes
+  - Stop point:
+    - browser-lane build/install/hash verify completed
+    - ready for browser-lane-only commit/push

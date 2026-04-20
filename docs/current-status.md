@@ -1,241 +1,181 @@
 # Current Status
 
 - Last updated:
-  - `2026-04-20 18:42:30 +07:00`
+  - `2026-04-21 00:15:30 +07:00`
 - Current phase:
-  - `Phase 7 - fullscreen-loss dismiss hold`
+  - `Phase 7 - browser-lane source-of-truth build/install/verify`
 - Current objective:
-  - Keep the verified owner-narrow visual-guard fix in place and make `pip_exit_to_watch_page_*` smart enough to run only on likely user-intended PiP exits, instead of transient/framework PiP exits that derail the session before auto-next/control flow can even happen.
+  - Use the Chromium/Brave browser lane as the only source of truth for the `429000010` APK.
+  - Build, install, and verify that exact browser-lane artifact on the development device without mixing in the separate update lane.
 - Completed since last update:
-  - Re-read the latest handoff and verified actual code/runtime state before editing.
-  - Confirmed from [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt) that:
-    - the owner-narrow patch is working (`owner=recovery_chain_only`)
-    - the remaining failure is a separate `Dismiss activity with reason 7` path
-    - the first `reason 7` event is intercepted and ignored while recovery runs
-    - the later `reason 7` event drops PiP because the controller no longer enters the old `mIsPlaying`-gated recovery branch
-  - Inspected the actual runtime controller in WSL:
-    - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
-    - `DismissActivityOnWebContentsObserver.hasEffectivelyFullscreenVideoChange(false)` drives `dismissActivityIfNeeded(... reason 7)`
-    - `dismissActivityIfNeeded(...)` only ignored fullscreen-loss dismisses when `mIsPlaying=true`
-  - Chose a chain-wide fix instead of another narrow guess:
-    - keep the owner-narrow visual-guard patch
-    - treat fullscreen loss in an active PiP session as recoverable based on `shouldPreserveVideoPresentationForPictureInPictureControls()` and `isPipSessionActive()`, not just `mIsPlaying`
-    - add a dedicated BraveActivity entrypoint for `fullscreen_lost_while_in_pip` so logs and recovery reasons stay semantically correct
-  - Applied source changes:
+  - Re-confirmed the current browser-lane source diff:
     - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
-      - added `onPictureInPictureFullscreenLostWhileInPictureInPicture(...)`
-      - factored common recovery escalation into `requestPictureInPictureFocusRecovery(...)`
-      - preserved owner-narrow behavior (`owner=recovery_chain_only`) for both playback-focus-loss and fullscreen-loss recovery requests
-    - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
-      - widened local wrapper semantics to recover fullscreen loss whenever PiP is active and fullscreen is lost, not only while `mIsPlaying`
-    - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
-      - updated representation to reflect the broader fullscreen-loss recovery intent
-    - WSL runtime source:
-      - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
-      - added `maybeRecoverFullscreenLossWhileInPictureInPicture(...)`
-      - added `mediaStartedPlaying` / `mediaStoppedPlaying` logs so the next capture can prove `mIsPlaying` transitions directly
-  - Synced local Brave Java files into WSL source-of-truth and normalized line endings.
-  - Rebuilt successfully:
-    - [release_build_reason7_fullscreen_loss_hold_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_reason7_fullscreen_loss_hold_20260420.log)
-  - Copied the built APK to:
-    - [OneTabTube_reason7_fullscreen_loss_hold_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_reason7_fullscreen_loss_hold_429000010_20260420.apk)
-  - Installed with `--no-incremental`, pulled device `base.apk`, and hash-verified byte-for-byte:
-    - build SHA256 / device SHA256:
-      - `05075773760E81A9E8AF452673A840B2C05414BD633C3A4DA3A708CD34429D80`
-    - device proof:
-      - [device_reason7_fullscreen_loss_hold_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_reason7_fullscreen_loss_hold_429000010_20260420.apk)
-  - Started a fresh runtime capture on that exact installed build:
-    - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt)
-    - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.err.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.err.txt)
+  - Re-confirmed the browser-lane WSL sync:
+    - local SHA256:
+      - `912E868178003A44EC4036B451F3368D7516010489D116B944AEEE74581B1CF8`
+    - WSL SHA256:
+      - `912E868178003A44EC4036B451F3368D7516010489D116B944AEEE74581B1CF8`
+  - Re-confirmed the correct browser build desk:
+    - [\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn)
+    - package:
+      - `com.onetabtube.browser_default`
+    - version:
+      - `429000010 / 1.90.3`
+  - Ran the browser-lane build command:
+    - [release_build_browser_lane_source_of_truth_429000010_20260421.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_browser_lane_source_of_truth_429000010_20260421.log)
+    - ninja reported success / up-to-date for:
+      - `chrome_public_apk`
+  - Copied the exact browser-lane APK out of WSL:
+    - [OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk)
+    - package:
+      - `com.onetabtube.browser_default`
+    - version:
+      - `429000010 / 1.90.3`
+    - SHA256:
+      - `CB96EB32E5CD7F6A39DF6048018952E92F41F0F0A889C2FDB4B49742EFF15C2F`
+  - Installed that APK on the development device:
+    - device:
+      - `R9TRC00GA2E`
+      - `SM_A226B`
+    - `adb install -r --no-incremental`:
+      - `Success`
+    - package state after install:
+      - `versionCode=429000010`
+      - `versionName=1.90.3`
+      - `lastUpdateTime=2026-04-21 00:13:48`
+  - Pulled the installed `base.apk` back from the device:
+    - [device_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_browser_lane_source_of_truth_429000010_20260421.apk)
+    - pulled SHA256:
+      - `CB96EB32E5CD7F6A39DF6048018952E92F41F0F0A889C2FDB4B49742EFF15C2F`
+    - build SHA256:
+      - `CB96EB32E5CD7F6A39DF6048018952E92F41F0F0A889C2FDB4B49742EFF15C2F`
+    - conclusion:
+      - browser-lane artifact and installed device APK are byte-identical
+  - Launched the app after install:
+    - `com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
+    - `Status: ok`
 - In progress now:
-  - No command is running.
-  - The new intent-gated `pip_exit_to_watch_page` build is installed and hash-verified.
-  - Runtime verification has not started yet on this build.
-  - Confirmed by code/log correlation that the interfering branch lives in:
-    - `BraveActivity.onPictureInPictureModeChanged(false, ...)`
-    - `maybeScheduleReturnToWatchPageAfterPictureInPictureExit(...)`
-    - `maybeReturnToWatchPageAfterPictureInPictureExit(...)`
-  - Chosen a narrow fix:
-    - keep the current PiP/fullscreen baseline
-    - keep the owner-narrow visual-guard patch
-    - gate `pip_exit_to_watch_page_*` on recent PiP UI interaction instead of arming it on every PiP exit callback
-  - Applied source changes in [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java):
-    - added `PIP_EXIT_TO_WATCH_PAGE_UI_INTERACTION_GRACE_MS`
-    - added `mLastPictureInPictureUiInteractionElapsedMs`
-    - `onPictureInPictureUiStateChanged(...)` now records `event=pip_ui_interaction`
-    - added `hadRecentPictureInPictureUiInteractionForExit()`
-    - `shouldReturnToWatchPageAfterPictureInPictureExit()` now requires recent PiP UI interaction
-    - fullscreen-active PiP exits without recent PiP UI interaction now log `event=pip_exit_to_watch_page_suppressed ...` instead of arming the watch-page return path
-  - Synced local [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) into WSL source-of-truth.
-  - Rebuilt successfully:
-    - [release_build_pip_exit_watchpage_intent_gate_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_exit_watchpage_intent_gate_20260420.log)
-  - Copied the built APK to:
-    - [OneTabTube_pip_exit_watchpage_intent_gate_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_pip_exit_watchpage_intent_gate_429000010_20260420.apk)
-  - Installed with `--no-incremental`, pulled device `base.apk`, and hash-verified byte-for-byte:
-    - build SHA256 / device SHA256:
-      - `12CD8AC1CCD45CBC16307055F9E4FD2558651A855995E5A3B6DB7DD2D07C2053`
-    - device proof:
-      - [device_pip_exit_watchpage_intent_gate_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_pip_exit_watchpage_intent_gate_429000010_20260420.apk)
-  - Relaunched the app after install to prepare for runtime verification.
+  - Preparing a clean browser-lane-only repo update.
+  - Update-lane diffs remain in the working tree but are intentionally excluded from the verified browser-lane result.
 - Files/modules touched:
-  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
-  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
-  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
   - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
   - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
 - Files/modules inspected:
   - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
-  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
-  - [FullscreenVideoPictureInPictureController.java.patch](C:\Users\Master\Desktop\GO_PLAY\patches\chrome-android-java-src-org-chromium-chrome-browser-media-FullscreenVideoPictureInPictureController.java.patch)
-  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
-  - [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt)
+  - [android/app/build.gradle.kts](C:\Users\Master\Desktop\GO_PLAY\android\app\build.gradle.kts)
+  - [android/app/src/main/AndroidManifest.xml](C:\Users\Master\Desktop\GO_PLAY\android\app\src\main\AndroidManifest.xml)
+  - [lib/services/update_service.dart](C:\Users\Master\Desktop\GO_PLAY\lib\services\update_service.dart)
+  - [\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn](\\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\args.gn)
+  - [OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk)
+  - [device_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_browser_lane_source_of_truth_429000010_20260421.apk)
 - Build/test status:
-  - Previous owner-narrow build remains verified:
-    - [release_build_visual_guard_owner_narrow_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_visual_guard_owner_narrow_20260420.log)
-    - [live_visual_guard_owner_narrow_verify_20260420_172519.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_visual_guard_owner_narrow_verify_20260420_172519.txt)
-  - New fullscreen-loss hold build passed:
-    - [release_build_reason7_fullscreen_loss_hold_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_reason7_fullscreen_loss_hold_20260420.log)
-  - Installed build is hash-verified against the pulled device `base.apk`.
-  - Fresh runtime capture completed on that exact build:
-    - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt)
-  - New intent-gated watch-page build passed:
-    - [release_build_pip_exit_watchpage_intent_gate_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_pip_exit_watchpage_intent_gate_20260420.log)
-  - Installed intent-gated build is hash-verified against the pulled device `base.apk`.
+  - Browser-lane build desk:
+    - `out/android_Release_arm64_multiabi`
+  - Browser-lane APK:
+    - [OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk)
+  - Build/install/hash verify:
+    - complete
+  - Runtime smoke:
+    - app launch verified
+    - deeper PiP/fullscreen regression testing not re-run in this pass
 - Blockers/risks:
-  - The patch deliberately makes fullscreen-loss interception in PiP more aggressive, so runtime verification must prove it suppresses unwanted `reason 7` exits without trapping PiP when the user genuinely intends to leave.
-  - `BraveFullscreenVideoPictureInPictureController.java` is kept in sync locally, but the runtime authority is still the WSL Chromium controller; future edits must continue to treat the WSL file as source-of-truth.
-  - `lastUpdateTime` from package manager did not change after install even though the pulled device `base.apk` hash did; hash proof remains the trustworthy signal, not the timestamp.
-  - The latest capture did not hit the new `PiP fullscreen-loss recovery source=...` markers, so it does not yet prove the new interception branch on the exact failing path.
-  - The latest capture mostly shows:
-    - an initial PiP session
-    - framework PiP exit / on-resume watch-page exit handling
-    - a second PiP entry
-    - then `mediaStoppedPlaying id=0 inPip=true wasPlaying=true`
-    without any `next_track` / auto-advance markers
-  - The latest code/log correlation now shows a concrete interfering logic path:
-    - `Framework exited picture in picture`
-    - `pip_exit_to_watch_page_*`
-    - `Exiting fullscreen`
-    - `Dismiss activity with reason 6`
-    - followed by `Dismiss activity with reason 7`
-    before any auto-next / `next_track` branch appears
-  - This means the visible "hang" in that run can still leave logs because the session is diverted into the PiP-exit/watch-page branch before the later playback/control loss becomes visible.
-  - The new intent gate uses `onPictureInPictureUiStateChanged(...)` as the user-intent proxy available in this layer.
-    - If Android emits that callback automatically on non-user transitions, the gate may still be too permissive.
-    - If Android does not emit it for some legitimate user exits, the gate may be too strict.
-    - Runtime verification must determine which side this lands on.
+  - The current working tree still contains update-lane diffs that are not part of the verified browser APK:
+    - [android/app/build.gradle.kts](C:\Users\Master\Desktop\GO_PLAY\android\app\build.gradle.kts)
+    - [android/app/src/main/AndroidManifest.xml](C:\Users\Master\Desktop\GO_PLAY\android\app\src\main\AndroidManifest.xml)
+    - [lib/services/update_service.dart](C:\Users\Master\Desktop\GO_PLAY\lib\services\update_service.dart)
+  - Pushing everything in the working tree would mix verified browser-lane changes with unverified update-lane changes.
 - Next concrete step:
-  - Run a fresh PiP runtime capture on the newly installed intent-gated build and verify:
-    - transient/framework PiP exits now log `pip_exit_to_watch_page_suppressed ...`
-    - `pip_exit_to_watch_page_armed/schedule` only appears after real PiP UI interaction
-    - the earlier `Framework exited picture in picture -> watch-page return -> fullscreen exit` derailment no longer happens in the unintended flow
+  - Commit and push only the verified browser-lane diff plus docs:
+    - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
+    - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+    - [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
+  - Leave the update-lane diffs uncommitted for separate handling later.
 - Expected resume inspection scope:
-  - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt)
-  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
   - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
-  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java)
+  - [android/app/build.gradle.kts](C:\Users\Master\Desktop\GO_PLAY\android\app\build.gradle.kts)
+  - [android/app/src/main/AndroidManifest.xml](C:\Users\Master\Desktop\GO_PLAY\android\app\src\main\AndroidManifest.xml)
+  - [lib/services/update_service.dart](C:\Users\Master\Desktop\GO_PLAY\lib\services\update_service.dart)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
+  - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
 - Current tool(s):
   - `shell_command`
-  - `apply_patch`
   - `multi_tool_use.parallel`
-  - `wsl`
+  - `apply_patch`
   - `adb`
 - Exact command(s):
-  - `rg -n "Dismiss activity with reason 7|PiP playback focus recovery source=web_contents_left_fullscreen|Ignoring fullscreen-loss dismiss while PiP media is still playing|Exited picture in picture with reason: 7|Framework exited picture in picture|media_effectively_fullscreen_changed fullscreen=0 requested=0" artifacts/runtime_logs/live_visual_guard_owner_narrow_verify_20260420_172519.txt`
-  - `wsl bash -lc "sed -n '430,860p' /home/master/src_ext4/chrome/android/java/src/org/chromium/chrome/browser/media/FullscreenVideoPictureInPictureController.java"`
-  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/app/BraveActivity.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java && sed -i 's/\\r$//' /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/app/BraveActivity.java"`
-  - `wsl bash -lc "cp /mnt/c/Users/Master/Desktop/GO_PLAY/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java && sed -i 's/\\r$//' /home/master/src_ext4/brave/android/java/org/chromium/chrome/browser/media/BraveFullscreenVideoPictureInPictureController.java"`
-  - `wsl bash -lc "set -euo pipefail; export PYTHONPATH=/home/master/src_ext4/brave/script${PYTHONPATH:+:$PYTHONPATH}; cd /home/master/src_ext4 && ninja -C out/android_Release_arm64_multiabi chrome_public_apk 2>&1 | tee /mnt/c/Users/Master/Desktop/GO_PLAY/artifacts/android_build/release_build_reason7_fullscreen_loss_hold_20260420.log"`
-  - `Copy-Item \\wsl.localhost\Ubuntu\home\master\src_ext4\out\android_Release_arm64_multiabi\apks\OneTabTube.apk artifacts\\android_build\\OneTabTube_reason7_fullscreen_loss_hold_429000010_20260420.apk -Force`
-  - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_reason7_fullscreen_loss_hold_429000010_20260420.apk`
-  - `adb pull <device base.apk> artifacts\\runtime_logs\\device_reason7_fullscreen_loss_hold_429000010_20260420.apk`
-  - `adb logcat -c`
+  - `adb devices -l`
+  - `wsl.exe bash -lc "cd /home/master/src_ext4 && ./third_party/depot_tools/autoninja -C out/android_Release_arm64_multiabi chrome_public_apk ..."`
+  - `wsl.exe bash -lc "cp /home/master/src_ext4/out/android_Release_arm64_multiabi/apks/OneTabTube.apk /mnt/c/.../OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk"`
+  - `aapt dump badging artifacts/android_build/OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk`
+  - `adb install -r --no-incremental artifacts\\android_build\\OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk`
+  - `adb shell pm path com.onetabtube.browser_default`
+  - `adb pull <device base.apk> artifacts\\runtime_logs\\device_browser_lane_source_of_truth_429000010_20260421.apk`
+  - `Get-FileHash -Algorithm SHA256 ...`
   - `adb shell am start -W -n com.onetabtube.browser_default/com.google.android.apps.chrome.Main`
-  - `adb logcat -v threadtime cr_OneTabTubePerf:I cr_VideoPersist:I BravePipWrapper:I MediaSessionHelper:I AndroidRuntime:E chromium:I *:S`
 - Tool purpose:
-  - Patch the real fullscreen-loss dismiss path in the runtime controller, rebuild from WSL source-of-truth, install the resulting APK, and capture proof that `reason 7` is now held/recovered instead of dropping PiP.
+  - Build and verify the browser-only source-of-truth APK on the development device without mixing in the separate update lane.
 - Tool state:
-  - latest build completed successfully
-  - latest install/hash verification completed successfully
-  - no active `adb logcat` capture is running
+  - idle
 - Expected resume command:
-  - start a fresh `adb logcat` capture with `cr_OneTabTubePerf`, `cr_VideoPersist`, `BravePipWrapper`, `MediaSessionHelper`, and `chromium` tags, then reproduce the PiP flow that previously derailed into `pip_exit_to_watch_page_*`
+  - `git add android/java/org/chromium/chrome/browser/app/BraveActivity.java docs/current-status.md docs/progress-log.md`
+  - then commit/push browser-lane-only state
 - Expected output/artifact path:
-  - [release_build_reason7_fullscreen_loss_hold_20260420.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_reason7_fullscreen_loss_hold_20260420.log)
-  - [OneTabTube_reason7_fullscreen_loss_hold_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_reason7_fullscreen_loss_hold_429000010_20260420.apk)
-  - [device_reason7_fullscreen_loss_hold_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_reason7_fullscreen_loss_hold_429000010_20260420.apk)
-  - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt)
+  - [OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk)
+  - [device_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_browser_lane_source_of_truth_429000010_20260421.apk)
 - Repo root / working directory:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Current branch:
   - `publish/go_play-sync-20260402`
 - Base commit / HEAD seen:
-  - `ffeac9a4e5cf5b0967481b4580f2638480977bb3`
+  - `94176269efc93a536a809d4bf7d4881db3555296`
 - Build flavor / target:
-  - `out/android_Release_arm64_multiabi`
-  - `chrome_public_apk`
+  - browser lane:
+    - `out/android_Release_arm64_multiabi`
+    - `429000010 / 1.90.3`
 - Primary working set:
-  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) - shared PiP focus/fullscreen-loss recovery escalation entrypoints
-  - [BraveFullscreenVideoPictureInPictureController.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\media\BraveFullscreenVideoPictureInPictureController.java) - local wrapper kept in sync with broadened fullscreen-loss hold semantics
-  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java) - runtime controller actually used by the build
-  - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt) - active runtime proof for the new fullscreen-loss hold patch
+  - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java) — verified browser-lane source diff
+  - [OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk) — verified browser-lane artifact
+  - [device_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\device_browser_lane_source_of_truth_429000010_20260421.apk) — pulled device proof
+  - [android/app/build.gradle.kts](C:\Users\Master\Desktop\GO_PLAY\android\app\build.gradle.kts) — still dirty but intentionally excluded
+  - [android/app/src/main/AndroidManifest.xml](C:\Users\Master\Desktop\GO_PLAY\android\app\src\main\AndroidManifest.xml) — still dirty but intentionally excluded
+  - [lib/services/update_service.dart](C:\Users\Master\Desktop\GO_PLAY\lib\services\update_service.dart) — still dirty but intentionally excluded
 - Files to inspect first after resume:
-  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs/current-status.md)
+  - [docs/current-status.md](C:\Users\Master\Desktop\GO_PLAY\docs\current-status.md)
   - latest entry in [docs/progress-log.md](C:\Users\Master\Desktop\GO_PLAY\docs\progress-log.md)
-  - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt)
-  - [FullscreenVideoPictureInPictureController.java](\\wsl.localhost\Ubuntu\home\master\src_ext4\chrome\android\java\src\org\chromium\chrome\browser\media\FullscreenVideoPictureInPictureController.java)
   - [BraveActivity.java](C:\Users\Master\Desktop\GO_PLAY\android\java\org\chromium\chrome\browser\app\BraveActivity.java)
 - Command run from:
   - `C:\Users\Master\Desktop\GO_PLAY`
 - Prerequisites before command:
-  - WSL source-of-truth present
-  - connected device required for install/runtime verification
+  - none for commit/push
 - Expected success signal:
-  - Runtime shows `PiP fullscreen-loss recovery source=...` or equivalent fullscreen-loss recovery markers for the later fullscreen-loss event, and `reason 7` no longer exits PiP unexpectedly.
+  - browser-lane-only commit pushed successfully
+  - update-lane diffs remain local/uncommitted
 - Expected failure signal:
-  - Runtime still exits PiP through `reason 7`, or the broadened hold path traps PiP when the user actually intends to leave.
+  - commit accidentally captures update-lane files
+  - push fails or branch diverges
 - Last known log location:
-  - [live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt](C:\Users\Master\Desktop\GO_PLAY\artifacts\runtime_logs\live_reason7_fullscreen_loss_hold_verify_20260420_175048.txt)
+  - [release_build_browser_lane_source_of_truth_429000010_20260421.log](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\release_build_browser_lane_source_of_truth_429000010_20260421.log)
 - Last known artifact path:
-  - [OneTabTube_pip_exit_watchpage_intent_gate_429000010_20260420.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_pip_exit_watchpage_intent_gate_429000010_20260420.apk)
+  - [OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk](C:\Users\Master\Desktop\GO_PLAY\artifacts\android_build\OneTabTube_browser_lane_source_of_truth_429000010_20260421.apk)
 - Recent decisions:
-  - Keep the owner-narrow visual-guard patch in place.
-  - Treat the surviving `reason 7` PiP drop as a controller/fullscreen-loss problem, not a visual-guard owner problem.
-  - Broaden fullscreen-loss recovery at the actual runtime controller layer using `PiP session active + preserve-allowed`, not `mIsPlaying` alone.
-  - Add explicit runtime logs for `mediaStartedPlaying` / `mediaStoppedPlaying` to verify whether transient controllability changes still matter after the hold patch.
-  - Treat the latest capture as a different symptom until proven otherwise, because it lacks the old auto-advance / `next_track` markers entirely.
-  - Treat the latest question ("how can there be logs if auto-next hangs?") as answered by the capture itself: logs still exist because another logic path (`pip_exit_to_watch_page_*`) runs and mutates state before the user-visible stall.
-  - Use `onPictureInPictureUiStateChanged(...)` as the narrowest available user-intent proxy for watch-page return arming instead of inventing a new cross-layer signal.
+  - Use browser lane only for the source-of-truth APK.
+  - Exclude update-lane diffs from this verified build/push step.
 - Rejected approaches:
-  - reverting the verified owner-narrow patch
-  - patching `tab_helper` visual-guard core again
-  - relying on `mIsPlaying` alone for fullscreen-loss recovery
-  - assuming the local wrapper alone controls runtime without verifying the WSL Chromium controller path
-  - leaving `pip_exit_to_watch_page_*` armed on every PiP exit callback
+  - Mixing update-lane files into the browser-lane verification result
+  - Installing before version/hash validation
 - Stop point classification:
-  - code edited
-  - WSL source-of-truth synced
-  - build passed
-  - install passed
-  - device APK hash verified
-  - runtime verification not started yet on the new intent-gated build
+  - browser-lane build passed / artifact checked / installed / device hash verified
+  - runtime smoke done
+  - repo push not done yet
 - What is done but unverified:
-  - the new PiP-exit intent gate has not yet been runtime-verified
+  - browser-lane deeper runtime behavior beyond basic app launch
 - What is verified:
-  - the previous owner-narrow build proved the extra playback-focus-loss guard owner overlap is gone
-  - the new fullscreen-loss hold patch compiles successfully
-  - the newly installed intent-gated APK is byte-identical to the pulled device `base.apk`
+  - browser-lane APK `429000010 / 1.90.3` on the device is byte-identical to the built artifact
 - External prerequisite:
-  - connected device for install/runtime verification
+  - none
 - Secret required but not stored:
   - none
 - Actual code state after resume:
-  - restored candidate baseline is still in place
-  - owner narrowing remains in place
-  - controller fullscreen-loss recovery now uses PiP-session/preserve state instead of `mIsPlaying` alone
-  - `BraveActivity.onPictureInPictureModeChanged(false, ...)` now requires recent PiP UI interaction before it will arm/schedule `pip_exit_to_watch_page_*`
+  - Browser lane and update lane are still both dirty in the working tree, but only the browser lane has been built and verified on-device in this step.
 - Chosen direction:
-  - keep the restored current timeline as the PiP/fullscreen baseline
-  - keep the owner narrowing in place
-  - separate the new `mediaStoppedPlaying / controls lost` symptom from the old `reason 7` failure
-  - and treat `pip_exit_to_watch_page_*` as a concrete interfering branch that should only run on likely user-intended PiP exits
+  - Preserve the verified browser-lane result and push only that scoped state.
